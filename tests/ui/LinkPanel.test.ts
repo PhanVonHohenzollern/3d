@@ -1,9 +1,8 @@
-// LinkPanel: connector naming, point rename validation, preview publishing.
 import { describe, expect, it } from 'vitest';
-import type { ConnectorPreview } from '../../src/geometry/ConnectorPreview';
-import type { RuntimeParameterRequest } from '../../src/runtime/RuntimeTypes';
-import { emptyRuntimeResult } from '../../src/runtime/RuntimeTypes';
-import { LinkPanelModel } from '../../src/ui/LinkModel';
+import type { ConnectorPreview } from '../../src/core/geometry/ConnectorPreview';
+import type { RuntimeParameterRequest } from '../../src/core/runtime/RuntimeTypes';
+import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
+import { LinkPanelModel } from '../../src/hooks/linkPanel/LinkPanelModel';
 
 const evaluate = (expression: string) => {
   const value = Number(expression);
@@ -36,7 +35,6 @@ describe('LinkPanel', () => {
     expect(model.focusNameSerial).toBe(1);
     expect(published.at(-1)).toEqual({ previews: [], selectedId: 1, tested: false });
 
-    // A renamed point frees nothing; a later connector skips names already used.
     model.pointEdited('linkPoint2');
     model.pointEditingFinished(true);
     model.addConnector();
@@ -47,7 +45,6 @@ describe('LinkPanel', () => {
     const { model } = createPanel();
     model.addConnector();
     model.addConnector();
-    // Row 1 (linkPoint2) is current.
     model.pointEdited('   ');
     model.pointEditingFinished(false);
     expect(model.statusText).toBe('Point name cannot be empty');
@@ -65,7 +62,6 @@ describe('LinkPanel', () => {
     expect(model.definitions()[1].pointName).toBe('pA');
     expect(model.tableRows[1].texts[1]).toBe('pA');
 
-    // Focus loss without a modification does not emit editingFinished.
     model.pointText = 'unsaved';
     model.pointEditingFinished(false);
     expect(model.definitions()[1].pointName).toBe('pA');
@@ -75,7 +71,7 @@ describe('LinkPanel', () => {
     const { model, published } = createPanel();
     model.addConnector();
     model.testSelection();
-    expect(model.statusIsError).toBe(true); // empty diameter cannot be evaluated
+    expect(model.statusIsError).toBe(true);
     expect(published.at(-1)?.tested).toBe(false);
 
     model.sizeTextChanged('diameter', ' 10 ');
@@ -102,7 +98,7 @@ describe('LinkPanel', () => {
     model.sizeTextChanged('diameter', '4');
     model.addConnector();
     model.sizeTextChanged('diameter', '6');
-    model.togglePreview(1); // Show evaluates the connector
+    model.togglePreview(1);
     model.togglePreview(2);
     expect(published.at(-1)?.previews.map((p) => p.id)).toEqual([1, 2]);
     model.togglePreview(1);
@@ -135,7 +131,7 @@ describe('LinkPanel', () => {
     });
     model.updateRuntimeResult(emptyRuntimeResult());
     expect(model.tableRows[0].buttonText).toBe('Show');
-    expect(model.statusText).toBe('Diameter: Unknown value: diameter'); // prefixed by buildConnectorPreview
+    expect(model.statusText).toBe('Diameter: Unknown value: diameter');
   });
 
   it('removes the current connector and selects the next row', () => {

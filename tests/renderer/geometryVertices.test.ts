@@ -1,11 +1,9 @@
-// Mesh-derived GPU vertices: face-derived normals with crease-limited
-// smoothing (appendGeometryVertices) and feature edges (appendGeometryWireVertices).
 import { describe, expect, it } from 'vitest';
-import type { PreviewMesh } from '../../src/geometry/PreviewGeometryEngine';
-import { QVector3D } from '../../src/renderer/Vector3D';
-import { kVertexFloats } from '../../src/renderer/VertexArray';
-import { expandLineQuads, kLineQuadFloats } from '../../src/renderer/WideLines';
-import { buildGeometryVertices, buildGeometryWireVertices } from '../../src/renderer/ViewportEngine';
+import type { PreviewMesh } from '../../src/core/geometry/PreviewGeometryEngine';
+import { QVector3D } from '../../src/utils/Vector3D';
+import { kVertexFloats } from '../../src/core/viewport/VertexArray';
+import { expandLineQuads, kLineQuadFloats } from '../../src/core/viewport/lineQuads';
+import { buildGeometryVertices, buildGeometryWireVertices } from '../../src/core/viewport/geometryVertices';
 import { boxMesh, scene } from './helpers';
 
 function normalAt(data: Float32Array, vertex: number): QVector3D {
@@ -13,7 +11,6 @@ function normalAt(data: Float32Array, vertex: number): QVector3D {
   return new QVector3D(data[o + 6], data[o + 7], data[o + 8]);
 }
 
-/** Two triangles sharing edge (1,2); their face normals differ by `degrees` (0 = flat). */
 function foldedPair(degrees: number, apiName = 'makeTube'): PreviewMesh {
   const t = (degrees * Math.PI) / 180;
   const vertices = [
@@ -34,7 +31,6 @@ describe('geometry triangles', () => {
     for (let v = 0; v < 36; v += 3) {
       const n = normalAt(data, v);
       expect(n.length()).toBeCloseTo(1, 5);
-      // Each triangle's vertices share its face normal (axis aligned).
       expect(Math.max(Math.abs(n.x), Math.abs(n.y), Math.abs(n.z))).toBeCloseTo(1, 5);
     }
   });
@@ -42,10 +38,8 @@ describe('geometry triangles', () => {
   it('blends normals across gentle folds', () => {
     const { vertices } = buildGeometryVertices(scene(foldedPair(20)));
     const data = vertices.data();
-    // Vertex 1 of the first triangle (index 2 = shared (1,0,0)) is blended: not the face normal (0,0,±1).
     const shared = normalAt(data, 1);
     expect(Math.abs(shared.z)).toBeLessThan(0.999);
-    // The opposite, unshared corner keeps its own face normal.
     expect(Math.abs(normalAt(data, 0).z)).toBeCloseTo(1, 5);
   });
 
@@ -71,7 +65,6 @@ describe('geometry triangles', () => {
 describe('feature edges', () => {
   it('omits the coplanar quad diagonals of a box', () => {
     const { vertices, ranges } = buildGeometryWireVertices(scene(boxMesh([0, 0, 0], [3, 2, 1])));
-    // 12 box edges, no diagonals.
     expect(vertices.size()).toBe(24);
     expect(ranges[0].count).toBe(24);
     const data = vertices.data();
@@ -79,14 +72,13 @@ describe('feature edges', () => {
       const a = new QVector3D(data[v * 9], data[v * 9 + 1], data[v * 9 + 2]);
       const b = new QVector3D(data[(v + 1) * 9], data[(v + 1) * 9 + 1], data[(v + 1) * 9 + 2]);
       const d = b.sub(a);
-      // Every edge is axis aligned.
       expect([d.x, d.y, d.z].filter((c) => c !== 0).length).toBe(1);
     }
   });
 
   it('keeps boundaries and creases, drops flat shared edges', () => {
-    expect(buildGeometryWireVertices(scene(foldedPair(0))).vertices.size()).toBe(8); // 4 boundary edges
-    expect(buildGeometryWireVertices(scene(foldedPair(30))).vertices.size()).toBe(10); // + the crease
+    expect(buildGeometryWireVertices(scene(foldedPair(0))).vertices.size()).toBe(8);
+    expect(buildGeometryWireVertices(scene(foldedPair(30))).vertices.size()).toBe(10);
   });
 
   it('expands wide lines into two triangles per segment', () => {
@@ -94,7 +86,6 @@ describe('feature edges', () => {
     const quads = expandLineQuads(vertices.data(), 2, 4);
     expect(quads.length).toBe(2 * 6 * kLineQuadFloats);
     const src = vertices.data();
-    // First quad vertex: endpoint A, endpoint B, A's color, corner (0, -1).
     expect(Array.from(quads.slice(0, 11))).toEqual([
       src[18],
       src[19],
@@ -108,7 +99,6 @@ describe('feature edges', () => {
       0,
       -1,
     ]);
-    // Corners of one segment cover both ends and both sides.
     const corners = [];
     for (let v = 0; v < 6; ++v) corners.push([quads[v * 11 + 9], quads[v * 11 + 10]]);
     expect(corners).toEqual([

@@ -1,0 +1,92 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+  --text-ui: 13px;
+  --text-code: 11pt;
+
+  --color-window: #efefef;
+  --color-base: #ffffff;
+  --color-alternate-base: #f7f7f7;
+  --color-fg: #1e1e1e;
+  --color-muted: #6b6b6b;
+  --color-disabled: #9a9a9a;
+  --color-line: #c8c8c8;
+  --color-line-strong: #a8a8a8;
+  --color-line-hover: #8a8a8a;
+  --color-grid: #d8d8d8;
+  --color-highlight: #3874d8;
+  --color-highlight-fg: #ffffff;
+  --color-highlight-soft: #dce8fb;
+  --color-button: #f5f5f5;
+  --color-button-pressed: #d9d9d9;
+  --color-button-top: #fbfbfb;
+  --color-button-bottom: #ececec;
+  --color-header-top: #fafafa;
+  --color-header-bottom: #eaeaea;
+  --color-bar-top: #f6f6f6;
+  --color-bar-bottom: #e9e9e9;
+  --color-error: #c62828;
+  --color-warning: #b26a00;
+  --color-trace-selected: #594820;
+  --color-trace-selected-fg: #ffe4a0;
+  --color-orientation-checked: #66551a;
+  --color-orientation-checked-fg: #fff1a0;
+  --color-viewport: #1f2329;
+  --color-handle-hover: #dcdcdc;
+  --color-tool-checked: #d6dde8;
+  --color-branch: #6a6a6a;
+  --color-arrow: #444444;
+  --color-arrow-disabled: #aaaaaa;
+  --color-frame: #8f8f8f;
+  --color-title-active-top: #f0f0f0;
+  --color-title-active-bottom: #dedede;
+  --color-close-hover: #e0e0e0;
+  --color-editor: #1e1e1e;
+
+  --radius-qt: 3px;
+
+  --color-viewport-clear: #131416;
+  --color-viewport-button: #252d38;
+  --color-viewport-button-hover: #36475c;
+  --color-viewport-button-pressed: #435a75;
+  --color-viewport-button-fg: #ecf2fa;
+  --color-viewport-button-line: #64748b;
+  --color-viewport-button-line-focus: #a6dcff;
+  --color-viewport-label-header: #20252c;
+  --color-viewport-label-header-fg: #b7c2d0;
+  --color-viewport-label-header-line: #353c46;
+  --color-viewport-label-list: #181b20;
+  --color-viewport-label-scrollbar: #56616e;
+  --color-viewport-label-row-hover: #282d35;
+  --color-viewport-label-row-selected: #4c4017;
+  --color-viewport-label-name: #dfe2e7;
+  --color-viewport-label-value: #99a6b5;
+  --color-viewport-label-selected-fg: #fff0b4;
+  --color-viewport-label-dot-selected: #ffe673;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  html {
+    @apply leading-[normal];
+  }
+
+  body {
+    @apply overflow-hidden bg-window font-ui text-ui text-fg;
+  }
+
+  fieldset {
+    @apply min-w-0;
+  }
+
+  label {
+    @apply cursor-default;
+  }
+}

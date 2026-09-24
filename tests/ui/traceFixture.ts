@@ -1,21 +1,11 @@
-// Hand-built RuntimeResult for the API Trace / Earlier values tests.
-//
-//   1: double a = 2;
-//   2: FdPoint3d p(a, 0, 0);
-//   3: FdVector3d n(0, 0, 1);
-//   4: a = 3;              (a later write: must not leak into the snapshot)
-//   5: helper(p, n, 3.5, pts);
-//   6:   inner(p);          (nested user call inside helper)
-//   7: FdPoint3d pts[2] = {p, q}; (array argument elements)
-
-import { FdPoint3d, FdVector3d } from '../../src/runtime/FdMath';
+import { FdPoint3d, FdVector3d } from '../../src/core/runtime/FdMath';
 import type {
   RuntimeApiCall,
   RuntimeResult,
   RuntimeValueSource,
   RuntimeVariableChange,
-} from '../../src/runtime/RuntimeTypes';
-import { RuntimeArray } from '../../src/runtime/RuntimeValue';
+} from '../../src/core/runtime/RuntimeTypes';
+import { RuntimeArray } from '../../src/core/runtime/RuntimeValue';
 
 export const p = new FdPoint3d(2, 0, 0);
 export const q = new FdPoint3d(1, 1, 0);

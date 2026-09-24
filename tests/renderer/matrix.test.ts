@@ -1,9 +1,6 @@
-// QMatrix4x4 port: checked against the formulas documented for
-// QMatrix4x4::perspective() / lookAt() (the gluPerspective / gluLookAt
-// matrices, column-major m[col][row]) and against algebraic identities.
 import { describe, expect, it } from 'vitest';
-import { QMatrix4x4 } from '../../src/renderer/Matrix4x4';
-import { QVector3D, QVector4D } from '../../src/renderer/Vector3D';
+import { QMatrix4x4 } from '../../src/utils/Matrix4x4';
+import { QVector3D, QVector4D } from '../../src/utils/Vector3D';
 
 function expectMatrixClose(actual: QMatrix4x4, expected: number[][], digits = 5) {
   for (let row = 0; row < 4; ++row)
@@ -22,7 +19,6 @@ describe('QMatrix4x4', () => {
   it('stores elements column-major like QMatrix4x4::constData()', () => {
     const m = new QMatrix4x4();
     m.translate(new QVector3D(1, 2, 3));
-    // Translation lives in column 3 == data[12..14].
     expect(Array.from(m.data.slice(12, 15))).toEqual([1, 2, 3]);
     expect(m.get(0, 3)).toBe(1);
   });
@@ -69,7 +65,6 @@ describe('QMatrix4x4', () => {
       [0, 0, 0, 1],
     ]);
 
-    // The eye maps to the origin and the center onto the -Z axis.
     const e = m.map(QVector4D.fromVector3D(eye, 1));
     expect([e.x, e.y, e.z]).toEqual([expect.closeTo(0, 5), expect.closeTo(0, 5), expect.closeTo(0, 5)]);
     const c = m.map(QVector4D.fromVector3D(center, 1));
@@ -120,7 +115,6 @@ describe('QMatrix4x4', () => {
   it('normalMatrix() is the inverse transpose of the upper 3x3', () => {
     const m = new QMatrix4x4([2, 0.5, 0, 0, 0, 3, 1, 0, 0.25, 0, 4, 0, 7, 8, 9, 1]);
     const n = m.normalMatrix();
-    // (M3^-1)^T * M3^T == I  <=>  n (column-major 3x3) times M3^T is the identity.
     for (let row = 0; row < 3; ++row) {
       for (let col = 0; col < 3; ++col) {
         let sum = 0;

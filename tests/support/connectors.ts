@@ -1,4 +1,4 @@
-import type { ConnectorDefinition } from '../../src/geometry/ConnectorPreview';
+import type { ConnectorDefinition } from '../../src/core/geometry/ConnectorPreview';
 import type { ConnectorDirective } from './fixtures';
 
 export function connectorDefinition(d: ConnectorDirective): ConnectorDefinition {
@@ -18,7 +18,6 @@ export function connectorDefinition(d: ConnectorDirective): ConnectorDefinition 
 
 export const isLiteral = (s: string) => s.trim() === '' || /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s.trim());
 
-/** Mirrors GeometryRuntime::evaluateNumericExpression for numeric literals only. */
 export function literalEvaluator(expression: string): number {
   const field = expression.trim();
   if (field === '') throw new Error('enter a number, variable or expression');

@@ -1,24 +1,22 @@
-// JSON encoding of TypeScript runtime structures in exactly the shape printed
-// by reference/harness.cpp, plus decoding of reference JSON back into
-// RuntimeResult so downstream modules can be tested on the C++ runtime output.
-//
-// Only type imports of not-yet-shared modules are allowed here, so each
-// differential test can run before the other modules are ported.
-
-import { FdPoint3d, FdVector3d } from '../../src/runtime/FdMath';
+import { FdPoint3d, FdVector3d } from '../../src/core/runtime/FdMath';
 import type {
   RuntimeApiCall,
   RuntimeArgumentTrace,
   RuntimeParameterRequest,
   RuntimeResult,
   RuntimeValueSource,
-} from '../../src/runtime/RuntimeTypes';
-import { RuntimeArray, runtimeTypeName, runtimeValueToString, type RuntimeValue } from '../../src/runtime/RuntimeValue';
-import type { PreviewGeometryScene, PreviewMesh } from '../../src/geometry/PreviewGeometryEngine';
-import type { ConnectorPreview } from '../../src/geometry/ConnectorPreview';
+} from '../../src/core/runtime/RuntimeTypes';
+import {
+  RuntimeArray,
+  runtimeTypeName,
+  runtimeValueToString,
+  type RuntimeValue,
+} from '../../src/core/runtime/RuntimeValue';
+import type { PreviewGeometryScene, PreviewMesh } from '../../src/core/geometry/PreviewGeometryEngine';
+import type { ConnectorPreview } from '../../src/core/geometry/ConnectorPreview';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type Json = any;
+export type Json = any;
 
 export function encodeNumber(v: number): Json {
   if (Number.isNaN(v)) return 'nan';
@@ -133,9 +131,6 @@ export function encodeConnector(c: ConnectorPreview): Json {
     outline: c.outline.map(([a, b]) => [xyz(a), xyz(b)]),
   };
 }
-
-// ---------------------------------------------------------------------------
-// Decoding reference JSON
 
 function decodeNumber(v: Json): number {
   if (v === 'nan') return NaN;

@@ -1,20 +1,17 @@
-// Shared fixtures for the renderer unit tests (headless: no DOM, no WebGL).
+import type { PreviewMesh, PreviewGeometryScene } from '../../src/core/geometry/PreviewGeometryEngine';
+import { emptyRuntimeResult, type RuntimeResult } from '../../src/core/runtime/RuntimeTypes';
+import { FdPoint3d } from '../../src/core/runtime/FdMath';
+import { DebugItem } from '../../src/core/viewport/DebugItem';
+import { ViewportEngine } from '../../src/core/viewport/ViewportEngine';
+import type { TextMeasurer } from '../../src/types/text';
+import type { QPointF, QVector3D } from '../../src/utils/Vector3D';
 
-import type { PreviewMesh, PreviewGeometryScene } from '../../src/geometry/PreviewGeometryEngine';
-import { emptyRuntimeResult, type RuntimeResult } from '../../src/runtime/RuntimeTypes';
-import { FdPoint3d } from '../../src/runtime/FdMath';
-import type { TextMeasurer } from '../../src/renderer/TextMetrics';
-import { ViewportEngine } from '../../src/renderer/ViewportEngine';
-import type { QPointF, QVector3D } from '../../src/renderer/Vector3D';
-
-/** Every character is 7 px wide; ascent 10, descent 3 (QFontMetrics height 13). */
 export const fixedMeasurer: TextMeasurer = {
   horizontalAdvance: (text) => Array.from(text).length * 7,
   ascent: () => 10,
   descent: () => 3,
 };
 
-/** Axis-aligned box [min, max] as 12 outward-facing triangles. */
 export function boxMesh(
   min: [number, number, number],
   max: [number, number, number],
@@ -34,12 +31,12 @@ export function boxMesh(
     [x0, y1, z1],
   ];
   const quads = [
-    [0, 3, 2, 1], // bottom (-z)
-    [4, 5, 6, 7], // top (+z)
-    [0, 1, 5, 4], // -y
-    [1, 2, 6, 5], // +x
-    [2, 3, 7, 6], // +y
-    [3, 0, 4, 7], // -x
+    [0, 3, 2, 1],
+    [4, 5, 6, 7],
+    [0, 1, 5, 4],
+    [1, 2, 6, 5],
+    [2, 3, 7, 6],
+    [3, 0, 4, 7],
   ];
   const indices: number[] = [];
   for (const [a, b, c, d] of quads) indices.push(a, b, c, a, c, d);
@@ -70,29 +67,28 @@ export function createEngine(width = 800, height = 600): ViewportEngine {
   return engine;
 }
 
-/** Access to the ported private members (tests only). */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export function internals(engine: ViewportEngine): any {
-  const e = engine as any;
-  return new Proxy(e, {
-    get(target, key) {
-      const value = target[key];
-      return typeof value === 'function' ? value.bind(target) : value;
-    },
-    set(target, key, value) {
-      target[key] = value;
-      return true;
-    },
-  });
+export function updateCamera(engine: ViewportEngine) {
+  const camera = engine.camera();
+  camera.updateViewMatrix();
+  camera.updateProjectionMatrix(engine.sceneScale());
+  return camera;
 }
 
 export function project(engine: ViewportEngine, p: QVector3D): QPointF {
-  const i = internals(engine);
-  i.updateViewMatrix();
-  i.updateProjectionMatrix();
-  const screen = i.projectToScreen(p);
+  const screen = updateCamera(engine).projectToScreen(p);
   if (!screen) throw new Error('point does not project');
   return screen;
+}
+
+export function vectorItem(name: string, start: QVector3D, end: QVector3D, apiIndex = 0): DebugItem {
+  const item = new DebugItem();
+  item.kind = 'Vector';
+  item.name = name;
+  item.apiIndex = apiIndex;
+  item.apiSnapshot = true;
+  item.start = start;
+  item.end = end;
+  return item;
 }
 
 export function mouse(
@@ -103,4 +99,14 @@ export function mouse(
   modifiers: Partial<{ control: boolean; shift: boolean; alt: boolean }> = {},
 ) {
   return { x, y, button, buttons, modifiers: { control: false, shift: false, alt: false, ...modifiers } };
+}
+
+export function click(
+  engine: ViewportEngine,
+  x: number,
+  y: number,
+  modifiers: Partial<{ control: boolean; shift: boolean; alt: boolean }> = {},
+) {
+  engine.mousePressEvent(mouse(x, y, 1, 1, modifiers));
+  engine.mouseReleaseEvent(mouse(x, y, 1, 0, modifiers));
 }

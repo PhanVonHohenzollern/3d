@@ -1,10 +1,9 @@
-// DebugLabelPanel (LabelList = QListWidget, ExtendedSelection): selection
-// semantics, activation callback, row rectangles for leader lines, scrolling.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DebugLabelPanel, type DebugLabelEntry } from '../../src/renderer/DebugLabelPanel';
-import { qColor } from '../../src/renderer/OverlayPainter';
-import { LeftButton, NoModifier, RightButton } from '../../src/renderer/QtEvents';
-import { elidedText } from '../../src/renderer/TextMetrics';
+import { DebugLabelPanel } from '../../src/core/viewport/DebugLabelPanel';
+import type { DebugLabelEntry } from '../../src/types/viewportEngine';
+import { qColor } from '../../src/utils/painting';
+import { LeftButton, NoModifier, RightButton } from '../../src/helpers/qtInput';
+import { elidedText } from '../../src/utils/textMetrics';
 import { fixedMeasurer } from './helpers';
 
 const ROW = 24;
@@ -76,7 +75,6 @@ describe('DebugLabelPanel', () => {
     click(panel, 1, shift);
     expect(selectedRows(panel)).toEqual([1, 2, 3, 4]);
     expect(activated).toHaveBeenLastCalledWith(new Set(['id1', 'id2', 'id3', 'id4']), true);
-    // The anchor stays at row 4 for the next Shift-click.
     click(panel, 5, shift);
     expect(selectedRows(panel)).toEqual([4, 5]);
   });
@@ -150,7 +148,6 @@ describe('DebugLabelPanel', () => {
     panel.setEntries(entries(4), new Set(['id0', 'id2']));
     expect(selectedRows(panel)).toEqual([0, 2]);
     expect(activated).not.toHaveBeenCalled();
-    // Rebuilding with different entries keeps ids selected by the caller.
     const changed = entries(4).map((e) => ({ ...e, value: `${e.value}!` }));
     panel.setEntries(changed, new Set(['id2']));
     expect(selectedRows(panel)).toEqual([2]);
@@ -172,13 +169,11 @@ describe('DebugLabelPanel', () => {
     expect(panel.hasScrollBar()).toBe(true);
     expect(panel.viewportWidth()).toBe(192);
     panel.setEntries(entries(20), new Set(['id12']));
-    // EnsureVisible: the row's bottom aligns with the viewport bottom.
     expect(panel.scrollValue()).toBe(13 * ROW - 5 * ROW);
     const rect = panel.selectedRowRect('id12');
     expect([rect.y, rect.height, rect.width]).toEqual([8 + 25 + 4 * ROW, ROW, 192]);
     panel.setScrollValueFromView(0);
     expect(panel.selectedRowRect('id12').isEmpty()).toBe(true);
-    // Scrolling is clamped to the content.
     panel.setScrollValueFromView(10_000);
     expect(panel.scrollValue()).toBe(20 * ROW - 5 * ROW);
   });
@@ -210,7 +205,6 @@ describe('elidedText', () => {
     expect(elidedText(fixedMeasurer, font, 'abc', 'ElideRight', 21)).toBe('abc');
   });
   it('elides on the right and in the middle like QFontMetrics', () => {
-    // width 35: ellipsis 7, available 28 -> 4 glyphs fit strictly below.
     expect(elidedText(fixedMeasurer, font, 'abcdefghij', 'ElideRight', 35)).toBe('abc\u2026');
     expect(elidedText(fixedMeasurer, font, 'abcdefghij', 'ElideMiddle', 35)).toBe('a\u2026j');
     expect(elidedText(fixedMeasurer, font, 'abcdefghij', 'ElideMiddle', 50)).toBe('abc\u2026hij');

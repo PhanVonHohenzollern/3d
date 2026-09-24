@@ -1,6 +1,5 @@
-node_modules/
-dist/
-reference/build/
+dist
+node_modules
 package-lock.json
-src/runtime/*.generated.ts
-tests/fixtures/
+tests/fixtures
+src/core/runtime/*.generated.ts

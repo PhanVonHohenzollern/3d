@@ -1,30 +1,42 @@
-// World axis labels (Viewport3D::worldAxisLabels): X+/X-, Y+/Y-, Z+/Z- sit on
-// the projected world axes near the viewport edges and avoid lists/controls.
 import { describe, expect, it } from 'vitest';
-import { connectorOrientations, previewOrientationDirection } from '../../src/geometry/ConnectorPreview';
-import { QRectF } from '../../src/renderer/Rect';
-import { QPointF, QVector3D } from '../../src/renderer/Vector3D';
-import type { AxisLabel } from '../../src/renderer/ViewportEngine';
-import { createEngine, internals, resultWithP0 } from './helpers';
-import type { ViewportEngine } from '../../src/renderer/ViewportEngine';
+import { connectorOrientations, previewOrientationDirection } from '../../src/core/geometry/ConnectorPreview';
+import type { ViewportEngine } from '../../src/core/viewport/ViewportEngine';
+import { axesVertices, placeWorldAxisLabels } from '../../src/core/viewport/worldAxes';
+import type { AxisLabel } from '../../src/types/viewportEngine';
+import { QRectF } from '../../src/utils/Rect';
+import { fontWithPointSize, kDefaultFontFamily } from '../../src/utils/textMetrics';
+import { QPointF, QVector3D, QVector4D } from '../../src/utils/Vector3D';
+import { createEngine, fixedMeasurer, resultWithP0, updateCamera } from './helpers';
 
-function labelsOf(engine: ViewportEngine): AxisLabel[] {
-  const i = internals(engine);
-  i.updateViewMatrix();
-  i.updateProjectionMatrix();
-  return i.worldAxisLabels();
+function occupiedAreas(engine: ViewportEngine): QRectF[] {
+  const areas = [engine.pointLabelPanel(), engine.vectorLabelPanel()]
+    .filter((panel) => panel.isVisible())
+    .map((panel) => QRectF.fromRect(panel.geometry()).adjusted(-4, -4, 4, 4));
+  areas.push(QRectF.fromRect(engine.selectionModeButton().geometry).adjusted(-4, -4, 4, 4));
+  return areas;
 }
 
-/** Distance from p to the infinite screen line through the projections of a and b. */
+function labelsOf(engine: ViewportEngine): AxisLabel[] {
+  const camera = updateCamera(engine);
+  return placeWorldAxisLabels({
+    axes: axesVertices(engine.sceneScale(), camera.target, camera.distance),
+    transform: camera.viewProjection(),
+    width: engine.width(),
+    height: engine.height(),
+    occupied: occupiedAreas(engine),
+    measurer: fixedMeasurer,
+    font: fontWithPointSize(kDefaultFontFamily, 9, true),
+  });
+}
+
 function distanceToProjectedLine(engine: ViewportEngine, p: QPointF, a: QVector3D, b: QVector3D): number {
-  const i = internals(engine);
-  const transform = i.m_projection.times(i.m_view);
+  const transform = updateCamera(engine).viewProjection();
   const toScreen = (v: QVector3D) => {
-    const c = transform.map({ x: v.x, y: v.y, z: v.z, w: 1 } as never);
+    const c = transform.map(QVector4D.fromVector3D(v, 1));
     return new QPointF((c.x / c.w + 1) * engine.width() * 0.5, (1 - c.y / c.w) * engine.height() * 0.5);
   };
-  const pa = toScreen(a),
-    pb = toScreen(b);
+  const pa = toScreen(a);
+  const pb = toScreen(b);
   const d = pb.sub(pa);
   return Math.abs(d.x * (p.y - pa.y) - d.y * (p.x - pa.x)) / Math.hypot(d.x, d.y);
 }
@@ -45,14 +57,11 @@ describe('world axis labels', () => {
       expect(screen.contains(label.bounds)).toBe(true);
       const axis = 'XYZ'.indexOf(label.text[0]);
       const dir = axisDirection(axis);
-      // Anchors lie on the projected axis (points on both sides of the target, in front of the camera).
       expect(distanceToProjectedLine(engine, label.anchor, dir.mul(-1), dir.mul(1))).toBeLessThan(1e-3);
-      // Bounds are centered on the anchor, text advance + 8 by height + 4 (fixed 7 px glyphs, height 13).
       expect(label.bounds.width).toBe(2 * 7 + 8);
       expect(label.bounds.height).toBe(13 + 4);
       expect(label.bounds.center().x).toBeCloseTo(label.anchor.x, 9);
     }
-    // Labels never overlap each other.
     for (let a = 0; a < labels.length; ++a)
       for (let b = a + 1; b < labels.length; ++b) expect(labels[a].bounds.intersects(labels[b].bounds)).toBe(false);
   });
@@ -62,7 +71,6 @@ describe('world axis labels', () => {
     const labels = labelsOf(engine);
     const zPlus = labels.find((label) => label.text === 'Z+');
     const zMinus = labels.find((label) => label.text === 'Z-');
-    // World +Z is up on screen, so the Z+ label (direction (0,0,-1)) is at the bottom edge.
     expect(zPlus).toBeDefined();
     expect(zMinus).toBeDefined();
     expect(zPlus!.anchor.y).toBeGreaterThan(300);
@@ -75,10 +83,8 @@ describe('world axis labels', () => {
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const points = engine.pointLabelPanel();
     expect(points.isVisible()).toBe(true);
-    const occupied = [
-      QRectF.fromRect(points.geometry()).adjusted(-4, -4, 4, 4),
-      QRectF.fromRect(engine.selectionModeButton().geometry).adjusted(-4, -4, 4, 4),
-    ];
+    const occupied = occupiedAreas(engine);
+    expect(occupied).toHaveLength(2);
     for (const label of labelsOf(engine))
       for (const area of occupied) expect(area.intersects(label.bounds)).toBe(false);
   });
@@ -89,18 +95,14 @@ describe('world axis labels', () => {
   });
 
   it('clips axes behind the camera before projecting', () => {
-    // Looking almost straight down the X axis: one half of it is behind the eye.
     const engine = createEngine(800, 600);
-    const i = internals(engine);
-    i.m_yaw = 0;
-    i.m_pitch = 0;
-    i.buildAxesVertices();
+    engine.camera().yaw = 0;
+    engine.camera().pitch = 0;
     const labels = labelsOf(engine);
     for (const label of labels) {
       expect(Number.isFinite(label.anchor.x)).toBe(true);
       expect(Number.isFinite(label.anchor.y)).toBe(true);
     }
-    // The X axis projects to (nearly) a point at the center: it reaches no edge, so it gets no label.
     expect(labels.some((label) => label.text[0] === 'X')).toBe(false);
   });
 });

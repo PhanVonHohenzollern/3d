@@ -1,8 +1,9 @@
-// ApiHistoryDialog: parameter history rows of one immutable API snapshot.
 import { describe, expect, it, vi } from 'vitest';
-import { ApiHistoryDialogModel, earlierChanges, HistoryColumn } from '../../src/ui/ApiHistoryModel';
-import { directSource, displayExpression } from '../../src/ui/TraceFormatting';
-import type { TreeWidgetItem } from '../../src/ui/TreeWidget';
+import { earlierChanges } from '../../src/helpers/apiHistory';
+import { directSource, displayExpression } from '../../src/helpers/traceFormatting';
+import { ApiHistoryDialogModel } from '../../src/hooks/apiTrace/ApiHistoryDialogModel';
+import { HistoryColumn } from '../../src/hooks/apiTrace/historyItems';
+import type { TreeWidgetItem } from '../../src/hooks/treeWidget/TreeWidgetItem';
 import { p, traceResult } from './traceFixture';
 
 const row = (item: TreeWidgetItem) => Array.from({ length: 8 }, (_, c) => item.text(c));
@@ -37,7 +38,6 @@ describe('ApiHistoryDialog', () => {
     expect(row(size)).toEqual(['size', '', 'double', '', '', '3.5', '', 'No earlier values']);
     expect(center.isBold(HistoryColumn.Parameter)).toBe(true);
 
-    // Arrays are expanded, so their summary moves to the element rows.
     expect(points.isExpanded()).toBe(true);
     expect(points.text(HistoryColumn.Value)).toBe('');
     expect(points.text(HistoryColumn.State)).toBe('At API call');
@@ -49,7 +49,7 @@ describe('ApiHistoryDialog', () => {
       'q',
       'FdPoint3d',
       'FdPoint3d(1, 1, 0)',
-      '—',
+      '\u2014',
       '(1, 1, 0)',
       '1',
       'Initialization',
@@ -61,9 +61,9 @@ describe('ApiHistoryDialog', () => {
     const activated = vi.fn();
     dialog.setSourceActivatedCallback(activated);
     const tree = dialog.tree;
-    tree.itemDoubleClicked.emit(tree.topLevelItem(0), 0); // captured definition of p
-    tree.itemDoubleClicked.emit(tree.topLevelItem(2), 0); // literal: nothing to navigate to
-    tree.itemDoubleClicked.emit(tree.topLevelItem(3).child(1).child(0), 0); // history entry
+    tree.itemDoubleClicked.emit(tree.topLevelItem(0), 0);
+    tree.itemDoubleClicked.emit(tree.topLevelItem(2), 0);
+    tree.itemDoubleClicked.emit(tree.topLevelItem(3).child(1).child(0), 0);
     expect(activated.mock.calls).toEqual([[2], [1]]);
   });
 

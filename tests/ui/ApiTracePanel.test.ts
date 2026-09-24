@@ -1,11 +1,9 @@
-// ApiTracePanel: row model built from a RuntimeResult, lazy trace rows,
-// retained expansion/selection, multi-selection, mesh filter, API focus and
-// the Earlier values window lifecycle.
 import { describe, expect, it } from 'vitest';
-import { emptyRuntimeResult } from '../../src/runtime/RuntimeTypes';
-import { ApiTracePanelModel, TraceColumn } from '../../src/ui/ApiTraceModel';
-import type { Modifiers } from '../../src/ui/Observable';
-import type { TreeWidgetItem } from '../../src/ui/TreeWidget';
+import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
+import { ApiTracePanelModel } from '../../src/hooks/apiTrace/ApiTracePanelModel';
+import { TraceColumn } from '../../src/hooks/apiTrace/traceItems';
+import type { TreeWidgetItem } from '../../src/hooks/treeWidget/TreeWidgetItem';
+import type { Modifiers } from '../../src/types/qt';
 import { traceResult } from './traceFixture';
 
 const none: Modifiers = { shift: false, control: false };
@@ -53,7 +51,6 @@ describe('ApiTracePanel row model', () => {
     const [center, normal, size, points, inner] = api.children();
     expect(texts(center)).toEqual(['', 'center (p)', 'FdPoint3d', 'FdPoint3d(a, 0, 0)', '', '2', '0', '0', '', '2']);
     expect(texts(normal)).toEqual(['', 'normal (n)', 'FdVector3d', 'FdVector3d(0, 0, 1)', '', '0', '0', '1', '', '3']);
-    // Literal expressions that repeat the value are omitted.
     expect(texts(size)).toEqual(['', 'size', 'double', '', '3.5', '', '', '', '', '']);
     expect(points.text(TraceColumn.Value)).toBe('{(2, 0, 0), (1, 1, 0)}');
     expect(points.text(TraceColumn.Line)).toBe('7');
@@ -72,11 +69,10 @@ describe('ApiTracePanel row model', () => {
     events.length = 0;
     toggleBranch(model, center);
     expect(center.isExpanded()).toBe(true);
-    expect(events).toEqual(['selection:-1']); // itemExpanded re-applies the selection
+    expect(events).toEqual(['selection:-1']);
     expect(center.childCount()).toBe(1);
     const a = center.child(0);
     expect(texts(a)).toEqual(['', 'a', 'double', '', '2', '', '', '', 'Source variable', '1']);
-    // The later write a = 3 (line 4) does not leak into the snapshot.
     expect(a.hasChildIndicator()).toBe(false);
   });
 
@@ -130,7 +126,7 @@ describe('ApiTracePanel row model', () => {
     );
     expect(model.selectedSourceLines()).toEqual(new Set([2, 7]));
 
-    click(model, size, shift); // anchor is still `points` (Shift does not move it)
+    click(model, size, shift);
     expect(names(tree.selectedItems())).toEqual(['size', 'points']);
     click(model, center, shift);
     expect(names(tree.selectedItems())).toEqual(['center (p)', 'normal (n)', 'size', 'points']);
@@ -172,7 +168,7 @@ describe('ApiTracePanel row model', () => {
     expect(tree.rootItem()).toBeNull();
     expect(tree.selectedItems()).toEqual([]);
 
-    model.selectMeshApiCall(7); // no such call: clears the focus
+    model.selectMeshApiCall(7);
     expect(events.at(-1)).toBe('selection:-1');
   });
 

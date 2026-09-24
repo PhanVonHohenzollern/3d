@@ -1,5 +1,3 @@
-// Fixture discovery and directive parsing; must match reference/harness.cpp.
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,7 +19,6 @@ export interface ConnectorDirective {
 }
 
 export interface Fixture {
-  /** Path relative to tests/fixtures, e.g. "runtime/loops.cpp". */
   name: string;
   file: string;
   code: string;
@@ -61,7 +58,6 @@ export function parseFixture(file: string): Fixture {
   const parameters = new Map<string, string>();
   const evals: string[] = [];
   const connectors: ConnectorDirective[] = [];
-  // std::getline semantics: a trailing newline does not start another line.
   const textLines = code.split('\n');
   if (textLines.length && textLines[textLines.length - 1] === '') textLines.pop();
   for (const line of textLines) {
@@ -90,7 +86,6 @@ export function parseFixture(file: string): Fixture {
   };
 }
 
-/** All fixtures, optionally restricted to subdirectories of tests/fixtures. */
 export function listFixtures(...subdirs: string[]): Fixture[] {
   const roots = subdirs.length ? subdirs.map((d) => path.join(fixturesRoot, d)) : [fixturesRoot];
   const files: string[] = [];
@@ -103,7 +98,7 @@ export function listFixtures(...subdirs: string[]): Fixture[] {
     }
   };
   roots.forEach(walk);
-  const filter = process.env.FIXTURE; // e.g. FIXTURE=loops npx vitest run
+  const filter = process.env.FIXTURE;
   return files
     .sort()
     .map(parseFixture)

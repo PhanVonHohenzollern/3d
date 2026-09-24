@@ -1,8 +1,7 @@
-// ParameterPanel: definition merging, sticky user edits and runtime refinement.
 import { describe, expect, it, vi } from 'vitest';
-import type { RuntimeParameterRequest, RuntimeResult } from '../../src/runtime/RuntimeTypes';
-import { emptyRuntimeResult } from '../../src/runtime/RuntimeTypes';
-import { ParameterPanelModel } from '../../src/ui/ParameterPanel';
+import type { RuntimeParameterRequest, RuntimeResult } from '../../src/core/runtime/RuntimeTypes';
+import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
+import { ParameterPanelModel } from '../../src/hooks/parameterPanel/ParameterPanelModel';
 
 function request(overrides: Partial<RuntimeParameterRequest>): RuntimeParameterRequest {
   return {
@@ -21,7 +20,6 @@ function resultWith(requests: RuntimeParameterRequest[]): RuntimeResult {
   return { ...emptyRuntimeResult(), parameterRequests: requests };
 }
 
-/** Edit the Value cell of `row` like a user and commit it. */
 function editValue(model: ParameterPanelModel, row: number, text: string): void {
   model.mouseDoubleClick(row, 3);
   model.editorTextEdited(text);
@@ -59,7 +57,7 @@ describe('ParameterPanel', () => {
 
     editValue(model, 0, '  12 ');
     expect(changed).toHaveBeenCalledTimes(1);
-    expect(model.values().get('A')).toBe('12'); // trimmed
+    expect(model.values().get('A')).toBe('12');
 
     model.setDefinitions([
       request({ name: 'A', defaultValue: '6' }),
@@ -77,7 +75,6 @@ describe('ParameterPanel', () => {
     model.setDefinitions([request({ name: 'A', defaultValue: '5' })]);
     editValue(model, 0, '5');
     expect(changed).not.toHaveBeenCalled();
-    // Only the Value column is editable.
     expect(model.edit(0, 0)).toBe(false);
     expect(model.editor).toBeNull();
   });
@@ -94,7 +91,7 @@ describe('ParameterPanel', () => {
     model.updateRuntimeResult(
       resultWith([
         request({ name: 'A', type: 'int', currentValue: '3', variableName: 'a' }),
-        request({ name: 'B', currentValue: '4', variableName: 'other' }), // different definition id
+        request({ name: 'B', currentValue: '4', variableName: 'other' }),
         request({ name: 'C', currentValue: '8', variableName: 'c' }),
         request({ name: 'A', sourceFunction: 'other', currentValue: '99', variableName: 'a' }),
       ]),

@@ -1,15 +1,11 @@
-// MainWindow orchestration (App.tsx): debounce, runPreview order, trace
-// browsing, source navigation, API focus, point insertion and Esc. The editor
-// and viewport are fakes; the panels are the real models, connected exactly
-// like the App component connects them.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MainWindow } from '../../src/app/App';
-import type { CodeEditorHandle } from '../../src/editor/CodeEditor';
-import type { Viewport3DHandle } from '../../src/renderer/Viewport3DHandle';
-import { ApiTracePanelModel } from '../../src/ui/ApiTraceModel';
-import { LinkPanelModel } from '../../src/ui/LinkModel';
-import { ParameterPanelModel } from '../../src/ui/ParameterPanel';
-import { VariablePanelModel } from '../../src/ui/VariablePanel';
+import { ApiTracePanelModel } from '../../src/hooks/apiTrace/ApiTracePanelModel';
+import { LinkPanelModel } from '../../src/hooks/linkPanel/LinkPanelModel';
+import { MainWindow } from '../../src/hooks/mainWindow/MainWindow';
+import { ParameterPanelModel } from '../../src/hooks/parameterPanel/ParameterPanelModel';
+import { VariablePanelModel } from '../../src/hooks/variablePanel/VariablePanelModel';
+import type { CodeEditorHandle } from '../../src/types/editor';
+import type { Viewport3DHandle } from '../../src/types/viewport';
 
 class FakeEditor implements CodeEditorHandle {
   text = '';
@@ -29,13 +25,11 @@ class FakeEditor implements CodeEditorHandle {
     this.cursor = position;
     if (moved) this.onCursorPositionChanged();
   }
-  /** A user edit: replace the text and put the cursor somewhere. */
   type(text: string, cursorLine: number): void {
     this.text = text;
     this.onTextChanged();
     this.#setCursor(this.#lineStart(cursorLine));
   }
-  /** A user cursor move. */
   moveTo(line: number): void {
     this.#setCursor(this.#lineStart(line));
   }
@@ -135,13 +129,12 @@ function createMainWindow() {
   const apiTrace = new ApiTracePanelModel();
   const links = new LinkPanelModel();
   const viewport = fakeViewport(log);
-  Object.assign(mw.editorRef, { current: editor });
-  Object.assign(mw.viewportRef, { current: viewport });
-  Object.assign(mw.variablesRef, { current: variables });
-  Object.assign(mw.parametersRef, { current: parameters });
-  Object.assign(mw.apiTraceRef, { current: apiTrace });
-  Object.assign(mw.linksRef, { current: links });
-  // The connections App makes through props.
+  mw.bindEditor(editor);
+  mw.bindViewport(viewport);
+  mw.bindVariables(variables);
+  mw.bindParameters(parameters);
+  mw.bindApiTrace(apiTrace);
+  mw.bindLinks(links);
   editor.onTextChanged = mw.onEditorTextChanged;
   editor.onCursorPositionChanged = mw.onEditorCursorPositionChanged;
   variables.setSelectionChangedCallback(mw.onVariableSelectionChanged);
@@ -165,13 +158,12 @@ const kSource = [
 
 const isMac = /Mac|iPhone|iPad|iPod/i.test(globalThis.navigator?.platform || globalThis.navigator?.userAgent || '');
 
-/** A keydown event whose target is in a text input, a tree view or the floating window. */
 function keyEvent(
   key: string,
   modifiers: { control?: boolean; shift?: boolean } = {},
   target: 'input' | 'tree' | 'dialog' = 'tree',
 ) {
-  const matches: Record<string, string> = { input: 'input', tree: '.tree-view', dialog: '.floating-window' };
+  const matches: Record<string, string> = { input: 'input', tree: '.tree-view', dialog: '[data-floating-window]' };
   return {
     key,
     shiftKey: !!modifiers.shift,
@@ -228,9 +220,8 @@ describe('MainWindow', () => {
     mw.start();
     editor.type(kSource, 6);
     vi.advanceTimersByTime(220);
-    expect(mw.m_lastResult.apiCalls.map((call) => call.name)).toEqual(['makeDisc']); // get_val is not traced
+    expect(mw.m_lastResult.apiCalls.map((call) => call.name)).toEqual(['makeDisc']);
 
-    // Selecting an API row focuses it; clicking a row with a line navigates there.
     const api = apiTrace.m_tree.topLevelItem(0);
     apiTrace.m_tree.mousePressEvent({
       item: api,
@@ -250,7 +241,7 @@ describe('MainWindow', () => {
     expect(mw.m_browsingTrace).toBe(true);
     expect(mw.statusBar().currentMessage()).toBe('Source line 5 - keeping preview at line 6');
 
-    mw.runPreview(); // e.g. a parameter edit re-runs at the browsing line
+    mw.runPreview();
     expect(mw.m_currentPreviewLine).toBe(6);
     expect(apiTrace.selectedApiCall()).toBe(0);
 
@@ -324,14 +315,12 @@ describe('MainWindow', () => {
     expect(log).toEqual(['fitDebugOverlay()']);
     expect(inTree.preventDefault).toHaveBeenCalled();
 
-    // Qt::CTRL shortcuts also fire while typing; the browser reload is prevented.
     log.length = 0;
     const run = keyEvent('r', { control: true }, 'input');
     mw.handleKeyDown(run);
     expect(run.preventDefault).toHaveBeenCalled();
     expect(log).toContain('setRuntimeResult(obj)');
 
-    // Keys in the Earlier values window never reach the main window.
     log.length = 0;
     mw.handleKeyDown(keyEvent('f', {}, 'dialog'));
     expect(log).toEqual([]);

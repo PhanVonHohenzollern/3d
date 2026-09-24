@@ -1,11 +1,3 @@
-// Structural comparison of reference (C++) and actual (TypeScript) JSON.
-//
-// Numbers compare with a relative tolerance: libm and V8 transcendental
-// functions can differ in the last ulp. Strings compare exactly after mapping
-// C++ standard-library exception texts, which differ between libc++ (the
-// reference harness on macOS) and libstdc++ (the shipped builds), to one
-// canonical form.
-
 import { expect } from 'vitest';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -29,9 +21,7 @@ export function normalizeMessage(s: string): string {
 }
 
 export interface CompareOptions {
-  /** Relative tolerance for numbers (default 1e-9). */
   tolerance?: number;
-  /** Paths matching this get `looseTolerance` (float mesh data by default). */
   loosePaths?: RegExp;
   looseTolerance?: number;
   maxDiffs?: number;
@@ -88,7 +78,6 @@ export function diffJson(expected: any, actual: any, options: CompareOptions = {
   return diffs;
 }
 
-/** Fails the current test with a readable list of differences. */
 export function expectSameJson(expected: any, actual: any, options?: CompareOptions) {
   const diffs = diffJson(expected, actual, options);
   expect(diffs, diffs.join('\n')).toEqual([]);
