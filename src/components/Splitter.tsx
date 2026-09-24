@@ -1,26 +1,25 @@
-import type { ReactNode } from 'react';
-import { useSplitter, type SplitterOptions } from '../hooks/useSplitter';
+import { useSplitter } from '../hooks/useSplitter';
+import type { SplitterProps } from '../types/layout';
 import { cn } from '../utils/cn';
+import { ResizeHandle } from './ResizeHandle';
 
-interface SplitterProps extends SplitterOptions {
-  className?: string;
-  children: [ReactNode, ReactNode];
-}
-
-export function Splitter({ className, children, ...options }: SplitterProps) {
-  const { containerRef, paneStyles, horizontal, onHandlePointerDown } = useSplitter(options);
+export function Splitter({ className, children, label, ...options }: SplitterProps) {
+  const { containerRef, paneStyles, horizontal, onHandlePointerDown, onHandleKeyDown, value, min, max } =
+    useSplitter(options);
 
   return (
     <div ref={containerRef} className={cn('flex h-full w-full overflow-hidden', !horizontal && 'flex-col', className)}>
       <div className="min-h-0 min-w-0 flex-none overflow-hidden" style={paneStyles[0]}>
         {children[0]}
       </div>
-      <div
-        className={cn(
-          'flex-none touch-none bg-window transition-colors hover:bg-handle-hover',
-          horizontal ? 'w-[5px] cursor-col-resize' : 'h-[5px] cursor-row-resize',
-        )}
+      <ResizeHandle
+        orientation={horizontal ? 'vertical' : 'horizontal'}
+        label={label}
+        value={value}
+        min={min}
+        max={max}
         onPointerDown={onHandlePointerDown}
+        onKeyDown={onHandleKeyDown}
       />
       <div className="min-h-0 min-w-0 flex-none overflow-hidden" style={paneStyles[1]}>
         {children[1]}
