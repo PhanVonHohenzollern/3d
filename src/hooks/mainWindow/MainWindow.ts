@@ -14,7 +14,7 @@ import {
   textInputSelector,
 } from '../../helpers/keyboard';
 import { pointDeclaration, unusedPreviewPointName } from '../../helpers/viewportPoints';
-import type { CodeEditorHandle } from '../../types/editor';
+import type { CodeEditorHandle, EditorExecutionFeedback } from '../../types/editor';
 import type { ActionListItem, DockName, Menu, PreviewMode } from '../../types/mainWindow';
 import type {
   ApiTracePanelHandle,
@@ -85,6 +85,17 @@ export class MainWindow extends Observable {
   readonly m_geometryEngine = new PreviewGeometryEngine();
   m_geometryScene: PreviewGeometryScene = { meshes: [], warnings: [] };
   previewMode: PreviewMode = 'debug';
+  buildNumber = 0;
+  previewDirty = false;
+  executionFeedback: EditorExecutionFeedback = { source: '', diagnostics: [] };
+
+  get previewStatus(): string {
+    if (this.previewMode === 'debug') return 'Debug · live preview';
+    const errors = this.executionFeedback.diagnostics.length;
+
+    return `Build #${this.buildNumber} · ${this.previewDirty ? 'changes pending — press Build' : errors ? `${errors} error(s)` : `${this.m_geometryScene.meshes.length} mesh(es)`}`;
+  }
+
   importedObj: { name: string; scene: PreviewGeometryScene } | null = null;
   #connectorPreviews: readonly ConnectorPreview[] = [];
   #selectedConnectorId = -1;
@@ -169,7 +180,12 @@ export class MainWindow extends Observable {
 
   readonly buildPreview = (): void => {
     this.activatePreviewMode('build');
-    this.updatePreview(this.m_editor.blockCount());
+    this.m_parameters.commitEditor();
+    const source = this.m_editor.toPlainText();
+    ++this.buildNumber;
+    this.updatePreview(source.split('\n').length, source);
+    this.previewDirty = false;
+    this.changed();
   };
 
   readonly debugPreview = (): void => {
@@ -189,6 +205,8 @@ export class MainWindow extends Observable {
 
   readonly onEditorTextChanged = (): void => {
     this.m_editor.setTraceSourceLines(new Set());
+    this.previewDirty = true;
+    this.changed();
     this.schedulePreview();
   };
 
@@ -200,6 +218,8 @@ export class MainWindow extends Observable {
   };
 
   readonly onParametersChanged = (): void => {
+    this.previewDirty = true;
+    this.changed();
     this.runPreview();
   };
 
@@ -463,22 +483,24 @@ export class MainWindow extends Observable {
     this.updatePreview(line);
   }
 
-  private updatePreview(line: number): void {
+  private updatePreview(line: number, source = this.m_editor.toPlainText()): void {
     this.m_previewTimer.stop();
-    const source = this.m_editor.toPlainText();
 
     const parameterDefinitions = this.m_runtime.discoverParameters(source);
     this.m_parameters.setDefinitions(parameterDefinitions);
 
-    this.m_runtime.setParameters(this.m_parameters.values());
+    this.m_runtime.setParameters(this.m_parameters.overrides());
     let result: RuntimeResult;
     try {
       result = this.m_runtime.executeUpToLine(source, line);
     } catch (e) {
+      this.executionFeedback = { source, diagnostics: [{ line, message: what(e) }] };
+      this.changed();
       this.statusBar().showMessage(`Line ${line}: preview stopped: ${what(e)}`, 4000, 'error');
 
       return;
     }
+    this.executionFeedback = { source, diagnostics: result.diagnostics };
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
       ParametersDock: parameterDefinitions.length,

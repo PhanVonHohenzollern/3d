@@ -53,8 +53,6 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
 
   const showList = () => setIsEditing(false);
 
-  const editSelected = () => setIsEditing(true);
-
   const onTableMouseDown = (event: MouseEvent) => {
     if (event.button !== 0 || isInTableHeader(event) || isInElement(event, 'button')) return;
     event.preventDefault();
@@ -65,13 +63,18 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
 
   const onTableKeyDown = (event: KeyboardEvent) => {
     if (event.target !== tableRef.current || event.altKey || event.ctrlKey || event.metaKey) return;
+    if ((event.key === 'Enter' || event.key === 'F2') && model.formEnabled) {
+      event.preventDefault();
+      setIsEditing(true);
+
+      return;
+    }
     if (model.tableKeyPress(event.key)) event.preventDefault();
   };
 
   return {
     tableRef,
     showList,
-    editSelected,
     isEditing,
     hasConnectors: model.tableRows.length > 0,
     canEdit: model.formEnabled,
@@ -84,6 +87,13 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
       currentRow: model.currentRow,
       currentColumn: model.currentColumn,
       onMouseDown: onTableMouseDown,
+      onDoubleClick: (event: MouseEvent) => {
+        if (isInElement(event, 'button') || isInTableHeader(event)) return;
+        const { row, column } = tableCellOf(event);
+        if (row < 0) return;
+        model.cellActivated(row, column);
+        setIsEditing(true);
+      },
       onKeyDown: onTableKeyDown,
       togglePreview: (id: number) => () => model.togglePreview(id),
     },
@@ -114,6 +124,7 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
       parameterNames: model.parameterNames,
       circular: model.circularFields,
       statusIsError: model.statusIsError,
+      fieldErrors: model.fieldErrors,
       onNameChange: (event: ChangeEvent<HTMLInputElement>) => model.nameEdited(event.target.value),
       onPointChange: (event: ChangeEvent<HTMLInputElement>) => model.pointEdited(event.target.value),
       onPointBlur: () => model.pointEditingFinished(false),

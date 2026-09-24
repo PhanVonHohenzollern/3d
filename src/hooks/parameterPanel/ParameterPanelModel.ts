@@ -10,6 +10,7 @@ import { adjacentCell, rowForKey } from '../../helpers/tableNavigation';
 import type { ParameterEditor, ParameterPanelHandle, ParameterRow } from '../../types/panels';
 import { isMacPlatform } from '../../utils/platform';
 import { Observable } from '../observable/Observable';
+import { parseParameterTable } from '../../helpers/parameterTable';
 
 export const kParameterValueColumn = 3;
 export const kParameterHeaders = ['Parameter', 'Type', 'Variable', 'Value', 'Line'];
@@ -23,6 +24,10 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   currentColumn = -1;
   editor: ParameterEditor | null = null;
   #editorSerial = 0;
+  dataSets: ReadonlyMap<string, string>[] = [];
+  dataSetIndex = -1;
+  pasteMessage = '';
+  pasteIsError = false;
 
   #definitions: RuntimeParameterRequest[] = [];
   readonly #values = new Map<string, string>();
@@ -123,7 +128,49 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     return new Map(this.#values);
   }
 
+  overrides(): Map<string, string> {
+    return new Map([...this.#values].filter(([key]) => this.#userEditedKeys.has(key)));
+  }
+
+  previewTable(text: string) {
+    return parseParameterTable(text, this.#definitions);
+  }
+
+  importTable(text: string): boolean {
+    try {
+      const parsed = this.previewTable(text);
+      this.dataSets = parsed.data;
+      this.pasteIsError = false;
+      this.pasteMessage =
+        `${parsed.data.length} data row(s), ${parsed.columns} parameter(s)` +
+        (parsed.ignored.length ? ` · Ignored: ${parsed.ignored.join(', ')}` : '');
+      this.selectDataSet(0);
+
+      return true;
+    } catch (error) {
+      this.pasteIsError = true;
+      this.pasteMessage = error instanceof Error ? error.message : String(error);
+      this.changed();
+
+      return false;
+    }
+  }
+
+  selectDataSet(index: number): void {
+    const data = this.dataSets[index];
+    if (!data) return;
+    this.dataSetIndex = index;
+    this.editor = null;
+    for (const [key, value] of data) {
+      this.#values.set(key, value);
+      this.#userEditedKeys.add(key);
+    }
+    this.#rebuildTable();
+    this.#changedCallback?.();
+  }
+
   resetToSource(): void {
+    this.dataSetIndex = -1;
     this.#userEditedKeys.clear();
     this.#values.clear();
     for (const definition of this.#definitions) this.#values.set(definition.name, parameterSeed(definition));
@@ -140,7 +187,16 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     const key = row.key;
     if (key === '') return;
 
-    this.#values.set(key, row.texts[ValueColumn].trim());
+    const value = row.texts[ValueColumn].trim();
+    const matches = this.dataSets.flatMap((data, index) => (data.get(key) === value ? [index] : []));
+    if (matches.length === 1) {
+      this.selectDataSet(matches[0]);
+
+      return;
+    }
+    this.dataSetIndex = -1;
+
+    this.#values.set(key, value);
     this.#userEditedKeys.add(key);
     if (this.#changedCallback) this.#changedCallback();
   }

@@ -30,6 +30,7 @@ export interface LinkFormProps {
   parameterNames: readonly string[];
   circular: boolean;
   statusIsError: boolean;
+  fieldErrors: Readonly<Record<string, string>>;
   onNameChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onPointChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onPointBlur: () => void;

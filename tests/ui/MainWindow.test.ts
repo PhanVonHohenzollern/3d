@@ -204,6 +204,58 @@ describe('MainWindow', () => {
     vi.useRealTimers();
   });
 
+  it('rebuilds computed source defaults and commits a pending parameter edit', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    mw.start();
+    editor.type(kSource.replace('double w = 2;', 'double w = 2 * 3;'), 1);
+    mw.buildPreview();
+    const firstObj = mw.exportObj();
+    expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(6);
+    expect(parameters.values().get('Width')).toBe('6');
+    expect(mw.previewStatus).toContain('Build #1');
+    editor.type(kSource.replace('double w = 2;', 'double w = 4 * 3;'), 1);
+    expect(mw.previewStatus).toContain('changes pending');
+    expect(mw.exportObj()).toBe(firstObj);
+    mw.buildPreview();
+    expect(mw.buildNumber).toBe(2);
+    expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(12);
+    expect(mw.exportObj()).not.toBe(firstObj);
+    parameters.edit(0, 3);
+    parameters.editorTextEdited('18');
+    mw.buildPreview();
+    expect(parameters.editor).toBeNull();
+    expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(18);
+    expect(mw.previewDirty).toBe(false);
+    mw.dispose();
+  });
+
+  it('Build uses the complete normalized source even if editor block count differs', () => {
+    const { mw, editor } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 1);
+    vi.spyOn(editor, 'blockCount').mockReturnValue(1);
+    mw.buildPreview();
+    expect(mw.m_currentPreviewLine).toBe(6);
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    mw.dispose();
+  });
+
+  it('publishes runtime errors for the source that was executed and clears them after repair', () => {
+    const { mw, editor } = createMainWindow();
+    mw.start();
+    editor.type('double width = 5;\nwidth = missingValue;\n', 1);
+    mw.buildPreview();
+    expect(mw.executionFeedback.source).toBe(editor.text);
+    expect(mw.executionFeedback.diagnostics).toContainEqual({ line: 2, message: 'unknown variable: missingValue' });
+    const built = mw.m_lastResult;
+    editor.type('double width = 5;\nwidth = 12;\n', 1);
+    expect(mw.m_lastResult).toBe(built);
+    mw.buildPreview();
+    expect(mw.executionFeedback.diagnostics).toEqual([]);
+    expect(mw.m_runtime.evaluateNumericExpression('width')).toBe(12);
+    mw.dispose();
+  });
+
   it('builds the whole source and freezes geometry and runtime state until the next build', () => {
     const { mw, editor, log, parameters } = createMainWindow();
     mw.start();

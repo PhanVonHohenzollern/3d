@@ -1,7 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { lintCppSyntax } from '../src/hooks/codeEditor/linting';
+import { EditorState } from '@codemirror/state';
+import {
+  executionDiagnostics,
+  executionDiagnosticsField,
+  lintCppSyntax,
+  setExecutionDiagnostics,
+} from '../src/hooks/codeEditor/linting';
 
 describe('CodeMirror C++ syntax diagnostics', () => {
+  it('locates runtime errors and discards stale diagnostics when the source changes', () => {
+    const source = 'double width = 5;\nwidth = missingValue;';
+    const errors = executionDiagnostics(source, [{ line: 2, message: 'unknown variable: missingValue' }]);
+    expect(source.slice(errors[0].from, errors[0].to)).toBe('missingValue');
+    let state = EditorState.create({ doc: source, extensions: [executionDiagnosticsField] });
+    state = state.update({ effects: setExecutionDiagnostics.of(errors) }).state;
+    expect(state.field(executionDiagnosticsField)).toHaveLength(1);
+    state = state.update({ changes: { from: errors[0].from, to: errors[0].to, insert: '12' } }).state;
+    expect(state.field(executionDiagnosticsField)).toEqual([]);
+  });
+
   it('accepts the preview dialect with top-level geometry calls', () => {
     expect(
       lintCppSyntax('double width = 50;\nget_val("Width", width);\nFdPoint3d p(0,0,0);\nmakeFlatDisc(p, vz, 40, 1);'),

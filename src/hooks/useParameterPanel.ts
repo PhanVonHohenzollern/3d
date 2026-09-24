@@ -1,11 +1,26 @@
-import { useContainerPagination } from './useContainerPagination';
-import { useImperativeHandle, useLayoutEffect, useState, type KeyboardEvent } from 'react';
+import { useImperativeHandle, useLayoutEffect, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import type { ParameterPanelProps } from '../types/panels';
 import { kParameterValueColumn, ParameterPanelModel } from './parameterPanel/ParameterPanelModel';
 import { useObservable } from './useObservable';
+import { parameterTableCells, parameterTableText } from '../helpers/parameterTable';
+
+interface TableDraft {
+  text: string;
+  cells: string[][];
+  error: string;
+}
+
+function tableDraftFromText(text: string): TableDraft {
+  try {
+    return { text, cells: parameterTableCells(text), error: '' };
+  } catch (error) {
+    return { text, cells: [], error: error instanceof Error ? error.message : String(error) };
+  }
+}
 
 export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
   const [model] = useState(() => new ParameterPanelModel());
+  const [draft, setDraft] = useState<TableDraft | null>(null);
   useObservable(model);
 
   useLayoutEffect(() => {
@@ -15,7 +30,6 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
 
   const fields = model.rows.map((row, index) => {
     const value = model.editor?.row === index ? model.editor.text : row.texts[kParameterValueColumn];
-    const numeric = /^(double|float|int|long|short|unsigned|size_t)/.test(row.texts[1]);
 
     const beginEdit = () => {
       if (model.editor?.row !== index) model.edit(index, kParameterValueColumn);
@@ -28,13 +42,6 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
     const change = (text: string) => {
       beginEdit();
       model.editorTextEdited(text);
-    };
-
-    const step = (amount: number) => {
-      const number = Number(value);
-      if (!value.trim() || !Number.isFinite(number)) return;
-      change(String(number + amount));
-      commit();
     };
 
     const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -56,18 +63,72 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
       line: `L${row.line}`,
       description: `${row.texts[1]} ${row.texts[2]}`,
       value,
-      numeric,
-      stepDisabled: !value.trim() || !Number.isFinite(Number(value)),
+      options: model.dataSets.flatMap((data, rowIndex) => {
+        const option = data.get(row.key);
+
+        return option === undefined ? [] : [{ row: rowIndex, value: option }];
+      }),
+      selectedDataSet: model.dataSetIndex,
+      selectDataSet: (dataSet: number) => model.selectDataSet(dataSet),
       beginEdit,
       change,
       commit,
       onKeyDown,
-      decrement: () => step(-1),
-      increment: () => step(1),
     };
   });
 
-  const pagination = useContainerPagination(fields, { rowHeight: 86, headerHeight: 12, minimumColumnWidth: 170 });
+  const onPaste = (event: ClipboardEvent) => {
+    const text = event.clipboardData.getData('text/plain');
+    // A single Excel cell may include a final newline; preserve ordinary input paste.
+    if (!/[\t\r\n]/.test(text.replace(/[\r\n]+$/, ''))) return;
+    event.preventDefault();
+    setDraft(tableDraftFromText(text));
+  };
 
-  return { fields, pagination, resetToSource: () => model.resetToSource() };
+  let draftError = draft?.error ?? '';
+  let draftSummary = '';
+  if (draft?.cells.length && !draftError) {
+    try {
+      const preview = model.previewTable(parameterTableText(draft.cells));
+      draftSummary =
+        `${preview.data.length} data row(s) · ${preview.columns} parameter(s)` +
+        (preview.ignored.length ? ` · Ignored columns: ${preview.ignored.join(', ')}` : '');
+    } catch (error) {
+      draftError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
+  return {
+    fields,
+    onPaste,
+    pasteMessage: model.pasteMessage,
+    pasteIsError: model.pasteIsError,
+    dataSetIndex: model.dataSetIndex,
+    dataSetCount: model.dataSets.length,
+    selectDataSet: (index: number) => model.selectDataSet(index),
+    openTable: () => setDraft((current) => current ?? tableDraftFromText('')),
+    tableDialog: draft && {
+      text: draft.text,
+      cells: draft.cells,
+      columnCount: Math.max(0, ...draft.cells.map((row) => row.length)),
+      error: draftError,
+      summary: draftSummary,
+      canApply: !!draftSummary && !draftError,
+      close: () => setDraft(null),
+      setText: (text: string) => setDraft(tableDraftFromText(text)),
+      editCell: (row: number, column: number, value: string) =>
+        setDraft((current) => {
+          if (!current) return current;
+          const cells = current.cells.map((items) => [...items]);
+          while (cells[row].length <= column) cells[row].push('');
+          cells[row][column] = value;
+
+          return { text: parameterTableText(cells), cells, error: '' };
+        }),
+      apply: () => {
+        if (!draftError && draftSummary && model.importTable(parameterTableText(draft.cells))) setDraft(null);
+      },
+    },
+    resetToSource: () => model.resetToSource(),
+  };
 }

@@ -1,5 +1,5 @@
 import { linter, lintGutter, lintKeymap } from '@codemirror/lint';
-import { lintCppSyntax } from './linting';
+import { executionDiagnosticsField, lintCppSyntax, setExecutionDiagnostics } from './linting';
 import {
   acceptCompletion,
   startCompletion,
@@ -183,7 +183,21 @@ export function createEditorExtensions(onUpdate: (update: ViewUpdate) => void): 
     bracketMatching(),
     closeBrackets(),
     autocompletion(),
-    linter((view) => lintCppSyntax(view.state.doc.toString()), { delay: 500 }),
+    executionDiagnosticsField,
+    linter(
+      (view) => {
+        const syntax = lintCppSyntax(view.state.doc.toString());
+
+        return [...syntax, ...view.state.field(executionDiagnosticsField)];
+      },
+      {
+        delay: 500,
+        needsRefresh: (update) =>
+          update.transactions.some((transaction) =>
+            transaction.effects.some((effect) => effect.is(setExecutionDiagnostics)),
+          ),
+      },
+    ),
     lintGutter(),
     keymap.of([
       { mac: 'Meta-Shift-Space', run: startCompletion, preventDefault: true },

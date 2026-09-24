@@ -16,7 +16,6 @@ export function LinkPanel(props: LinkPanelProps) {
     canEdit,
     selectedName,
     showList,
-    editSelected,
     addConnector,
     removeConnector,
   } = useLinkPanel(props);
@@ -46,10 +45,7 @@ export function LinkPanel(props: LinkPanelProps) {
         </div>
       ) : hasConnectors ? (
         <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-1.5">
-          <span className="mr-auto truncate text-[11px] text-muted-foreground">Select a connector to edit</span>
-          <Button variant="outline" className="h-6 px-2 text-[11px]" disabled={!canEdit} onClick={editSelected}>
-            Edit selected
-          </Button>
+          <span className="mr-auto truncate text-[11px] text-muted-foreground">Double-click a connector to edit</span>
           <Button className="h-6 px-2 text-[11px]" onClick={addConnector}>
             <Plus className="size-3" />
             New

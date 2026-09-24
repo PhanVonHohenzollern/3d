@@ -25,22 +25,22 @@ export function ModelFileControls({
         size="sm"
         disabled={busy}
         onClick={chooseFile}
-        aria-label="Import OBJ"
+        aria-label="Import"
         title="Import OBJ to replace the preview; your code is preserved"
       >
         <Upload className="size-3.5" aria-hidden />
-        <span className="hidden sm:inline">{busy ? 'Importing…' : 'Import OBJ'}</span>
+        <span className="hidden sm:inline">{busy ? 'Importing…' : 'Import'}</span>
       </Button>
       <Button
         variant="outline"
         size="sm"
         disabled={busy || !canExport}
         onClick={exportFile}
-        aria-label="Export OBJ"
+        aria-label="Export"
         title={canExport ? 'Export the active model as OBJ' : 'Create or import a model to export'}
       >
         <Download className="size-3.5" aria-hidden />
-        <span className="hidden sm:inline">Export OBJ</span>
+        <span className="hidden sm:inline">Export</span>
       </Button>
     </div>
   );

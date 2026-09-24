@@ -25,6 +25,8 @@ export interface ParameterPanelHandle {
   setDefinitions(definitions: readonly RuntimeParameterRequest[]): void;
   updateRuntimeResult(result: RuntimeResult): void;
   values(): Map<string, string>;
+  overrides(): Map<string, string>;
+  commitEditor(): void;
 }
 
 export interface ParameterRow {

@@ -36,6 +36,8 @@ export function useMainWindow() {
     raiseDock: mainWindow.raiseDock,
     editor: {
       ref: mainWindow.bindEditor,
+      executionFeedback: mainWindow.executionFeedback,
+      previewStatus: mainWindow.previewStatus,
       onTextChanged: mainWindow.onEditorTextChanged,
       onCursorPositionChanged: mainWindow.onEditorCursorPositionChanged,
     },

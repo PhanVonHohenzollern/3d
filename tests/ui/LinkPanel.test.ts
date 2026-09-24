@@ -25,6 +25,34 @@ function getVal(name: string, variableName: string, type = 'double'): RuntimePar
 }
 
 describe('LinkPanel', () => {
+  it('Make lists only missing required fields and uses zero for empty position and rotation', () => {
+    const { model, published } = createPanel();
+    model.addConnector();
+    model.nameEdited(' ');
+    for (let i = 0; i < 3; i++) {
+      model.positionEdited(i, '');
+      model.angleEdited(i, '');
+    }
+    model.testSelection();
+    expect(model.statusText).toBe('Required: Name, Size (Diameter)');
+    expect(Object.keys(model.fieldErrors)).toEqual(['name', 'diameter']);
+    expect(published.at(-1)?.previews).toHaveLength(0);
+    model.nameEdited('Inlet');
+    model.sizeTextChanged('diameter', '10');
+    model.testSelection();
+    expect(model.statusIsError).toBe(false);
+    expect(published.at(-1)?.previews[0].point).toMatchObject({ x: 0, y: 0, z: 0 });
+    model.typeChanged(1);
+    model.testSelection();
+    expect(model.statusText).toBe('Required: Size (A), Size (B)');
+    model.sizeTextChanged('aSize', '15');
+    model.testSelection();
+    expect(model.statusText).toBe('Required: Size (B)');
+    model.sizeTextChanged('bSize', '20');
+    model.testSelection();
+    expect(model.statusIsError).toBe(false);
+  });
+
   it('adds connectors with unique names and point names, selecting the new row', () => {
     const { model, published } = createPanel();
     expect(model.formEnabled).toBe(false);

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RuntimeParameterRequest, RuntimeResult } from '../../src/core/runtime/RuntimeTypes';
 import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
 import { ParameterPanelModel } from '../../src/hooks/parameterPanel/ParameterPanelModel';
+import { parameterTableCells, parameterTableText } from '../../src/helpers/parameterTable';
 
 function request(overrides: Partial<RuntimeParameterRequest>): RuntimeParameterRequest {
   return {
@@ -27,6 +28,104 @@ function editValue(model: ParameterPanelModel, row: number, text: string): void 
 }
 
 describe('ParameterPanel', () => {
+  it('previews and edits a pasted table without changing active values until Apply', () => {
+    const model = new ParameterPanelModel();
+    const changed = vi.fn();
+    model.setChangedCallback(changed);
+    model.setDefinitions([request({ name: 'A', variableName: 'a', defaultValue: '5' })]);
+    model.importTable('A\n10\n20');
+    changed.mockClear();
+    const currentData = model.dataSets;
+    const currentValues = model.values();
+    const cells = parameterTableCells('Wrong name\r\n40\r\n50');
+    expect(() => model.previewTable(parameterTableText(cells))).toThrow('No matching parameters');
+    cells[0][0] = 'A';
+    cells[1][0] = '45';
+    const preview = model.previewTable(parameterTableText(cells));
+    expect(preview.data[0].get('A')).toBe('45');
+    expect(model.dataSets).toBe(currentData);
+    expect(model.values()).toEqual(currentValues);
+    expect(model.pasteIsError).toBe(false);
+    expect(changed).not.toHaveBeenCalled();
+    expect(model.importTable(parameterTableText(cells))).toBe(true);
+    expect(model.values().get('A')).toBe('45');
+    expect(model.dataSets[1].get('A')).toBe('50');
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves quoted text, blank optional cells and decimal commas through table preview edits', () => {
+    const rows = [
+      ['A', 'Label', 'Optional'],
+      ['12,5', 'Fan "B"\tline 1\nline 2', ''],
+    ];
+    expect(parameterTableCells(parameterTableText(rows))).toEqual(rows);
+  });
+
+  it('pastes Excel rows and applies a complete row with one change notification', () => {
+    const model = new ParameterPanelModel();
+    const changed = vi.fn();
+    model.setChangedCallback(changed);
+    model.setDefinitions([
+      request({ name: 'A', variableName: 'A' }),
+      request({ name: 'Dw', variableName: 'Dw' }),
+      request({ name: 'n', variableName: 'n', type: 'int' }),
+    ]);
+    expect(model.importTable('a\tdw\tn\r\n550\t500\t8\r\n610\t560\t8\r\n')).toBe(true);
+    expect(Object.fromEntries(model.overrides())).toEqual({ A: '550', Dw: '500', n: '8' });
+    expect(changed).toHaveBeenCalledTimes(1);
+    // Repeated values such as n=8 still identify a row when selected from a combobox.
+    model.selectDataSet(1);
+    expect(Object.fromEntries(model.values())).toEqual({ A: '610', Dw: '560', n: '8' });
+    expect(changed).toHaveBeenCalledTimes(2);
+    editValue(model, 0, '550');
+    expect(model.dataSetIndex).toBe(0);
+    expect(model.values().get('Dw')).toBe('500');
+    editValue(model, 0, '575');
+    expect(model.dataSetIndex).toBe(-1);
+    expect(model.values().get('A')).toBe('575');
+    expect(model.values().get('Dw')).toBe('500');
+  });
+
+  it('distinguishes D from d, accepts decimal commas and leaves optional blank cells unchanged', () => {
+    const model = new ParameterPanelModel();
+    model.setDefinitions([
+      request({ name: 'D', variableName: 'D', defaultValue: '100' }),
+      request({ name: 'd', variableName: 'd', defaultValue: '10' }),
+      request({ name: 'Label', variableName: 'label', type: 'string' }),
+    ]);
+    expect(model.importTable('D\td\tLabel\tComment\n590\t11,5\t"Line 1\nLine 2"\tnote\n650\t\t"Fan ""B"""\t')).toBe(
+      true,
+    );
+    expect(model.values().get('d')).toBe('11.5');
+    expect(model.values().get('Label')).toBe('Line 1\nLine 2');
+    expect(model.pasteMessage).toContain('Ignored: Comment');
+    model.selectDataSet(1);
+    expect(Object.fromEntries(model.values())).toEqual({ D: '650', d: '11.5', Label: 'Fan "B"' });
+  });
+
+  it('keeps the previous table and values if a paste has duplicate columns or malformed rows', () => {
+    const model = new ParameterPanelModel();
+    model.setDefinitions([request({ name: 'A', variableName: 'a' })]);
+    expect(model.importTable('A\n10\n20')).toBe(true);
+    const previousData = model.dataSets;
+    for (const invalid of ['A\ta\n1\t2', 'A\n1\t2', 'Other\n1', 'A\n"unclosed']) {
+      expect(model.importTable(invalid)).toBe(false);
+      expect(model.pasteIsError).toBe(true);
+      expect(model.dataSets).toBe(previousData);
+      expect(model.values().get('A')).toBe('10');
+    }
+  });
+
+  it('sends only edited values to the runtime, and Reset releases every override', () => {
+    const model = new ParameterPanelModel();
+    model.setDefinitions([request({ name: 'A' }), request({ name: 'B', variableName: 'b' })]);
+    expect(model.overrides().size).toBe(0);
+    editValue(model, 0, '40');
+    expect(Object.fromEntries(model.overrides())).toEqual({ A: '40' });
+    model.resetToSource();
+    expect(model.overrides().size).toBe(0);
+  });
+
   it('seeds values from default, current value, then the neutral value for the type', () => {
     const model = new ParameterPanelModel();
     model.setDefinitions([

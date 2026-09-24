@@ -12,6 +12,7 @@ export function LinkTable({
   currentRow,
   currentColumn,
   onMouseDown,
+  onDoubleClick,
   onKeyDown,
   togglePreview,
 }: LinkTableProps) {
@@ -25,6 +26,7 @@ export function LinkTable({
         ref={tableRef}
         className="h-full w-full min-w-0"
         onMouseDown={onMouseDown}
+        onDoubleClick={onDoubleClick}
         onKeyDown={onKeyDown}
       >
         <thead>

@@ -58,6 +58,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   circularFields = true;
   statusText = '';
   statusIsError = false;
+  fieldErrors: Record<string, string> = {};
   focusNameSerial = 0;
   #pointEditedSinceFinished = false;
 
@@ -148,6 +149,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     if (this.#loading) return;
     const row = this.currentRow;
     const valid = row >= 0 && row < this.#entries.length;
+    this.fieldErrors = {};
     this.formEnabled = valid;
     if (valid) {
       this.#loading = true;
@@ -171,6 +173,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     const row = this.currentRow;
     if (this.#loading || row < 0 || row >= this.#entries.length) return;
     const entry = this.#entries[row];
+    this.fieldErrors = {};
     const d = entry.definition;
     const previous = copyDefinition(d);
     d.name = this.nameText.trim();
@@ -180,8 +183,8 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     d.bSize = this.sizeTexts.bSize.trim();
     d.orientation = connectorOrientations[this.orientationId];
     for (let i = 0; i < 3; ++i) {
-      d.position[i] = this.positionTexts[i].trim();
-      d.angles[i] = this.angleTexts[i].trim();
+      d.position[i] = this.positionTexts[i].trim() || '0';
+      d.angles[i] = this.angleTexts[i].trim() || '0';
     }
     if (connectorGeometryChanged(d, previous)) {
       entry.preview = null;
@@ -195,8 +198,31 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
 
   testSelection(): void {
     const row = this.currentRow;
-    if (row < 0 || !this.#evaluate) return;
+    if (row < 0) return;
     const entry = this.#entries[row];
+    this.fieldErrors = {};
+    if (!this.nameText.trim()) this.fieldErrors.name = 'Name';
+    if (!kConnectorTypes[this.typeIndex]) this.fieldErrors.type = 'Type';
+    const fields: [SizeField, string][] = this.circularFields
+      ? [['diameter', 'Size (Diameter)']]
+      : [
+          ['aSize', 'Size (A)'],
+          ['bSize', 'Size (B)'],
+        ];
+    for (const [key, label] of fields) if (!this.sizeTexts[key].trim()) this.fieldErrors[key] = label;
+    if (Object.keys(this.fieldErrors).length || !this.#evaluate) {
+      entry.error = Object.keys(this.fieldErrors).length
+        ? `Required: ${Object.values(this.fieldErrors).join(', ')}`
+        : 'Build or Debug the code first';
+      entry.preview = null;
+      entry.shown = false;
+      this.refreshRow(row);
+      this.showStatus();
+      this.publish();
+
+      return;
+    }
+    this.renamePoint();
     try {
       entry.preview = buildConnectorPreview(entry.definition, this.#evaluate);
       entry.shown = true;

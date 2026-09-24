@@ -6,6 +6,7 @@ import { EditableComboBox } from './ui/EditableComboBox';
 import { FormLabel } from './ui/FormLabel';
 import { LineEdit } from './ui/LineEdit';
 import { PushButton } from './ui/PushButton';
+import { Button } from './ui/button';
 
 export function LinkForm({ nameRef, ...props }: LinkFormProps) {
   const id = useId();
@@ -21,7 +22,14 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
           <legend className="mb-2 text-xs font-semibold">Name</legend>
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5">
             <FormLabel htmlFor={`${id}-name`}>Name</FormLabel>
-            <LineEdit id={`${id}-name`} ref={nameRef} value={props.name} onChange={props.onNameChange} />
+            <LineEdit
+              id={`${id}-name`}
+              ref={nameRef}
+              value={props.name}
+              onChange={props.onNameChange}
+              aria-invalid={!!props.fieldErrors.name}
+              title={props.fieldErrors.name}
+            />
             <FormLabel htmlFor={`${id}-point`}>Point variable</FormLabel>
             <LineEdit
               id={`${id}-point`}
@@ -36,7 +44,12 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
           <legend className="mb-2 text-xs font-semibold">Size</legend>
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5">
             <FormLabel htmlFor={`${id}-type`}>Type</FormLabel>
-            <ComboBox id={`${id}-type`} value={props.typeIndex} onChange={props.onTypeChange}>
+            <ComboBox
+              id={`${id}-type`}
+              value={props.typeIndex}
+              onChange={props.onTypeChange}
+              aria-invalid={!!props.fieldErrors.type}
+            >
               {props.typeOptions.map((type, index) => (
                 <option key={type} value={index}>
                   {type}
@@ -54,6 +67,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
                   disabled={props.disabled}
                   placeholder={props.sizePlaceholder}
                   onTextChanged={props.sizeTextChanged('diameter')}
+                  invalid={!!props.fieldErrors.diameter}
                 />
               </>
             ) : (
@@ -69,6 +83,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
                       disabled={props.disabled}
                       placeholder={props.sizePlaceholder}
                       onTextChanged={props.sizeTextChanged(field)}
+                      invalid={!!props.fieldErrors[field]}
                     />
                   </div>
                 ))}
@@ -87,6 +102,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
                   className="px-2 font-code tabular-nums"
                   value={field.value}
                   onChange={field.onChange}
+                  placeholder="0"
                 />
               </div>
             ))}
@@ -94,19 +110,23 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
         </fieldset>
         <fieldset className="min-w-0 space-y-1.5">
           <legend className="mb-2 text-xs font-semibold">Rotation</legend>
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
-            <FormLabel htmlFor={`${id}-orientation`}>Orientation</FormLabel>
-            <ComboBox
-              id={`${id}-orientation`}
-              value={props.orientations.findIndex((option) => option.selected)}
-              onChange={(event) => props.orientations[Number(event.target.value)]?.onClick()}
-            >
-              {props.orientations.map((option, index) => (
-                <option key={option.label} value={index}>
+          <div className="space-y-1.5">
+            <FormLabel>Orientation</FormLabel>
+            <div role="group" aria-label="Orientation" className="grid grid-cols-6 gap-1">
+              {props.orientations.map((option) => (
+                <Button
+                  key={option.label}
+                  type="button"
+                  size="xs"
+                  className="min-w-0 px-1"
+                  variant={option.selected ? 'default' : 'outline'}
+                  aria-pressed={option.selected}
+                  onClick={option.onClick}
+                >
                   {option.label}
-                </option>
+                </Button>
               ))}
-            </ComboBox>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {props.angleFields.map((field, index) => (
@@ -120,6 +140,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
                   className="px-2 font-code tabular-nums"
                   value={field.value}
                   onChange={field.onChange}
+                  placeholder="0"
                 />
               </div>
             ))}
@@ -128,7 +149,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
       </fieldset>
       <div className="mt-auto flex shrink-0 items-center gap-3 border-t border-line bg-base px-3 py-1.5">
         <div
-          role="status"
+          role={props.statusIsError ? 'alert' : 'status'}
           className={cn(
             'min-w-0 flex-1 text-[11px] break-words text-muted-foreground select-text',
             props.statusIsError && 'text-error',
