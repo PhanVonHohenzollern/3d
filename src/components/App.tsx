@@ -53,7 +53,7 @@ export function App() {
                   <PanelHeader icon={Box} title="3D Viewport">
                     <ToolBar items={mainWindow.toolbarItems} />
                   </PanelHeader>
-                  <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">
+                  <div className="relative m-3 min-h-0 flex-1 overflow-hidden rounded-md bg-viewport">
                     <Viewport3D {...mainWindow.viewport} />
                   </div>
                 </section>
