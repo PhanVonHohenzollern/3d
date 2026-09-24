@@ -9,6 +9,7 @@ import { LinkPanel } from './LinkPanel';
 import { PanelHeader } from './PanelHeader';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import { ParameterPanel } from './ParameterPanel';
+import { ResizeHandle } from './ResizeHandle';
 import { Splitter } from './Splitter';
 import { StatusBar } from './StatusBar';
 import { ToolBar } from './ToolBar';
@@ -18,18 +19,24 @@ import { Viewport3D } from './Viewport3D';
 export function App() {
   const mainWindow = useMainWindow();
   const compact = useCompactLayout();
-  const { mainAreaRef, dockHeight, onSeparatorPointerDown, title, tabs } = useDockArea(
-    mainWindow.raisedDock,
-    mainWindow.raiseDock,
-  );
+  const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum, title, tabs } =
+    useDockArea(mainWindow.raisedDock, mainWindow.raiseDock);
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden bg-window select-none">
+    <div className="flex h-dvh w-full flex-col overflow-hidden bg-window select-none [@media(max-height:600px)]:overflow-y-auto">
       <WorkspaceHeader />
       <ToolBar items={mainWindow.toolbarItems} />
-      <main ref={mainAreaRef} className="flex min-h-0 flex-1 flex-col px-2 pb-3 sm:px-5">
+      <main
+        ref={mainAreaRef}
+        className="flex min-h-0 flex-1 flex-col px-2 pb-3 sm:px-5 [@media(max-height:600px)]:min-h-[480px]"
+      >
         <div className="min-h-0 flex-1">
-          <Splitter orientation={compact ? 'vertical' : 'horizontal'} initialSizes={[600, 900]} stretchFactors={[4, 6]}>
+          <Splitter
+            label="Resize editor and viewport"
+            orientation={compact ? 'vertical' : 'horizontal'}
+            initialSizes={[450, 550]}
+            stretchFactors={[45, 55]}
+          >
             <section
               aria-label="Code Editor"
               className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
@@ -52,13 +59,15 @@ export function App() {
             </section>
           </Splitter>
         </div>
-        <div
-          className="group flex h-3 flex-none cursor-row-resize touch-none items-center justify-center"
+        <ResizeHandle
+          orientation="horizontal"
+          label="Resize inspector"
+          value={dockHeight}
+          min={minimum}
+          max={maximum}
           onPointerDown={onSeparatorPointerDown}
-          title="Resize inspector"
-        >
-          <span className="h-0.5 w-8 rounded-full bg-line transition-colors group-hover:bg-line-hover" />
-        </div>
+          onKeyDown={onSeparatorKeyDown}
+        />
         <DockArea
           height={dockHeight}
           title={title}

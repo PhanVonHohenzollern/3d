@@ -30,7 +30,12 @@ export function LinkPanel(props: LinkPanelProps) {
           </div>
         </LinkForm>
       ) : (
-        <Splitter orientation="horizontal" initialSizes={[420, 680]} className="min-h-0 flex-1">
+        <Splitter
+          label="Resize connector list and form"
+          orientation="horizontal"
+          initialSizes={[420, 680]}
+          className="min-h-0 flex-1"
+        >
           <LinkTable tableRef={tableRef} {...table} />
           <LinkForm nameRef={nameRef} {...form} />
         </Splitter>

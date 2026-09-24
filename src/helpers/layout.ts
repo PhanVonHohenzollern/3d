@@ -7,10 +7,11 @@ export const kDocks: readonly Dock[] = [
   { name: 'LinkDock', title: 'Link' },
 ];
 
-export const kSplitterHandleSize = 5;
+export const kSplitterHandleSize = 12;
+export const kMinimumPaneSize = 120;
 export const kTreeIndentation = 20;
-const kMinimumDockHeight = 60;
-const kMinimumCentralHeight = 80;
+const kMinimumDockHeight = 200;
+const kMinimumCentralHeight = 252;
 
 export function distributeSplitterSizes(
   sizes: [number, number],
@@ -29,13 +30,17 @@ export function distributeSplitterSizes(
 
 export function draggedSplitterSizes(start: [number, number], delta: number): [number, number] {
   const total = start[0] + start[1];
-  const first = Math.min(Math.max(start[0] + delta, 0), total);
+  const minimum = Math.min(kMinimumPaneSize, total / 2);
+  const first = Math.min(Math.max(start[0] + delta, minimum), total - minimum);
 
   return [first, total - first];
 }
 
 export function clampDockHeight(height: number, areaHeight: number): number {
-  return Math.max(Math.min(height, areaHeight - kMinimumCentralHeight), kMinimumDockHeight);
+  const available = Math.max(0, areaHeight - kSplitterHandleSize - 12);
+  const maximum = available - Math.min(kMinimumCentralHeight, available / 2);
+
+  return Math.min(Math.max(height, Math.min(kMinimumDockHeight, maximum)), maximum);
 }
 
 export function initialFloatingGeometry(viewportWidth: number, viewportHeight: number): WindowGeometry {
