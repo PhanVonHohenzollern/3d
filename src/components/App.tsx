@@ -37,7 +37,9 @@ export function App() {
               className="workspace-panel flex h-full min-w-0 flex-col overflow-hidden border border-line bg-base shadow-xs"
             >
               <PanelHeader icon={CodeXml} title="Code Editor">
-                <span className="font-code text-xs text-muted-foreground">C++</span>
+                <span className="workspace-surface bg-secondary px-2 py-1 font-code text-xs text-muted-foreground">
+                  C++
+                </span>
               </PanelHeader>
               <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
                 <CodeEditor {...mainWindow.editor} />
