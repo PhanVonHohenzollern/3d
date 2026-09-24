@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { FdPoint3d, FdVector3d } from '../../src/core/runtime/FdMath';
+import { runtimeValueToCompactString } from '../../src/core/runtime/RuntimeValue';
 import { appendVectorArrow } from '../../src/core/viewport/debugItems';
 import { VertexArray } from '../../src/core/viewport/VertexArray';
 import { debugValueText } from '../../src/helpers/debugValueText';
@@ -52,8 +54,17 @@ describe('vector arrows', () => {
 });
 
 describe('debug values', () => {
-  it("formats debug values like QString::arg(x, 0, 'g', 7)", () => {
-    expect(debugValueText({ x: 0.1 + 0.2, y: 1234567.8, z: 0 })).toBe('(0.3, 1234568, 0)');
-    expect(debugValueText({ x: 12345678, y: 1e-5, z: 2.5 })).toBe('(1.234568e+07, 1e-05, 2.5)');
+  it('uses inspector precision without scientific notation for small coordinates', () => {
+    expect(debugValueText({ x: 1.23153e-10, y: 210, z: 0 })).toBe('(0, 210, 0)');
+    expect(debugValueText({ x: 1.225665e-10, y: 209, z: 0 })).toBe('(0, 209, 0)');
+    expect(debugValueText({ x: 12345678, y: 1e-5, z: 2.5 })).toBe('(12345678, 0.00001, 2.5)');
+  });
+
+  it('matches inspector formatting for points and vectors without mutating coordinates', () => {
+    for (const value of [new FdPoint3d(0.1 + 0.2, 1234567.8, -1e-10), new FdVector3d(1.23456789, -2.5, 0)]) {
+      const original = { x: value.x, y: value.y, z: value.z };
+      expect(debugValueText(value)).toBe(runtimeValueToCompactString(value));
+      expect({ x: value.x, y: value.y, z: value.z }).toEqual(original);
+    }
   });
 });

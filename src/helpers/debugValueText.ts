@@ -1,6 +1,6 @@
 import type { Vec3 } from '../types/viewport';
-import { formatGeneral } from '../utils/cpp';
+import { runtimeValueToCompactString } from '../core/runtime/RuntimeValue';
 
 export function debugValueText(p: Vec3): string {
-  return `(${formatGeneral(p.x, 7)}, ${formatGeneral(p.y, 7)}, ${formatGeneral(p.z, 7)})`;
+  return `(${runtimeValueToCompactString(p.x)}, ${runtimeValueToCompactString(p.y)}, ${runtimeValueToCompactString(p.z)})`;
 }
