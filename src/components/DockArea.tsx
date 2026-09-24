@@ -18,7 +18,7 @@ export function DockArea({ height, title, tabs, counts, panels }: DockAreaProps)
       value={active?.name}
       onValueChange={(name) => tabs.find((tab) => tab.name === name)?.raise()}
       aria-label={`${title} inspector`}
-      className="workspace-panel @container flex min-h-0 shrink-0 flex-col gap-3 overflow-hidden border border-line bg-base shadow-xs"
+      className="workspace-panel @container flex min-h-0 shrink-0 flex-col gap-[var(--panel-inset)] overflow-hidden border border-line bg-base shadow-xs"
       style={{ height }}
     >
       <div className="flex h-8 shrink-0 items-center gap-2">
