@@ -64,7 +64,7 @@ Pull requests run Validate and Build; Deploy runs only for `main` outside pull r
 GitHub Pages must be enabled under **Settings → Pages → Source → GitHub Actions**.
 Deployment uses the built-in `GITHUB_TOKEN`; no personal token or deploy secret is
 needed. The deploy job alone receives Pages write and OIDC permissions. Action
-versions are pinned to commit SHAs, and deployments are serialized.
+versions use explicit release tags, and deployments are serialized.
 
 The workflow passes `--base /3d/` to Vite (derived from the repository name) so
 assets load under the Pages project path. To test that production build locally:
