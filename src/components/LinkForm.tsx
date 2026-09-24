@@ -7,23 +7,23 @@ import { FormLabel } from './ui/FormLabel';
 import { LineEdit } from './ui/LineEdit';
 import { PushButton } from './ui/PushButton';
 
-export function LinkForm({ nameRef, children, section, ...props }: LinkFormProps) {
+export function LinkForm({ nameRef, formRef, children, section, ...props }: LinkFormProps) {
   const id = useId();
 
   return (
-    <div className="@container flex h-full min-h-0 w-full flex-1 flex-col bg-base">
+    <div ref={formRef} className="@container flex h-full min-h-0 w-full flex-1 flex-col bg-base">
       <div className="min-h-0 flex-1 overflow-hidden">
         {children}
-        <fieldset disabled={props.disabled} className="group/form p-1.5 [&_input]:h-7 [&_select[data-size=sm]]:h-7">
-          <fieldset className={section === 'Identity' ? '' : 'hidden'}>
+        <fieldset disabled={props.disabled} className="group/form p-1 [&_input]:h-7 [&_select[data-size=sm]]:h-7">
+          <fieldset data-section="Identity" className={section === 'Identity' ? '' : 'hidden'}>
             <legend className="sr-only">Identity</legend>
             <div className="grid grid-cols-2 gap-2">
               <div className="min-w-0 space-y-1">
-                <FormLabel htmlFor={`${id}-name`}>Identifier</FormLabel>
+                <FormLabel htmlFor={`${id}-name`}>Name</FormLabel>
                 <LineEdit id={`${id}-name`} ref={nameRef} value={props.name} onChange={props.onNameChange} />
               </div>
               <div className="min-w-0 space-y-1">
-                <FormLabel htmlFor={`${id}-point`}>Point</FormLabel>
+                <FormLabel htmlFor={`${id}-point`}>Point variable</FormLabel>
                 <LineEdit
                   id={`${id}-point`}
                   value={props.point}
@@ -34,7 +34,10 @@ export function LinkForm({ nameRef, children, section, ...props }: LinkFormProps
               </div>
             </div>
           </fieldset>
-          <fieldset className={section === 'Dimensions' ? 'grid grid-cols-2 gap-2' : 'hidden'}>
+          <fieldset
+            data-section="Dimensions"
+            className={section === 'Dimensions' ? 'grid grid-cols-2 gap-2' : 'hidden'}
+          >
             <legend className="sr-only">Dimensions</legend>
             <div className="space-y-1">
               <FormLabel htmlFor={`${id}-type`}>Type</FormLabel>
@@ -85,7 +88,7 @@ export function LinkForm({ nameRef, children, section, ...props }: LinkFormProps
               </div>
             )}
           </fieldset>
-          <fieldset className={section === 'Position' ? '' : 'hidden'}>
+          <fieldset data-section="Position" className={section === 'Position' ? '' : 'hidden'}>
             <legend className="sr-only">Position</legend>
             <div className="grid grid-cols-3 gap-2">
               {props.positionFields.map((field, index) => (
@@ -101,7 +104,10 @@ export function LinkForm({ nameRef, children, section, ...props }: LinkFormProps
               ))}
             </div>
           </fieldset>
-          <fieldset className={section === 'Rotation' ? 'grid grid-cols-[80px_minmax(0,1fr)] gap-2' : 'hidden'}>
+          <fieldset
+            data-section="Rotation"
+            className={section === 'Rotation' ? 'grid grid-cols-[80px_minmax(0,1fr)] gap-2' : 'hidden'}
+          >
             <legend className="sr-only">Rotation</legend>
             <div className="space-y-1">
               <FormLabel>Orientation</FormLabel>
@@ -134,19 +140,38 @@ export function LinkForm({ nameRef, children, section, ...props }: LinkFormProps
         </fieldset>
       </div>
       <div className="flex shrink-0 items-center gap-2 border-t border-line bg-base px-1.5 py-1">
+        <PushButton sizeClassName="h-7 px-2" onClick={props.previousStep}>
+          Back
+        </PushButton>
         <div
           role="status"
-          title={props.status}
+          title={props.feedback}
           className={cn(
             'min-w-0 flex-1 truncate text-[11px] text-muted-foreground select-text',
             props.statusIsError && 'text-error',
           )}
         >
-          {props.status}
+          {props.feedback}
         </div>
-        <PushButton variant="primary" sizeClassName="h-7 min-w-16 px-3" disabled={props.disabled} onClick={props.test}>
-          Make
-        </PushButton>
+        {props.lastStep ? (
+          <PushButton
+            variant="primary"
+            sizeClassName="h-7 min-w-16 px-3"
+            disabled={props.disabled}
+            onClick={props.test}
+          >
+            Make
+          </PushButton>
+        ) : (
+          <PushButton
+            variant="primary"
+            sizeClassName="h-7 px-3"
+            disabled={props.disabled || !props.canContinue}
+            onClick={props.nextStep}
+          >
+            {props.nextLabel}
+          </PushButton>
+        )}
       </div>
     </div>
   );

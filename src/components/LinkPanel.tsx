@@ -1,40 +1,90 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useLinkPanel } from '../hooks/useLinkPanel';
 import type { LinkPanelProps } from '../types/panels';
 import { LinkForm } from './LinkForm';
 import { LinkTable } from './LinkTable';
-import { ComboBox } from './ui/ComboBox';
-import { PushButton } from './ui/PushButton';
+import { Button } from './ui/button';
 
 export function LinkPanel(props: LinkPanelProps) {
-  const { tableRef, nameRef, table, form, section, setSection, addConnector, removeConnector } = useLinkPanel(props);
+  const {
+    tableRef,
+    nameRef,
+    table,
+    form,
+    section,
+    steps,
+    isEditing,
+    hasConnectors,
+    canEdit,
+    selectedName,
+    showList,
+    editSelected,
+    addConnector,
+    removeConnector,
+  } = useLinkPanel(props);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-none gap-1.5 border-b border-line px-1.5 py-1">
-        <PushButton title="Add connector" sizeClassName="h-7 px-2" onClick={addConnector}>
-          <Plus className="size-3.5" aria-hidden />
-          Add
-        </PushButton>
-        <PushButton sizeClassName="h-7 px-2" onClick={removeConnector}>
-          <Trash2 className="size-3.5" aria-hidden />
-          Remove
-        </PushButton>
-        <ComboBox
-          aria-label="Connector section"
-          className="ml-auto h-7 w-auto min-w-0 text-xs [&_select[data-size=sm]]:h-7"
-          value={section}
-          onChange={(event) => setSection(event.target.value)}
-        >
-          {['Connectors', 'Identity', 'Dimensions', 'Position', 'Rotation'].map((name) => (
-            <option key={name}>{name}</option>
-          ))}
-        </ComboBox>
-      </div>
-      <div className={section === 'Connectors' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+      {isEditing ? (
+        <div className="shrink-0 border-b border-line">
+          <div className="flex h-7 items-center gap-2 px-1">
+            <Button variant="ghost" className="h-6 px-1 text-[11px]" onClick={showList}>
+              <ArrowLeft className="size-3" />
+              Connectors
+            </Button>
+            <span className="min-w-0 flex-1 truncate text-xs font-medium" title={selectedName}>
+              {selectedName}
+            </span>
+            <Button
+              variant="ghost"
+              className="size-6"
+              aria-label="Remove selected connector"
+              onClick={removeConnector}
+              disabled={!canEdit}
+            >
+              <Trash2 className="size-3" />
+            </Button>
+          </div>
+          <nav aria-label="Connector setup steps" className="flex h-6 gap-1 px-1 pb-0.5">
+            {steps.map((step) => (
+              <Button
+                key={step.section}
+                variant={step.active ? 'secondary' : 'ghost'}
+                className="h-[21px] min-w-0 flex-1 gap-1 px-1 text-[10px]"
+                aria-current={step.active ? 'step' : undefined}
+                onClick={step.select}
+              >
+                <span className="opacity-60">{step.number}</span>
+                {step.label}
+              </Button>
+            ))}
+          </nav>
+        </div>
+      ) : hasConnectors ? (
+        <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-1.5">
+          <span className="mr-auto truncate text-[11px] text-muted-foreground">Select a connector to edit</span>
+          <Button variant="outline" className="h-6 px-2 text-[11px]" disabled={!canEdit} onClick={editSelected}>
+            Edit selected
+          </Button>
+          <Button className="h-6 px-2 text-[11px]" onClick={addConnector}>
+            <Plus className="size-3" />
+            New
+          </Button>
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-2 text-center text-xs">
+          <p className="font-medium">Create your first connector</p>
+          <p className="text-muted-foreground">Name it, set its size, then Make to preview it.</p>
+          <Button className="h-7 px-3 text-xs" onClick={addConnector}>
+            <Plus className="size-3" />
+            New connector
+          </Button>
+        </div>
+      )}
+      <div className={!isEditing && hasConnectors ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <LinkTable tableRef={tableRef} {...table} />
       </div>
-      <div className={section !== 'Connectors' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+      <div className={isEditing ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
         <LinkForm nameRef={nameRef} section={section} {...form} />
       </div>
     </div>

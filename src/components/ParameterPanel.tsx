@@ -14,10 +14,10 @@ export function ParameterPanel(props: ParameterPanelProps) {
   return (
     <div className="@container/parameters flex h-full min-h-0 flex-col bg-window">
       <div className="flex min-h-8 shrink-0 items-center gap-2 border-b border-line px-3">
-        <h3 className="text-xs font-semibold">get_val parameters</h3>
+        <h3 className="text-xs font-semibold">Editable parameters</h3>
         <span className="rounded-full bg-secondary px-1.5 font-code text-[10px] tabular-nums">{fields.length}</span>
         <span className="ml-auto hidden text-[11px] text-muted-foreground @min-[650px]/parameters:inline">
-          Enter to apply · Esc to revert
+          Enter to apply · Esc to undo
         </span>
         <Button
           variant="ghost"
@@ -27,14 +27,17 @@ export function ParameterPanel(props: ParameterPanelProps) {
           onClick={resetToSource}
         >
           <RotateCcw className="size-3" aria-hidden />
-          Reset to source
+          Reset values
         </Button>
       </div>
       <div ref={paginationRef} className="flex min-h-0 flex-1 flex-col">
         {fields.length === 0 ? (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-4 text-center text-xs">
-            <p className="font-medium">No editable parameters</p>
-            <p className="text-muted-foreground">Add a get_val() call in your code to expose an editable parameter.</p>
+            <p className="font-medium">Expose a value from your code</p>
+            <p className="text-muted-foreground">Add the example below in the editor, then edit Width here.</p>
+            <code className="rounded bg-secondary px-2 py-1 text-[11px] select-text">
+              double width = 20; get_val("Width", width);
+            </code>
           </div>
         ) : (
           <div

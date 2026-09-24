@@ -10,14 +10,19 @@ export function VariablePanel(props: VariablePanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-none overflow-hidden border-b border-line px-4 py-2 text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
-        {summary}
+      <div
+        title={summary}
+        className="flex h-8 shrink-0 items-center overflow-hidden border-b border-line px-2 text-[11px] text-ellipsis whitespace-nowrap text-muted-foreground"
+      >
+        Read-only values at the code cursor
       </div>
       <div ref={paginationRef} className="flex min-h-0 flex-1 flex-col">
         <TableView
-          emptyTitle="No variables at this cursor"
+          emptyTitle="Move the cursor below a declaration"
           emptyMessage={
-            controls.total === 0 ? 'Declare a variable, then move the cursor below it to inspect its value.' : undefined
+            controls.total === 0
+              ? 'Try double width = 20; in the editor, then place the cursor on the next line.'
+              : undefined
           }
           ref={tableRef}
           onMouseDown={onMouseDown}

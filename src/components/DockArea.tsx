@@ -6,8 +6,8 @@ const icons = { VariablesDock: Braces, ParametersDock: SlidersHorizontal, ApiTra
 const hints = {
   VariablesDock: 'Inspect values at the cursor',
   ParametersDock: 'Edit a value to update the preview',
-  ApiTraceDock: 'Explore calls and their source values',
-  LinkDock: 'Configure and preview connectors',
+  ApiTraceDock: 'Select a call to highlight its geometry',
+  LinkDock: 'Create a connector, then Make to preview',
 };
 
 export function DockArea({ height, title, tabs, counts, panels }: DockAreaProps) {
