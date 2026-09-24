@@ -151,11 +151,11 @@ describe('debug points and clicks', () => {
     expect(engine.vectorLabelPanel().isVisible()).toBe(false);
   });
 
-  it('lays out the lists and the Select button like the Qt widget', () => {
+  it('lays out the lists above the floating selection button', () => {
     const engine = createEngine(1000, 700);
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const button = engine.selectionModeButton().geometry;
-    expect([button.x, button.y, button.width, button.height]).toEqual([8, 700 - 8 - 24, 72, 24]);
+    expect([button.x, button.y, button.width, button.height]).toEqual([8, 700 - 8 - 32, 96, 32]);
     const points = engine.pointLabelPanel().geometry();
     expect([points.x, points.y, points.width, points.height]).toEqual([8, 8, Math.trunc(((1000 - 24) * 27) / 100), 49]);
     engine.setShowLabels(false);

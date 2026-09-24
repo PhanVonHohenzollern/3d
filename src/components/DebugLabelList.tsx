@@ -15,7 +15,10 @@ export function DebugLabelList({ panel, onEnter, onFocus }: DebugLabelListProps)
 
   return (
     <div
-      className={cn('absolute z-2 cursor-default flex-col overflow-hidden', list.visible ? 'flex' : 'hidden')}
+      className={cn(
+        'absolute z-2 cursor-default flex-col overflow-hidden rounded-lg shadow-lg ring-1 ring-viewport-label-header-line',
+        list.visible ? 'flex' : 'hidden',
+      )}
       data-panel={list.title}
       hidden={!list.visible}
       style={list.panelStyle}
@@ -23,12 +26,12 @@ export function DebugLabelList({ panel, onEnter, onFocus }: DebugLabelListProps)
       onFocus={onFocus}
       onContextMenu={list.onContextMenu}
     >
-      <div className="h-[25px] flex-none overflow-hidden border-b border-viewport-label-header-line bg-viewport-label-header px-2 leading-[24px] whitespace-pre text-viewport-label-header-fg">
+      <div className="h-[25px] flex-none overflow-hidden border-b border-viewport-label-header-line bg-viewport-label-header px-2 leading-[24px] font-medium whitespace-pre text-viewport-label-header-fg">
         {list.headerText}
       </div>
       <div
         ref={listRef}
-        className="relative min-h-0 flex-auto [scrollbar-width:thin] [scrollbar-color:var(--color-viewport-label-scrollbar)_var(--color-viewport-label-list)] overflow-x-hidden overflow-y-auto overscroll-contain bg-viewport-label-list outline-none [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:bg-viewport-label-list [&::-webkit-scrollbar-thumb]:min-h-6 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb]:bg-viewport-label-scrollbar"
+        className="relative min-h-0 flex-auto [scrollbar-width:thin] [scrollbar-color:var(--color-viewport-label-scrollbar)_var(--color-viewport-label-list)] overflow-x-hidden overflow-y-auto overscroll-contain bg-viewport-label-list outline-none focus-visible:ring-2 focus-visible:ring-viewport-button-line-focus focus-visible:ring-inset [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:bg-viewport-label-list [&::-webkit-scrollbar-thumb]:min-h-6 [&::-webkit-scrollbar-thumb]:rounded-[3px] [&::-webkit-scrollbar-thumb]:bg-viewport-label-scrollbar"
         role="listbox"
         aria-label={list.title}
         aria-multiselectable

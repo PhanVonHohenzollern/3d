@@ -1,8 +1,8 @@
 import type { DebugLabelPanelsLayout } from '../../types/viewportEngine';
 import { QRect } from '../../utils/Rect';
 
-const kSelectionButtonWidth = 72;
-const kSelectionButtonHeight = 24;
+const kSelectionButtonWidth = 96;
+const kSelectionButtonHeight = 32;
 const kSelectionButtonMargin = 8;
 const kPanelMargin = 8;
 const kMaximumColumnWidth = 340;

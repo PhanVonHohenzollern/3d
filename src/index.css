@@ -144,14 +144,14 @@
   --color-viewport-button-line: #3f3f46;
   --color-viewport-button-line-focus: #a1a1aa;
   --color-viewport-label-header: #27272a;
-  --color-viewport-label-header-fg: #a1a1aa;
+  --color-viewport-label-header-fg: #e4e4e7;
   --color-viewport-label-header-line: #3f3f46;
   --color-viewport-label-list: #18181b;
   --color-viewport-label-scrollbar: #52525b;
   --color-viewport-label-row-hover: #27272a;
   --color-viewport-label-row-selected: #4c4017;
   --color-viewport-label-name: #e4e4e7;
-  --color-viewport-label-value: #a1a1aa;
+  --color-viewport-label-value: #d4d4d8;
   --color-viewport-label-selected-fg: #fff0b4;
   --color-viewport-label-dot-selected: #ffe673;
 }
