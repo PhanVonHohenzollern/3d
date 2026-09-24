@@ -35,12 +35,14 @@ export function App() {
               className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
             >
               <PanelHeader icon={CodeXml} title="Code Editor">
-                <span className="rounded border border-line px-1.5 py-0.5 font-code text-[10px] text-muted">C++</span>
+                <span className="rounded border border-line px-1.5 py-0.5 font-code text-[10px] text-muted-foreground">
+                  C++
+                </span>
               </PanelHeader>
               <div className="min-h-0 flex-1">
                 <CodeEditor {...mainWindow.editor} />
               </div>
-              <div className="flex h-7 shrink-0 items-center gap-1.5 border-t border-line px-4 text-[10px] text-muted">
+              <div className="flex h-7 shrink-0 items-center gap-1.5 border-t border-line px-4 text-[10px] text-muted-foreground">
                 <kbd className="rounded border border-line px-1 font-ui">Ctrl Space</kbd> for suggestions
               </div>
             </section>
@@ -49,14 +51,14 @@ export function App() {
               className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
             >
               <PanelHeader icon={Box} title="3D Viewport">
-                <span className="flex items-center gap-1.5 text-[10px] text-muted">
+                <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                   <span className="size-1 rounded-full bg-emerald-500" /> Live
                 </span>
               </PanelHeader>
               <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">
                 <Viewport3D {...mainWindow.viewport} />
               </div>
-              <div className="flex h-7 shrink-0 items-center border-t border-line bg-base px-4 text-[10px] text-muted">
+              <div className="flex h-7 shrink-0 items-center border-t border-line bg-base px-4 text-[10px] text-muted-foreground">
                 Drag to orbit<span className="mx-2 text-disabled">/</span>Scroll to zoom
               </div>
             </section>

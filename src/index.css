@@ -1,8 +1,18 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 :root {
+  --radius: 0.5rem;
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--secondary);
+  --accent: var(--secondary);
+  --accent-foreground: var(--foreground);
+  --input: var(--border);
   --background: #fafafa;
   --foreground: #18181b;
   --card: #ffffff;
@@ -73,7 +83,20 @@
   --color-alternate-base: var(--secondary);
   --color-secondary: var(--secondary);
   --color-fg: var(--foreground);
-  --color-muted: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
   --color-disabled: var(--disabled);
   --color-line: var(--border);
   --color-line-strong: var(--strong-border);
@@ -132,6 +155,10 @@
 }
 
 @layer base {
+  * {
+    @apply border-border;
+  }
+
   html,
   body,
   #root {

@@ -1,3 +1,5 @@
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { Box, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import type { Menu } from '../types/mainWindow';
@@ -13,22 +15,26 @@ export function WorkspaceHeader({ menus }: { menus: readonly Menu[] }) {
         <Box className="size-[19px]" strokeWidth={1.7} aria-hidden />
       </div>
       <h1 className="truncate text-sm font-semibold tracking-tight sm:text-[15px]">Geometry Preview</h1>
-      <span className="hidden text-[10px] font-medium tracking-[0.12em] text-muted xl:inline">WORKSPACE</span>
+      <span className="hidden text-[10px] font-medium tracking-[0.12em] text-muted-foreground xl:inline">
+        WORKSPACE
+      </span>
       <div className="flex-1" />
       <MenuBar menus={menus} />
-      <span className="hidden items-center gap-2 rounded-md bg-secondary px-2.5 py-1 text-[11px] font-medium sm:flex">
+      <Badge variant="secondary" className="hidden gap-2 px-2.5 py-1 text-[11px] sm:flex">
         <span className="size-1.5 rounded-full bg-emerald-500" />
         Live preview
-      </span>
-      <button
+      </Badge>
+      <Button
         type="button"
-        className="flex size-8 shrink-0 items-center justify-center rounded-md border border-line bg-base text-muted transition-colors hover:bg-secondary hover:text-fg"
+        variant="outline"
+        size="icon-sm"
+        className="text-muted-foreground"
         aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
         title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
         onClick={toggleTheme}
       >
         <ThemeIcon className="size-4" aria-hidden />
-      </button>
+      </Button>
     </header>
   );
 }

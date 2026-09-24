@@ -25,7 +25,7 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
           {columns.map((column, index) => (
             <div
               key={index}
-              className="relative h-9 flex-none overflow-hidden border-r border-b border-line bg-window px-2 text-left text-[11px] leading-9 font-medium text-ellipsis whitespace-nowrap text-muted last:flex-[1_0_auto]"
+              className="relative h-9 flex-none overflow-hidden border-r border-b border-line bg-window px-2 text-left text-[11px] leading-9 font-medium text-ellipsis whitespace-nowrap text-muted-foreground last:flex-[1_0_auto]"
               style={{ width: column.width }}
             >
               <span>{column.label}</span>
@@ -39,7 +39,7 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
           ))}
         </div>
         {rows.length === 0 && (
-          <div className="px-4 py-8 text-center text-xs text-muted">
+          <div className="px-4 py-8 text-center text-xs text-muted-foreground">
             No calls to inspect. Preview geometry code to explore its API trace.
           </div>
         )}

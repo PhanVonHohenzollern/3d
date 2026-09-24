@@ -7,7 +7,7 @@ export function VariablePanel(props: VariablePanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-none overflow-hidden border-b border-line px-4 py-2 text-[11px] text-ellipsis whitespace-pre text-muted">
+      <div className="flex-none overflow-hidden border-b border-line px-4 py-2 text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
         {summary}
       </div>
       <TableView

@@ -6,7 +6,7 @@ export function StatusBar({ model }: { model: StatusBarModel }) {
   const message = useStatusBar(model);
 
   return (
-    <footer className="flex h-8 shrink-0 items-center gap-2 border-t border-line px-4 text-[11px] text-muted sm:px-6">
+    <footer className="flex h-8 shrink-0 items-center gap-2 border-t border-line px-4 text-[11px] text-muted-foreground sm:px-6">
       <Terminal className="size-3 shrink-0" aria-hidden />
       <span role="status" className="min-w-0 flex-1 truncate">
         {message || 'Ready'}

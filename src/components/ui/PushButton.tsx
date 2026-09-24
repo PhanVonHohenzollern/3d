@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react';
-import { cn } from '../../utils/cn';
+import { cn } from '@/lib/utils';
+import { Button } from './button';
 
 interface PushButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   checked?: boolean;
@@ -16,16 +17,11 @@ export function PushButton({
   ...props
 }: PushButtonProps) {
   return (
-    <button
+    <Button
       type={type}
-      className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-md border text-xs font-medium whitespace-nowrap shadow-xs transition-colors disabled:pointer-events-none disabled:opacity-50',
-        checked || variant === 'primary'
-          ? 'border-transparent bg-primary text-primary-foreground enabled:hover:opacity-85'
-          : 'border-line bg-base text-fg enabled:hover:bg-secondary',
-        sizeClassName,
-        className,
-      )}
+      variant={checked || variant === 'primary' ? 'default' : 'outline'}
+      size="sm"
+      className={cn('text-xs', sizeClassName, className)}
       {...props}
     />
   );

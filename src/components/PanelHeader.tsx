@@ -12,7 +12,7 @@ export function PanelHeader({
 }) {
   return (
     <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line bg-base px-4">
-      <Icon className="size-3.5 text-muted" aria-hidden />
+      <Icon className="size-3.5 text-muted-foreground" aria-hidden />
       <h2 className="text-xs font-medium">{title}</h2>
       <div className="flex-1" />
       {children}

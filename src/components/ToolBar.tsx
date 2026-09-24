@@ -1,3 +1,5 @@
+import { Button } from './ui/button';
+import { Separator } from './ui/separator';
 import { Box, CircleDot, Eye, EyeOff, Maximize, MoveUpRight, Scan, Tags, type LucideIcon } from 'lucide-react';
 import { useAction } from '../hooks/useAction';
 import type { Action } from '../hooks/mainWindow/Action';
@@ -22,23 +24,20 @@ function ToolBarButton({ action }: { action: Action }) {
   const Icon = item?.icon;
 
   return (
-    <button
+    <Button
       type="button"
+      variant={checked ? 'outline' : 'ghost'}
+      size="sm"
       aria-label={iconText}
       title={iconText}
       aria-pressed={checkable ? checked : undefined}
-      className={cn(
-        'flex h-8 shrink-0 items-center gap-2 rounded-md border px-2.5 text-xs font-medium whitespace-nowrap transition-colors',
-        checked
-          ? 'border-line bg-base text-fg shadow-xs'
-          : 'border-transparent text-muted hover:bg-secondary hover:text-fg',
-      )}
+      className={cn('shrink-0 text-xs', !checked && 'text-muted-foreground')}
       onMouseDown={preventDefault}
       onClick={trigger}
     >
       {Icon && <Icon className="size-3.5" aria-hidden />}
       {item?.label ?? iconText}
-    </button>
+    </Button>
   );
 }
 
@@ -49,10 +48,12 @@ export function ToolBar({ items }: { items: readonly ActionListItem[] }) {
       aria-label="Preview display"
       className="flex h-14 shrink-0 items-center gap-1 overflow-x-auto px-4 sm:px-6"
     >
-      <span className="mr-2 hidden text-[10px] font-medium tracking-widest text-muted lg:inline">DISPLAY</span>
+      <span className="mr-2 hidden text-[10px] font-medium tracking-widest text-muted-foreground lg:inline">
+        DISPLAY
+      </span>
       {items.map((item, i) =>
         item === 'separator' ? (
-          <span key={`separator-${i}`} role="separator" className="mx-2 h-4 w-px shrink-0 bg-line" />
+          <Separator key={`separator-${i}`} orientation="vertical" className="mx-2 h-4!" />
         ) : (
           <ToolBarButton key={item.text} action={item} />
         ),
