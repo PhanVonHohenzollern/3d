@@ -32,8 +32,8 @@
   --selection-foreground: #18181b;
   --destructive: #b91c1c;
   --warning: #a16207;
-  --editor: #ffffff;
-  --editor-gutter: #fafafa;
+  --editor: #fafafa;
+  --editor-gutter: var(--editor);
   --editor-line: #f4f4f5;
   --editor-selection: #dbeafe;
   --syntax-keyword: #7c3aed;
@@ -63,8 +63,8 @@
   --selection-foreground: #fafafa;
   --destructive: #f87171;
   --warning: #fbbf24;
-  --editor: #18181b;
-  --editor-gutter: #151518;
+  --editor: #09090b;
+  --editor-gutter: var(--editor);
   --editor-line: #222225;
   --editor-selection: #334155;
   --syntax-keyword: #c4b5fd;
