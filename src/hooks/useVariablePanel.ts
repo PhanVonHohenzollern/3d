@@ -44,8 +44,7 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
   return {
     tableRef,
     summary: model.summary,
-    rows: model.rows,
-    selectedRow: model.selectedRow,
+    rows: model.rows.map((row, index) => ({ ...row, selected: index === model.selectedRow })),
     onMouseDown,
     onMouseUp,
     onKeyDown,

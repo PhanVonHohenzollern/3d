@@ -1,12 +1,6 @@
 import { Table, TableHead, TableCell } from './table';
-import type { HTMLAttributes, ReactNode, Ref } from 'react';
+import type { CellProps, HeaderCellProps, TableViewProps } from '../../types/table';
 import { cn } from '../../utils/cn';
-
-interface TableViewProps extends HTMLAttributes<HTMLDivElement> {
-  ref?: Ref<HTMLDivElement>;
-  emptyMessage?: string;
-  emptyTitle?: string;
-}
 
 export function TableView({
   className,
@@ -37,15 +31,7 @@ export function TableView({
   );
 }
 
-export function HeaderCell({
-  stretch = false,
-  align = 'left',
-  children,
-}: {
-  stretch?: boolean;
-  align?: 'left' | 'right';
-  children: ReactNode;
-}) {
+export function HeaderCell({ stretch = false, align = 'left', children }: HeaderCellProps) {
   return (
     <TableHead
       scope="col"
@@ -58,16 +44,6 @@ export function HeaderCell({
       {children}
     </TableHead>
   );
-}
-
-interface CellProps {
-  column?: number;
-  align?: 'left' | 'right';
-  mono?: boolean;
-  selected: boolean;
-  current?: boolean;
-  padding?: 'text' | 'none' | 'widget';
-  children: ReactNode;
 }
 
 export function Cell({

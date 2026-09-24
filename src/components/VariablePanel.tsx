@@ -3,7 +3,7 @@ import type { VariablePanelProps } from '../types/panels';
 import { Cell, HeaderCell, TableView } from './ui/TableView';
 
 export function VariablePanel(props: VariablePanelProps) {
-  const { tableRef, summary, rows, selectedRow, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
+  const { tableRef, summary, rows, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -31,16 +31,16 @@ export function VariablePanel(props: VariablePanelProps) {
         <tbody>
           {rows.map((row, index) => (
             <tr key={index} data-row={index}>
-              <Cell mono selected={index === selectedRow}>
+              <Cell mono selected={row.selected}>
                 {row.name}
               </Cell>
-              <Cell mono selected={index === selectedRow}>
+              <Cell mono selected={row.selected}>
                 {row.type}
               </Cell>
-              <Cell mono selected={index === selectedRow}>
+              <Cell mono selected={row.selected}>
                 {row.value}
               </Cell>
-              <Cell selected={index === selectedRow}>{row.changed}</Cell>
+              <Cell selected={row.selected}>{row.changed}</Cell>
             </tr>
           ))}
         </tbody>
