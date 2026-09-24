@@ -1,6 +1,7 @@
-import { history, historyKeymap, insertNewline, standardKeymap } from '@codemirror/commands';
-import { cpp } from '@codemirror/lang-cpp';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { acceptCompletion, autocompletion, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { history, historyKeymap, insertNewlineAndIndent, standardKeymap } from '@codemirror/commands';
+import { cpp, cppLanguage } from '@codemirror/lang-cpp';
+import { bracketMatching, HighlightStyle, indentOnInput, indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { EditorState, type Extension } from '@codemirror/state';
 import {
   drawSelection,
@@ -13,6 +14,7 @@ import {
 } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { traceLinesField } from './traceLines';
+import { codeCompletions } from './completions';
 
 const editorTheme = EditorView.theme(
   {
@@ -33,6 +35,9 @@ const editorTheme = EditorView.theme(
     '.cm-line.cm-traceLine': { backgroundColor: 'rgba(60, 73, 96, 0.8)' },
     '.cm-line.cm-traceLine-active': { backgroundColor: 'rgba(108, 75, 18, 0.8)' },
     '.cm-line.cm-traceLine, .cm-line.cm-traceLine *': { color: '#ffe39d', fontWeight: 'bold' },
+    '.cm-tooltip-autocomplete': { maxWidth: 'min(600px, 90vw)' },
+    '.cm-completionDetail': { marginLeft: '1em', opacity: '0.7' },
+    '.cm-completionInfo': { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
   },
   { dark: true },
 );
@@ -74,13 +79,21 @@ export function createEditorExtensions(onUpdate: (update: ViewUpdate) => void): 
     drawSelection(),
     highlightActiveLine(),
     EditorState.tabSize.of(4),
+    indentUnit.of('\t'),
+    indentOnInput(),
+    bracketMatching(),
+    closeBrackets(),
+    autocompletion(),
     keymap.of([
-      { key: 'Enter', run: insertNewline, shift: insertNewline },
+      ...closeBracketsKeymap,
+      { key: 'Enter', run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
+      { key: 'Tab', run: acceptCompletion },
       { key: 'Tab', run: insertTabCharacter, preventDefault: true },
       ...standardKeymap,
       ...historyKeymap,
     ]),
     cpp(),
+    cppLanguage.data.of({ autocomplete: codeCompletions }),
     syntaxHighlighting(syntaxColors),
     traceLinesField,
     EditorView.contentAttributes.of({ spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
