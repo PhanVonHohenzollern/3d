@@ -24,14 +24,13 @@ export function LinkPanel(props: LinkPanelProps) {
         </PushButton>
       </div>
       {compact ? (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <LinkForm nameRef={nameRef} {...form}>
           <div className="h-32 border-b border-line">
             <LinkTable tableRef={tableRef} {...table} />
           </div>
-          <LinkForm nameRef={nameRef} {...form} />
-        </div>
+        </LinkForm>
       ) : (
-        <Splitter orientation="horizontal" initialSizes={[480, 520]} className="min-h-0 flex-1">
+        <Splitter orientation="horizontal" initialSizes={[420, 680]} className="min-h-0 flex-1">
           <LinkTable tableRef={tableRef} {...table} />
           <LinkForm nameRef={nameRef} {...form} />
         </Splitter>
