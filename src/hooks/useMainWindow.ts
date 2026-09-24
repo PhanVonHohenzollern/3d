@@ -23,7 +23,6 @@ export function useMainWindow() {
   return {
     menus: mainWindow.menus,
     toolbarItems: mainWindow.toolbarItems,
-    statusBar: mainWindow.statusBar(),
     inspectorCounts: mainWindow.inspectorCounts,
     raisedDock: mainWindow.raisedDock(),
     raiseDock: mainWindow.raiseDock,
