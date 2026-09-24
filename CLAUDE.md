@@ -18,6 +18,8 @@ FIXTURE=loops npx vitest run tests/runtime.test.ts # only fixtures whose path co
 npm run update-expected                            # rewrite tests/fixtures/**/*.expected.json.gz from the current code
 ```
 
+The `Makefile` has a target per script (`make` lists them). Keep it in sync when `package.json` scripts change.
+
 Before finishing any change, `npm run typecheck`, `npm run lint`, `npm run format:check` and `npm test` must all pass.
 
 ## Code conventions
@@ -32,6 +34,7 @@ Before finishing any change, `npm run typecheck`, `npm run lint`, `npm run forma
 - **Styling:** Tailwind utility classes only. `src/index.css` holds just the Tailwind import, the `@theme` tokens (e.g. `bg-window`, `text-fg`, `border-line-strong`, `from-button-top`, `rounded-qt`, `font-code`, `text-ui`, `bg-viewport-*`) and a minimal base layer. Build conditional classes with `cn()` from `src/utils/cn.ts`. Never concatenate class fragments with a leading space (`' selected'`): prettier-plugin-tailwindcss strips it. Inline `style` only for values computed at runtime. CodeMirror is styled with `EditorView.theme` (`src/hooks/codeEditor/editorExtensions.ts`).
 - **No comments.** Keep one only for a non-obvious "why" whose loss would likely cause a regression. There are currently six: the x86 `llround` conversion (`utils/cppStd.ts`), the lexer and error-stack performance notes (`core/runtime/interpreter/Lexer.ts`, `utils/cpp.ts`), the WebGL line-quad reason (`core/viewport/shaders.ts`), the re-entrant selection copy (`hooks/mainWindow/MainWindow.ts`) and the disabled-select opacity (`components/ui/ComboBox.tsx`).
 - **ESLint** (`eslint.config.js`): typescript-eslint recommended, react-hooks `recommended-latest` (React Compiler rules), react-refresh, prettier. The `react-hooks/refs` rule flags any object with a `…Ref` member. Use callback refs (`bindEditor`, `bindViewport`, …) and destructure hook results that contain refs.
+- **Spacing** (enforced by ESLint's `@stylistic` rules): a blank line around function declarations and function-valued variables, between class methods, and before a `return` that follows another statement in its block. `npm run format` applies ESLint fixes, then Prettier.
 - Module names: hooks `useXxx.ts`, components `PascalCase.tsx`, class modules `PascalCase.ts`, function modules `camelCase.ts`.
 
 ## Behavior fidelity conventions
