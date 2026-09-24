@@ -125,7 +125,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
 
         <div className="col-span-full">
           <PushButton sizeClassName="h-[26px] min-h-6 w-[150px] px-3 py-0.5" onClick={props.test}>
-            Test selected point
+            Make
           </PushButton>
         </div>
         <div

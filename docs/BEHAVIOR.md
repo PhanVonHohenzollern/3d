@@ -4,6 +4,18 @@ User-visible behavior of Geometry Preview. See also [API_TRACE.md](API_TRACE.md)
 
 ## Important behavior
 
+The Code Editor supports local autocomplete for C++ keywords, SDK functions,
+types and constants, and variables declared in the current scope. Suggestions
+appear while typing or with Ctrl+Space (Alt+` or Alt+i also work on macOS).
+Use the arrow keys to select, Enter or Tab to accept, and Escape to dismiss.
+Function suggestions include overload signatures and default arguments. Comments
+and strings do not trigger suggestions. Editing also supports automatic
+indentation, bracket closing, and undo/redo. Suggestions run entirely in the
+browser and do not execute the code; normal edits still update the live preview.
+
+Run Preview, Fit Debug, Hide All Debug and Show All Debug are available in the
+Preview menu, but no longer appear in the toolbar. Existing shortcuts still work.
+
 The previewer does not create substitute geometry for an unknown API or for a known API without a supported mesh adapter. Such calls remain visible in API Trace and produce a warning instead of a misleading mesh.
 
 `Parameters` is populated only from `get_val(...)` declarations and is independent of the current cursor position.
@@ -114,7 +126,7 @@ degrees applied in order about the world X, Y and Z axes, rotating both the norm
 and rectangular section frame. A lies along `normal x up`; B lies along `up`
 (world Z initially for horizontal connectors, world Y for Z-facing connectors).
 
-**Test selected point** shows an open tube/rectangular sleeve extending outward
+**Make** shows an open tube/rectangular sleeve extending outward
 from the point, with a direction arrow. Its display length is 35% of the diameter
 or larger rectangular dimension. Multiple tested connectors can be shown together;
 selecting their row or clicking their point in Point mode highlights the selected

@@ -18,6 +18,7 @@
     "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test:ci"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-cpp": "^6.0.3",
     "@codemirror/language": "^6.12.4",

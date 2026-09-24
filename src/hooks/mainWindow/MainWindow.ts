@@ -295,8 +295,6 @@ export class MainWindow extends Observable {
       },
     ];
     this.toolbarItems = [
-      runAction,
-      'separator',
       showGeometryAction,
       wireframeAction,
       fitSceneAction,
@@ -304,12 +302,9 @@ export class MainWindow extends Observable {
       showPointsAction,
       showVectorsAction,
       showLabelsAction,
-      fitAction,
       'separator',
       hideSelectedAction,
       showSelectedAction,
-      hideAllDebugAction,
-      showAllDebugAction,
     ];
     this.shortcutActions = [exitAction, runAction, fitAction, hideSelectedAction, showSelectedAction];
 
@@ -460,6 +455,7 @@ export class MainWindow extends Observable {
   }
 
   handleKeyDown(event: KeyboardEvent): void {
+    if (event.defaultPrevented) return;
     if (closestTarget(event.target, floatingWindowSelector)) return;
     if (event.key === 'Escape') {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
