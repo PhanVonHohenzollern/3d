@@ -30,10 +30,12 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
     tableRef.current?.focus({ preventScroll: true });
     model.mousePress(tableRowOf(event), eventModifiers(event).control);
   };
+
   const onMouseUp = (event: MouseEvent) => {
     if (event.button !== 0 || isInTableHeader(event)) return;
     model.mouseRelease(tableRowOf(event));
   };
+
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (model.keyPress(event.key)) event.preventDefault();

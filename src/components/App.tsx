@@ -18,6 +18,7 @@ export function App() {
     mainWindow.raisedDock,
     mainWindow.raiseDock,
   );
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden select-none">
       <MenuBar menus={mainWindow.menus} />

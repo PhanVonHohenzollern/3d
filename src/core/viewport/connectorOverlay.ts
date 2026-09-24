@@ -24,6 +24,7 @@ export function connectorSceneScale(connectors: readonly ConnectorPreview[]): nu
     const tip = connectorTip(connector);
     scale = Math.max(scale, Math.hypot(tip.x, tip.y, tip.z));
   }
+
   return scale;
 }
 
@@ -55,8 +56,10 @@ export function appendConnectorVertices(
   const lineStart = vertices.size();
   for (const connector of connectors) {
     const color = connector.id === selectedId ? new QVector3D(1.0, 0.96, 0.45) : new QVector3D(0.35, 0.7, 0.8);
+
     const line = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) =>
       vertices.appendLine(toVector(a), toVector(b), color.x, color.y, color.z);
+
     for (const [a, b] of connector.outline) line(a, b);
     const tip = connectorTip(connector);
     const base = tip.sub(connector.direction.mul(connector.length * 0.22));
@@ -66,6 +69,7 @@ export function appendConnectorVertices(
       line(tip, base.sub(side.mul(connector.length * 0.12)));
     }
   }
+
   return { vertexStart, vertexCount, lineStart, lineCount: vertices.size() - lineStart };
 }
 

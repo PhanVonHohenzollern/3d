@@ -36,5 +36,6 @@ export function expandLineQuads(src: Float32Array, first: number, count: number)
       out[o++] = side;
     }
   }
+
   return out;
 }

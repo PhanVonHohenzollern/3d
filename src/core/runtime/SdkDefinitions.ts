@@ -24,5 +24,6 @@ export function sdkTypeDefinition(name: string): SdkTypeDefinition | undefined {
 export function sdkCanonicalType(name: string): string {
   const type = sdkTypeDefinition(name);
   if (type && !type.arrayExtent) return type.baseType;
+
   return name;
 }

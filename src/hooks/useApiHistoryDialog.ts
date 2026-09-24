@@ -3,6 +3,7 @@ import { useObservable } from './useObservable';
 
 export function useApiHistoryDialog(dialog: ApiHistoryDialogModel) {
   useObservable(dialog);
+
   return {
     open: dialog.isOpen(),
     title: dialog.windowTitle,

@@ -8,6 +8,7 @@ export function createArray(elementType: string, dims: readonly number[], level 
     if (level + 1 < dims.length) array.elements.push(createArray(elementType, dims, level + 1));
     else array.elements.push(runtimeDefaultValueForType(elementType));
   }
+
   return array;
 }
 

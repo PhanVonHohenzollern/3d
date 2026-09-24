@@ -22,6 +22,7 @@ function parseNumericDefault(type: string, text: string): RuntimeValue {
       if (integer.used === text.length) return integer.value;
     }
     const real = stod(text);
+
     return real.used === text.length ? real.value : undefined;
   } catch {
     return undefined;
@@ -33,12 +34,14 @@ function parseDefaultValue(parameter: ApiParameterMetadata): RuntimeValue {
   if (text === '') return runtimeDefaultValueForType(parameter.type);
   if (text === 'true') return true;
   if (text === 'false') return false;
+
   return parseNumericDefault(parameter.type, text) ?? runtimeDefaultValueForType(parameter.type);
 }
 
 export function parameterIndex(sig: ApiSignatureMetadata | null, name: string): number {
   if (!sig) return -1;
   for (let i = 0; i < sig.parameters.length; ++i) if (sig.parameters[i].name === name) return i;
+
   return -1;
 }
 
@@ -49,5 +52,6 @@ export function effectiveArguments(call: RuntimeApiCall): RuntimeValue[] {
   if (sig) {
     for (let i = args.length; i < sig.parameters.length; ++i) args.push(parseDefaultValue(sig.parameters[i]));
   }
+
   return args;
 }

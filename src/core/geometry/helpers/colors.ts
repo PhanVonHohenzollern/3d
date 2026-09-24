@@ -25,6 +25,7 @@ function acadIndexColor(index: number): PreviewColor {
       return { r: 1.0, g: 1.0, b: 1.0 };
     default: {
       const gray = Math.fround(stdClamp(index, 0, 255) / 255.0);
+
       return { r: gray, g: gray, b: gray };
     }
   }
@@ -39,12 +40,15 @@ export function meshColorUpdate(args: RuntimeValue[]): MeshColorUpdate {
       b = ref(0.0);
     if (asNumber(args[0], r) && asNumber(args[1], g) && asNumber(args[2], b))
       return { color: { r: colorComponent(r.v), g: colorComponent(g.v), b: colorComponent(b.v) } };
+
     return { warning: 'RGB arguments are not numeric' };
   }
   if (args.length === 1) {
     const index = ref(0);
     if (asInt(args[0], index)) return { color: acadIndexColor(index.v) };
+
     return { warning: 'color-index argument is not numeric' };
   }
+
   return { warning: 'unsupported setMeshColor overload' };
 }

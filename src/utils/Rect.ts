@@ -19,15 +19,19 @@ export class QRectF {
   left(): number {
     return this.x;
   }
+
   top(): number {
     return this.y;
   }
+
   right(): number {
     return this.x + this.width;
   }
+
   bottom(): number {
     return this.y + this.height;
   }
+
   center(): QPointF {
     return new QPointF(this.x + this.width / 2, this.y + this.height / 2);
   }
@@ -45,6 +49,7 @@ export class QRectF {
       b = this.y;
     if (this.height < 0) t += this.height;
     else b += this.height;
+
     return { l, r, t, b };
   }
 
@@ -55,6 +60,7 @@ export class QRectF {
     if (o.l < a.l || o.r > a.r) return false;
     if (a.t === a.b || o.t === o.b) return false;
     if (o.t < a.t || o.b > a.b) return false;
+
     return true;
   }
 
@@ -65,6 +71,7 @@ export class QRectF {
     if (a.l >= o.r || o.l >= a.r) return false;
     if (a.t === a.b || o.t === o.b) return false;
     if (a.t >= o.b || o.t >= a.b) return false;
+
     return true;
   }
 }
@@ -80,15 +87,19 @@ export class QRect {
   left(): number {
     return this.x;
   }
+
   top(): number {
     return this.y;
   }
+
   right(): number {
     return this.x + this.width - 1;
   }
+
   bottom(): number {
     return this.y + this.height - 1;
   }
+
   center(): QPoint {
     return new QPoint(Math.trunc((this.left() + this.right()) / 2), Math.trunc((this.top() + this.bottom()) / 2));
   }
@@ -108,6 +119,7 @@ export class QRect {
     const t = Math.max(this.top(), r.top());
     const b = Math.min(this.bottom(), r.bottom());
     if (l > rr || t > b) return new QRect();
+
     return new QRect(l, t, rr - l + 1, b - t + 1);
   }
 

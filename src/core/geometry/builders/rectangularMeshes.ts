@@ -33,6 +33,7 @@ export function buildConnectorSleeveMesh(
     mesh.vertices.push(vertex(c.sub(right.mul(hw)).sub(up.mul(hh)), n));
     mesh.vertices.push(vertex(c.add(right.mul(hw)).sub(up.mul(hh)), n));
   };
+
   appendSection(c0);
   appendSection(c1);
 
@@ -41,8 +42,10 @@ export function buildConnectorSleeveMesh(
     if (sideCode >= 1 && sideCode <= 4) return side === sideCode - 1;
     if (sideCode === 24) return side === 1 || side === 3;
     if (sideCode === 13) return side === 0 || side === 2;
+
     return false;
   };
+
   for (let side = 0; side < 4; ++side) {
     if (!visible(side)) continue;
     const next = (side + 1) % 4;
@@ -53,6 +56,7 @@ export function buildConnectorSleeveMesh(
     addTriangle(mesh, a, b, c);
     addTriangle(mesh, a, c, d);
   }
+
   return mesh;
 }
 
@@ -84,6 +88,7 @@ export function buildRectFaceMesh(
   ];
   addTriangle(mesh, 0, 1, 2);
   addTriangle(mesh, 0, 2, 3);
+
   return mesh;
 }
 
@@ -158,6 +163,7 @@ export function buildBoxMesh(
     addTriangle(mesh, base, base + 1, base + 2);
     addTriangle(mesh, base, base + 2, base + 3);
   }
+
   return mesh;
 }
 
@@ -175,5 +181,6 @@ export function buildPolygonFaceMesh(context: MeshBuildContext, points: FdPoint3
   }
   for (const p of points) mesh.vertices.push(vertex(toVec(p), n));
   for (let i = 1; i + 1 < points.length; ++i) addTriangle(mesh, 0, i, i + 1);
+
   return mesh;
 }

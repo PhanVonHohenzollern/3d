@@ -12,17 +12,21 @@ const everything = () => true;
 
 function pickMesh(engine: ViewportEngine, meshes: PreviewMesh[], screen: QPointF): number {
   const ray = updateCamera(engine).screenRay(screen);
+
   return ray ? pickMeshAlongRay(meshes, ray, everything) : -1;
 }
 
 function pickItem(engine: ViewportEngine, items: DebugItem[], kind: 'Point' | 'Vector', screen: QPointF): string {
   const camera = updateCamera(engine);
   const eye = camera.cameraPosition();
+
   const arrow = (item: DebugItem) => {
     const vertices = new VertexArray(8);
     appendVectorArrow(vertices, item, false, eye, engine.sceneScale());
+
     return vertices;
   };
+
   return pickDebugItemAt(items, kind, screen, eye, everything, (p) => camera.projectToScreen(p), arrow);
 }
 

@@ -39,13 +39,16 @@ export function appendFlatDisc(scene: PreviewGeometryScene, context: MeshBuildCo
     !asInt(args[3], segments)
   ) {
     scene.warnings.push(warningFor(call, 'invalid disc arguments'));
+
     return true;
   }
   if (!validDirection(normal.v) || diameter.v <= 0.0 || segments.v < 1) {
     scene.warnings.push(warningFor(call, 'invalid disc dimensions/normal'));
+
     return true;
   }
   scene.meshes.push(buildDiscMesh(context, center.v, normal.v, diameter.v, segments.v));
+
   return true;
 }
 
@@ -65,6 +68,7 @@ export function appendFlatRing(scene: PreviewGeometryScene, context: MeshBuildCo
     !asInt(args[4], segments)
   ) {
     scene.warnings.push(warningFor(call, 'invalid ring arguments'));
+
     return true;
   }
   if (
@@ -75,9 +79,11 @@ export function appendFlatRing(scene: PreviewGeometryScene, context: MeshBuildCo
     segments.v < 1
   ) {
     scene.warnings.push(warningFor(call, 'invalid ring dimensions/normal'));
+
     return true;
   }
   scene.meshes.push(buildRingMesh(context, center.v, normal.v, innerDiameter.v, outerDiameter.v, segments.v));
+
   return true;
 }
 
@@ -99,10 +105,12 @@ export function appendDisc(scene: PreviewGeometryScene, context: MeshBuildContex
     !asBool(args[5], segment)
   ) {
     scene.warnings.push(warningFor(call, 'invalid disc arguments'));
+
     return true;
   }
   if (!validDirection(normal.v) || diameter.v <= 0.0 || thickness.v < 0.0 || segments.v < 1) {
     scene.warnings.push(warningFor(call, 'invalid disc dimensions/normal'));
+
     return true;
   }
   const n = normalized(toVec(normal.v));
@@ -124,6 +132,7 @@ export function appendDisc(scene: PreviewGeometryScene, context: MeshBuildContex
       true,
     ),
   );
+
   return true;
 }
 
@@ -139,13 +148,16 @@ export function appendSymbolicCircle(
   const diameter = ref(0.0);
   if (!asPoint(args[0], center) || !asVector(args[1], normal) || !asNumber(args[2], diameter)) {
     scene.warnings.push(warningFor(call, 'invalid symbolic-circle arguments'));
+
     return true;
   }
   if (!validDirection(normal.v) || diameter.v <= 0.0) {
     scene.warnings.push(warningFor(call, 'invalid symbolic-circle dimensions/normal'));
+
     return true;
   }
   scene.meshes.push(buildCircleOutlineMesh(context, center.v, normal.v, diameter.v));
+
   return true;
 }
 
@@ -175,6 +187,7 @@ export function appendDonutSection(
     !asInt(args[7], segmentation)
   ) {
     scene.warnings.push(warningFor(call, 'invalid donut arguments'));
+
     return true;
   }
   if (
@@ -187,6 +200,7 @@ export function appendDonutSection(
     Math.abs(sweep.v) <= kEps
   ) {
     scene.warnings.push(warningFor(call, 'invalid donut dimensions/vectors'));
+
     return true;
   }
   scene.meshes.push(
@@ -202,6 +216,7 @@ export function appendDonutSection(
       segmentation.v,
     ),
   );
+
   return true;
 }
 
@@ -259,6 +274,7 @@ export function appendTubularBend(
       segmentation.v,
     ),
   );
+
   return true;
 }
 
@@ -297,10 +313,12 @@ export function appendSpheroidSection(
     !validDirection(bVector.v)
   ) {
     scene.warnings.push(warningFor(call, 'invalid spheroid arguments'));
+
     return true;
   }
   scene.meshes.push(
     buildSpheroidSectionMesh(context, center.v, normal.v, bVector.v, latAngles, longAngles, diameters, complexity),
   );
+
   return true;
 }

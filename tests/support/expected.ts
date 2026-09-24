@@ -11,6 +11,7 @@ export function expectedOutput(fixture: Fixture): ExpectedDocument {
   const file = expectedPath(fixture);
   if (!fs.existsSync(file))
     throw new Error(`${fixture.name} has no expected output yet: run \`npm run update-expected\``);
+
   return JSON.parse(zlib.gunzipSync(fs.readFileSync(file)).toString('utf8'));
 }
 

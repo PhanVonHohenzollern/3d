@@ -10,12 +10,15 @@ export function usePointerDrag(): (event: ReactPointerEvent<HTMLElement>, onMove
     element.setPointerCapture(event.pointerId);
     const startX = event.clientX;
     const startY = event.clientY;
+
     const move = (e: PointerEvent) => onMove(e.clientX - startX, e.clientY - startY);
+
     const up = () => {
       element.removeEventListener('pointermove', move);
       element.removeEventListener('pointerup', up);
       element.removeEventListener('pointercancel', up);
     };
+
     element.addEventListener('pointermove', move);
     element.addEventListener('pointerup', up);
     element.addEventListener('pointercancel', up);

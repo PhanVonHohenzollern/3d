@@ -41,17 +41,20 @@ export function uniquePointName(definitions: readonly ConnectorDefinition[], fir
   do {
     name = `linkPoint${pointIndex++}`;
   } while (definitions.some((other) => other.pointName === name));
+
   return name;
 }
 
 export function pointNameError(definitions: readonly ConnectorDefinition[], id: number, name: string): string {
   if (name === '') return 'Point name cannot be empty';
   if (definitions.some((other) => other.id !== id && other.pointName === name)) return 'Point name is already used';
+
   return '';
 }
 
 export function linkTableTexts(d: ConnectorDefinition, preview: ConnectorPreview | null): string[] {
   const position = preview ? coordinatesText(preview.point) : `(${d.position[0]}, ${d.position[1]}, ${d.position[2]})`;
+
   return [d.name, d.pointName, d.type === 'Circular' ? 'Circular' : 'Rectangular', position];
 }
 
@@ -69,6 +72,7 @@ export function linkParameterNames(result: RuntimeResult): string[] {
     const name = request.variableName === '' ? request.name : request.variableName;
     if (!names.includes(name)) names.push(name);
   }
+
   return names;
 }
 

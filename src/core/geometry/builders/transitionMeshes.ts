@@ -53,6 +53,7 @@ export function buildRectToEllipseTransitionMesh(
       if (t >= -1e-9 && u >= -1e-9 && u <= 1.0 + 1e-9) bestT = stdMin(bestT, stdMax(0.0, t));
     }
     if (!Number.isFinite(bestT) || bestT >= 1e99) return rectC;
+
     return rectC.add(up.mul(d.x * bestT)).add(side.mul(d.y * bestT));
   };
 
@@ -79,6 +80,7 @@ export function buildRectToEllipseTransitionMesh(
     addTriangle(mesh, r0, r1, e1);
     addTriangle(mesh, r0, e1, e0);
   }
+
   return mesh;
 }
 
@@ -94,6 +96,7 @@ export function rectangleCorners(
   const c = toVec(center);
   const hh = 0.5 * Math.abs(height);
   const hw = 0.5 * Math.abs(width);
+
   return [
     toPoint(c.add(up.mul(hh)).add(side.mul(hw))),
     toPoint(c.sub(up.mul(hh)).add(side.mul(hw))),
@@ -151,6 +154,7 @@ export function buildRectTubeIntersectionMeshes(
       ring.push({ u, s: current.s + t * (next.s - current.s) });
     }
   }
+
   const boundaryIndex = (u: number): number => {
     let closest = 0;
     let distance = 1e100;
@@ -162,15 +166,19 @@ export function buildRectTubeIntersectionMeshes(
         distance = delta;
       }
     }
+
     return closest;
   };
+
   const first = boundaryIndex(upMax),
     last = boundaryIndex(upMin);
+
   const point = (x: number, i: number, atOuter = false): DVec3 =>
     p0
       .add(axis.mul(x))
       .add(up.mul(ring[i].u))
       .add(side.mul(sign * (atOuter ? outer : ring[i].s)));
+
   const stations = [0.0, hole0, hole1, tubeLength];
   stdSort4Doubles(stations);
   eraseUnique(stations);
@@ -199,6 +207,7 @@ export function buildRectTubeIntersectionMeshes(
       }
     }
   }
+
   const wall = (a0: DVec3, b0: DVec3, c0: DVec3, d0: DVec3, n: DVec3) => {
     const index = duct.vertices.length;
     for (const p of [a0, b0, c0, d0]) duct.vertices.push(vertex(p, n));
@@ -210,11 +219,13 @@ export function buildRectTubeIntersectionMeshes(
       addTriangle(duct, index, index + 3, index + 2);
     }
   };
+
   for (let i = first; i < last; ++i) {
     wall(point(hole0, i), point(hole0, i + 1), point(hole0, i + 1, true), point(hole0, i, true), axis.mul(-1));
     wall(point(hole1, i), point(hole1, i + 1), point(hole1, i + 1, true), point(hole1, i, true), axis);
   }
   wall(point(hole0, first), point(hole1, first), point(hole1, first, true), point(hole0, first, true), up);
   wall(point(hole0, last), point(hole1, last), point(hole1, last, true), point(hole0, last, true), up.mul(-1));
+
   return meshes;
 }

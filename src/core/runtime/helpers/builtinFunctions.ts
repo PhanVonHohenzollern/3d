@@ -16,6 +16,7 @@ const numericConversion =
   (args) => {
     if (args.length === 0) return runtimeDefaultValueForType(name);
     if (args.length !== 1) throw runtimeError(name + ' conversion requires one argument');
+
     return runtimeCoerceToType(args[0], name);
   };
 
@@ -28,6 +29,7 @@ const pointOrVectorConstructor =
     const x = runtimeNumber(args[0]),
       y = runtimeNumber(args[1]),
       z = runtimeNumber(args[2]);
+
     return name === 'FdPoint3d' ? new FdPoint3d(x, y, z) : new FdVector3d(x, y, z);
   };
 
@@ -35,6 +37,7 @@ const unary =
   (name: string, fn: (x: number) => number): BuiltinFunction =>
   (args) => {
     if (args.length !== 1) throw runtimeError(name + ' requires 1 argument');
+
     return fn(runtimeNumber(args[0]));
   };
 
@@ -42,6 +45,7 @@ const binary =
   (name: string, fn: (x: number, y: number) => number): BuiltinFunction =>
   (args) => {
     if (args.length !== 2) throw runtimeError(name + ' requires 2 arguments');
+
     return fn(runtimeNumber(args[0]), runtimeNumber(args[1]));
   };
 
@@ -50,6 +54,7 @@ const strcmp: BuiltinFunction = (args) => {
   const a = args[0];
   const b = args[1];
   if (!isString(a) || !isString(b)) throw runtimeError('strcmp requires string arguments');
+
   return a === b ? 0n : a < b ? -1n : 1n;
 };
 
@@ -74,5 +79,6 @@ const kMathFunctions: ReadonlyMap<string, BuiltinFunction> = new Map([
 export function builtinFunction(name: string): BuiltinFunction | undefined {
   if (isNumericType(name)) return numericConversion(name);
   if (name === 'FdPoint3d' || name === 'FdVector3d') return pointOrVectorConstructor(name);
+
   return kMathFunctions.get(name);
 }

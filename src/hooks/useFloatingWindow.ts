@@ -18,10 +18,12 @@ export function useFloatingWindow(raiseSerial: number, onClose: () => void) {
       setGeometry(movedFloatingGeometry(start, dx, dy, window.innerWidth, window.innerHeight)),
     );
   };
+
   const onGripPointerDown = (event: PointerEvent<HTMLElement>) => {
     const start = geometry;
     startDrag(event, (dx, dy) => setGeometry(resizedFloatingGeometry(start, dx, dy)));
   };
+
   const onKeyDown = (event: KeyboardEvent) => {
     event.stopPropagation();
     if (event.key !== 'Escape') return;

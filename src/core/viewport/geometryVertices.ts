@@ -18,10 +18,13 @@ export function buildGeometryVertices(scene: PreviewGeometryScene): { vertices: 
     }
     const faces: Face[] = [];
     const adjacentFaces = new Map<string, number[]>();
+
     const position = (index: number): string => {
       const v = mesh.vertices[index];
+
       return `${v.x},${v.y},${v.z}`;
     };
+
     const vertexCount = mesh.vertices.length;
     for (let i = 0; i + 2 < mesh.indices.length; i += 3) {
       const a = mesh.indices[i],
@@ -73,6 +76,7 @@ export function buildGeometryVertices(scene: PreviewGeometryScene): { vertices: 
     range.count = vertices.size() - range.start;
     if (range.count > 0) ranges.push(range);
   }
+
   return { vertices, ranges };
 }
 
@@ -96,6 +100,7 @@ export function buildGeometryWireVertices(scene: PreviewGeometryScene): {
 
     const edges = new Map<string, EdgeData>();
     const vertexCount = mesh.vertices.length;
+
     const addEdge = (ia: number, ib: number, normal: QVector3D) => {
       if (!isValidIndex(ia, vertexCount) || !isValidIndex(ib, vertexCount) || ia === ib) return;
       const first = Math.min(ia, ib),
@@ -151,5 +156,6 @@ export function buildGeometryWireVertices(scene: PreviewGeometryScene): {
     range.count = vertices.size() - range.start;
     if (range.count > 0) ranges.push(range);
   }
+
   return { vertices, ranges };
 }

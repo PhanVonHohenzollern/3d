@@ -18,13 +18,16 @@ export function useSplitter({ orientation, initialSizes, stretchFactors = [0, 0]
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
     const measure = () => {
       const total = (horizontal ? container.clientWidth : container.clientHeight) - kSplitterHandleSize;
       if (total > 0) setSizes((current) => distributeSplitterSizes(current, total, stretch));
     };
+
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(container);
+
     return () => observer.disconnect();
   }, [horizontal, stretch]);
 

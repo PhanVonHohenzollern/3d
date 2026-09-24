@@ -11,32 +11,40 @@ export const ref = <T>(v: T): Ref<T> => ({ v });
 export function asPoint(value: RuntimeValue, out: Ref<FdPoint3d>): boolean {
   if (value instanceof FdPoint3d) {
     out.v = value;
+
     return true;
   }
+
   return false;
 }
 
 export function asVector(value: RuntimeValue, out: Ref<FdVector3d>): boolean {
   if (value instanceof FdVector3d) {
     out.v = value;
+
     return true;
   }
+
   return false;
 }
 
 export function asNumber(value: RuntimeValue, out: Ref<number>): boolean {
   if (typeof value === 'number') {
     out.v = value;
+
     return true;
   }
   if (typeof value === 'bigint') {
     out.v = Number(value);
+
     return true;
   }
   if (typeof value === 'boolean') {
     out.v = value ? 1.0 : 0.0;
+
     return true;
   }
+
   return false;
 }
 
@@ -44,19 +52,23 @@ export function asInt(value: RuntimeValue, out: Ref<number>): boolean {
   const d = ref(0.0);
   if (!asNumber(value, d)) return false;
   out.v = llroundToInt(d.v);
+
   return true;
 }
 
 export function asBool(value: RuntimeValue, out: Ref<boolean>): boolean {
   if (typeof value === 'boolean') {
     out.v = value;
+
     return true;
   }
   const n = ref(0.0);
   if (asNumber(value, n)) {
     out.v = n.v !== 0.0;
+
     return true;
   }
+
   return false;
 }
 
@@ -73,6 +85,7 @@ export function pointArray(value: RuntimeValue, out: FdPoint3d[]): boolean {
     if (!asPoint(element, p)) return false;
     out.push(p.v);
   }
+
   return true;
 }
 
@@ -85,6 +98,7 @@ export function vectorArray(value: RuntimeValue, out: FdVector3d[]): boolean {
     if (!asVector(element, v)) return false;
     out.push(v.v);
   }
+
   return true;
 }
 
@@ -97,6 +111,7 @@ export function numberArray(value: RuntimeValue, out: number[]): boolean {
     if (!asNumber(element, n)) return false;
     out.push(n.v);
   }
+
   return true;
 }
 
@@ -109,6 +124,7 @@ export function boolArray(value: RuntimeValue, out: boolean[]): boolean {
     if (!asBool(element, b)) return false;
     out.push(b.v);
   }
+
   return true;
 }
 
@@ -121,6 +137,7 @@ export function numberMatrix(value: RuntimeValue, out: number[][]): boolean {
     if (!numberArray(rowValue, row)) return false;
     out.push(row);
   }
+
   return true;
 }
 
@@ -133,6 +150,7 @@ export function intArray(value: RuntimeValue, out: number[]): boolean {
     if (!asInt(element, n)) return false;
     out.push(n.v);
   }
+
   return true;
 }
 
@@ -141,5 +159,6 @@ export function twoPointsFromArray(value: RuntimeValue, a: Ref<FdPoint3d>, b: Re
   if (!pointArray(value, points) || points.length < 2) return false;
   a.v = points[0];
   b.v = points[1];
+
   return true;
 }

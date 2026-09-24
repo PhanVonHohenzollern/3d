@@ -4,6 +4,7 @@ import { Cell, HeaderCell, TableView } from './ui/TableView';
 
 export function VariablePanel(props: VariablePanelProps) {
   const { tableRef, summary, rows, selectedRow, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
+
   return (
     <div className="flex h-full min-h-0 flex-col p-1.5">
       <div className="flex-none overflow-hidden pb-1 text-ellipsis whitespace-pre">{summary}</div>

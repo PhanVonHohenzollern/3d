@@ -34,6 +34,7 @@ function numericRunEnd(source: string, start: number): number {
     }
     break;
   }
+
   return p;
 }
 
@@ -46,6 +47,7 @@ export class Lexer {
   static scanExpression(source: string): Token[] {
     const tokens = new Lexer(source).scan();
     tokens.pop();
+
     return tokens;
   }
 
@@ -107,6 +109,7 @@ export class Lexer {
       ++this.m_pos;
     }
     out.push(makeToken(TokKind.End, '', 0.0, this.m_line));
+
     return out;
   }
 
@@ -147,6 +150,7 @@ export class Lexer {
       }
     }
     if (this.m_pos < src.length) ++this.m_pos;
+
     return makeToken(TokKind.String, value, 0.0, line);
   }
 
@@ -158,6 +162,7 @@ export class Lexer {
     this.m_pos += n;
     const hex = n >= 2 && src[start] === '0' && (src[start + 1] === 'x' || src[start + 1] === 'X');
     while (this.m_pos < src.length && isNumericSuffix(src[this.m_pos], hex)) ++this.m_pos;
+
     return makeToken(TokKind.Number, src.slice(start, this.m_pos), parsed.value, this.m_line);
   }
 
@@ -165,11 +170,13 @@ export class Lexer {
     const src = this.m_source;
     const start = this.m_pos++;
     while (this.m_pos < src.length && (isalnum(src[this.m_pos]) || src[this.m_pos] === '_')) ++this.m_pos;
+
     return makeToken(TokKind.Identifier, src.slice(start, this.m_pos), 0.0, this.m_line);
   }
 
   private peek(offset: number): string {
     const p = this.m_pos + offset;
+
     return p < this.m_source.length ? this.m_source[p] : '\0';
   }
 }

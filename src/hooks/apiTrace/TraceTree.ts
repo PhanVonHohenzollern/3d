@@ -23,6 +23,7 @@ export class TraceTree extends TreeWidget {
   override mouseReleaseEvent(event: TreeMouseEvent): void {
     if (!this.#rangePress) {
       super.mouseReleaseEvent(event);
+
       return;
     }
     this.#rangePress = false;

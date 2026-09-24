@@ -13,12 +13,19 @@ export class RuntimeArray {
 export type RuntimeValue = undefined | number | bigint | boolean | string | FdPoint3d | FdVector3d | RuntimeArray;
 
 export const isUnset = (v: RuntimeValue): v is undefined => v === undefined;
+
 export const isDouble = (v: RuntimeValue): v is number => typeof v === 'number';
+
 export const isInt = (v: RuntimeValue): v is bigint => typeof v === 'bigint';
+
 export const isBool = (v: RuntimeValue): v is boolean => typeof v === 'boolean';
+
 export const isString = (v: RuntimeValue): v is string => typeof v === 'string';
+
 export const isPoint = (v: RuntimeValue): v is FdPoint3d => v instanceof FdPoint3d;
+
 export const isVector = (v: RuntimeValue): v is FdVector3d => v instanceof FdVector3d;
+
 export const isArray = (v: RuntimeValue): v is RuntimeArray => v instanceof RuntimeArray;
 
 function formatNumber(value: number): string {
@@ -26,12 +33,14 @@ function formatNumber(value: number): string {
   let s = formatFixed(value, 6);
   while (s.length > 1 && s.endsWith('0')) s = s.slice(0, -1);
   if (s.endsWith('.')) s = s.slice(0, -1);
+
   return s;
 }
 
 function arrayTypeName(a: RuntimeArray): string {
   let result = a.elementType === '' ? 'array' : a.elementType;
   for (const d of a.dimensions) result += `[${d}]`;
+
   return result;
 }
 
@@ -43,6 +52,7 @@ export function runtimeTypeName(value: RuntimeValue): string {
   if (isPoint(value)) return 'FdPoint3d';
   if (isVector(value)) return 'FdVector3d';
   if (isArray(value)) return arrayTypeName(value);
+
   return 'unknown';
 }
 
@@ -62,8 +72,10 @@ export function runtimeValueToCompactString(value: RuntimeValue): string {
     }
     if (value.elements.length > limit) s += ', ...';
     s += '}';
+
     return s;
   }
+
   return '<unset>';
 }
 
@@ -79,6 +91,7 @@ export function runtimeDefaultValueForType(requestedType: string): RuntimeValue 
   if (typeName === 'char*' || typeName === 'const char*' || typeName === 'string') return '';
   if (typeName === 'FdPoint3d') return new FdPoint3d();
   if (typeName === 'FdVector3d') return new FdVector3d();
+
   return undefined;
 }
 
@@ -103,6 +116,7 @@ export function runtimeTruthy(value: RuntimeValue): boolean {
   if (isString(value)) return value !== '';
   if (isPoint(value) || isVector(value)) return true;
   if (isArray(value)) return true;
+
   return false;
 }
 
@@ -113,6 +127,7 @@ export function runtimeCoerceToType(value: RuntimeValue, requestedType: string):
   if (typeName === 'bool') return runtimeTruthy(value);
   if (typeName === 'char*' || typeName === 'const char*' || typeName === 'string') {
     if (isString(value)) return value;
+
     return runtimeValueToCompactString(value);
   }
   if (typeName === 'FdPoint3d') {
@@ -123,11 +138,13 @@ export function runtimeCoerceToType(value: RuntimeValue, requestedType: string):
     if (isVector(value)) return value;
     throw new CppException('runtime_error', 'FdVector3d value required');
   }
+
   return value;
 }
 
 export function runtimeDeepCopy(value: RuntimeValue): RuntimeValue {
   if (isArray(value))
     return new RuntimeArray(value.elementType, [...value.dimensions], value.elements.map(runtimeDeepCopy));
+
   return value;
 }

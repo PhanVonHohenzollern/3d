@@ -28,6 +28,7 @@ export function previewOrientationDirection(orientation: ConnectorOrientation): 
     new FdVector3d(0, 0, -1),
     new FdVector3d(0, 0, 1),
   ];
+
   return directions[connectorOrientations.indexOf(orientation)];
 }
 
@@ -82,11 +83,13 @@ export function buildConnectorPreview(
       const value = evaluate(expression);
       if (!Number.isFinite(value) || Math.abs(value) > 1e8)
         throw new CppException('runtime_error', 'value must be finite and within +/-100000000');
+
       return value;
     } catch (e) {
       throw new CppException('runtime_error', `${name}: ${what(e)}`);
     }
   };
+
   const width = definition.type === 'Circular' ? field(definition.diameter, 'Diameter') : field(definition.aSize, 'A');
   const height = definition.type === 'Circular' ? width : field(definition.bSize, 'B');
   if (width <= 1e-6 || height <= 1e-6)
@@ -185,5 +188,6 @@ export function buildConnectorPreview(
     if (perimeter.length === 4 || i % 16 === 0)
       result.outline.push([result.point.add(perimeter[i]), end.add(perimeter[i])]);
   }
+
   return result;
 }

@@ -3,6 +3,7 @@ import type { CodeEditorProps } from '../types/editor';
 
 export function CodeEditor(props: CodeEditorProps) {
   const hostRef = useCodeEditor(props);
+
   return (
     <div
       ref={hostRef}

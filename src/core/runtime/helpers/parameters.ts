@@ -8,6 +8,7 @@ import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, tokensToEx
 function neutralParameterValue(type: string): string {
   if (type === 'string') return '';
   if (type === 'bool') return 'false';
+
   return '0';
 }
 
@@ -25,6 +26,7 @@ function simpleInitializerValue(tokens: readonly Token[], type: string): string 
     tokens[1].kind === TokKind.Number
   )
     return tokens[0].text + tokens[1].text;
+
   return neutralParameterValue(type);
 }
 
@@ -115,6 +117,7 @@ function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticPar
       });
     }
   }
+
   return declarations;
 }
 
@@ -180,6 +183,7 @@ export function parameterTextToValue(text: string, current: RuntimeValue): Runti
     const value = trim(text);
     if (value === 'true' || value === '1' || value === 'yes' || value === 'on') return true;
     if (value === 'false' || value === '0' || value === 'no' || value === 'off') return false;
+
     return current;
   }
   if (!isInt(current) && !isDouble(current)) return current;
@@ -190,10 +194,12 @@ export function parameterTextToValue(text: string, current: RuntimeValue): Runti
   } catch (e) {
     stdException(e);
   }
+
   return current;
 }
 
 export function parameterDisplayText(value: RuntimeValue): string {
   const text = runtimeValueToCompactString(value);
+
   return isString(value) && text === '""' ? '' : text;
 }

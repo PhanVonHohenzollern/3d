@@ -23,12 +23,14 @@ export function distributeSplitterSizes(
   let weights: readonly [number, number] = stretch[0] + stretch[1] > 0 ? stretch : sizes;
   if (weights[0] + weights[1] <= 0) weights = [1, 1];
   const first = Math.min(Math.max(sizes[0] + (delta * weights[0]) / (weights[0] + weights[1]), 0), Math.max(total, 0));
+
   return [first, Math.max(total - first, 0)];
 }
 
 export function draggedSplitterSizes(start: [number, number], delta: number): [number, number] {
   const total = start[0] + start[1];
   const first = Math.min(Math.max(start[0] + delta, 0), total);
+
   return [first, total - first];
 }
 
@@ -39,6 +41,7 @@ export function clampDockHeight(height: number, areaHeight: number): number {
 export function initialFloatingGeometry(viewportWidth: number, viewportHeight: number): WindowGeometry {
   const width = Math.max(Math.min(1380, viewportWidth - 60), 320);
   const height = Math.max(Math.min(720, viewportHeight - 60), 200);
+
   return {
     x: Math.max((viewportWidth - width) / 2, 0),
     y: Math.max((viewportHeight - height) / 2, 0),

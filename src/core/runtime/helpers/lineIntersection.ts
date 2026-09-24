@@ -26,5 +26,6 @@ export function lineIntersection(
   let scale = 1.0;
   for (const length of [u.length(), v.length()]) if (scale < length) scale = length;
   if (delta.length() > 1e-7 * scale) return null;
+
   return new FdPoint3d((pa.x + pb.x) * 0.5, (pa.y + pb.y) * 0.5, (pa.z + pb.z) * 0.5);
 }

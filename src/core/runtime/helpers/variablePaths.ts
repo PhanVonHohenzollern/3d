@@ -1,5 +1,6 @@
 export function rootName(path: string): string {
   const cut = path.search(/[[.]/);
+
   return cut === -1 ? path : path.slice(0, cut);
 }
 
@@ -12,6 +13,7 @@ export function parentPaths(path: string): string[] {
     parent = parent.slice(0, cut);
     parents.push(parent);
   }
+
   return parents;
 }
 

@@ -15,5 +15,6 @@ export function createApiCall(
   call.arguments = args;
   call.argumentExpressions = argumentExpressions;
   call.display = `${name}(${argumentExpressions.join(', ')});`;
+
   return call;
 }

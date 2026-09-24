@@ -12,6 +12,7 @@ export function distancePointToSegment(p: QPointF, a: QPointF, b: QPointF): numb
   const denom = ab.x * ab.x + ab.y * ab.y;
   if (denom <= 1e-9) {
     const d = p.sub(a);
+
     return Math.sqrt(d.x * d.x + d.y * d.y);
   }
 
@@ -19,6 +20,7 @@ export function distancePointToSegment(p: QPointF, a: QPointF, b: QPointF): numb
   const t = clamp((ap.x * ab.x + ap.y * ab.y) / denom, 0, 1);
   const closest = a.add(ab.mul(t));
   const d = p.sub(closest);
+
   return Math.sqrt(d.x * d.x + d.y * d.y);
 }
 
@@ -48,5 +50,6 @@ export function rayTriangleDistance(origin: QVector3D, direction: QVector3D, a: 
   const qz = tx * e1y - ty * e1x;
   const v = (dx * qx + dy * qy + dz * qz) / determinant;
   if (v < -1e-6 || u + v > 1 + 1e-6) return NaN;
+
   return (e2x * qx + e2y * qy + e2z * qz) / determinant;
 }

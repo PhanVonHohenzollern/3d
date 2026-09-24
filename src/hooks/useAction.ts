@@ -5,6 +5,7 @@ import { useObservable } from './useObservable';
 export function useAction(action: Action, onTriggered?: () => void) {
   useObservable(action);
   const shortcut = action.shortcut();
+
   return {
     menuText: stripMnemonic(action.text),
     iconText: action.iconText(),

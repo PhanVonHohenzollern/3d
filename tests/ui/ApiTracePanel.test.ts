@@ -16,10 +16,12 @@ function createPanel() {
   model.setSelectionChangedCallback((apiIndex) => events.push(`selection:${apiIndex}`));
   model.setSourceActivatedCallback((line) => events.push(`source:${line}`));
   model.setHistorySourceActivatedCallback((line) => events.push(`history:${line}`));
+
   return { model, tree: model.m_tree, events };
 }
 
 const texts = (item: TreeWidgetItem) => Array.from({ length: TraceColumn.ColumnCount }, (_, c) => item.text(c));
+
 const names = (items: readonly TreeWidgetItem[]) => items.map((item) => item.text(TraceColumn.Name));
 
 function click(model: ApiTracePanelModel, item: TreeWidgetItem, modifiers = none) {

@@ -25,6 +25,7 @@ function run() {
   const engine = createEngine(1000, 700);
   engine.setGeometryScene(geometry);
   engine.setRuntimeResult(result);
+
   return { runtime, result, geometry, engine };
 }
 

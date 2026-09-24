@@ -21,5 +21,6 @@ export const isLiteral = (s: string) => s.trim() === '' || /^[-+]?(\d+\.?\d*|\.\
 export function literalEvaluator(expression: string): number {
   const field = expression.trim();
   if (field === '') throw new Error('enter a number, variable or expression');
+
   return Number(field);
 }

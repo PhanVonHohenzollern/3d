@@ -8,6 +8,7 @@ export function formatCoordinate(value: number): string {
   let text = formatFixed(value, 3);
   while (text.includes('.') && text.endsWith('0')) text = text.slice(0, -1);
   if (text.endsWith('.')) text = text.slice(0, -1);
+
   return text;
 }
 
@@ -20,5 +21,6 @@ export function unusedPreviewPointName(code: string): string {
     const candidate = `pPreview${i}`;
     if (!new RegExp(`\\b${escapeRegExp(candidate)}\\b`).test(code)) return candidate;
   }
+
   return 'pPreview';
 }

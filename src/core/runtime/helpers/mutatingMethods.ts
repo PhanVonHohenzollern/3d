@@ -18,6 +18,7 @@ export function mutatingMethodDot(tokens: readonly Token[]): number {
     )
       return i;
   }
+
   return -1;
 }
 
@@ -32,6 +33,7 @@ export function mutatedValue(
       if (args.length < 2 || args.length > 3 || !isVector(axis))
         throw runtimeError('FdPoint3d::rotateBy(angle, axis [, point])');
       const center = args[2];
+
       return target.rotateBy(
         runtimeNumber(args[0]),
         axis,
@@ -40,18 +42,22 @@ export function mutatedValue(
     }
     if (isVector(target)) {
       if (args.length !== 2 || !isVector(axis)) throw runtimeError('FdVector3d::rotateBy(angle, axis)');
+
       return target.rotateBy(runtimeNumber(args[0]), axis);
     }
+
     return null;
   }
   if (method === 'normalize') {
     if (!isVector(target)) throw runtimeError('normalize requires FdVector3d');
+
     return target.normalize();
   }
   if (method === 'mirror') {
     const normal = args[0];
     if (!isVector(target) || args.length !== 1 || !isVector(normal))
       throw runtimeError('mirror requires FdVector3d normal');
+
     return target.mirror(normal);
   }
   if (args.length !== 3) throw runtimeError('set requires x, y, z');
@@ -60,5 +66,6 @@ export function mutatedValue(
     z = runtimeNumber(args[2]);
   if (isPoint(target)) return new FdPoint3d(x, y, z);
   if (isVector(target)) return new FdVector3d(x, y, z);
+
   return null;
 }

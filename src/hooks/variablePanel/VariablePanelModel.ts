@@ -57,12 +57,14 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
 
   #findRow(name: string): number {
     if (name === '') return -1;
+
     return this.rows.findIndex((row) => row.name === name);
   }
 
   #blockSignals(block: boolean): boolean {
     const previous = this.#signalsBlocked;
     this.#signalsBlocked = block;
+
     return previous;
   }
 
@@ -108,6 +110,7 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
     this.#setSelectedRow(next);
     this.scrollRequest = { row: next, serial: ++this.#scrollSerial, center: false };
     this.changed();
+
     return true;
   }
 }

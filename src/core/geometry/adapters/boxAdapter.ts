@@ -23,12 +23,14 @@ const noConnector = 5;
 
 function argumentIndex(sig: ApiSignatureMetadata | null, args: RuntimeValue[], name: string): number {
   const index = parameterIndex(sig, name);
+
   return index >= 0 && index < args.length ? index : -1;
 }
 
 function suppliedVectors(args: RuntimeValue[], index: number, count: number): FdVector3d[] | null {
   const supplied: FdVector3d[] = [];
   if (!vectorArray(args[index], supplied) || supplied.length < count + 1) return null;
+
   return supplied.slice(0, count + 1);
 }
 
@@ -47,6 +49,7 @@ function sectionNormals(
     else if (i > 0) dir = toVec(centers[i]).sub(toVec(centers[i - 1]));
     normals.push(toFdVector(normalized(dir)));
   }
+
   return normals;
 }
 
@@ -58,6 +61,7 @@ function sectionUpVectors(
 ): FdVector3d[] | null {
   const upIndex = argumentIndex(sig, args, 'upVectors');
   if (upIndex >= 0) return suppliedVectors(args, upIndex, count);
+
   return normals.map(sdkPerpVector);
 }
 
@@ -75,6 +79,7 @@ function sectionDimensions(
   if (numberArray(args[index], values)) return values.length >= count + 1 ? values : null;
   const scalar = ref(0.0);
   if (!asNumber(args[index], scalar)) return null;
+
   return new Array<number>(count + 1).fill(scalar.v);
 }
 
@@ -85,6 +90,7 @@ function visibleSides(sig: ApiSignatureMetadata | null, args: RuntimeValue[], co
   const supplied: boolean[] = [];
   if (!boolArray(args[sidesIndex], supplied)) return null;
   for (let i = 0; i < sides.length && i < supplied.length; ++i) sides[i] = supplied[i];
+
   return sides;
 }
 
@@ -96,6 +102,7 @@ function endCaps(sig: ApiSignatureMetadata | null, args: RuntimeValue[]): { begi
   const endIndex = parameterIndex(sig, 'end');
   if (beginIndex >= 0 && beginIndex < args.length) asBool(args[beginIndex], beginning);
   if (endIndex >= 0 && endIndex < args.length) asBool(args[endIndex], endCap);
+
   return { beginning: beginning.v, endCap: endCap.v };
 }
 
@@ -131,15 +138,19 @@ function connectorSettings(
     const w = ref(0.0);
     if (asNumber(args[widthIndex], w)) width = stdMax(0.0, w.v);
   }
+
   return { side1: side1.v, side2: side2.v, width };
 }
 
 export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const call = context.call;
+
   const warn = (reason: string) => {
     scene.warnings.push(warningFor(call, reason));
+
     return true;
   };
+
   const sig = apiSignatureMetadataForCall(call);
   const countRef = ref(0);
   const centers: FdPoint3d[] = [];
@@ -168,6 +179,7 @@ export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext
   );
 
   const connectors = connectorSettings(sig, args);
+
   const appendConnector = (section: number, side: number, directionSign: number) => {
     if (side === noConnector) return;
     const connector = buildConnectorSleeveMesh(
@@ -184,7 +196,9 @@ export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext
     connector.apiName += '.connector';
     if (connector.indices.length !== 0) scene.meshes.push(connector);
   };
+
   appendConnector(0, connectors.side1, -1.0);
   appendConnector(count, connectors.side2, 1.0);
+
   return true;
 }

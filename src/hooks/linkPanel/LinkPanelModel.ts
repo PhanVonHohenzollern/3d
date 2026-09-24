@@ -76,6 +76,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   setExpressionEvaluator(evaluate: ConnectorExpressionEvaluator | null): void {
     this.#evaluate = evaluate;
   }
+
   setPreviewChangedCallback(callback: PreviewChangedCallback | null): void {
     this.#previewChanged = callback;
   }
@@ -103,6 +104,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     this.#setCurrentCell(row, Math.max(this.currentColumn, 0));
     this.scrollRequest = { row: this.currentRow, serial: ++this.#scrollSerial, center: false };
     this.changed();
+
     return true;
   }
 
@@ -216,6 +218,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     const entry = this.#entries[row];
     if (!entry.shown) {
       this.testSelection();
+
       return;
     }
     entry.shown = false;
@@ -248,6 +251,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       this.#setPointText(entry.definition.pointName);
       entry.error = error;
       this.showStatus();
+
       return;
     }
     entry.definition.pointName = name;
@@ -313,6 +317,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     if (row < 0 || row >= this.#entries.length) {
       this.statusText = '';
       this.changed();
+
       return;
     }
     const entry = this.#entries[row];
@@ -329,6 +334,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       this.#setCurrentCell(row, 1);
       this.scrollRequest = { row, serial: ++this.#scrollSerial, center: false };
       this.changed();
+
       return;
     }
   }

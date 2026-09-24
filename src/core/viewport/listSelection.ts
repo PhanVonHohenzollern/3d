@@ -38,16 +38,19 @@ export function extendedSelectionCommand(
       (!rightButtonPressed || row < 0)
     )
       return ClearAndSelect;
+
     return NoUpdate;
   }
   if (shift) return { current: true, op: 'Select' };
   if (control) return { op: 'Toggle' };
   if (state.dragSelecting) return { clear: true, current: true, op: 'Select' };
+
   return ClearAndSelect;
 }
 
 export function isListKey(key: string, modifiers: KeyboardModifiers): boolean {
   if (isSelectAllKey(key, modifiers) && !modifiers.alt) return true;
+
   return ['ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown', ' '].includes(key);
 }
 
@@ -79,5 +82,6 @@ export function moveCursor(key: string, current: number, count: number, pageRows
 export function rowRange(first: number, last: number): number[] {
   const rows: number[] = [];
   for (let row = first; row <= last; ++row) rows.push(row);
+
   return rows;
 }

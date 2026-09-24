@@ -18,18 +18,22 @@ class FakeEditor implements CodeEditorHandle {
   #lineStart(line: number): number {
     let position = 0;
     for (let i = 1; i < line; ++i) position = this.text.indexOf('\n', position) + 1;
+
     return position;
   }
+
   #setCursor(position: number): void {
     const moved = position !== this.cursor;
     this.cursor = position;
     if (moved) this.onCursorPositionChanged();
   }
+
   type(text: string, cursorLine: number): void {
     this.text = text;
     this.onTextChanged();
     this.#setCursor(this.#lineStart(cursorLine));
   }
+
   moveTo(line: number): void {
     this.#setCursor(this.#lineStart(line));
   }
@@ -37,28 +41,36 @@ class FakeEditor implements CodeEditorHandle {
   toPlainText() {
     return this.text;
   }
+
   clear() {
     this.text = '';
     this.cursor = 0;
     this.onTextChanged();
     this.onCursorPositionChanged();
   }
+
   currentLine() {
     return this.text.slice(0, this.cursor).split('\n').length;
   }
+
   blockCount() {
     return this.text.split('\n').length;
   }
+
   setTraceSourceLines(lines: ReadonlySet<number>, activeLine = -1) {
     this.traceLines = { lines: [...lines].sort((a, b) => a - b), active: activeLine };
   }
+
   setTextCursorToLine(line: number) {
     this.#setCursor(this.#lineStart(line));
   }
+
   centerCursor() {}
+
   cursorBlockText() {
     return this.text.split('\n')[this.currentLine() - 1];
   }
+
   insertAtCursorBlockEnd(text: string) {
     const start = this.#lineStart(this.currentLine());
     const end = start + this.cursorBlockText().length;
@@ -66,6 +78,7 @@ class FakeEditor implements CodeEditorHandle {
     this.onTextChanged();
     this.#setCursor(end + text.length);
   }
+
   setFocus() {
     this.focused = true;
   }
@@ -73,6 +86,7 @@ class FakeEditor implements CodeEditorHandle {
 
 function fakeViewport(log: string[]): Viewport3DHandle {
   let apiFocus = false;
+
   const record =
     (name: string) =>
     (...args: unknown[]) => {
@@ -87,6 +101,7 @@ function fakeViewport(log: string[]): Viewport3DHandle {
       );
       log.push(`${name}(${printable.join(', ')})`);
     };
+
   return {
     setRuntimeResult: record('setRuntimeResult'),
     setShowPoints: record('setShowPoints'),
@@ -144,6 +159,7 @@ function createMainWindow() {
   apiTrace.setHistorySourceActivatedCallback(mw.onApiTraceHistorySourceActivated);
   links.setExpressionEvaluator(mw.linkExpressionEvaluator);
   links.setPreviewChangedCallback(mw.onLinkPreviewChanged);
+
   return { mw, log, editor, variables, parameters, apiTrace, links };
 }
 
@@ -164,6 +180,7 @@ function keyEvent(
   target: 'input' | 'tree' | 'dialog' = 'tree',
 ) {
   const matches: Record<string, string> = { input: 'input', tree: '.tree-view', dialog: '[data-floating-window]' };
+
   return {
     key,
     shiftKey: !!modifiers.shift,

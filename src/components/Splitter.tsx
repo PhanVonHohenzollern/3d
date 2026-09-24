@@ -9,6 +9,7 @@ interface SplitterProps extends SplitterOptions {
 
 export function Splitter({ className, children, ...options }: SplitterProps) {
   const { containerRef, paneStyles, horizontal, onHandlePointerDown } = useSplitter(options);
+
   return (
     <div ref={containerRef} className={cn('flex h-full w-full overflow-hidden', !horizontal && 'flex-col', className)}>
       <div className="min-h-0 min-w-0 flex-none overflow-hidden" style={paneStyles[0]}>

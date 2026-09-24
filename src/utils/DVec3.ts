@@ -14,12 +14,15 @@ export class DVec3 {
   add(b: DVec3): DVec3 {
     return new DVec3(this.x + b.x, this.y + b.y, this.z + b.z);
   }
+
   sub(b: DVec3): DVec3 {
     return new DVec3(this.x - b.x, this.y - b.y, this.z - b.z);
   }
+
   mul(s: number): DVec3 {
     return new DVec3(this.x * s, this.y * s, this.z * s);
   }
+
   div(s: number): DVec3 {
     return new DVec3(this.x / s, this.y / s, this.z / s);
   }
@@ -40,5 +43,6 @@ export function length(v: DVec3): number {
 export function normalized(v: DVec3): DVec3 {
   const len = length(v);
   if (len <= 1e-12) return new DVec3();
+
   return v.div(len);
 }

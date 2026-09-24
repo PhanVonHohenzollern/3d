@@ -24,6 +24,7 @@ export function useCodeEditor({ onTextChanged, onCursorPositionChanged, ref }: C
     const view = new EditorView({ parent: hostRef.current!, state: EditorState.create({ doc: '', extensions }) });
     viewRef.current = view;
     extensionsRef.current = extensions;
+
     return () => {
       view.destroy();
       viewRef.current = null;

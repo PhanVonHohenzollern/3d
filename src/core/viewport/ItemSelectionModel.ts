@@ -17,6 +17,7 @@ export class ItemSelectionModel {
     if (!this.m_currentSelection.has(row)) return committed;
     if (this.m_currentCommand === 'Select') return true;
     if (this.m_currentCommand === 'Deselect') return false;
+
     return !committed;
   }
 
@@ -28,6 +29,7 @@ export class ItemSelectionModel {
       else if (result.has(row)) result.delete(row);
       else result.add(row);
     }
+
     return result;
   }
 
@@ -39,6 +41,7 @@ export class ItemSelectionModel {
       this.m_currentCommand = command.op;
       this.m_currentSelection = new Set(rows.filter((row) => row >= 0 && row < rowCount));
     }
+
     return !setsEqual(old, this.selectedRows());
   }
 

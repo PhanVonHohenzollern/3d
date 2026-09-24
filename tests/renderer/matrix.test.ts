@@ -57,7 +57,9 @@ describe('QMatrix4x4', () => {
     const f = center.sub(eye).normalized();
     const s = QVector3D.crossProduct(f, up).normalized();
     const u = QVector3D.crossProduct(s, f);
+
     const t = (v: QVector3D) => -QVector3D.dotProduct(v, eye);
+
     expectMatrixClose(m, [
       [s.x, s.y, s.z, t(s)],
       [u.x, u.y, u.z, t(u)],

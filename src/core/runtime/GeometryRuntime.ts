@@ -59,6 +59,7 @@ export class GeometryRuntime {
       : new ExprParser(Lexer.scanExpression(field), snapshot).parse();
     const number = runtimeNumber(value);
     if (!Number.isFinite(number)) throw runtimeError('value must be finite');
+
     return number;
   }
 
@@ -71,6 +72,7 @@ export class GeometryRuntime {
       if (state.m_values.has(request.variableName) && !snapshot.m_values.has(request.name))
         snapshot.m_values.set(request.name, runtimeDeepCopy(state.m_values.get(request.variableName)));
     }
+
     return snapshot;
   }
 

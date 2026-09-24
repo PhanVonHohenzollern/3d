@@ -20,6 +20,7 @@ export function isNumeric(v: RuntimeValue): v is number | bigint | boolean {
 export function addValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
   if (isNumeric(a) && isNumeric(b)) {
     if (isInt(a) && isInt(b)) return wrapInt64(a + b);
+
     return runtimeNumber(a) + runtimeNumber(b);
   }
   if (isPoint(a) && isVector(b)) return a.add(b);
@@ -32,6 +33,7 @@ export function addValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
 export function subValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
   if (isNumeric(a) && isNumeric(b)) {
     if (isInt(a) && isInt(b)) return wrapInt64(a - b);
+
     return runtimeNumber(a) - runtimeNumber(b);
   }
   if (isPoint(a)) {
@@ -46,6 +48,7 @@ export function subValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
 export function mulValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
   if (isNumeric(a) && isNumeric(b)) {
     if (isInt(a) && isInt(b)) return wrapInt64(a * b);
+
     return runtimeNumber(a) * runtimeNumber(b);
   }
   if (isNumeric(a) && isVector(b)) return b.mul(runtimeNumber(a));
@@ -64,6 +67,7 @@ export function divValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
 export function modValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
   const divisor = runtimeInteger(b);
   if (divisor === 0n) throw runtimeError('modulo by zero');
+
   return runtimeInteger(a) % divisor;
 }
 
@@ -79,6 +83,7 @@ export function equalValues(a: RuntimeValue, b: RuntimeValue): boolean {
   if (isString(a) && isString(b)) return a === b;
   if (isPoint(a) && isPoint(b)) return a.x === b.x && a.y === b.y && a.z === b.z;
   if (isVector(a) && isVector(b)) return a.x === b.x && a.y === b.y && a.z === b.z;
+
   return false;
 }
 
@@ -97,6 +102,7 @@ export function compareValues(op: string, lhs: RuntimeValue, rhs: RuntimeValue):
   if (op === '<') return a < b;
   if (op === '>') return a > b;
   if (op === '<=') return a <= b;
+
   return a >= b;
 }
 
@@ -104,5 +110,6 @@ export const compoundOperation = (op: string, current: RuntimeValue, rhs: Runtim
   if (op === '+=') return addValues(current, rhs);
   if (op === '-=') return subValues(current, rhs);
   if (op === '*=') return mulValues(current, rhs);
+
   return divValues(current, rhs);
 };

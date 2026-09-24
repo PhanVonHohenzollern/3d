@@ -21,6 +21,7 @@ export function earlierChanges(result: RuntimeResult, sources: readonly RuntimeV
       pending.push(...result.variableChanges[history[i]].sources);
     }
   }
+
   return [...changes].sort((a, b) => b - a);
 }
 

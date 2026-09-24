@@ -27,6 +27,7 @@ export function useViewportPointer(engine: ViewportEngine, hostRef: RefObject<HT
     buttonsRef.current = buttons;
     if (!chordChanged) {
       engine.mouseMoveEvent(data(e, NoButton, buttons));
+
       return;
     }
     const button = mouseButtonFromDom(e.button);

@@ -28,6 +28,7 @@ export function useDebugLabelList(panel: DebugLabelPanel, listRef: RefObject<HTM
 
   const listPosition = (e: { clientX: number; clientY: number }) => {
     const rect = listRef.current!.getBoundingClientRect();
+
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 

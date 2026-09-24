@@ -17,6 +17,7 @@ export function EditableComboBox({ value, items, disabled, placeholder, onTextCh
     items,
     onTextChanged,
   );
+
   return (
     <div ref={rootRef} className="relative flex min-w-[100px]">
       <LineEdit

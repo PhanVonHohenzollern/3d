@@ -36,8 +36,10 @@ function parseConnector(spec: string, id: number): ConnectorDirective {
   const orientations = ['XPositive', 'XNegative', 'YPositive', 'YNegative', 'ZPositive', 'ZNegative'] as const;
   const position = f[5].split(',');
   const angles = f[6].split(',');
+
   const triple = (parts: string[]): [string, string, string] =>
     [0, 1, 2].map((i) => (i < parts.length ? trimmed(parts[i]) : '0')) as [string, string, string];
+
   return {
     id,
     type: trimmed(f[0]) === 'Rectangular' ? 'Rectangular' : 'Circular',
@@ -75,6 +77,7 @@ export function parseFixture(file: string): Fixture {
     else if (key === 'connector') connectors.push(parseConnector(rest, connectors.length + 1));
   }
   if (!lines.length) lines.push(textLines.length);
+
   return {
     name: path.relative(fixturesRoot, file).split(path.sep).join('/'),
     file,
@@ -89,6 +92,7 @@ export function parseFixture(file: string): Fixture {
 export function listFixtures(...subdirs: string[]): Fixture[] {
   const roots = subdirs.length ? subdirs.map((d) => path.join(fixturesRoot, d)) : [fixturesRoot];
   const files: string[] = [];
+
   const walk = (dir: string) => {
     if (!fs.existsSync(dir)) return;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -97,8 +101,10 @@ export function listFixtures(...subdirs: string[]): Fixture[] {
       else if (entry.name.endsWith('.cpp')) files.push(full);
     }
   };
+
   roots.forEach(walk);
   const filter = process.env.FIXTURE;
+
   return files
     .sort()
     .map(parseFixture)

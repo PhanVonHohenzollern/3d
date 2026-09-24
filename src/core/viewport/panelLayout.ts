@@ -31,6 +31,7 @@ export function debugLabelPanelsLayout(input: DebugLabelPanelsLayoutInput): Debu
   const availableHeight = Math.max(0, height - buttonHeight - 3 * kSelectionButtonMargin);
   const vectorHeight = availableHeight;
   const show = input.showLabels && availableHeight >= 50 && columnWidth >= 60;
+
   return {
     button,
     point: new QRect(kPanelMargin, kPanelMargin, columnWidth, Math.min(availableHeight, pointContentHeight)),

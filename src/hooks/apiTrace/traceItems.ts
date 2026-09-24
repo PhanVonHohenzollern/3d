@@ -46,11 +46,13 @@ export const kSelectedTraceForeground = '#ffe4a0';
 
 export function setValue(item: TreeWidgetItem, value: RuntimeValue): void {
   item.setText(TraceColumn.Type, runtimeTypeName(value));
+
   const coordinates = (x: number, y: number, z: number) => {
     item.setText(TraceColumn.X, runtimeValueToCompactString(x));
     item.setText(TraceColumn.Y, runtimeValueToCompactString(y));
     item.setText(TraceColumn.Z, runtimeValueToCompactString(z));
   };
+
   if (isPoint(value)) coordinates(value.x, value.y, value.z);
   else if (isVector(value)) coordinates(value.x, value.y, value.z);
   else if (isArray(value)) {

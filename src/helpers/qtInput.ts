@@ -54,5 +54,6 @@ export function mouseEventData(
 export function wheelAngleDeltaY(e: { deltaY: number; deltaMode: number }): number {
   if (e.deltaMode === kDomDeltaLine) return -e.deltaY * (kQtAngleDeltaPerNotch / kBrowserLinesPerNotch);
   if (e.deltaMode === kDomDeltaPage) return -e.deltaY * kQtAngleDeltaPerNotch;
+
   return -e.deltaY * (kQtAngleDeltaPerNotch / kBrowserPixelsPerNotch);
 }

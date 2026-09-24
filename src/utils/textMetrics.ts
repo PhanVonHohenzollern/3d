@@ -47,6 +47,7 @@ export function elidedText(
 
   const availableWidth = width - measurer.horizontalAdvance(kEllipsis, font);
   if (availableWidth < 0) return '';
+
   const charWidth = (i: number) => measurer.horizontalAdvance(chars[i], font);
 
   if (mode === 'ElideRight') {
@@ -58,6 +59,7 @@ export function elidedText(
       ++nextBreak;
       currentWidth += charWidth(pos);
     } while (nextBreak < to && currentWidth < availableWidth);
+
     return chars.slice(0, pos).join('') + kEllipsis;
   }
 
@@ -75,5 +77,6 @@ export function elidedText(
     leftWidth += charWidth(leftPos);
     rightWidth += charWidth(nextRightBreak);
   } while (nextLeftBreak < to && nextRightBreak > 0 && leftWidth + rightWidth < availableWidth);
+
   return chars.slice(0, leftPos).join('') + kEllipsis + chars.slice(rightPos).join('');
 }

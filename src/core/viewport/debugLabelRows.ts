@@ -12,6 +12,7 @@ export function sameEntries(a: readonly DebugLabelEntry[], b: readonly DebugLabe
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; ++i)
     if (a[i].id !== b[i].id || a[i].name !== b[i].name || a[i].value !== b[i].value) return false;
+
   return true;
 }
 
@@ -30,6 +31,7 @@ export function labelRowLayout(
     Math.trunc((contentWidth * kMaximumValuePercent) / 100),
   );
   const nameWidth = Math.max(0, contentWidth - valueWidth - kNameValueGap);
+
   return {
     id: entry?.id ?? '',
     selected,

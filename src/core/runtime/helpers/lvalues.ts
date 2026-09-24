@@ -44,6 +44,7 @@ export function readLValue(ref: LValueRef): RuntimeValue {
   if (!isPoint(current) && !isVector(current)) throw runtimeError('.x/.y/.z requires FdPoint3d or FdVector3d');
   if (ref.member === 'x') return current.x;
   if (ref.member === 'y') return current.y;
+
   return current.z;
 }
 
@@ -51,6 +52,7 @@ export function writeLValue(ref: LValueRef, value: RuntimeValue): void {
   if (ref.member === '') {
     const type = runtimeTypeName(ref.slot.get());
     ref.slot.set(kCoercedTypes.includes(type) ? runtimeCoerceToType(value, type) : runtimeDeepCopy(value));
+
     return;
   }
   const n = runtimeNumber(value);

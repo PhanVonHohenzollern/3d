@@ -40,13 +40,16 @@ export function appendVerySimpleTube(
   }
   if (!ok) {
     scene.warnings.push(warningFor(call, 'unsupported or invalid arguments'));
+
     return true;
   }
   if (diameter.v <= 0.0 || segments.v < 1 || length(toVec(end.v).sub(toVec(start.v))) <= kEps) {
     scene.warnings.push(warningFor(call, 'invalid tube dimensions'));
+
     return true;
   }
   scene.meshes.push(buildTaperedTubeMesh(context, start.v, end.v, diameter.v, diameter.v, segments.v));
+
   return true;
 }
 
@@ -78,13 +81,16 @@ export function appendSimpleTube(
   }
   if (!ok) {
     scene.warnings.push(warningFor(call, 'unsupported or invalid arguments'));
+
     return true;
   }
   if (diameter1.v <= 0.0 || diameter2.v <= 0.0 || segments.v < 1 || length(toVec(end.v).sub(toVec(start.v))) <= kEps) {
     scene.warnings.push(warningFor(call, 'invalid simple-tube dimensions'));
+
     return true;
   }
   scene.meshes.push(buildTaperedTubeMesh(context, start.v, end.v, diameter1.v, diameter2.v, segments.v));
+
   return true;
 }
 
@@ -112,6 +118,7 @@ export function appendTube(scene: PreviewGeometryScene, context: MeshBuildContex
     asBool(args[complexityIndex + 3], segment);
   if (!ok) {
     scene.warnings.push(warningFor(call, 'invalid makeTube arguments'));
+
     return true;
   }
   const sections = stdMax(0, numOfSegs.v) + 1;
@@ -123,6 +130,7 @@ export function appendTube(scene: PreviewGeometryScene, context: MeshBuildContex
     diameters.length < sections
   ) {
     scene.warnings.push(warningFor(call, 'makeTube arrays must contain numOfSegs+1 sections'));
+
     return true;
   }
   if (upVectors.length === 0) {
@@ -132,6 +140,7 @@ export function appendTube(scene: PreviewGeometryScene, context: MeshBuildContex
   }
   if (upVectors.length < sections) {
     scene.warnings.push(warningFor(call, 'makeTube up-vector array is too small'));
+
     return true;
   }
   let validDiameters = true;
@@ -139,11 +148,13 @@ export function appendTube(scene: PreviewGeometryScene, context: MeshBuildContex
     validDiameters = validDiameters && diameters[section].length >= 2;
   if (!validDiameters) {
     scene.warnings.push(warningFor(call, 'makeTube diameters require [][2]'));
+
     return true;
   }
   scene.meshes.push(
     buildSectionTubeMesh(context, centers, normals, upVectors, diameters, complexity.v, numOfSegs.v, half.v),
   );
+
   return true;
 }
 
@@ -178,6 +189,7 @@ export function appendStraightTube(
   const diameters: number[][] = [];
   for (let i = 0; i < sections; ++i) diameters[i] = [diams[i], diams[i]];
   pushNonEmptyMesh(scene, buildSectionTubeMesh(context, centers, normals, ups, diameters, n.v, numOfSegs.v, false));
+
   return true;
 }
 
@@ -211,5 +223,6 @@ export function appendUniVectorTube(
   const diameters: number[][] = [];
   for (let i = 0; i < sections; ++i) diameters[i] = [diams[i], diams[i]];
   pushNonEmptyMesh(scene, buildSectionTubeMesh(context, centers, normals, ups, diameters, n.v, numOfSegs.v, false));
+
   return true;
 }

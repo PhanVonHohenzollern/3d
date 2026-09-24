@@ -31,6 +31,7 @@ function missingAdapterWarning(call: RuntimeApiCall): string | null {
   if (call.userFunctionCall) return null;
   const sig = apiSignatureMetadataForCall(call);
   if (!sig || !adapterWarningHeaders.has(sig.sourceHeader) || !isGeometryCallName(call.name)) return null;
+
   return warningFor(call, 'preview adapter not implemented; no substitute mesh was generated');
 }
 
@@ -74,6 +75,7 @@ export class PreviewGeometryEngine {
       const transform = transformByApi.get(mesh.apiIndex);
       if (transform !== undefined) applyTransform(mesh, transform);
     }
+
     return scene;
   }
 }

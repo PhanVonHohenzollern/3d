@@ -22,6 +22,7 @@ describe('ExtendedSelection commands', () => {
   it('press: plain selects, Ctrl toggles, Shift extends, selected rows wait for the release', () => {
     const press = (modifiers = NoModifier, state = idle, row = 2) =>
       extendedSelectionCommand(row, { type: 'press', button: 1, modifiers }, state);
+
     expect(press()).toEqual({ clear: true, op: 'Select' });
     expect(press({ ...NoModifier, control: true })).toEqual({ op: 'Toggle' });
     expect(press({ ...NoModifier, shift: true })).toEqual({ current: true, op: 'Select' });

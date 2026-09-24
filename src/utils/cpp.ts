@@ -9,6 +9,7 @@ export class CppException extends Error {
 
 export function what(e: unknown): string {
   if (e instanceof Error) return e.message;
+
   return String(e);
 }
 
@@ -18,15 +19,20 @@ export function vectorAt<T>(v: readonly T[], n: number): T {
       'out_of_range',
       `vector::_M_range_check: __n (which is ${n}) >= this->size() (which is ${v.length})`,
     );
+
   return v[n];
 }
 
 export const isspace = (ch: string | undefined): boolean =>
   ch === ' ' || ch === '\t' || ch === '\n' || ch === '\v' || ch === '\f' || ch === '\r';
+
 export const isdigit = (ch: string | undefined): boolean => ch !== undefined && ch >= '0' && ch <= '9';
+
 export const isalpha = (ch: string | undefined): boolean =>
   ch !== undefined && ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
+
 export const isalnum = (ch: string | undefined): boolean => isalpha(ch) || isdigit(ch);
+
 export const isxdigit = (ch: string | undefined): boolean =>
   isdigit(ch) || (ch !== undefined && ((ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')));
 
@@ -35,6 +41,7 @@ export const INT64_MAX = (1n << 63n) - 1n;
 
 export function doubleToInt64(value: number): bigint {
   if (!Number.isFinite(value) || value >= 9223372036854775808 || value < -9223372036854775808) return INT64_MIN;
+
   return BigInt(Math.trunc(value));
 }
 
@@ -59,6 +66,7 @@ function exactDecimal(x: number): ExactDecimal {
     exponent = biased - 1075;
   }
   if (exponent >= 0) return { digits: mantissa << BigInt(exponent), scale: 0 };
+
   return { digits: mantissa * 5n ** BigInt(-exponent), scale: -exponent };
 }
 
@@ -68,6 +76,7 @@ function roundScaled(d: ExactDecimal, p: number): bigint {
   let q = d.digits / divisor;
   const twice = (d.digits % divisor) * 2n;
   if (twice > divisor || (twice === divisor && (q & 1n) === 1n)) q += 1n;
+
   return q;
 }
 
@@ -75,18 +84,21 @@ const isNegative = (x: number) => x < 0 || Object.is(x, -0);
 
 function nonFinite(x: number): string {
   if (Number.isNaN(x)) return 'nan';
+
   return x < 0 ? '-inf' : 'inf';
 }
 
 function insertPoint(digits: string, precision: number): string {
   if (precision <= 0) return digits;
   const padded = digits.padStart(precision + 1, '0');
+
   return `${padded.slice(0, -precision)}.${padded.slice(-precision)}`;
 }
 
 export function formatFixed(x: number, precision = 6): string {
   if (!Number.isFinite(x)) return nonFinite(x);
   const q = roundScaled(exactDecimal(x), precision);
+
   return (isNegative(x) ? '-' : '') + insertPoint(q.toString(), precision);
 }
 
@@ -99,23 +111,27 @@ function scientificParts(x: number, precision: number): { mantissa: bigint; expo
     mantissa /= 10n;
     exponent += 1;
   }
+
   return { mantissa, exponent };
 }
 
 function exponentSuffix(exponent: number): string {
   const magnitude = Math.abs(exponent).toString().padStart(2, '0');
+
   return `e${exponent < 0 ? '-' : '+'}${magnitude}`;
 }
 
 export function formatScientific(x: number, precision = 6): string {
   if (!Number.isFinite(x)) return nonFinite(x);
   const { mantissa, exponent } = scientificParts(x, precision);
+
   return (isNegative(x) ? '-' : '') + insertPoint(mantissa.toString(), precision) + exponentSuffix(exponent);
 }
 
 function stripTrailingZeros(s: string): string {
   if (!s.includes('.')) return s;
   s = s.replace(/0+$/, '');
+
   return s.endsWith('.') ? s.slice(0, -1) : s;
 }
 
@@ -126,6 +142,7 @@ export function formatGeneral(x: number, precision = 6): string {
   if (p > exponent && exponent >= -4) return stripTrailingZeros(formatFixed(x, p - 1 - exponent));
   const s = formatScientific(x, p - 1);
   const e = s.indexOf('e');
+
   return stripTrailingZeros(s.slice(0, e)) + s.slice(e);
 }
 
@@ -143,6 +160,7 @@ export function strtod(text: string, start = 0): { value: number; end: number; e
   const special = /^(inf(inity)?|nan(\([0-9A-Za-z_]*\))?)/i.exec(rest);
   if (special) {
     const value = special[0][0].toLowerCase() === 'i' ? Infinity : NaN;
+
     return { value: sign * value, end: i + special[0].length, erange: false };
   }
   const hex = /^0[xX]((?:[0-9a-fA-F]+\.?[0-9a-fA-F]*|\.[0-9a-fA-F]+))(?:[pP]([+-]?\d+))?/.exec(rest);
@@ -156,6 +174,7 @@ export function strtod(text: string, start = 0): { value: number; end: number; e
       scale /= 16;
     }
     value *= 2 ** Number(hex[2] ?? 0);
+
     return { value: sign * value, end: i + hex[0].length, erange: !Number.isFinite(value) };
   }
   const dec = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(rest);
@@ -163,6 +182,7 @@ export function strtod(text: string, start = 0): { value: number; end: number; e
   const value = Number(dec[0]);
   const nonzeroDigits = /[1-9]/.test(dec[0].replace(/[eE].*$/, ''));
   const erange = !Number.isFinite(value) || (nonzeroDigits && Math.abs(value) < 2.2250738585072014e-308);
+
   return { value: sign * value, end: i + dec[0].length, erange };
 }
 
@@ -170,6 +190,7 @@ export function stod(text: string): { value: number; used: number } {
   const { value, end, erange } = strtod(text);
   if (end === 0) throw new CppException('invalid_argument', 'stod');
   if (erange) throw new CppException('out_of_range', 'stod');
+
   return { value, used: end };
 }
 
@@ -180,6 +201,7 @@ export function stoll(text: string): { value: bigint; used: number } {
   if (!m) throw new CppException('invalid_argument', 'stoll');
   const value = BigInt(m[0]);
   if (value < INT64_MIN || value > INT64_MAX) throw new CppException('out_of_range', 'stoll');
+
   return { value, used: i + m[0].length };
 }
 
@@ -204,6 +226,7 @@ export function trim(s: string): string {
   let end = s.length;
   while (begin < end && isspace(s[begin])) ++begin;
   while (end > begin && isspace(s[end - 1])) --end;
+
   return s.slice(begin, end);
 }
 
@@ -212,5 +235,6 @@ export const cppRound = (x: number): number => (x < 0 ? -Math.round(-x) : Math.r
 export function cppPow(x: number, y: number): number {
   if (x === 1 || y === 0) return 1;
   if (x === -1 && (y === Infinity || y === -Infinity)) return 1;
+
   return Math.pow(x, y);
 }

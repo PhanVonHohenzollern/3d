@@ -33,6 +33,7 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
   }, [editorSerial]);
 
   const focusTable = () => tableRef.current?.focus({ preventScroll: true });
+
   const ignored = (event: MouseEvent) => event.button !== 0 || isInElement(event, 'input') || isInTableHeader(event);
 
   const onMouseDown = (event: MouseEvent) => {
@@ -41,22 +42,27 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
     const { row, column } = tableCellOf(event);
     if (event.detail === 2) {
       model.mouseDoubleClick(row, column);
+
       return;
     }
     const closedEditor = model.editor !== null;
     focusTable();
     model.mousePress(row, column, eventModifiers(event).control, closedEditor);
   };
+
   const onMouseUp = (event: MouseEvent) => {
     if (ignored(event)) return;
     const { row, column } = tableCellOf(event);
     model.mouseRelease(row, column);
   };
+
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.target !== tableRef.current || event.altKey || event.ctrlKey || event.metaKey) return;
     if (model.keyPress(event.key, event.shiftKey)) event.preventDefault();
   };
+
   const onEditorChange = (event: ChangeEvent<HTMLInputElement>) => model.editorTextEdited(event.target.value);
+
   const onEditorKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -73,6 +79,7 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
       if (!model.editor) focusTable();
     }
   };
+
   const onEditorBlur = (event: FocusEvent<HTMLInputElement>) =>
     model.commitEditor(Number(event.currentTarget.dataset.serial));
 

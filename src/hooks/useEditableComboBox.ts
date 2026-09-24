@@ -7,10 +7,13 @@ export function useEditableComboBox(value: string, items: readonly string[], onT
 
   useEffect(() => {
     if (!open) return;
+
     const close = (event: Event) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
+
     window.addEventListener('mousedown', close, true);
+
     return () => window.removeEventListener('mousedown', close, true);
   }, [open]);
 
@@ -25,6 +28,7 @@ export function useEditableComboBox(value: string, items: readonly string[], onT
       event.stopPropagation();
       event.preventDefault();
       setOpen(false);
+
       return;
     }
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && items.length && !event.altKey) {

@@ -7,6 +7,7 @@ import { TreeView } from './TreeView';
 export function ApiHistoryDialog({ dialog }: { dialog: ApiHistoryDialogModel }) {
   const { open, title, caption, tree, raiseSerial, close } = useApiHistoryDialog(dialog);
   if (!open) return null;
+
   return (
     <FloatingWindow title={title} raiseSerial={raiseSerial} onClose={close}>
       <div className="flex-none wrap-anywhere whitespace-pre-wrap select-text">{caption}</div>

@@ -16,6 +16,7 @@ export function useViewportEngine(ref: Ref<Viewport3DHandle> | undefined, props:
     engine.setPointCreationCallback((point) => propsRef.current.onPointCreation?.(point));
     engine.setMeshSelectionCallback((apiIndex, sourceLine) => propsRef.current.onMeshSelection?.(apiIndex, sourceLine));
     engine.setConnectorSelectionCallback((id) => propsRef.current.onConnectorSelection?.(id));
+
     return () => {
       engine.setSelectionChangedCallback(null);
       engine.setPointCreationCallback(null);

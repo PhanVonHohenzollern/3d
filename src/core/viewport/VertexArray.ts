@@ -14,6 +14,7 @@ export class VertexArray {
   size(): number {
     return this.m_size;
   }
+
   empty(): boolean {
     return this.m_size === 0;
   }
@@ -70,6 +71,7 @@ export class VertexArray {
 
   position(i: number): QVector3D {
     const o = i * kVertexFloats;
+
     return new QVector3D(this.m_data[o], this.m_data[o + 1], this.m_data[o + 2]);
   }
 }

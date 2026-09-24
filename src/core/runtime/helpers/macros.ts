@@ -29,9 +29,11 @@ export function parseMacroDefinition(lineText: string): MacroDefinition | null {
       .map(trim)
       .filter((param) => param !== '');
     const expression = trim(definition.slice(close + 1));
+
     return expression === '' ? null : { kind: 'function', name, macro: { parameters, expression } };
   }
 
   const expression = trim(definition.slice(nameEnd));
+
   return expression === '' ? null : { kind: 'object', name, expression };
 }

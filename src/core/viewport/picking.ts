@@ -45,6 +45,7 @@ export function pickMeshAlongRay(
       }
     }
   }
+
   return picked;
 }
 
@@ -91,6 +92,7 @@ export function pickDebugItemAt(
       bestName = item.name;
     }
   }
+
   return bestName;
 }
 
@@ -107,5 +109,6 @@ export function pickConnectorAt(connectors: readonly ConnectorPreview[], screen:
       result = connector.id;
     }
   }
+
   return result;
 }

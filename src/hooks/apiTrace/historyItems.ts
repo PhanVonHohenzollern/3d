@@ -55,6 +55,7 @@ function setCurrentSource(
   }
   row.setText(Expression, displayExpression(expression, value));
   if (line > 0) row.setText(Line, String(line));
+
   return line;
 }
 

@@ -39,11 +39,13 @@ export function appendFacettedCylinder(
     !asBool(args[8], back)
   ) {
     scene.warnings.push(warningFor(call, 'invalid facetted-cylinder arguments'));
+
     return true;
   }
   const complexity = llroundToInt(complexityD.v);
   if (diameter.v <= 0.0 || complexity < 1 || length(toVec(end.v).sub(toVec(start.v))) <= kEps) {
     scene.warnings.push(warningFor(call, 'invalid facetted-cylinder dimensions'));
+
     return true;
   }
   scene.meshes.push(
@@ -60,6 +62,7 @@ export function appendFacettedCylinder(
       back.v,
     ),
   );
+
   return true;
 }
 
@@ -83,15 +86,18 @@ export function appendScrew(scene: PreviewGeometryScene, context: MeshBuildConte
     (args.length === 7 && !asBool(args[6], front))
   ) {
     scene.warnings.push(warningFor(call, 'invalid screw arguments'));
+
     return true;
   }
   if (!validDirection(direction.v) || diameter.v <= 0.0 || Math.abs(screwLength.v) <= kEps) {
     scene.warnings.push(warningFor(call, 'invalid screw dimensions/vector'));
+
     return true;
   }
   const dir = normalized(toVec(direction.v));
   const end = toPoint(toVec(start.v).add(dir.mul(screwLength.v)));
   scene.meshes.push(buildFacettedCylinderMesh(context, start.v, end, up.v, diameter.v, 0.0, 360.0, 6, front.v, back.v));
+
   return true;
 }
 
@@ -111,13 +117,16 @@ export function appendRectFace(scene: PreviewGeometryScene, context: MeshBuildCo
     !asNumber(args[4], width)
   ) {
     scene.warnings.push(warningFor(call, 'invalid rect-face arguments'));
+
     return true;
   }
   if (!validDirection(normal.v) || !validDirection(up.v) || height.v <= 0.0 || width.v <= 0.0) {
     scene.warnings.push(warningFor(call, 'invalid rect-face dimensions/vectors'));
+
     return true;
   }
   scene.meshes.push(buildRectFaceMesh(context, center.v, normal.v, up.v, height.v, width.v));
+
   return true;
 }
 
@@ -125,6 +134,7 @@ export function appendPlane(scene: PreviewGeometryScene, context: MeshBuildConte
   const planePoints: FdPoint3d[] = [];
   if (args.length !== 0 && pointArray(args[0], planePoints) && planePoints.length >= 4) {
     pushNonEmptyMesh(scene, buildPolygonFaceMesh(context, planePoints.slice(0, 4)));
+
     return true;
   }
   if (args.length >= 4) {
@@ -134,6 +144,7 @@ export function appendPlane(scene: PreviewGeometryScene, context: MeshBuildConte
       p4 = ref(new FdPoint3d());
     if (asPoint(args[0], p1) && asPoint(args[1], p2) && asPoint(args[2], p3) && asPoint(args[3], p4)) {
       pushNonEmptyMesh(scene, buildPolygonFaceMesh(context, [p1.v, p2.v, p3.v, p4.v]));
+
       return true;
     }
   }
@@ -155,9 +166,11 @@ export function appendPlane(scene: PreviewGeometryScene, context: MeshBuildConte
       l.v > 0.0
     ) {
       pushNonEmptyMesh(scene, buildRectFaceMesh(context, cp.v, normal.v, up.v, h.v, l.v));
+
       return true;
     }
   }
+
   return false;
 }
 
@@ -184,5 +197,6 @@ export function appendConnector(scene: PreviewGeometryScene, context: MeshBuildC
 
   const connector = buildConnectorSleeveMesh(context, center.v, normal.v, up.v, width.v, height.v, frameWidth, 0, 1.0);
   pushNonEmptyMesh(scene, connector);
+
   return true;
 }

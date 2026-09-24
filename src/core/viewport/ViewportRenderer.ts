@@ -109,6 +109,7 @@ export class ViewportRenderer {
       this.m_dynamicQuads = this.createQuadStream(gl);
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
     return true;
   }
 
@@ -196,6 +197,7 @@ export class ViewportRenderer {
       gl.bufferData(gl.ARRAY_BUFFER, quads, gl.DYNAMIC_DRAW);
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
     return true;
   }
 
@@ -209,6 +211,7 @@ export class ViewportRenderer {
     gl.disable(gl.BLEND);
     gl.disable(gl.CULL_FACE);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
     return true;
   }
 
@@ -276,6 +279,7 @@ export class ViewportRenderer {
     gl.enableVertexAttribArray(3);
     gl.vertexAttribPointer(3, 2, gl.FLOAT, false, kLineQuadBytes, 9 * 4);
     gl.bindVertexArray(null);
+
     return { vao, buffer };
   }
 
@@ -312,6 +316,7 @@ export class ViewportRenderer {
     const c = this.m_uniformOverrideColor;
     gl.uniform3f(program.uOverrideColor, c.x, c.y, c.z);
     gl.drawArrays(gl.TRIANGLES, quadFirst * kLineQuadVerticesPerVertex, count * kLineQuadVerticesPerVertex);
+
     return true;
   }
 }

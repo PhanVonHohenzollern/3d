@@ -22,6 +22,7 @@ const isWord = (kind: TokKind) => kind === TokKind.Identifier || kind === TokKin
 
 export function sliceTokens(v: readonly Token[], begin: number, end: number): Token[] {
   if (begin > end || end > v.length) return [];
+
   return v.slice(begin, end);
 }
 
@@ -34,6 +35,7 @@ export function tokensToExpression(tokens: readonly Token[]): string {
     out += text;
     previousKind = token.kind;
   }
+
   return out;
 }
 
@@ -44,6 +46,7 @@ export function tokensToText(tokens: readonly Token[]): string {
     out += t.kind === TokKind.String ? `"${t.text}"` : t.text;
     if (i + 1 < tokens.length && isWord(t.kind) && isWord(tokens[i + 1].kind)) out += ' ';
   }
+
   return out;
 }
 
@@ -67,6 +70,7 @@ export function splitTopLevel(tokens: readonly Token[], separator: string): Toke
     }
   }
   result.push(sliceTokens(tokens, start, tokens.length));
+
   return result;
 }
 
@@ -84,6 +88,7 @@ export function parseCallArguments(tokens: readonly Token[], lparen: number): To
       if (paren === 0 && bracket === 0 && brace === 0) {
         if (i > start) args.push(sliceTokens(tokens, start, i));
         else if (start !== lparen + 1) args.push([]);
+
         return args;
       }
       --paren;
@@ -96,6 +101,7 @@ export function parseCallArguments(tokens: readonly Token[], lparen: number): To
       start = i + 1;
     }
   }
+
   return args;
 }
 
@@ -116,6 +122,7 @@ export function findTopLevelAssignment(tokens: readonly Token[]): { index: numbe
     else if (paren === 0 && bracket === 0 && brace === 0 && kAssignmentOperators.includes(t.text))
       return { index: i, op: t.text };
   }
+
   return null;
 }
 
@@ -128,5 +135,6 @@ export function matchingBracketEnd(tokens: readonly Token[], begin: number): { e
     if (depth === 0) break;
     ++p;
   }
+
   return { end: p, closed: depth === 0 };
 }
