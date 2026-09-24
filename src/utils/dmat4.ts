@@ -14,6 +14,7 @@ function zeroMatrix(): DMat4 {
 export function identityMatrix(): DMat4 {
   const r = zeroMatrix();
   for (let i = 0; i < 4; ++i) r[i][i] = 1.0;
+
   return r;
 }
 
@@ -21,6 +22,7 @@ export function multiply(a: DMat4, b: DMat4): DMat4 {
   const r = zeroMatrix();
   for (let row = 0; row < 4; ++row)
     for (let col = 0; col < 4; ++col) for (let k = 0; k < 4; ++k) r[row][col] += a[row][k] * b[k][col];
+
   return r;
 }
 
@@ -29,6 +31,7 @@ export function translationMatrix(v: Xyz): DMat4 {
   r[0][3] = v.x;
   r[1][3] = v.y;
   r[2][3] = v.z;
+
   return r;
 }
 
@@ -51,6 +54,7 @@ export function rotationMatrix(angle: number, axisInput: Xyz): DMat4 {
   r[2][0] = t * x * z - si * y;
   r[2][1] = t * y * z + si * x;
   r[2][2] = t * z * z + c;
+
   return r;
 }
 

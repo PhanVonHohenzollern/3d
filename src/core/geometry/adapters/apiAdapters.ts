@@ -74,6 +74,7 @@ export function appendPrimitiveApiMeshes(
   args: RuntimeValue[],
 ): boolean {
   const adapter = primitiveAdapters.get(context.call.name);
+
   return adapter !== undefined && adapter(scene, context, args);
 }
 
@@ -91,5 +92,6 @@ export function appendCompositeApiMeshes(
   if (call.name.startsWith('append') || call.name.startsWith('calc') || call.name === 'SidePoints') return false;
 
   const adapter = compositeAdapters.get(call.name);
+
   return adapter !== undefined && adapter(scene, context, args);
 }

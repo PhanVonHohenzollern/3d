@@ -51,6 +51,7 @@ export class RuntimeState {
 
   lookupValue(name: string): RuntimeValue {
     if (!this.m_values.has(name)) throw runtimeError('unknown variable: ' + name);
+
     return runtimeDeepCopy(this.m_values.get(name));
   }
 
@@ -80,6 +81,7 @@ export class RuntimeState {
         historyEnd: this.m_variableChanges.length,
       });
     }
+
     return sources;
   }
 
@@ -128,6 +130,7 @@ export class RuntimeState {
         p += 2;
       } else break;
     }
+
     return { path, value };
   }
 
@@ -143,6 +146,7 @@ export class RuntimeState {
       else if (expression !== '') elementExpression = `${expression}[${i}]`;
       trace.elements.push(this.captureArgumentTrace(elementExpression, value.elements[i], depth + 1));
     }
+
     return trace;
   }
 
@@ -211,6 +215,7 @@ export class RuntimeState {
       call.argumentTraces.push(this.captureArgumentTrace(call.argumentExpressions[i] ?? '', argument)),
     );
     this.m_apiCalls.push(call);
+
     return this.m_apiCalls.length - 1;
   }
 

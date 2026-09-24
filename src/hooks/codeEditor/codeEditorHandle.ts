@@ -30,6 +30,7 @@ export function createCodeEditorHandle(
     },
     currentLine() {
       const state = view().state;
+
       return state.doc.lineAt(state.selection.main.head).number;
     },
     blockCount() {
@@ -48,6 +49,7 @@ export function createCodeEditorHandle(
     },
     cursorBlockText() {
       const state = view().state;
+
       return state.doc.lineAt(state.selection.main.head).text;
     },
     insertAtCursorBlockEnd(text) {

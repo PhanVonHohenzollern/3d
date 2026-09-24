@@ -90,6 +90,7 @@ export class RuntimeExecutor {
     const selectedFunction = this.selectFunction(root);
     if (!selectedFunction) {
       this.executeNode(root, false);
+
       return;
     }
     ++this.m_functionCallDepth;
@@ -107,6 +108,7 @@ export class RuntimeExecutor {
       latestBeforeCursor = child;
       if (this.m_maxLine <= child.endLine) return child;
     }
+
     return latestBeforeCursor;
   }
 
@@ -168,6 +170,7 @@ export class RuntimeExecutor {
     if (tokens.length === 0) return;
     if (isIdentifier(tokens[0], 'return')) {
       this.m_returned = true;
+
       return;
     }
     if (isIdentifier(tokens[0], 'delete')) return;
@@ -177,16 +180,19 @@ export class RuntimeExecutor {
     }
     if (parseRuntimeType(tokens, 0)) {
       this.executeDeclaration(tokens, line);
+
       return;
     }
     if (tokens.length >= 2 && tokens[0].kind === TokKind.Identifier && tokens[1].kind === TokKind.Identifier) {
       this.m_state.setVariable(tokens[1].text, undefined, true, line, 'declare', tokensToExpression(tokens));
+
       return;
     }
     if (this.executeIncrement(tokens, line)) return;
     if (this.executeMutatingMethod(tokens, line)) return;
     if (findTopLevelAssignment(tokens)) {
       this.evaluateAssignmentExpression(tokens, line);
+
       return;
     }
     if (this.executeFreeCall(tokens, line)) return;
@@ -204,6 +210,7 @@ export class RuntimeExecutor {
     if (tokens.length === 0) return array;
     if (!isBraceList(tokens)) {
       if (dims[level] > 0) array.elements[0] = this.initializerValue(tokens, type, dims, level + 1);
+
       return array;
     }
     const parts = braceListItems(tokens);
@@ -211,6 +218,7 @@ export class RuntimeExecutor {
       if (parts[i].length === 0) continue;
       array.elements[i] = this.initializerValue(parts[i], type, dims, level + 1);
     }
+
     return array;
   }
 
@@ -225,6 +233,7 @@ export class RuntimeExecutor {
         const x = runtimeNumber(this.evaluate(args[0]));
         const y = runtimeNumber(this.evaluate(args[1]));
         const z = runtimeNumber(this.evaluate(args[2]));
+
         return type === 'FdPoint3d' ? new FdPoint3d(x, y, z) : new FdVector3d(x, y, z);
       }
     }
@@ -247,6 +256,7 @@ export class RuntimeExecutor {
       dims.push(n);
       if (p < declarator.length && isSymbol(declarator[p], ']')) ++p;
     }
+
     return { dims, end: p };
   }
 
@@ -316,10 +326,12 @@ export class RuntimeExecutor {
         if (member !== 'x' && member !== 'y' && member !== 'z')
           throw runtimeError('member is not assignable: ' + member);
         if (p !== tokens.length) throw runtimeError('unexpected tokens after member lvalue');
+
         return { slot, member, path: path + '.' + member };
       }
       throw runtimeError('invalid lvalue near ' + tokens[p].text);
     }
+
     return { slot, member: '', path };
   }
 
@@ -337,6 +349,7 @@ export class RuntimeExecutor {
     const after = readLValue(lhs);
     if (line > 0)
       this.m_state.recordVariableChange(line, lhs.path, op, tokensToExpression(rhsTokens), before, after, sources);
+
     return after;
   }
 
@@ -354,6 +367,7 @@ export class RuntimeExecutor {
     const sources = this.m_state.captureValueSources(tokensToExpression(lvt));
     writeLValue(ref, next);
     this.m_state.recordVariableChange(line, ref.path, op, '', cur, readLValue(ref), sources);
+
     return true;
   }
 
@@ -379,6 +393,7 @@ export class RuntimeExecutor {
       readLValue(ref),
       sources,
     );
+
     return true;
   }
 
@@ -398,6 +413,7 @@ export class RuntimeExecutor {
       }
       if (name !== 'ASSERT' && name !== 'delete') this.executeCall(name, argGroups, line);
     }
+
     return true;
   }
 
@@ -503,10 +519,12 @@ export class RuntimeExecutor {
       populateFormalParameterMetadata(call, fn);
       const functionIndex = this.m_state.recordApiCall(call);
       if (!hasUnresolvedArgument) this.executeUserFunction(fn, args, argGroups, functionIndex);
+
       return;
     }
     if (!apiSignatureMetadataForCall(call) && /^(make|add|draw)/.test(name)) {
       this.m_state.addDiagnostic(line, 'unknown native geometry API: ' + name);
+
       return;
     }
     this.m_state.recordApiCall(call);
@@ -522,6 +540,7 @@ export class RuntimeExecutor {
       if (argumentCount === total) return fn;
       if (!fallback) fallback = fn;
     }
+
     return fallback;
   }
 
@@ -598,6 +617,7 @@ export class RuntimeExecutor {
         sources: this.m_state.captureValueSources(name),
       });
     }
+
     return outputs;
   }
 

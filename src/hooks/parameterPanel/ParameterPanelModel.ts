@@ -148,6 +148,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     if (column !== ValueColumn || row < 0 || row >= this.rows.length) return false;
     this.editor = { row, text: this.rows[row].texts[ValueColumn], serial: ++this.#editorSerial };
     this.changed();
+
     return true;
   }
 
@@ -223,20 +224,25 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
         return this.edit(this.currentRow, this.currentColumn);
       case 'Enter':
         if (!isMacPlatform) return false;
+
         return this.edit(this.currentRow, this.currentColumn);
       case 'ArrowLeft':
         this.#setCurrentCell(row, Math.max(column - 1, 0));
+
         return true;
       case 'ArrowRight':
         this.#setCurrentCell(row, Math.min(column + 1, ColumnCount - 1));
+
         return true;
       case 'Tab':
         this.#moveCurrentCell(shift);
+
         return true;
     }
     const next = rowForKey(key, this.currentRow, this.rows.length, false);
     if (next === null) return false;
     this.#setCurrentCell(next, column);
+
     return true;
   }
 }

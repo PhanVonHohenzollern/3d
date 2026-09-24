@@ -17,6 +17,7 @@ const LIBRARY_MESSAGES: [RegExp, string][] = [
 
 export function normalizeMessage(s: string): string {
   for (const [pattern, replacement] of LIBRARY_MESSAGES) s = s.replace(pattern, replacement);
+
   return s;
 }
 
@@ -33,8 +34,10 @@ export function diffJson(expected: any, actual: any, options: CompareOptions = {
   const looseTolerance = options.looseTolerance ?? 2e-5;
   const maxDiffs = options.maxDiffs ?? 25;
   const diffs: string[] = [];
+
   const show = (v: any) => {
     const s = JSON.stringify(v);
+
     return s === undefined ? 'undefined' : s.length > 300 ? `${s.slice(0, 300)}…` : s;
   };
 
@@ -43,10 +46,12 @@ export function diffJson(expected: any, actual: any, options: CompareOptions = {
     if (typeof e === 'number' && typeof a === 'number') {
       const tol = loosePaths.test(path) ? looseTolerance : tolerance;
       if (Math.abs(e - a) > tol * Math.max(1, Math.abs(e), Math.abs(a))) diffs.push(`${path}: expected ${e}, got ${a}`);
+
       return;
     }
     if (typeof e === 'string' && typeof a === 'string') {
       if (normalizeMessage(e) !== normalizeMessage(a)) diffs.push(`${path}: expected ${show(e)}, got ${show(a)}`);
+
       return;
     }
     if (Array.isArray(e) && Array.isArray(a)) {
@@ -60,6 +65,7 @@ export function diffJson(expected: any, actual: any, options: CompareOptions = {
         if (extraE.length) diffs.push(`${path}: first missing elements ${show(extraE)}`);
         if (extraA.length) diffs.push(`${path}: first unexpected elements ${show(extraA)}`);
       }
+
       return;
     }
     if (e && a && typeof e === 'object' && typeof a === 'object' && !Array.isArray(e) && !Array.isArray(a)) {
@@ -70,11 +76,14 @@ export function diffJson(expected: any, actual: any, options: CompareOptions = {
         else walk(e[key], a[key], `${path}.${key}`);
         if (diffs.length >= maxDiffs) return;
       }
+
       return;
     }
     if (e !== a) diffs.push(`${path}: expected ${show(e)}, got ${show(a)}`);
   };
+
   walk(expected, actual, '$');
+
   return diffs;
 }
 

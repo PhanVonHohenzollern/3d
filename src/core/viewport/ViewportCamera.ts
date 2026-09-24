@@ -100,6 +100,7 @@ export class ViewportCamera {
     const t = -ray.nearPoint.z / direction.z;
     if (t < 0) return null;
     const world = ray.nearPoint.add(direction.mul(t));
+
     return new QVector3D(world.x, world.y, 0);
   }
 

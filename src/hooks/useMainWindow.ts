@@ -8,9 +8,12 @@ export function useMainWindow() {
 
   useEffect(() => {
     document.title = 'Geometry Preview';
+
     const onKeyDown = (event: KeyboardEvent) => mainWindow.handleKeyDown(event);
+
     window.addEventListener('keydown', onKeyDown);
     mainWindow.start();
+
     return () => {
       window.removeEventListener('keydown', onKeyDown);
       mainWindow.dispose();

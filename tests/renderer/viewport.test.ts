@@ -9,6 +9,7 @@ function meshModeEngine() {
   engine.selectionModeButtonClicked();
   const onMesh = vi.fn();
   engine.setMeshSelectionCallback(onMesh);
+
   return { engine, onMesh };
 }
 

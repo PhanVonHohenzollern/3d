@@ -13,11 +13,13 @@ function occupiedAreas(engine: ViewportEngine): QRectF[] {
     .filter((panel) => panel.isVisible())
     .map((panel) => QRectF.fromRect(panel.geometry()).adjusted(-4, -4, 4, 4));
   areas.push(QRectF.fromRect(engine.selectionModeButton().geometry).adjusted(-4, -4, 4, 4));
+
   return areas;
 }
 
 function labelsOf(engine: ViewportEngine): AxisLabel[] {
   const camera = updateCamera(engine);
+
   return placeWorldAxisLabels({
     axes: axesVertices(engine.sceneScale(), camera.target, camera.distance),
     transform: camera.viewProjection(),
@@ -31,18 +33,23 @@ function labelsOf(engine: ViewportEngine): AxisLabel[] {
 
 function distanceToProjectedLine(engine: ViewportEngine, p: QPointF, a: QVector3D, b: QVector3D): number {
   const transform = updateCamera(engine).viewProjection();
+
   const toScreen = (v: QVector3D) => {
     const c = transform.map(QVector4D.fromVector3D(v, 1));
+
     return new QPointF((c.x / c.w + 1) * engine.width() * 0.5, (1 - c.y / c.w) * engine.height() * 0.5);
   };
+
   const pa = toScreen(a);
   const pb = toScreen(b);
   const d = pb.sub(pa);
+
   return Math.abs(d.x * (p.y - pa.y) - d.y * (p.x - pa.x)) / Math.hypot(d.x, d.y);
 }
 
 const axisDirection = (axis: number) => {
   const v = previewOrientationDirection(connectorOrientations[axis * 2]);
+
   return new QVector3D(v.x, v.y, v.z);
 };
 

@@ -8,6 +8,7 @@ import { boxMesh, scene } from './helpers';
 
 function normalAt(data: Float32Array, vertex: number): QVector3D {
   const o = vertex * kVertexFloats;
+
   return new QVector3D(data[o + 6], data[o + 7], data[o + 8]);
 }
 
@@ -19,6 +20,7 @@ function foldedPair(degrees: number, apiName = 'makeTube'): PreviewMesh {
     { x: 1, y: 0, z: 0 },
     { x: 0, y: Math.cos(t), z: Math.sin(t) },
   ].map((v) => ({ ...v, nx: 0, ny: 0, nz: 0 }));
+
   return { apiIndex: 0, sourceLine: 1, apiName, color: { r: 1, g: 0, b: 0 }, vertices, indices: [0, 2, 1, 1, 2, 3] };
 }
 

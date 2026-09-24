@@ -28,6 +28,7 @@ export function signatureParameterList(signature: readonly Token[]): Token[] | n
     }
   }
   if (lp >= rp || rp > signature.length) return null;
+
   return sliceTokens(signature, lp + 1, rp);
 }
 
@@ -37,6 +38,7 @@ export function functionParameters(fn: Statement): Token[][] {
   const result = splitTopLevel(list, ',');
   if (result.length === 1 && result[0].length === 0) return [];
   if (result.length === 1 && result[0].length === 1 && isIdentifier(result[0][0], 'void')) return [];
+
   return result;
 }
 
@@ -53,6 +55,7 @@ export function parameterDefaultPos(param: readonly Token[]): number {
     else if (isSymbol(param[i], '}')) --brace;
     else if (paren === 0 && bracket === 0 && brace === 0 && isSymbol(param[i], '=')) return i;
   }
+
   return param.length;
 }
 
@@ -64,8 +67,10 @@ export function parameterName(param: readonly Token[]): string {
     if (kParameterQualifiers.includes(t.text)) continue;
     if (i < end && isSymbol(param[i], '::')) continue;
     if (i >= 2 && isSymbol(param[i - 2], '::')) continue;
+
     return t.text;
   }
+
   return '';
 }
 
@@ -82,6 +87,7 @@ export function parameterType(param: readonly Token[]): string {
     }
     typeTokens.push(param[i]);
   }
+
   return trim(tokensToExpression(typeTokens));
 }
 
@@ -101,6 +107,7 @@ export function writableReferenceParameter(param: readonly Token[]): boolean {
     if (isSymbol(param[i], '&')) hasReference = true;
     if (isIdentifier(param[i], 'const')) isConst = true;
   }
+
   return hasReference && !isConst;
 }
 

@@ -16,6 +16,7 @@ import { asNumber, asVector, ref } from './valueDecoding';
 export function meshTransformDelta(args: RuntimeValue[]): DMat4 | null {
   if (args.length === 1) {
     const translation = ref(new FdVector3d());
+
     return asVector(args[0], translation) ? translationMatrix(translation.v) : null;
   }
   if (args.length === 2) {
@@ -24,6 +25,7 @@ export function meshTransformDelta(args: RuntimeValue[]): DMat4 | null {
     if (asNumber(args[0], angle) && asVector(args[1], axis) && validDirection(axis.v))
       return rotationMatrix(angle.v, axis.v);
   }
+
   return null;
 }
 

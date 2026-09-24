@@ -20,6 +20,7 @@ export interface ApiSignatureMetadata {
 function compactType(s: string): string {
   for (const needle of ['const ', 'volatile ', 'struct ', 'class ']) s = s.split(needle).join('');
   s = s.replace(/[&*]/g, '');
+
   return s.replace(/[ \t\n\v\f\r]+/g, ' ').trim();
 }
 
@@ -44,6 +45,7 @@ function typeCompatibilityScore(value: RuntimeValue, formalType: string): number
     if (!formalArray) return -6;
     const elem = sdkCanonicalType(value.elementType);
     if (elem !== '' && containsWord(t, elem)) return 16;
+
     return elem === '' ? 8 : -10;
   }
 
@@ -62,12 +64,14 @@ function typeCompatibilityScore(value: RuntimeValue, formalType: string): number
     )
       return 14;
     if (containsWord(t, 'double') || containsWord(t, 'float') || containsWord(t, 'ads_real')) return 7;
+
     return 0;
   }
 
   if (isDouble(value)) {
     if (containsWord(t, 'double') || containsWord(t, 'float') || containsWord(t, 'ads_real')) return 14;
     if (containsWord(t, 'int') || containsWord(t, 'short') || containsWord(t, 'long')) return 4;
+
     return 0;
   }
 
@@ -80,6 +84,7 @@ function typeCompatibilityScore(value: RuntimeValue, formalType: string): number
       containsWord(t, 'string')
     )
       return 16;
+
     return 0;
   }
 
@@ -101,6 +106,7 @@ function signatureScore(sig: ApiSignatureMetadata, call: RuntimeApiCall): number
   for (let i = 0; i < argc; ++i) score += typeCompatibilityScore(call.arguments[i], sig.parameters[i].type);
 
   score -= sig.parameters.length - argc;
+
   return score;
 }
 
@@ -118,6 +124,7 @@ export function apiSignatureMetadataForCall(call: RuntimeApiCall): ApiSignatureM
       best = sig;
     }
   }
+
   return best;
 }
 

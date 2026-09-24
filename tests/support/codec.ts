@@ -21,6 +21,7 @@ export type Json = any;
 export function encodeNumber(v: number): Json {
   if (Number.isNaN(v)) return 'nan';
   if (!Number.isFinite(v)) return v < 0 ? '-inf' : 'inf';
+
   return v;
 }
 
@@ -104,6 +105,7 @@ export function encodeResult(r: RuntimeResult): Json {
 export function encodeMesh(m: PreviewMesh): Json {
   const vertices: Json[] = [];
   for (const v of m.vertices) vertices.push(v.x, v.y, v.z, v.nx, v.ny, v.nz);
+
   return {
     apiIndex: m.apiIndex,
     sourceLine: m.sourceLine,
@@ -136,6 +138,7 @@ function decodeNumber(v: Json): number {
   if (v === 'nan') return NaN;
   if (v === 'inf') return Infinity;
   if (v === '-inf') return -Infinity;
+
   return v;
 }
 
@@ -157,6 +160,7 @@ export function decodeValue(j: Json): RuntimeValue {
       return new FdVector3d(decodeNumber(j.v[0]), decodeNumber(j.v[1]), decodeNumber(j.v[2]));
     case 'a':
       if (j.null) throw new Error('null RuntimeArrayPtr is not representable');
+
       return new RuntimeArray(j.elementType, [...j.dimensions], j.elements.map(decodeValue));
     default:
       throw new Error(`bad encoded value ${JSON.stringify(j)}`);

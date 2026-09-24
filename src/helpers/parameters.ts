@@ -3,6 +3,7 @@ import type { RuntimeParameterRequest } from '../core/runtime/RuntimeTypes';
 export function neutralValueForType(type: string): string {
   if (type === 'bool') return 'false';
   if (type === 'string') return '';
+
   return '0';
 }
 
@@ -14,12 +15,14 @@ export function parameterSeed(definition: RuntimeParameterRequest): string {
   let seed = definition.defaultValue;
   if (seed === '' && definition.type !== 'string') seed = definition.currentValue;
   if (seed === '' && definition.type !== 'string') seed = neutralValueForType(definition.type);
+
   return seed;
 }
 
 export function refinedParameterValue(request: RuntimeParameterRequest): string | null {
   let refined = request.defaultValue;
   if (refined === '' && request.type !== 'string') refined = request.currentValue;
+
   return refined !== '' || request.type === 'string' ? refined : null;
 }
 

@@ -11,5 +11,6 @@ export function resizeToContentsWidth(
 ): number {
   let width = measure(label, false) + kCellPadding + 8;
   for (const cell of cells) width = Math.max(width, cell.indent + measure(cell.text, cell.bold) + kCellPadding);
+
   return Math.ceil(width);
 }

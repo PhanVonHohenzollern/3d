@@ -11,7 +11,7 @@ npm run dev            # http://localhost:5173
 npm run build          # static site in dist/
 npm test               # all tests
 npm run lint           # ESLint
-npm run format         # Prettier (with Tailwind class sorting)
+npm run format         # ESLint fixes, then Prettier with Tailwind class sorting
 npm run typecheck
 npm run validate       # ESLint, Prettier, TypeScript and all tests, as in CI
 ```
@@ -49,3 +49,9 @@ npm run preview -- --base /3d/    # open http://localhost:4173/3d/
 ```
 
 Use `npm run lint:fix` and `npm run format` to fix lint and format issues before pushing. The generated SDK registries are excluded from ESLint and Prettier but are still type-checked and built. TypeScript is pinned to the 6.0 release line, which the ESLint TypeScript parser supports.
+
+## Code spacing
+
+ESLint requires a blank line around function declarations and function-valued variables, between class methods, and before a `return` that follows another statement in the same block. A return that is the first statement in its block needs no leading blank line. TypeScript overload signatures stay together.
+
+`npm run format` applies ESLint fixes first, then Prettier preserves the blank lines and normalizes formatting. CI checks both ESLint and Prettier. Generated SDK registries remain excluded from formatting.

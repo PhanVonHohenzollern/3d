@@ -7,6 +7,7 @@ import { ToolButton } from './ui/ToolButton';
 
 export function ApiTracePanel(props: ApiTracePanelProps) {
   const { tree, dialog, clearFocus } = useApiTracePanel(props);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-none justify-start pb-0.5">

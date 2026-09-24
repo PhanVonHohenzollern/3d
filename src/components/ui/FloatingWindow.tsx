@@ -14,6 +14,7 @@ export function FloatingWindow({ title, raiseSerial, onClose, children }: Floati
     raiseSerial,
     onClose,
   );
+
   return createPortal(
     <div
       ref={windowRef}

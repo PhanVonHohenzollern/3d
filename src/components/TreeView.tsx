@@ -10,6 +10,7 @@ interface TreeViewProps {
 export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
   const { containerRef, columns, rows, totalWidth, onMouseDown, onMouseUp, onKeyDown, onResizeStart } =
     useTreeView(tree);
+
   return (
     <div
       ref={containerRef}

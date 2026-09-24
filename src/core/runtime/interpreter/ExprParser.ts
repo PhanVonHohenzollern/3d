@@ -49,6 +49,7 @@ export class ExprParser {
     if (this.m_tokens.length === 0) return undefined;
     const v = this.parseConditional();
     if (!this.atEnd()) throw runtimeError('unexpected token in expression: ' + this.current().text);
+
     return v;
   }
 
@@ -58,6 +59,7 @@ export class ExprParser {
 
   private current(offset = 0): Token {
     const p = this.m_pos + offset;
+
     return p < this.m_tokens.length ? this.m_tokens[p] : kEndToken;
   }
 
@@ -68,6 +70,7 @@ export class ExprParser {
   private match(s: string): boolean {
     if (!this.currentIs(s)) return false;
     ++this.m_pos;
+
     return true;
   }
 
@@ -85,6 +88,7 @@ export class ExprParser {
     const yes = this.parseConditional();
     this.expect(':');
     const no = this.parseConditional();
+
     return runtimeTruthy(cond) ? yes : no;
   }
 
@@ -94,6 +98,7 @@ export class ExprParser {
       const rhs = this.parseLogicalAnd();
       lhs = runtimeTruthy(lhs) || runtimeTruthy(rhs);
     }
+
     return lhs;
   }
 
@@ -103,6 +108,7 @@ export class ExprParser {
       const rhs = this.parseEquality();
       lhs = runtimeTruthy(lhs) && runtimeTruthy(rhs);
     }
+
     return lhs;
   }
 
@@ -113,6 +119,7 @@ export class ExprParser {
       const eq = equalValues(lhs, this.parseRelational());
       lhs = op === '==' ? eq : !eq;
     }
+
     return lhs;
   }
 
@@ -122,6 +129,7 @@ export class ExprParser {
       const op = this.takeOperator();
       lhs = compareValues(op, lhs, this.parseAdditive());
     }
+
     return lhs;
   }
 
@@ -132,6 +140,7 @@ export class ExprParser {
       const rhs = this.parseMultiplicative();
       lhs = op === '+' ? addValues(lhs, rhs) : subValues(lhs, rhs);
     }
+
     return lhs;
   }
 
@@ -144,6 +153,7 @@ export class ExprParser {
       else if (op === '/') lhs = divValues(lhs, rhs);
       else lhs = modValues(lhs, rhs);
     }
+
     return lhs;
   }
 
@@ -151,6 +161,7 @@ export class ExprParser {
     if (!this.currentIs('(')) return null;
     const parsed = parseRuntimeType(this.m_tokens, this.m_pos + 1);
     if (!parsed || !isNumericType(parsed.type)) return null;
+
     return parsed.end < this.m_tokens.length && isSymbol(this.m_tokens[parsed.end], ')') ? parsed : null;
   }
 
@@ -163,8 +174,10 @@ export class ExprParser {
     if (cast) {
       this.m_pos = cast.end;
       this.expect(')');
+
       return runtimeCoerceToType(this.parseUnary(), cast.type);
     }
+
     return this.parsePrimary();
   }
 
@@ -178,6 +191,7 @@ export class ExprParser {
     this.expect('(');
     const value = this.parseConditional();
     this.expect(')');
+
     return runtimeCoerceToType(value, parsed.type);
   }
 
@@ -197,6 +211,7 @@ export class ExprParser {
       const existed = values.has(parameter);
       const value = existed ? runtimeDeepCopy(values.get(parameter)) : undefined;
       values.set(parameter, runtimeDeepCopy(args[i]));
+
       return { existed, value };
     });
     try {
@@ -218,6 +233,7 @@ export class ExprParser {
       if (this.match(')')) break;
       this.expect(',');
     }
+
     return args;
   }
 
@@ -238,6 +254,7 @@ export class ExprParser {
       }
       break;
     }
+
     return value;
   }
 
@@ -246,15 +263,18 @@ export class ExprParser {
     const token = this.current();
     if (token.kind === TokKind.Number) {
       ++this.m_pos;
+
       return numberLiteral(token);
     }
     if (token.kind === TokKind.String) {
       ++this.m_pos;
+
       return token.text;
     }
     if (this.match('(')) {
       const v = this.parseConditional();
       this.expect(')');
+
       return this.parsePostfix(v);
     }
     if (token.kind !== TokKind.Identifier) throw runtimeError("expected expression near '" + token.text + "'");
@@ -276,6 +296,7 @@ export class ExprParser {
     const value = this.currentIs('(')
       ? this.callFreeFunction(name, this.parseArguments())
       : this.m_state.lookupValue(name);
+
     return this.parsePostfix(value);
   }
 
@@ -293,9 +314,11 @@ export class ExprParser {
       else if (isInt(before)) next = stoll(trim(configured)).value;
     } catch (e) {
       stdException(e);
+
       return false;
     }
     this.m_state.setVariable(destName, next, true, line, name, configured);
+
     return true;
   }
 
@@ -311,6 +334,7 @@ export class ExprParser {
       ++this.m_pos;
     }
     if (this.currentIs('(') && isNumericType(qualified)) return this.callFreeFunction(qualified, this.parseArguments());
+
     return this.parsePostfix(this.m_state.lookupValue(qualified));
   }
 }
@@ -319,5 +343,6 @@ function numberLiteral(token: Token): RuntimeValue {
   const text = token.text;
   const hex = text.length >= 2 && text[0] === '0' && (text[1] === 'x' || text[1] === 'X');
   const exponentChars = hex ? '.pP' : '.eEfF';
+
   return [...text].some((ch) => exponentChars.includes(ch)) ? token.number : doubleToInt64(token.number);
 }

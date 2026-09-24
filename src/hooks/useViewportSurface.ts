@@ -25,20 +25,24 @@ export function useViewportSurface(engine: ViewportEngine, { hostRef, glCanvasRe
     });
 
     const measure = () => engine.resize(host.clientWidth, host.clientHeight, window.devicePixelRatio || 1);
+
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(host);
 
     let media: MediaQueryList | null = null;
+
     const watchDevicePixelRatio = () => {
       media?.removeEventListener('change', onDevicePixelRatioChange);
       media = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
       media.addEventListener('change', onDevicePixelRatioChange);
     };
+
     const onDevicePixelRatioChange = () => {
       measure();
       watchDevicePixelRatio();
     };
+
     watchDevicePixelRatio();
 
     const onWheel = (e: WheelEvent) => {
@@ -46,6 +50,7 @@ export function useViewportSurface(engine: ViewportEngine, { hostRef, glCanvasRe
       const rect = overlay.getBoundingClientRect();
       engine.wheelEvent({ x: e.clientX - rect.left, y: e.clientY - rect.top, angleDeltaY: wheelAngleDeltaY(e) });
     };
+
     overlay.addEventListener('wheel', onWheel, { passive: false });
 
     return () => {

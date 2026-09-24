@@ -27,6 +27,7 @@ export function drawDebugItems(painter: OverlayPainter, scene: DebugOverlayScene
       if (d.x * d.x + d.y * d.y <= 9.0) return true;
     }
     drawnPointMarkers.push(anchor);
+
     return false;
   };
 

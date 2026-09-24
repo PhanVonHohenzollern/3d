@@ -19,6 +19,7 @@ export class ProgramParser {
       else if (!this.atEnd()) this.advance();
     }
     root.endLine = this.current().line;
+
     return root;
   }
 
@@ -28,6 +29,7 @@ export class ProgramParser {
 
   private current(offset = 0): Token {
     const p = Math.min(this.m_pos + offset, this.m_tokens.length - 1);
+
     return this.m_tokens[p];
   }
 
@@ -48,6 +50,7 @@ export class ProgramParser {
     }
     const end = this.m_pos;
     if (isSymbol(this.current(), ')')) this.advance();
+
     return sliceTokens(this.m_tokens, start, end);
   }
 
@@ -73,6 +76,7 @@ export class ProgramParser {
       else if (paren === 0 && bracket === 0 && isSymbol(t, ';')) return false;
       else if (paren === 0 && bracket === 0 && isSymbol(t, '{')) return sawParen;
     }
+
     return false;
   }
 
@@ -99,6 +103,7 @@ export class ProgramParser {
       fn.body = this.parseBlock();
       fn.endLine = fn.body.endLine;
     }
+
     return fn;
   }
 
@@ -112,6 +117,7 @@ export class ProgramParser {
     }
     block.endLine = this.current().line;
     if (isSymbol(this.current(), '}')) this.advance();
+
     return block;
   }
 
@@ -121,12 +127,14 @@ export class ProgramParser {
       const e = new Statement(StatementKind.Empty, this.current().line);
       e.endLine = e.startLine;
       this.advance();
+
       return e;
     }
     if (isSymbol(this.current(), '{')) return this.parseBlock();
     if (allowFunction && this.looksLikeFunctionDefinition()) return this.parseFunction();
     if (isIdentifier(this.current(), 'if')) return this.parseIf();
     if (isIdentifier(this.current(), 'for')) return this.parseFor();
+
     return this.parseSimple();
   }
 
@@ -141,6 +149,7 @@ export class ProgramParser {
       s.elseBranch = this.parseStatement(false);
       if (s.elseBranch) s.endLine = s.elseBranch.endLine;
     }
+
     return s;
   }
 
@@ -153,6 +162,7 @@ export class ProgramParser {
     if (clauses.length > 2) s.forIncrement = clauses[2];
     s.body = this.parseStatement(false);
     s.endLine = s.body ? s.body.endLine : s.startLine;
+
     return s;
   }
 
@@ -178,10 +188,12 @@ export class ProgramParser {
         s.endLine = t.line;
         s.tokens = sliceTokens(this.m_tokens, start, this.m_pos);
         this.advance();
+
         return s;
       }
       this.advance();
     }
+
     return null;
   }
 }

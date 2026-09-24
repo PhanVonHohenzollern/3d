@@ -22,6 +22,7 @@ export function appendRectToTubeTransition(
   const call = context.call;
   if (args.length !== 7) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeTransition expects 7 evaluated arguments'));
+
     return true;
   }
 
@@ -42,6 +43,7 @@ export function appendRectToTubeTransition(
     scene.warnings.push(
       warningFor(call, 'makeRectToTubeTransition position/orientation/dimension arguments could not be evaluated'),
     );
+
     return true;
   }
   if (!hasComplexity) {
@@ -62,6 +64,7 @@ export function appendRectToTubeTransition(
     scene.warnings.push(
       warningFor(call, 'makeRectToTubeTransition has invalid normal/upVector, tube diameters or tube length'),
     );
+
     return true;
   }
 
@@ -75,12 +78,14 @@ export function appendRectToTubeTransition(
       heightWidth[1] <= 0.0
     ) {
       scene.warnings.push(warningFor(call, 'makeRectToTubeTransition requires corners[4] or positive heightWidth[2]'));
+
       return true;
     }
     corners = rectangleCorners(start.v, normal.v, upVector.v, heightWidth[0], heightWidth[1]);
   }
   if (corners.length < 4) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeTransition corners array must contain four points'));
+
     return true;
   }
   corners.length = 4;
@@ -99,6 +104,7 @@ export function appendRectToTubeTransition(
   transition.apiName += '.transition';
   if (transition.vertices.length === 0 || transition.indices.length === 0) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeTransition could not build the rectangle-to-ellipse loft'));
+
     return true;
   }
   pushNonEmptyMesh(scene, transition);
@@ -116,9 +122,11 @@ export function appendRectToTubeTransition(
   tube.apiName += '.tube';
   if (tube.vertices.length === 0 || tube.indices.length === 0) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeTransition could not build the elliptical tube'));
+
     return true;
   }
   pushNonEmptyMesh(scene, tube);
+
   return true;
 }
 
@@ -130,6 +138,7 @@ export function appendRectToTubeIntersection(
   const call = context.call;
   if (args.length !== 6 && args.length !== 7) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection expects 6 or 7 evaluated arguments'));
+
     return true;
   }
   const start = ref(new FdPoint3d());
@@ -144,11 +153,13 @@ export function appendRectToTubeIntersection(
   const tubeIndex = withUpVector ? 3 : 2;
   if (!asPoint(args[0], start) || !asVector(args[1], normal)) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection start/normal could not be evaluated'));
+
     return true;
   }
   if (withUpVector) {
     if (!asVector(args[2], upVector)) {
       scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection upVector could not be evaluated'));
+
       return true;
     }
   } else {
@@ -161,6 +172,7 @@ export function appendRectToTubeIntersection(
     !asInt(args[tubeIndex + 3], complexity)
   ) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection array arguments could not be evaluated'));
+
     return true;
   }
   if (
@@ -178,6 +190,7 @@ export function appendRectToTubeIntersection(
     complexity.v < 1
   ) {
     scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection has invalid dimensions, vectors or complexity'));
+
     return true;
   }
 
@@ -196,6 +209,7 @@ export function appendRectToTubeIntersection(
         'makeRectToTubeIntersection opening must lie within the main tube and ductLength must extend beyond diamB/2',
       ),
     );
+
     return true;
   }
   const [mainTube, duct] = buildRectTubeIntersectionMeshes(
@@ -215,5 +229,6 @@ export function appendRectToTubeIntersection(
   );
   pushNonEmptyMesh(scene, mainTube);
   pushNonEmptyMesh(scene, duct);
+
   return true;
 }

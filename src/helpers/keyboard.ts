@@ -6,6 +6,7 @@ export const quitKeySequence: KeySequence | null = isWindowsPlatform ? null : { 
 export function keySequenceText(sequence: KeySequence): string {
   const key = sequence.key.length === 1 ? sequence.key.toUpperCase() : sequence.key;
   if (isMacPlatform) return `${sequence.shift ? '\u21e7' : ''}${sequence.control ? '\u2318' : ''}${key}`;
+
   return `${sequence.control ? 'Ctrl+' : ''}${sequence.shift ? 'Shift+' : ''}${key}`;
 }
 
@@ -14,6 +15,7 @@ export function matchesKeySequence(sequence: KeySequence, event: KeyboardEvent):
   const otherControl = isMacPlatform ? event.ctrlKey : event.metaKey;
   if (event.altKey || otherControl) return false;
   if (!!sequence.control !== control || !!sequence.shift !== event.shiftKey) return false;
+
   return event.key.toLowerCase() === sequence.key.toLowerCase();
 }
 
@@ -29,5 +31,6 @@ export const textInputSelector = 'input, textarea, [contenteditable="true"], .cm
 
 export function closestTarget(target: EventTarget | null, selectors: string): Element | null {
   const element = target as Element | null;
+
   return typeof element?.closest === 'function' ? element.closest(selectors) : null;
 }

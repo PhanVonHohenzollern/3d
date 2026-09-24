@@ -39,5 +39,6 @@ export function adjacentCell(
     column = columnCount - 1;
     row = (row - 1 + rowCount) % rowCount;
   }
+
   return { row, column };
 }

@@ -20,6 +20,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
     onEditorKeyDown,
     onEditorBlur,
   } = useParameterPanel(props);
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <TableView ref={tableRef} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onKeyDown={onKeyDown}>

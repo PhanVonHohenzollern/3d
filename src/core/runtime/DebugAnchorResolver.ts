@@ -28,6 +28,7 @@ function elements(call: RuntimeApiCall, argument: number, label: string): Elemen
   const out: Element[] = [];
   if (argument >= call.arguments.length) return out;
   const semantics = apiSemanticsForCall(call);
+
   const visit = (value: RuntimeValue, name: string, indices: number[]) => {
     if (indices.length > 4) return;
     if (isArray(value)) {
@@ -39,12 +40,15 @@ function elements(call: RuntimeApiCall, argument: number, label: string): Elemen
       out.push({ name, value, indices });
     }
   };
+
   visit(call.arguments[argument], label, []);
+
   return out;
 }
 
 function parameters(call: RuntimeApiCall): ApiParameterMetadata[] {
   if (!call.userFunctionCall) return apiParameterMetadataForCall(call);
+
   return call.formalParameterNames.map((name) => ({ name, type: '', defaultValue: '' }));
 }
 
@@ -61,6 +65,7 @@ export function resolveDebugPointSnapshots(call: RuntimeApiCall): DebugPointSnap
     for (const e of elements(call, i, metadata[i].name))
       if (isPoint(e.value)) result.push({ name: e.name, point: e.value, role: apiParameterRole(call, i, e.indices) });
   }
+
   return result;
 }
 
@@ -84,6 +89,7 @@ export function resolveDebugVectorAnchors(call: RuntimeApiCall): DebugVectorAnch
       const direction = e.value;
       let sourceName = source;
       for (const index of e.indices) sourceName += `[${index}]`;
+
       const add = (index: number) => {
         result.push({
           sourceName,
@@ -93,11 +99,13 @@ export function resolveDebugVectorAnchors(call: RuntimeApiCall): DebugVectorAnch
           role: apiParameterRole(call, i, e.indices),
         });
       };
+
       if (s.anchorBinding === 'EveryPoint') for (let k = 0; k < points.length; ++k) add(k);
       else if (s.anchorBinding === 'SameIndex') {
         if (j < points.length) add(j);
       } else add(s.anchorBinding === 'Last' ? points.length - 1 : 0);
     }
   }
+
   return result;
 }

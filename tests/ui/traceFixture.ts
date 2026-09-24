@@ -80,6 +80,7 @@ export function traceResult(): RuntimeResult {
       { expression: 'c', sources: [{ name: 'c', value: p, variableId: 2, historyEnd: 2 }], elements: [] },
     ],
   };
+
   return {
     variables: [
       { name: 'a', value: 3, lastChangedLine: 4 },

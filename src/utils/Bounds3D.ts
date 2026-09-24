@@ -15,6 +15,7 @@ export class Bounds3D {
       this.m_minY = this.m_maxY = y;
       this.m_minZ = this.m_maxZ = z;
       this.m_empty = false;
+
       return;
     }
     this.m_minX = Math.min(this.m_minX, x);

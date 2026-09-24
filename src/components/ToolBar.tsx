@@ -6,6 +6,7 @@ import { preventDefault } from '../utils/events';
 
 function ToolBarButton({ action }: { action: Action }) {
   const { iconText, checkable, checked, trigger } = useAction(action);
+
   return (
     <button
       type="button"

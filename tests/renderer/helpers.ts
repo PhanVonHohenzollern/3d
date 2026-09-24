@@ -40,6 +40,7 @@ export function boxMesh(
   ];
   const indices: number[] = [];
   for (const [a, b, c, d] of quads) indices.push(a, b, c, a, c, d);
+
   return {
     apiIndex,
     sourceLine: apiIndex + 1,
@@ -57,6 +58,7 @@ export function scene(...meshes: PreviewMesh[]): PreviewGeometryScene {
 export function resultWithP0(x: number, y: number, z: number): RuntimeResult {
   const result = emptyRuntimeResult();
   result.variables.push({ name: 'p0', value: new FdPoint3d(x, y, z), lastChangedLine: 1 });
+
   return result;
 }
 
@@ -64,6 +66,7 @@ export function createEngine(width = 800, height = 600): ViewportEngine {
   const engine = new ViewportEngine();
   engine.setTextMeasurer(fixedMeasurer);
   engine.resize(width, height, 1);
+
   return engine;
 }
 
@@ -71,12 +74,14 @@ export function updateCamera(engine: ViewportEngine) {
   const camera = engine.camera();
   camera.updateViewMatrix();
   camera.updateProjectionMatrix(engine.sceneScale());
+
   return camera;
 }
 
 export function project(engine: ViewportEngine, p: QVector3D): QPointF {
   const screen = updateCamera(engine).projectToScreen(p);
   if (!screen) throw new Error('point does not project');
+
   return screen;
 }
 
@@ -88,6 +93,7 @@ export function vectorItem(name: string, start: QVector3D, end: QVector3D, apiIn
   item.apiSnapshot = true;
   item.start = start;
   item.end = end;
+
   return item;
 }
 

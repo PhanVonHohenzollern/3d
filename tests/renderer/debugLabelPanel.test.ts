@@ -7,6 +7,7 @@ import { elidedText } from '../../src/utils/textMetrics';
 import { fixedMeasurer } from './helpers';
 
 const ROW = 24;
+
 const entries = (count: number): DebugLabelEntry[] =>
   Array.from({ length: count }, (_, i) => ({ id: `id${i}`, name: `name${i}`, value: `(${i}, 0, 0)` }));
 
@@ -18,10 +19,12 @@ function panelWith(count: number, height = 25 + count * ROW) {
   panel.setEntries(entries(count), new Set());
   panel.setGeometry(8, 8, 200, height);
   panel.setVisible(true);
+
   return { panel, activated };
 }
 
 const at = (row: number) => row * ROW + ROW / 2;
+
 const ctrl = { ...NoModifier, control: true };
 const shift = { ...NoModifier, shift: true };
 

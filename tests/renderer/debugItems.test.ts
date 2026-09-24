@@ -10,6 +10,7 @@ function arrowFor(start: QVector3D, end: QVector3D) {
   const eye = updateCamera(engine).cameraPosition();
   const vertices = new VertexArray();
   appendVectorArrow(vertices, vectorItem('v', start, end), false, eye, engine.sceneScale());
+
   return { eye, vertices };
 }
 

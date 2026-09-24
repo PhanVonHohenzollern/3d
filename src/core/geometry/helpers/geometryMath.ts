@@ -21,6 +21,7 @@ export function rotateAroundAxis(v: DVec3, axisInput: DVec3, angle: number): DVe
   if (length(axis) <= kEps) return v;
   const c = Math.cos(angle);
   const s = Math.sin(angle);
+
   return v
     .mul(c)
     .add(cross(axis, v).mul(s))
@@ -33,6 +34,7 @@ export function stableBasis(normal: DVec3): [DVec3, DVec3] {
   let u = normalized(cross(n, helper));
   if (length(u) <= 1e-12) u = normalized(cross(n, new DVec3(1, 0, 0)));
   const v = normalized(cross(n, u));
+
   return [u, v];
 }
 
@@ -44,16 +46,19 @@ export function basisFromUp(axis: DVec3, upHint: DVec3): [DVec3, DVec3] {
   }
   const u = normalized(projected);
   const v = normalized(cross(n, u));
+
   return [u, v];
 }
 
 export function circularFaceCount(complexity: number): number {
   const faces = stdMax(1, complexity) * 4;
+
   return stdClamp(faces, 4, 4096);
 }
 
 export function sdkPerpVector(direction: FdVector3d): FdVector3d {
   const [u] = stableBasis(toVec(direction));
+
   return toFdVector(u);
 }
 

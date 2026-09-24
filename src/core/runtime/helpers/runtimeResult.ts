@@ -8,13 +8,16 @@ export function collectVariables(
   lastChangedLine: ReadonlyMap<string, number>,
 ): RuntimeVariable[] {
   const variables: RuntimeVariable[] = [];
+
   const append = (name: string, value: RuntimeValue, depth: number): void => {
     variables.push({ name, value: runtimeDeepCopy(value), lastChangedLine: lastChangedLine.get(name) ?? 0 });
     if (depth > 4 || !isArray(value)) return;
     const limit = Math.min(value.elements.length, 64);
     for (let i = 0; i < limit; ++i) append(`${name}[${i}]`, value.elements[i], depth + 1);
   };
+
   for (const name of order) if (values.has(name)) append(name, values.get(name), 0);
+
   return variables;
 }
 
@@ -34,5 +37,6 @@ export function runtimeSourceHistory(result: RuntimeResult, source: RuntimeValue
     if (change.name === source.name || containsPath(change.name, source.name) || containsPath(source.name, change.name))
       history.push(i);
   }
+
   return history;
 }

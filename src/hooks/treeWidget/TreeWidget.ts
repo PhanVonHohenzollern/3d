@@ -41,8 +41,10 @@ export class TreeWidget extends Observable {
   blockSignals(block: boolean): boolean {
     const previous = this.#signalsBlocked;
     this.#signalsBlocked = block;
+
     return previous;
   }
+
   signalsBlocked(): boolean {
     return this.#signalsBlocked;
   }
@@ -56,31 +58,39 @@ export class TreeWidget extends Observable {
     for (let c = 0; c < count; ++c) this.#headerLabels[c] ??= String(c + 1);
     this.changed();
   }
+
   columnCount(): number {
     return this.#headerLabels.length;
   }
+
   setHeaderLabels(labels: readonly string[]): void {
     this.#headerLabels = [...labels];
     this.changed();
   }
+
   headerLabels(): readonly string[] {
     return this.#headerLabels;
   }
+
   setColumnWidth(column: number, width: number): void {
     this.#columnWidths[column] = Math.max(0, Math.round(width));
     this.changed();
   }
+
   columnWidth(column: number): number {
     return this.#columnWidths[column] ?? 100;
   }
+
   setColumnResizeToContents(column: number, resize: boolean): void {
     if (resize) this.#resizeToContents.add(column);
     else this.#resizeToContents.delete(column);
     this.changed();
   }
+
   isColumnResizeToContents(column: number): boolean {
     return this.#resizeToContents.has(column);
   }
+
   setExpandsOnDoubleClick(enable: boolean): void {
     this.#expandsOnDoubleClick = enable;
   }
@@ -88,9 +98,11 @@ export class TreeWidget extends Observable {
   invisibleRootItem(): TreeWidgetItem {
     return this.#root;
   }
+
   topLevelItemCount(): number {
     return this.#root.childCount();
   }
+
   topLevelItem(index: number): TreeWidgetItem {
     return this.#root.child(index);
   }
@@ -123,6 +135,7 @@ export class TreeWidget extends Observable {
       if (parent === this.#root) return null;
       current = parent;
     }
+
     return null;
   }
 
@@ -134,12 +147,14 @@ export class TreeWidget extends Observable {
     this.#rootItem = item;
     this.changed();
   }
+
   rootItem(): TreeWidgetItem | null {
     return this.#rootItem;
   }
 
   visibleRows(): VisibleTreeRow[] {
     const rows: VisibleTreeRow[] = [];
+
     const visit = (parent: TreeWidgetItem, depth: number) => {
       for (const child of parent.children()) {
         if (child.isHidden()) continue;
@@ -147,7 +162,9 @@ export class TreeWidget extends Observable {
         if (child.isExpanded()) visit(child, depth + 1);
       }
     };
+
     visit(this.#rootItem ?? this.#root, 0);
+
     return rows;
   }
 
@@ -201,6 +218,7 @@ export class TreeWidget extends Observable {
       ++position;
     }
     items.sort((a, b) => a.order - b.order || a.position - b.position);
+
     return items.map((entry) => entry.item);
   }
 
@@ -265,11 +283,13 @@ export class TreeWidget extends Observable {
     if (item && event.onDecoration && item.hasChildIndicator()) {
       this.#pressedItem = null;
       item.setExpanded(!item.isExpanded());
+
       return;
     }
     this.#pressedItem = item;
     if (!item) {
       this.#noSelectionOnMousePress = true;
+
       return;
     }
     const command = this.#pressSelectionCommand(item, modifiers);
@@ -288,6 +308,7 @@ export class TreeWidget extends Observable {
     if (!modifiers.shift && !modifiers.control && item._selected) return 'NoUpdate';
     if (modifiers.shift) return 'SelectCurrent';
     if (modifiers.control) return 'Toggle';
+
     return 'ClearAndSelect';
   }
 
@@ -320,6 +341,7 @@ export class TreeWidget extends Observable {
     if (!item) return;
     if (this.#pressedItem !== item) {
       this.mousePressEvent(event);
+
       return;
     }
     this.emitSignal(this.itemDoubleClicked, item, event.column);
@@ -359,6 +381,7 @@ export class TreeWidget extends Observable {
         }
         if (old.hasChildIndicator() && !old.isExpanded()) {
           old.setExpanded(true);
+
           return true;
         }
         next =
@@ -371,6 +394,7 @@ export class TreeWidget extends Observable {
         }
         if (old.isExpanded() && old.hasChildIndicator()) {
           old.setExpanded(false);
+
           return true;
         }
         const parent = old.parent();
@@ -381,6 +405,7 @@ export class TreeWidget extends Observable {
         if (!old) return false;
         if (event.modifiers.control) this._setItemSelected(old, !old._selected);
         else this._setItemSelected(old, true);
+
         return true;
       default:
         return false;
@@ -398,6 +423,7 @@ export class TreeWidget extends Observable {
       this.setCurrentItem(next, 0, 'ClearAndSelect');
     }
     this.scrollToItem(next);
+
     return true;
   }
 }

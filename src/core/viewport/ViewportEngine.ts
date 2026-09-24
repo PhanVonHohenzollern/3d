@@ -289,6 +289,7 @@ export class ViewportEngine {
     }
     if (bounds.isEmpty()) {
       this.fitDebugOverlay();
+
       return;
     }
     this.fitBounds(bounds);
@@ -364,6 +365,7 @@ export class ViewportEngine {
       this.buildAxesVertices();
       this.rebuildGpuVertices();
       this.update();
+
       return;
     }
     this.fitBounds(bounds);
@@ -475,6 +477,7 @@ export class ViewportEngine {
 
   subscribeWidgets = (listener: () => void): (() => void) => {
     this.m_widgetListeners.add(listener);
+
     return () => {
       this.m_widgetListeners.delete(listener);
     };
@@ -496,6 +499,7 @@ export class ViewportEngine {
     this.m_lastMousePosition = currentPosition;
     if (event.buttons === NoButton) {
       this.updateHover(position);
+
       return;
     }
     this.clearHover();
@@ -575,6 +579,7 @@ export class ViewportEngine {
     const count = this.m_geometryScene.meshes.length;
     if (pickedIndex < 0 || pickedIndex >= count || meshIndex < 0 || meshIndex >= count) return false;
     const apiIndex = this.m_geometryScene.meshes[pickedIndex].apiIndex;
+
     return apiIndex >= 0 ? this.m_geometryScene.meshes[meshIndex].apiIndex === apiIndex : meshIndex === pickedIndex;
   }
 
@@ -640,6 +645,7 @@ export class ViewportEngine {
     for (const panel of [this.m_pointLabels, this.m_vectorLabels]) {
       if (panel.isVisible() && panel.geometry().contains(p)) return true;
     }
+
     return false;
   }
 
@@ -851,6 +857,7 @@ export class ViewportEngine {
       if (panel.isVisible()) occupied.push(QRectF.fromRect(panel.geometry()).adjusted(-4, -4, 4, 4));
     }
     occupied.push(QRectF.fromRect(this.m_selectionModeButton.geometry).adjusted(-4, -4, 4, 4));
+
     return placeWorldAxisLabels({
       axes: this.m_axesVertices,
       transform: this.m_camera.viewProjection(),
@@ -925,6 +932,7 @@ export class ViewportEngine {
   private updateHover(screen: QPointF): void {
     if (!this.rect().contains(screen.toPoint()) || this.childAt(screen.toPoint())) {
       this.clearHover();
+
       return;
     }
     this.updateViewMatrix();
@@ -1016,18 +1024,21 @@ export class ViewportEngine {
       wires: wires.vertices.data().slice(),
       wireRanges: wires.ranges,
     };
+
     return this.m_geometryCache;
   }
 
   private appendCached(vertices: Float32Array, ranges: readonly GeometryRange[]): GeometryRange[] {
     const base = this.m_gpuVertices.size();
     this.m_gpuVertices.appendData(vertices);
+
     return ranges.map((range) => ({ ...range, start: range.start + base }));
   }
 
   private vectorArrow(item: DebugItem): VertexArray {
     const arrow = new VertexArray(8);
     appendVectorArrow(arrow, item, false, this.m_camera.cameraPosition(), this.m_sceneScale);
+
     return arrow;
   }
 
@@ -1045,6 +1056,7 @@ export class ViewportEngine {
     if (!this.m_showGeometry) return -1;
     const ray = this.m_camera.screenRay(screen);
     if (!ray) return -1;
+
     return pickMeshAlongRay(this.m_geometryScene.meshes, ray, (apiIndex) => this.isGeometryApiVisible(apiIndex));
   }
 
@@ -1062,6 +1074,7 @@ export class ViewportEngine {
 
   private pickConnectorPoint(screen: QPointF): number {
     if (this.m_apiFocusActive) return -1;
+
     return pickConnectorAt(this.m_connectors, screen, this.projectToScreen);
   }
 
@@ -1076,6 +1089,7 @@ export class ViewportEngine {
     if (this.m_hiddenDebugItems.has(item.name)) return false;
 
     if (item.kind === 'Point') return this.m_showPoints;
+
     return this.m_showVectors;
   }
 }

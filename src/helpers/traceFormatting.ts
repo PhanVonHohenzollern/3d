@@ -22,6 +22,7 @@ export function displayExpression(expression: string, value: RuntimeValue): stri
   const evaluated = runtimeValueToCompactString(value).replace(kWhitespace, '');
   if (compact === evaluated) return '';
   if (kNumber.test(compact) && (isDouble(value) || isInt(value)) && Number(compact) === runtimeNumber(value)) return '';
+
   return expression;
 }
 
@@ -34,11 +35,13 @@ export function runtimeValueIndex(value: RuntimeValue): number {
   if (isPoint(value)) return 5;
   if (isVector(value)) return 6;
   if (isArray(value)) return 7;
+
   return -1;
 }
 
 export function sourceRootName(name: string): string {
   const match = /[[.]/.exec(name);
+
   return match ? name.slice(0, match.index) : name;
 }
 
@@ -49,6 +52,7 @@ export function directSource(trace: RuntimeArgumentTrace, value: RuntimeValue): 
   for (const source of trace.sources)
     if (sourceRootName(source.name) === root && runtimeValueIndex(source.value) === runtimeValueIndex(value))
       return source;
+
   return null;
 }
 

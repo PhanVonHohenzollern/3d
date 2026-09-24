@@ -7,6 +7,7 @@ import { preventDefault } from '../utils/events';
 
 function MenuItem({ action, onTriggered }: { action: Action; onTriggered: () => void }) {
   const { menuText, shortcutText, checked, trigger } = useAction(action, onTriggered);
+
   return (
     <li
       role="menuitem"
@@ -23,6 +24,7 @@ function MenuItem({ action, onTriggered }: { action: Action; onTriggered: () => 
 
 export function MenuBar({ menus }: { menus: readonly Menu[] }) {
   const { barRef, open, titles, titleMouseDown, titleMouseEnter, close } = useMenuBar(menus);
+
   return (
     <div ref={barRef} role="menubar" className="flex h-6 flex-none border-b border-line bg-window px-0.5">
       {menus.map((menu, index) => (

@@ -13,6 +13,7 @@ export function useDockArea(raised: DockName, raise: (name: DockName) => void) {
     if (!area) return;
     const observer = new ResizeObserver(() => setDockHeight((height) => clampDockHeight(height, area.clientHeight)));
     observer.observe(area);
+
     return () => observer.disconnect();
   }, []);
 

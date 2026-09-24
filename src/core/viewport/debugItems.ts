@@ -27,6 +27,7 @@ function sourceLabel(call: RuntimeApiCall, metadata: readonly ApiParameterMetada
     if (name !== '' && (formal === name || formal.startsWith(`${name}[`)))
       return call.argumentExpressions[p] + formal.slice(name.length);
   }
+
   return formal;
 }
 
@@ -35,6 +36,7 @@ function vectorDisplayScale(maxPointRadius: number, maxVectorLength: number): nu
     const desired = Math.max(1.5, maxPointRadius * 0.16);
     if (maxVectorLength < desired) return Math.min(100, desired / maxVectorLength);
   }
+
   return 1;
 }
 
@@ -96,6 +98,7 @@ export function buildDebugItems(result: RuntimeResult): DebugItemsBuild {
     if (item.kind !== 'Vector') continue;
     item.end = item.start.add(item.rawValue.mul(scale));
   }
+
   return { items, debugSceneScale: Math.max(10, Math.max(maxPointRadius, maxVectorLength)) };
 }
 

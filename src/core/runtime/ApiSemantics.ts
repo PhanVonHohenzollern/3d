@@ -37,6 +37,7 @@ export function apiSemanticsForCall(call: RuntimeApiCall): ApiParameterSemantics
   const metadata = apiParameterMetadataForCall(call);
   const result = metadata.map(defaultSemantics);
   if (call.userFunctionCall) return result;
+
   const set = (name: string, role: string, anchor = '', binding: ApiAnchorBinding = 'None') => {
     for (let i = 0; i < metadata.length; ++i)
       if (metadata[i].name === name) {
@@ -45,6 +46,7 @@ export function apiSemanticsForCall(call: RuntimeApiCall): ApiParameterSemantics
         result[i].anchorBinding = binding;
       }
   };
+
   const array = (name: string, meaning: ApiArrayMeaning, count = '', offset = 0, fixed = 0) => {
     for (let i = 0; i < metadata.length; ++i)
       if (metadata[i].name === name) {
@@ -54,14 +56,17 @@ export function apiSemanticsForCall(call: RuntimeApiCall): ApiParameterSemantics
         result[i].fixedCount = fixed;
       }
   };
+
   const roles = (name: string, labels: readonly string[]) => {
     for (let i = 0; i < metadata.length; ++i) if (metadata[i].name === name) result[i].elementRoles = [...labels];
   };
+
   const frame = (point: string, normal: string, up: string) => {
     set(point, 'Center');
     set(normal, 'Normal', point, 'First');
     set(up, 'Up direction', point, 'First');
   };
+
   const name = call.name;
 
   const box = oneOf(name, ['makeBox', 'makeBoxFromPlanes']);
@@ -316,6 +321,7 @@ export function apiSemanticsForCall(call: RuntimeApiCall): ApiParameterSemantics
       result[i].role = 'Output (input snapshot)';
     }
   }
+
   return result;
 }
 
@@ -329,8 +335,10 @@ export function apiUsedElementCount(call: RuntimeApiCall, s: ApiParameterSemanti
     if (!isDouble(argument) && !isInt(argument)) return available;
     const count = runtimeInteger(argument);
     if (count < 0n) return 0;
+
     return Math.min(available, Number(count) + s.countOffset);
   }
+
   return available;
 }
 
@@ -355,5 +363,6 @@ export function apiParameterRole(call: RuntimeApiCall, parameter: number, indice
   else if (s.arrayMeaning === 'Vertices') position = `Vertex ${index}`;
   if (indices.length === 2 && s.role === 'Section diameter')
     return position + (indices[1] === 0 ? ': A diameter (up direction)' : ': B diameter');
+
   return position === '' ? s.role : position + (s.role === '' ? '' : `: ${s.role}`);
 }

@@ -20,6 +20,7 @@ const xyz = (p: { x: number; y: number; z: number }) => [encodeNumber(p.x), enco
 export function callInfo(call: RuntimeApiCall) {
   const sig = apiSignatureMetadataForCall(call);
   const semantics = apiSemanticsForCall(call);
+
   return {
     signature: sig ? allNativeApiSignatures().indexOf(sig) : -1,
     parameterNames: apiParameterMetadataForCall(call).map((p) => p.name),
@@ -36,6 +37,7 @@ export function callInfo(call: RuntimeApiCall) {
     })),
     parameters: call.arguments.map((arg, i) => {
       const available = arg instanceof RuntimeArray ? arg.elements.length : 0;
+
       return {
         role: apiParameterRole(call, i),
         usedCount: i < semantics.length ? apiUsedElementCount(call, semantics[i], available) : null,
@@ -55,11 +57,14 @@ export function callInfo(call: RuntimeApiCall) {
 
 export function sourceHistories(result: RuntimeResult): number[][] {
   const histories: number[][] = [];
+
   const collect = (t: RuntimeArgumentTrace) => {
     for (const s of t.sources) histories.push(runtimeSourceHistory(result, s));
     t.elements.forEach(collect);
   };
+
   for (const call of result.apiCalls) call.argumentTraces.forEach(collect);
+
   return histories;
 }
 
@@ -79,6 +84,7 @@ export function connectorPreviews(runtime: GeometryRuntime, fixture: Fixture) {
       const preview = buildConnectorPreview(connectorDefinition(directive), (expression) =>
         runtime.evaluateNumericExpression(expression),
       );
+
       return { preview: encodeConnector(preview), error: null };
     } catch (e) {
       return { preview: null, error: what(e) };
@@ -92,6 +98,7 @@ export function dumpFixture(fixture: Fixture) {
   const runs = fixture.lines.map((line) => {
     runtime.setParameters(fixture.parameters);
     const result = runtime.executeUpToLine(fixture.code, line);
+
     return {
       line,
       result: encodeResult(result),
@@ -102,5 +109,6 @@ export function dumpFixture(fixture: Fixture) {
       connectors: connectorPreviews(runtime, fixture),
     };
   });
+
   return { discoverParameters, runs };
 }

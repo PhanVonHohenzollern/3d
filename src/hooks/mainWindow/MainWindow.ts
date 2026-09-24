@@ -57,18 +57,23 @@ export class MainWindow extends Observable {
   get m_editor(): CodeEditorHandle {
     return this.#editor!;
   }
+
   get m_viewport(): Viewport3DHandle {
     return this.#viewport!;
   }
+
   get m_variables(): VariablePanelHandle {
     return this.#variables!;
   }
+
   get m_parameters(): ParameterPanelHandle {
     return this.#parameters!;
   }
+
   get m_apiTrace(): ApiTracePanelHandle {
     return this.#apiTrace!;
   }
+
   get m_links(): LinkPanelHandle {
     return this.#links!;
   }
@@ -329,6 +334,7 @@ export class MainWindow extends Observable {
           'Select a point/vector parameter in API Trace, Variables, or the viewport first',
           2500,
         );
+
         return;
       }
       for (const name of names) this.m_viewport.setDebugItemVisible(name, false);
@@ -339,6 +345,7 @@ export class MainWindow extends Observable {
       if (names.size === 0) names = this.m_viewport.selectedDebugItems();
       if (names.size === 0) {
         this.statusBar().showMessage('Select a point/vector parameter in API Trace or Variables first', 2500);
+
         return;
       }
       for (const name of names) this.m_viewport.setDebugItemVisible(name, true);
@@ -379,6 +386,7 @@ export class MainWindow extends Observable {
       result = this.m_runtime.executeUpToLine(source, line);
     } catch (e) {
       this.statusBar().showMessage(`Line ${line}: preview stopped: ${what(e)}`, 4000);
+
       return;
     }
     this.m_lastResult = result;
@@ -415,6 +423,7 @@ export class MainWindow extends Observable {
     if (apiIndex < 0 || apiIndex >= this.m_lastResult.apiCalls.length) {
       this.m_viewport.clearApiFocus();
       this.statusBar().showMessage('API focus cleared - full preview restored', 1800);
+
       return;
     }
 
@@ -464,6 +473,7 @@ export class MainWindow extends Observable {
     if (event.key === 'Escape') {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       this.exitPreviewFocus();
+
       return;
     }
     const textInput = !!closestTarget(event.target, textInputSelector);
@@ -473,6 +483,7 @@ export class MainWindow extends Observable {
       if (!shortcut.control && textInput) return;
       event.preventDefault();
       action.trigger();
+
       return;
     }
   }

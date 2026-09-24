@@ -56,6 +56,7 @@ export class OverlayPainter {
     ctx.lineWidth = pen.width > 0 ? pen.width : 1;
     ctx.lineCap = pen.cap === 'RoundCap' ? 'round' : 'square';
     ctx.lineJoin = 'bevel';
+
     return true;
   }
 

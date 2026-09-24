@@ -7,6 +7,7 @@ import { PushButton } from './ui/PushButton';
 
 export function LinkPanel(props: LinkPanelProps) {
   const { tableRef, nameRef, table, form, addConnector, removeConnector } = useLinkPanel(props);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-1 p-1">
       <div className="flex flex-none gap-1.5">

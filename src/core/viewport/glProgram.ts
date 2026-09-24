@@ -6,6 +6,7 @@ function compileShader(gl: WebGL2RenderingContext, type: number, source: string)
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS) && !gl.isContextLost()) {
     console.warn('Viewport3D: shader compilation failed:', gl.getShaderInfoLog(shader));
   }
+
   return shader;
 }
 
@@ -26,7 +27,9 @@ export function createProgram(
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     if (!gl.isContextLost()) console.warn('Viewport3D: shader program link failed:', gl.getProgramInfoLog(program));
     gl.deleteProgram(program);
+
     return null;
   }
+
   return program;
 }

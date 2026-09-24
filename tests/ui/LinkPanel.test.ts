@@ -7,6 +7,7 @@ import { LinkPanelModel } from '../../src/hooks/linkPanel/LinkPanelModel';
 const evaluate = (expression: string) => {
   const value = Number(expression);
   if (expression.trim() === '' || !Number.isFinite(value)) throw new Error(`Unknown value: ${expression}`);
+
   return value;
 };
 
@@ -15,6 +16,7 @@ function createPanel() {
   const published: { previews: readonly ConnectorPreview[]; selectedId: number; tested: boolean }[] = [];
   model.setExpressionEvaluator(evaluate);
   model.setPreviewChangedCallback((previews, selectedId, tested) => published.push({ previews, selectedId, tested }));
+
   return { model, published };
 }
 

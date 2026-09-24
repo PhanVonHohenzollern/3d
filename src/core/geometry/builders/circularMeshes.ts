@@ -43,6 +43,7 @@ export function buildTaperedTubeMesh(
     addTriangle(mesh, a, b, c);
     addTriangle(mesh, a, c, d);
   }
+
   return mesh;
 }
 
@@ -82,6 +83,7 @@ export function buildDiscMesh(
     const cidx = 1 + ((i + 1) % segments);
     addTriangle(mesh, a, b, cidx);
   }
+
   return mesh;
 }
 
@@ -117,6 +119,7 @@ export function buildRingMesh(
     addTriangle(mesh, i0, o0, o1);
     addTriangle(mesh, i0, o1, i1);
   }
+
   return mesh;
 }
 
@@ -129,6 +132,7 @@ export function buildCircleOutlineMesh(
   const outer = Math.abs(diameter);
   const lineWidth = stdMax(outer * 0.025, 0.05);
   const mesh = buildRingMesh(context, center, normal, stdMax(0.0, outer - lineWidth * 2.0), outer, 12);
+
   return mesh;
 }
 
@@ -197,8 +201,10 @@ export function buildFacettedCylinderMesh(
       else addTriangle(mesh, centerIndex, b, a);
     }
   };
+
   addCap(front, false);
   addCap(back, true);
+
   return mesh;
 }
 
@@ -305,6 +311,7 @@ export function buildTorusSectionMesh(
       addTriangle(mesh, a, c, d);
     }
   }
+
   return mesh;
 }
 
@@ -375,5 +382,6 @@ export function buildSpheroidSectionMesh(
       addTriangle(mesh, a, c, d);
     }
   }
+
   return mesh;
 }

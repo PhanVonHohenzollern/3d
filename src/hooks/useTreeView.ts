@@ -43,6 +43,7 @@ export function useTreeView(tree: TreeWidget) {
           textWidth,
         )
       : tree.columnWidth(column);
+
     return { label, width, resizable: !resizeToContents };
   });
   for (const row of rows) row.cells.forEach((cell, column) => (cell.width = columns[column].width));
@@ -62,6 +63,7 @@ export function useTreeView(tree: TreeWidget) {
     const rowElement = target.closest<HTMLElement>('[data-row]');
     const row = rowElement ? visible[Number(rowElement.dataset.row)] : undefined;
     const cell = target.closest<HTMLElement>('[data-column]');
+
     return {
       item: row?.item ?? null,
       column: cell ? Number(cell.dataset.column) : 0,
@@ -69,6 +71,7 @@ export function useTreeView(tree: TreeWidget) {
       onDecoration: !!target.closest('[data-branch]'),
     };
   };
+
   const inHeader = (event: MouseEvent) => !!(event.target as Element).closest('[data-tree-header]');
 
   const onMouseDown = (event: MouseEvent) => {
@@ -78,14 +81,17 @@ export function useTreeView(tree: TreeWidget) {
     if (event.detail === 2) tree.mouseDoubleClickEvent(hit(event));
     else tree.mousePressEvent(hit(event));
   };
+
   const onMouseUp = (event: MouseEvent) => {
     if (event.button !== 0 || inHeader(event)) return;
     tree.mouseReleaseEvent(hit(event));
   };
+
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.target !== containerRef.current || event.altKey) return;
     if (tree.keyPressEvent({ key: event.key, modifiers: eventModifiers(event) })) event.preventDefault();
   };
+
   const onResizeStart = (column: number) => (event: PointerEvent<HTMLElement>) => {
     event.stopPropagation();
     const startWidth = tree.columnWidth(column);

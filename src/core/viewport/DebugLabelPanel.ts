@@ -123,10 +123,12 @@ export class DebugLabelPanel {
     for (const row of this.m_selection.selectedRows()) {
       if (this.m_entries[row]?.id !== id) continue;
       const rect = this.visualItemRect(row).intersected(new QRect(0, 0, this.viewportWidth(), this.viewportHeight()));
+
       return rect.isEmpty()
         ? new QRect()
         : rect.translated(this.m_geometry.x, this.m_geometry.y + kDebugLabelHeaderHeight);
     }
+
     return new QRect();
   }
 
@@ -180,6 +182,7 @@ export class DebugLabelPanel {
 
   subscribe = (listener: () => void): (() => void) => {
     this.m_listeners.add(listener);
+
     return () => {
       this.m_listeners.delete(listener);
     };
@@ -198,6 +201,7 @@ export class DebugLabelPanel {
       scrollValue: this.m_scroll,
       rows: this.m_entries.map((_, row) => this.rowLayout(row)),
     };
+
     return this.m_snapshot;
   };
 
@@ -288,6 +292,7 @@ export class DebugLabelPanel {
   mouseReleaseEvent(x: number, y: number, button: number, modifiers: KeyboardModifiers): void {
     if (this.m_rangePress) {
       this.m_rangePress = false;
+
       return;
     }
     const index = this.indexAt(x, y);
@@ -306,6 +311,7 @@ export class DebugLabelPanel {
     this.baseKeyPressEvent(key, modifiers);
     this.m_handlingInput = false;
     this.publishSelection();
+
     return true;
   }
 
@@ -328,6 +334,7 @@ export class DebugLabelPanel {
 
   private visualItemRect(row: number): QRect {
     const h = this.rowHeight();
+
     return new QRect(0, row * h - this.m_scroll, this.itemWidth(), h);
   }
 
@@ -369,6 +376,7 @@ export class DebugLabelPanel {
   private indexAt(x: number, y: number): number {
     if (x < 0 || x >= this.viewportWidth() || y < 0 || y >= this.viewportHeight()) return -1;
     const row = Math.floor((y + this.m_scroll) / this.rowHeight());
+
     return row >= 0 && row < this.m_entries.length ? row : -1;
   }
 
@@ -381,6 +389,7 @@ export class DebugLabelPanel {
 
   private rowCenterContentY(row: number): number {
     const h = this.rowHeight();
+
     return row * h + Math.trunc((h - 1) / 2);
   }
 
@@ -416,6 +425,7 @@ export class DebugLabelPanel {
 
     if (index < 0) {
       this.select([], { op: 'Select' });
+
       return;
     }
     this.setCurrentIndex(index, NoUpdate, false);
@@ -437,10 +447,12 @@ export class DebugLabelPanel {
         this.m_entries.map((_, row) => row),
         ClearAndSelect,
       );
+
       return;
     }
     if (key === ' ') {
       if (this.m_currentRow >= 0) this.select([this.m_currentRow], { op: modifiers.control ? 'Toggle' : 'Select' });
+
       return;
     }
     const pageRows = Math.max(1, Math.floor(this.viewportHeight() / this.rowHeight()));

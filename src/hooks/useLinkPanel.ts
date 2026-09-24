@@ -53,6 +53,7 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
     const { row, column } = tableCellOf(event);
     if (row >= 0) model.cellActivated(row, column);
   };
+
   const onTableKeyDown = (event: KeyboardEvent) => {
     if (event.target !== tableRef.current || event.altKey || event.ctrlKey || event.metaKey) return;
     if (model.tableKeyPress(event.key)) event.preventDefault();

@@ -20,11 +20,13 @@ export const traceLinesField = StateField.define<TraceLines>({
   create: () => ({ lines: new Set(), activeLine: -1 }),
   update(value, tr) {
     for (const effect of tr.effects) if (effect.is(setTraceLinesEffect)) value = effect.value;
+
     return value;
   },
   provide: (field) => [
     EditorView.decorations.compute([field, 'doc'], (state): DecorationSet => {
       const trace = state.field(field);
+
       return Decoration.set(
         validTraceLines(state, trace).map((line) =>
           (line === trace.activeLine ? activeTraceLineDecoration : traceLineDecoration).range(
@@ -35,6 +37,7 @@ export const traceLinesField = StateField.define<TraceLines>({
     }),
     gutterLineClass.compute([field, 'doc'], (state) => {
       const trace = state.field(field);
+
       return RangeSet.of(
         validTraceLines(state, trace).map((line) => tracedLineNumberMarker.range(state.doc.line(line).from)),
       );

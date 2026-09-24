@@ -19,6 +19,7 @@ export class CanvasTextMeasurer implements TextMeasurer {
         const context = document.createElement('canvas').getContext('2d');
         if (context) return new CanvasTextMeasurer(context);
       }
+
       return null;
     } catch {
       return null;
@@ -34,6 +35,7 @@ export class CanvasTextMeasurer implements TextMeasurer {
     const width = this.m_context.measureText(text).width;
     if (this.m_widths.size > 20000) this.m_widths.clear();
     this.m_widths.set(key, width);
+
     return width;
   }
 
@@ -59,6 +61,7 @@ export class CanvasTextMeasurer implements TextMeasurer {
           : { ascent: font.pixelSize * 0.93, descent: font.pixelSize * 0.25 };
       this.m_vertical.set(css, metrics);
     }
+
     return metrics;
   }
 }

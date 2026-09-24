@@ -335,9 +335,11 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
   setSelectionChangedCallback(callback: ((apiIndex: number) => void) | null): void {
     this.#selectionChangedCallback = callback;
   }
+
   setSourceActivatedCallback(callback: ((line: number) => void) | null): void {
     this.#sourceActivatedCallback = callback;
   }
+
   setHistorySourceActivatedCallback(callback: ((line: number) => void) | null): void {
     this.#historySourceActivatedCallback = callback;
   }
@@ -353,6 +355,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     }
     if (!call) {
       this.clearApiFocus();
+
       return;
     }
     const blocked = tree.blockSignals(true);
@@ -422,14 +425,17 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
 
   selectedDebugItems(): Set<string> {
     const ids = new Set<string>();
+
     const collect = (item: TreeWidgetItem): void => {
       const id = item.dataString(0, kDebugItemRole);
       if (id !== '') {
         ids.add(id);
+
         return;
       }
       for (let i = 0; i < item.childCount(); ++i) collect(item.child(i));
     };
+
     for (const selected of this.m_tree.selectedItems()) {
       for (let item: TreeWidgetItem | null = selected; item; item = item.parent()) {
         if (item.dataString(0, kParameterRole) === '') continue;
@@ -437,6 +443,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
         break;
       }
     }
+
     return ids;
   }
 
@@ -444,6 +451,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     const indices = new Set<number>();
     for (const item of this.m_tree.selectedItems()) indices.add(item.dataInt(0, UserRole));
     if (indices.size === 0 && this.#selectedApiIndex >= 0) indices.add(this.#selectedApiIndex);
+
     return indices;
   }
 
@@ -453,6 +461,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
       const line = item.dataInt(0, kSourceLineRole);
       if (line > 0) lines.add(line);
     }
+
     return lines;
   }
 

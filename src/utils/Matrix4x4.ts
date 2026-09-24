@@ -37,6 +37,7 @@ export class QMatrix4x4 {
           m1.m(3, row) * m2.m(col, 3);
       }
     }
+
     return result;
   }
 
@@ -50,6 +51,7 @@ export class QMatrix4x4 {
 
   map(v: QVector4D): QVector4D {
     const m = this.data;
+
     return new QVector4D(
       v.x * m[0] + v.y * m[4] + v.z * m[8] + v.w * m[12],
       v.x * m[1] + v.y * m[5] + v.z * m[9] + v.w * m[13],
@@ -67,9 +69,11 @@ export class QMatrix4x4 {
     const cotan = Math.cos(radians) / sine;
     const clip = farPlane - nearPlane;
     const p = new QMatrix4x4(new Float32Array(16));
+
     const set = (col: number, row: number, value: number) => {
       p.data[col * 4 + row] = value;
     };
+
     set(0, 0, cotan / aspectRatio);
     set(1, 1, cotan);
     set(2, 2, -(nearPlane + farPlane) / clip);
@@ -89,9 +93,11 @@ export class QMatrix4x4 {
     const upVector = QVector3D.crossProduct(side, forward);
 
     const r = new QMatrix4x4();
+
     const set = (col: number, row: number, value: number) => {
       r.data[col * 4 + row] = value;
     };
+
     set(0, 0, side.x);
     set(1, 0, side.y);
     set(2, 0, side.z);
@@ -123,7 +129,9 @@ export class QMatrix4x4 {
 
   inverted(): { matrix: QMatrix4x4; invertible: boolean } {
     const mm = (col: number, row: number) => this.m(col, row);
+
     const det2 = (c0: number, c1: number, r0: number, r1: number) => mm(c0, r0) * mm(c1, r1) - mm(c0, r1) * mm(c1, r0);
+
     const det3 = (c0: number, c1: number, c2: number, r0: number, r1: number, r2: number) =>
       mm(c0, r0) * det2(c1, c2, r1, r2) - mm(c1, r0) * det2(c0, c2, r1, r2) + mm(c2, r0) * det2(c0, c1, r1, r2);
 
@@ -135,9 +143,11 @@ export class QMatrix4x4 {
     det = 1 / det;
 
     const inv = new QMatrix4x4();
+
     const set = (col: number, row: number, value: number) => {
       inv.data[col * 4 + row] = value;
     };
+
     set(0, 0, det3(1, 2, 3, 1, 2, 3) * det);
     set(0, 1, -det3(0, 2, 3, 1, 2, 3) * det);
     set(0, 2, det3(0, 1, 3, 1, 2, 3) * det);
@@ -154,12 +164,15 @@ export class QMatrix4x4 {
     set(3, 1, det3(0, 2, 3, 0, 1, 2) * det);
     set(3, 2, -det3(0, 1, 3, 0, 1, 2) * det);
     set(3, 3, det3(0, 1, 2, 0, 1, 2) * det);
+
     return { matrix: inv, invertible: true };
   }
 
   normalMatrix(): Float32Array {
     const inv = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+
     const mm = (col: number, row: number) => this.m(col, row);
+
     let det =
       mm(0, 0) * (mm(1, 1) * mm(2, 2) - mm(1, 2) * mm(2, 1)) -
       mm(1, 0) * (mm(0, 1) * mm(2, 2) - mm(0, 2) * mm(2, 1)) +
@@ -176,6 +189,7 @@ export class QMatrix4x4 {
     inv[0 + 2 * 3] = (mm(0, 1) * mm(1, 2) - mm(0, 2) * mm(1, 1)) * det;
     inv[1 + 2 * 3] = -(mm(0, 0) * mm(1, 2) - mm(0, 2) * mm(1, 0)) * det;
     inv[2 + 2 * 3] = (mm(0, 0) * mm(1, 1) - mm(1, 0) * mm(0, 1)) * det;
+
     return inv;
   }
 }

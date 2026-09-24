@@ -39,6 +39,7 @@ const editorTheme = EditorView.theme(
 
 const insertTabCharacter: Command = (view) => {
   view.dispatch(view.state.replaceSelection('\t'), { scrollIntoView: true, userEvent: 'input' });
+
   return true;
 };
 

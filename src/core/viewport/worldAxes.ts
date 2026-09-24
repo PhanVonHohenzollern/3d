@@ -31,6 +31,7 @@ export function axesVertices(sceneScale: number, target: QVector3D, distance: nu
     const color = kAxisColors[axis];
     vertices.appendLine(end.neg(), end, color.x, color.y, color.z);
   }
+
   return vertices;
 }
 
@@ -42,15 +43,20 @@ export function placeWorldAxisLabels(input: WorldAxisLabelInput): AxisLabel[] {
   const inset = screen.adjusted(22, 22, -22, -22);
   const occupied = [...input.occupied];
   const range = { lo: 0, hi: 1 };
+
   const clip = (start: number, end: number): boolean => {
     if (start < 0 && end < 0) return false;
     if (start < 0) range.lo = Math.max(range.lo, start / (start - end));
     else if (end < 0) range.hi = Math.min(range.hi, start / (start - end));
+
     return range.lo <= range.hi;
   };
+
   const project = (p: QVector4D) => new QPointF((p.x / p.w + 1) * width * 0.5, (1 - p.y / p.w) * height * 0.5);
+
   const atEdge = (p: QPointF) =>
     Math.min(Math.abs(p.x), Math.abs(p.x - width), Math.abs(p.y), Math.abs(p.y - height)) < 2;
+
   for (let axis = 0; axis < 3; ++axis) {
     const a = transform.map(QVector4D.fromVector3D(axes.position(axis * 2), 1));
     const b = transform.map(QVector4D.fromVector3D(axes.position(axis * 2 + 1), 1));
@@ -97,6 +103,7 @@ export function placeWorldAxisLabels(input: WorldAxisLabelInput): AxisLabel[] {
       }
     }
   }
+
   return labels;
 }
 
