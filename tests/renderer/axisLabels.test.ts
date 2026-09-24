@@ -82,7 +82,7 @@ describe('world axis labels', () => {
     expect(zMinus).toBeDefined();
     expect(zPlus!.anchor.y).toBeGreaterThan(300);
     expect(zMinus!.anchor.y).toBeLessThan(300);
-    expect(zPlus!.color).toEqual({ r: 95, g: 145, b: 255, a: 255 });
+    expect(zPlus!.color).toEqual({ r: 140, g: 180, b: 255, a: 255 });
   });
 
   it('slides along the axis to avoid the point list and the Select button', () => {

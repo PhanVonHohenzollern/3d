@@ -20,7 +20,7 @@ export interface WorldAxisLabelInput {
 }
 
 const kAxisColors = [new QVector3D(0.95, 0.2, 0.2), new QVector3D(0.2, 0.9, 0.3), new QVector3D(0.25, 0.45, 1.0)];
-const kLabelColors = [qColor(242, 70, 70), qColor(65, 230, 90), qColor(95, 145, 255)];
+const kLabelColors = [qColor(255, 125, 125), qColor(110, 235, 140), qColor(140, 180, 255)];
 
 export function axesVertices(sceneScale: number, target: QVector3D, distance: number): VertexArray {
   const vertices = new VertexArray();
@@ -111,9 +111,9 @@ export function drawWorldAxisLabels(painter: OverlayPainter, labels: readonly Ax
   painter.save();
   painter.setFont(font);
   for (const label of labels) {
-    painter.setPen(null);
-    painter.setBrush(qColor(18, 19, 20, 220));
-    painter.drawRoundedRect(label.bounds, 3, 3);
+    painter.setPen(qColor(63, 63, 70));
+    painter.setBrush(qColor(24, 24, 27, 245));
+    painter.drawRoundedRect(label.bounds, 4, 4);
     painter.setPen(label.color);
     painter.drawTextCentered(label.bounds, label.text);
   }
