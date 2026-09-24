@@ -38,7 +38,11 @@ export function parseRuntimeType(tokens: readonly Token[], start: number): Parse
   let pos = start;
 
   const skipQualifiers = () => {
-    while (pos < tokens.length && (isIdentifier(tokens[pos], 'const') || isIdentifier(tokens[pos], 'volatile'))) ++pos;
+    while (
+      pos < tokens.length &&
+      ['const', 'volatile', 'static', 'constexpr', 'inline', 'extern'].some((q) => isIdentifier(tokens[pos], q))
+    )
+      ++pos;
   };
 
   skipQualifiers();
@@ -48,7 +52,12 @@ export function parseRuntimeType(tokens: readonly Token[], start: number): Parse
     type += '::' + tokens[pos + 1].text;
     pos += 2;
   }
-  if (type !== 'FdPoint3d' && type !== 'FdVector3d' && !sdkTypeDefinition(type) && !isScalarTypeName(type)) return null;
+  if (
+    !['auto', 'FdPoint3d', 'FdVector3d', 'FdBowlInfo', 'FdBowlFace', 'FdBowlCorner'].includes(type) &&
+    !sdkTypeDefinition(type) &&
+    !isScalarTypeName(type)
+  )
+    return null;
   skipQualifiers();
   if (type === 'char' && pos < tokens.length && isSymbol(tokens[pos], '*')) {
     type = 'char*';

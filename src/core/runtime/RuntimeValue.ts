@@ -1,5 +1,6 @@
 import { CppException, doubleToInt64, formatFixed } from '../../utils/cpp';
 import { FdPoint3d, FdVector3d } from './FdMath';
+import { FdBowlInfo, FdBowlFace, FdBowlCorner, isBowlValue, type BowlValue } from './FdBowlData';
 import { sdkCanonicalType } from './SdkDefinitions';
 
 export class RuntimeArray {
@@ -10,7 +11,8 @@ export class RuntimeArray {
   ) {}
 }
 
-export type RuntimeValue = undefined | number | bigint | boolean | string | FdPoint3d | FdVector3d | RuntimeArray;
+export type RuntimeValue =
+  undefined | number | bigint | boolean | string | FdPoint3d | FdVector3d | RuntimeArray | BowlValue;
 
 export const isUnset = (v: RuntimeValue): v is undefined => v === undefined;
 
@@ -45,6 +47,9 @@ function arrayTypeName(a: RuntimeArray): string {
 }
 
 export function runtimeTypeName(value: RuntimeValue): string {
+  if (value instanceof FdBowlInfo) return 'FdBowlInfo';
+  if (value instanceof FdBowlFace) return 'FdBowlFace';
+  if (value instanceof FdBowlCorner) return 'FdBowlCorner';
   if (isDouble(value)) return 'double';
   if (isInt(value)) return 'int';
   if (isBool(value)) return 'bool';
@@ -57,6 +62,10 @@ export function runtimeTypeName(value: RuntimeValue): string {
 }
 
 export function runtimeValueToCompactString(value: RuntimeValue): string {
+  if (value instanceof FdBowlInfo)
+    return `FdBowlInfo(${value.corners} corners, ${value.complexityR} × ${value.complexityV})`;
+  if (value instanceof FdBowlFace) return `FdBowlFace(${value.corners.length} corners)`;
+  if (value instanceof FdBowlCorner) return `FdBowlCorner(${runtimeValueToCompactString(value.vertex)})`;
   if (isDouble(value)) return formatNumber(value);
   if (isInt(value)) return value.toString();
   if (isBool(value)) return value ? 'true' : 'false';
@@ -84,6 +93,9 @@ export function runtimeValueToString(value: RuntimeValue): string {
 }
 
 export function runtimeDefaultValueForType(requestedType: string): RuntimeValue {
+  if (requestedType === 'FdBowlInfo') return new FdBowlInfo();
+  if (requestedType === 'FdBowlFace') return new FdBowlFace();
+  if (requestedType === 'FdBowlCorner') return new FdBowlCorner();
   const typeName = sdkCanonicalType(requestedType);
   if (typeName === 'double' || typeName === 'float' || typeName === 'ads_real') return 0.0;
   if (typeName === 'int' || typeName === 'short' || typeName === 'long') return 0n;
@@ -132,6 +144,8 @@ export function runtimeCoerceToType(value: RuntimeValue, requestedType: string):
   }
   if (typeName === 'FdPoint3d') {
     if (isPoint(value)) return value;
+    if (isArray(value) && value.elements.length >= 3)
+      return new FdPoint3d(...(value.elements.slice(0, 3).map(runtimeNumber) as [number, number, number]));
     throw new CppException('runtime_error', 'FdPoint3d value required');
   }
   if (typeName === 'FdVector3d') {
@@ -143,6 +157,7 @@ export function runtimeCoerceToType(value: RuntimeValue, requestedType: string):
 }
 
 export function runtimeDeepCopy(value: RuntimeValue): RuntimeValue {
+  if (isBowlValue(value)) return value.clone();
   if (isArray(value))
     return new RuntimeArray(value.elementType, [...value.dimensions], value.elements.map(runtimeDeepCopy));
 

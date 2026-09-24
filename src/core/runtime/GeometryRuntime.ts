@@ -2,6 +2,7 @@ import { doubleToInt64, runtimeError, stdException, trim } from '../../utils/cpp
 import { FdVector3d } from './FdMath';
 import { parseMacroDefinition } from './helpers/macros';
 import { scanGetValParameters } from './helpers/parameters';
+import { preprocess } from './helpers/preprocessor';
 import { collectVariables } from './helpers/runtimeResult';
 import { ExprParser } from './interpreter/ExprParser';
 import { Lexer } from './interpreter/Lexer';
@@ -23,10 +24,11 @@ export class GeometryRuntime {
     const state = this.m_state;
     state.reset();
     this.seedBuiltinValues();
-    this.importSourceMacros(code);
 
     try {
-      const program = new ProgramParser(new Lexer(code).scan()).parse();
+      const processed = preprocess(code);
+      this.importSourceMacros(processed.definitions.join('\n'));
+      const program = new ProgramParser(new Lexer(processed.code).scan()).parse();
       const effectiveMaxLine = Math.min(Math.max(0, maxLine), code.split('\n').length);
       new RuntimeExecutor(state, effectiveMaxLine).executeProgram(program);
     } catch (e) {
@@ -81,11 +83,18 @@ export class GeometryRuntime {
     state.setVariable('vx', new FdVector3d(1, 0, 0), false);
     state.setVariable('vy', new FdVector3d(0, 1, 0), false);
     state.setVariable('vz', new FdVector3d(0, 0, 1), false);
-    for (const constant of kSdkConstants)
-      state.setVariable(constant.name, constant.integer ? doubleToInt64(constant.value) : constant.value, false);
+    for (const constant of kSdkConstants) {
+      const value = constant.integer ? doubleToInt64(constant.value) : constant.value;
+      // New immutable SDK constants need no variable lifetime/history. Preserve
+      // existing trace identities when extending the SDK constant catalogue.
+      if (constant.name.startsWith('enBowl')) state.m_values.set(constant.name, value);
+      else state.setVariable(constant.name, value, false);
+    }
     state.setVariable('cpx', 10n, false);
     state.setVariable('m_geoRepMode', 0n, false);
     state.setVariable('m_primitiveMode', 0n, false);
+    state.m_values.set('TRUE', true);
+    state.m_values.set('FALSE', false);
   }
 
   private importSourceMacros(code: string): void {

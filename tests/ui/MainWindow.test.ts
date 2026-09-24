@@ -1,4 +1,4 @@
-import { parseObj } from '../../src/core/formats/obj';
+import { parseObj, writeObj } from '../../src/core/formats/obj';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTracePanelModel } from '../../src/hooks/apiTrace/ApiTracePanelModel';
 import { LinkPanelModel } from '../../src/hooks/linkPanel/LinkPanelModel';
@@ -7,6 +7,9 @@ import { ParameterPanelModel } from '../../src/hooks/parameterPanel/ParameterPan
 import { VariablePanelModel } from '../../src/hooks/variablePanel/VariablePanelModel';
 import type { CodeEditorHandle } from '../../src/types/editor';
 import type { Viewport3DHandle } from '../../src/types/viewport';
+import { createViewport3DHandle } from '../../src/helpers/viewportHandle';
+import { QVector3D } from '../../src/utils/Vector3D';
+import { boxMesh, click, createEngine, project, scene } from '../renderer/helpers';
 
 class FakeEditor implements CodeEditorHandle {
   text = '';
@@ -201,6 +204,118 @@ describe('MainWindow', () => {
     vi.useRealTimers();
   });
 
+  it('builds the whole source and freezes geometry and runtime state until the next build', () => {
+    const { mw, editor, log, parameters } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 1);
+    mw.buildPreview();
+    expect(mw.previewMode).toBe('build');
+    expect(mw.m_currentPreviewLine).toBe(6);
+    expect(editor.currentLine()).toBe(1);
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(1);
+    const builtScene = mw.m_geometryScene;
+    const builtResult = mw.m_lastResult;
+    const exported = mw.exportObj();
+
+    log.length = 0;
+    editor.type(kSource.replace('double after = 1', 'double after = 9'), 3);
+    editor.moveTo(4);
+    parameters.edit(0, 3);
+    parameters.editorTextEdited('7');
+    parameters.commitEditor();
+    vi.advanceTimersByTime(1000);
+    expect(mw.m_geometryScene).toBe(builtScene);
+    expect(mw.m_lastResult).toBe(builtResult);
+    expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(2);
+    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(1);
+    expect(mw.exportObj()).toBe(exported);
+    expect(log).toEqual([]);
+
+    mw.buildPreview();
+    expect(mw.m_geometryScene).not.toBe(builtScene);
+    expect(mw.m_currentPreviewLine).toBe(6);
+    expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(7);
+    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(9);
+    expect(mw.exportObj()).not.toBe(exported);
+    mw.dispose();
+  });
+
+  it('switches from a focused build to Debug at the cursor and resumes live updates', () => {
+    const { mw, editor, apiTrace, parameters } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 1);
+    mw.buildPreview();
+    apiTrace.selectMeshApiCall(0);
+    mw.onApiTraceSourceActivated(5);
+    expect(mw.m_browsingTrace).toBe(true);
+
+    mw.debugPreview();
+    expect(mw.previewMode).toBe('debug');
+    expect(mw.m_browsingTrace).toBe(false);
+    expect(mw.m_currentPreviewLine).toBe(5);
+    expect(apiTrace.selectedApiCall()).toBe(-1);
+    expect(mw.m_lastResult.variables.some((v) => v.name === 'after')).toBe(false);
+
+    editor.moveTo(3);
+    vi.advanceTimersByTime(220);
+    expect(mw.m_currentPreviewLine).toBe(3);
+    expect(mw.m_geometryScene.meshes).toHaveLength(0);
+    editor.type(kSource.replace('double after = 1', 'double after = 4'), 6);
+    vi.advanceTimersByTime(220);
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(4);
+    parameters.edit(0, 3);
+    parameters.editorTextEdited('9');
+    parameters.commitEditor();
+    expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(9);
+    mw.dispose();
+  });
+
+  it('restores the last build after OBJ import and rebuilds explicitly with Ctrl+R', () => {
+    const { mw, editor, log } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 1);
+    mw.buildPreview();
+    const builtScene = mw.m_geometryScene;
+    const builtResult = mw.m_lastResult;
+    const exported = mw.exportObj();
+    mw.replacePreviewWithObj(parseObj('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3'), 'triangle.obj');
+    editor.type(kSource.replace('double after = 1', 'double after = 8'), 1);
+    mw.returnToCodePreview();
+    expect(mw.importedObj).toBeNull();
+    expect(mw.m_geometryScene).toBe(builtScene);
+    expect(mw.m_lastResult).toBe(builtResult);
+    expect(mw.exportObj()).toBe(exported);
+    expect(log).toContain('setGeometryScene(obj)');
+    expect(log).toContain('setRuntimeResult(obj)');
+
+    const event = keyEvent('r', { control: true }, 'input');
+    mw.handleKeyDown(event);
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(mw.previewMode).toBe('build');
+    expect(mw.m_currentPreviewLine).toBe(6);
+    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(8);
+    mw.dispose();
+  });
+
+  it.each(['build', 'debug'] as const)('%s explicitly switches an imported OBJ back to the editor preview', (mode) => {
+    const { mw, editor, log } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 3);
+    mw.replacePreviewWithObj(parseObj('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3'), 'triangle.obj');
+    log.length = 0;
+    if (mode === 'build') mw.buildPreview();
+    else mw.debugPreview();
+    expect(mw.importedObj).toBeNull();
+    expect(mw.previewMode).toBe(mode);
+    expect(mw.m_currentPreviewLine).toBe(mode === 'build' ? 6 : 3);
+    expect(mw.m_geometryScene.meshes).toHaveLength(mode === 'build' ? 1 : 0);
+    expect(log).toContain('setGeometryScene(obj)');
+    expect(log).toContain('setRuntimeResult(obj)');
+    mw.dispose();
+  });
+
   it('keeps OBJ preview independent from code edits and restores code on request', () => {
     const { mw, editor, log } = createMainWindow();
     mw.start();
@@ -221,6 +336,44 @@ describe('MainWindow', () => {
     expect(mw.importedObj).toBeNull();
     expect(log).toContain('setGeometryScene(obj)');
     expect(parseObj(mw.exportObj()).meshes[0].indices.length).toBeGreaterThan(3);
+    mw.dispose();
+  });
+
+  it('Esc clears imported OBJ mesh selection and focus without changing the model or camera', () => {
+    const { mw, editor } = createMainWindow();
+    mw.start();
+    const engine = createEngine();
+    mw.bindViewport(createViewport3DHandle(engine));
+    engine.setMeshSelectionCallback(mw.onViewportMeshSelection);
+    engine.selectionModeButtonClicked();
+    engine.selectionModeButtonClicked();
+    const imported = parseObj(writeObj(scene(boxMesh([-1, -1, -1], [1, 1, 1]), boxMesh([4, -1, -1], [6, 1, 1]))));
+    mw.replacePreviewWithObj(imported, 'two-meshes.obj');
+    const camera = engine.camera();
+    const before = { target: camera.target, distance: camera.distance, yaw: camera.yaw, pitch: camera.pitch };
+    const first = project(engine, new QVector3D(0, 0, 0));
+    click(engine, first.x, first.y);
+    expect(engine.selectedMeshIndex()).toBe(0);
+    mw.handleKeyDown(keyEvent('Escape'));
+    expect(engine.selectedMeshIndex()).toBe(-1);
+    expect(engine.isMeshSelected(0)).toBe(false);
+
+    const second = project(engine, new QVector3D(5, 0, 0));
+    click(engine, second.x, second.y);
+    expect(engine.selectedMeshIndex()).toBe(1);
+    engine.setSelectedApiCall(-1, true);
+    engine.setApiFocusIndices(new Set());
+    mw.handleKeyDown(keyEvent('Escape'));
+    expect(engine.selectedMeshIndex()).toBe(-1);
+    expect(engine.hasMeshFocus()).toBe(false);
+    expect(engine.hasApiFocus()).toBe(false);
+    click(engine, first.x, first.y);
+    expect(engine.selectedMeshIndex()).toBe(0);
+    mw.handleKeyDown(keyEvent('Escape'));
+    expect(camera.target).toEqual(before.target);
+    expect([camera.distance, camera.yaw, camera.pitch]).toEqual([before.distance, before.yaw, before.pitch]);
+    expect(mw.importedObj?.scene).toBe(imported);
+    expect(editor.text).toBe('');
     mw.dispose();
   });
 

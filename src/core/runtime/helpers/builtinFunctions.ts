@@ -1,7 +1,9 @@
 import { cppPow, cppRound, runtimeError } from '../../../utils/cpp';
 import { FdPoint3d, FdVector3d } from '../FdMath';
+import { FdBowlInfo, FdBowlFace, FdBowlCorner } from '../FdBowlData';
 import {
   isString,
+  isArray,
   runtimeCoerceToType,
   runtimeDefaultValueForType,
   runtimeNumber,
@@ -59,6 +61,19 @@ const strcmp: BuiltinFunction = (args) => {
 };
 
 const kMathFunctions: ReadonlyMap<string, BuiltinFunction> = new Map([
+  ...(['min', 'max'] as const).map(
+    (name) =>
+      [
+        name,
+        (args: readonly RuntimeValue[]) => {
+          if (args.length !== 2) throw runtimeError(name + ' requires two arguments');
+          if (typeof args[0] === 'bigint' && typeof args[1] === 'bigint')
+            return args[0] < args[1] === (name === 'min') ? args[0] : args[1];
+
+          return (name === 'min' ? Math.min : Math.max)(runtimeNumber(args[0]), runtimeNumber(args[1]));
+        },
+      ] as [string, BuiltinFunction],
+  ),
   ['sin', unary('sin', Math.sin)],
   ['cos', unary('cos', Math.cos)],
   ['tan', unary('tan', Math.tan)],
@@ -77,6 +92,31 @@ const kMathFunctions: ReadonlyMap<string, BuiltinFunction> = new Map([
 ]);
 
 export function builtinFunction(name: string): BuiltinFunction | undefined {
+  if (name === 'wcsstr' || name === 'strstr')
+    return (args) => {
+      if (args.length !== 2) throw runtimeError(name + ' requires two strings');
+
+      const text = (value: RuntimeValue): string =>
+        isString(value) ? value : isArray(value) ? value.elements.map(text).join('').split('\0')[0] : '';
+
+      const haystack = text(args[0]),
+        index = haystack.indexOf(text(args[1]));
+
+      return index < 0 ? undefined : haystack.slice(index);
+    };
+  if (name === 'asFdPoint3d' || name === 'AcGePoint3d') return pointOrVectorConstructor('FdPoint3d');
+  if (name === 'asFdVector3d' || name === 'AcGeVector3d') return pointOrVectorConstructor('FdVector3d');
+  if (name === 'FdBowlInfo')
+    return (args) =>
+      args[0] instanceof FdBowlInfo
+        ? args[0].clone()
+        : new FdBowlInfo(
+            args.length > 0 ? runtimeNumber(args[0]) : 4,
+            args.length > 1 ? runtimeNumber(args[1]) : 10,
+            args.length > 2 ? runtimeNumber(args[2]) : 10,
+          );
+  if (name === 'FdBowlFace') return (args) => (args[0] instanceof FdBowlFace ? args[0].clone() : new FdBowlFace());
+  if (name === 'FdBowlCorner') return () => new FdBowlCorner();
   if (isNumericType(name)) return numericConversion(name);
   if (name === 'FdPoint3d' || name === 'FdVector3d') return pointOrVectorConstructor(name);
 

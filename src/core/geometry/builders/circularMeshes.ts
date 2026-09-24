@@ -268,6 +268,7 @@ export function buildTorusSectionMesh(
   sweepAngleDeg: number,
   complexity: number,
   segmentation: number,
+  half = false,
 ): PreviewMesh {
   const mesh = context.createMesh();
 
@@ -279,6 +280,7 @@ export function buildTorusSectionMesh(
   } else radial0 = normalized(radial0);
 
   const crossSegments = circularFaceCount(complexity);
+  const crossPoints = half ? crossSegments + 1 : crossSegments;
   const sweepSegments = stdClamp(stdMax(1, segmentation), 1, 1024);
   const closed = Math.abs(sweepAngleDeg) >= 359.999;
   const sweepPoints = closed ? sweepSegments : sweepSegments + 1;
@@ -291,8 +293,8 @@ export function buildTorusSectionMesh(
     const angle = sweep * t;
     const radial = normalized(rotateAroundAxis(radial0, axis, angle));
     const ringCenter = c0.add(radial.mul(radius));
-    for (let j = 0; j < crossSegments; ++j) {
-      const phi = (2.0 * Math.PI * j) / crossSegments;
+    for (let j = 0; j < crossPoints; ++j) {
+      const phi = ((half ? 1 : 2) * Math.PI * j) / crossSegments;
       const offsetDir = normalized(radial.mul(Math.cos(phi)).add(axis.mul(Math.sin(phi))));
       mesh.vertices.push(vertex(ringCenter.add(offsetDir.mul(tubeRadius)), offsetDir));
     }
@@ -302,11 +304,11 @@ export function buildTorusSectionMesh(
   for (let s = 0; s < longitudinalSegments; ++s) {
     const sn = closed ? (s + 1) % sweepPoints : s + 1;
     for (let j = 0; j < crossSegments; ++j) {
-      const jn = (j + 1) % crossSegments;
-      const a = s * crossSegments + j;
-      const b = s * crossSegments + jn;
-      const c = sn * crossSegments + jn;
-      const d = sn * crossSegments + j;
+      const jn = (j + 1) % crossPoints;
+      const a = s * crossPoints + j;
+      const b = s * crossPoints + jn;
+      const c = sn * crossPoints + jn;
+      const d = sn * crossPoints + j;
       addTriangle(mesh, a, b, c);
       addTriangle(mesh, a, c, d);
     }

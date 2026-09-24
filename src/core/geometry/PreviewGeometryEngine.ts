@@ -1,7 +1,7 @@
 import { identityMatrix, multiply, type DMat4 } from '../../utils/dmat4';
 import { apiSignatureMetadataForCall } from '../runtime/ApiMetadata';
 import type { RuntimeApiCall, RuntimeResult } from '../runtime/RuntimeTypes';
-import { appendCompositeApiMeshes, appendPrimitiveApiMeshes } from './adapters/apiAdapters';
+import { appendCompositeApiMeshes, appendPrimitiveApiMeshes, supportedPreviewApiNames } from './adapters/apiAdapters';
 import { effectiveArguments, isGeometryCallName, warningFor } from './helpers/apiCall';
 import { meshColorUpdate } from './helpers/colors';
 import { applyTransform, meshTransformDelta } from './helpers/meshTransform';
@@ -29,6 +29,8 @@ const adapterWarningHeaders = new Set([
 
 function missingAdapterWarning(call: RuntimeApiCall): string | null {
   if (call.userFunctionCall) return null;
+  if (supportedPreviewApiNames().includes(call.name))
+    return warningFor(call, 'invalid arguments or unsupported overload for this preview adapter');
   const sig = apiSignatureMetadataForCall(call);
   if (!sig || !adapterWarningHeaders.has(sig.sourceHeader) || !isGeometryCallName(call.name)) return null;
 
@@ -65,7 +67,27 @@ export class PreviewGeometryEngine {
       }
 
       const context = new MeshBuildContext(call, apiIndex, currentColor);
-      if (appendPrimitiveApiMeshes(scene, context, args) || appendCompositeApiMeshes(scene, context, args)) continue;
+      const firstMesh = scene.meshes.length;
+      if (appendPrimitiveApiMeshes(scene, context, args) || appendCompositeApiMeshes(scene, context, args)) {
+        // Repeated grille blades and symbol strokes share one draw call. Keep
+        // named subparts (e.g. intersection.main/branch) separately selectable.
+        if (scene.meshes.length - firstMesh > 8) {
+          const grouped = new Map<string, PreviewGeometryScene['meshes'][number]>();
+          for (const mesh of scene.meshes.splice(firstMesh)) {
+            const key = mesh.apiName + ':' + String(mesh.preserveNormals);
+            const existing = grouped.get(key);
+            if (!existing) {
+              grouped.set(key, mesh);
+              continue;
+            }
+            const offset = existing.vertices.length;
+            for (const v of mesh.vertices) existing.vertices.push(v);
+            for (const i of mesh.indices) existing.indices.push(i + offset);
+          }
+          scene.meshes.push(...grouped.values());
+        }
+        continue;
+      }
 
       const warning = missingAdapterWarning(call);
       if (warning) scene.warnings.push(warning);

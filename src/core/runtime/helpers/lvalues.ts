@@ -1,11 +1,15 @@
 import { runtimeError } from '../../../utils/cpp';
 import { FdPoint3d, FdVector3d } from '../FdMath';
+import { FdBowlCorner } from '../FdBowlData';
+import { memberValue } from './pointVectorMembers';
 import {
   isPoint,
   isVector,
   runtimeCoerceToType,
   runtimeDeepCopy,
   runtimeNumber,
+  runtimeInteger,
+  runtimeTruthy,
   runtimeTypeName,
   type RuntimeArray,
   type RuntimeValue,
@@ -35,6 +39,22 @@ export const arraySlot = (array: RuntimeArray, index: number): RuntimeValueSlot 
     array.elements[index] = value;
   },
 });
+
+/** Public fields of the SDK's FdBowlCorner struct, including nested lvalues. */
+export function bowlCornerSlot(corner: FdBowlCorner, member: string): RuntimeValueSlot {
+  // Validate even when the field is used only as an assignment target.
+  memberValue(corner, member);
+
+  return {
+    get: () => memberValue(corner, member),
+    set: (value) => {
+      if (member === 'vertex') corner.vertex = runtimeCoerceToType(value, 'FdPoint3d') as FdPoint3d;
+      else if (member === 'trType') corner.trType = Number(runtimeInteger(value));
+      else if (member === 'truncated') corner.truncated = runtimeTruthy(value);
+      else throw runtimeError('array member radii requires an element index');
+    },
+  };
+}
 
 const kCoercedTypes: readonly string[] = ['double', 'int', 'bool', 'FdPoint3d', 'FdVector3d', 'string'];
 

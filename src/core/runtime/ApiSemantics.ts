@@ -268,7 +268,7 @@ export function apiSemanticsForCall(call: RuntimeApiCall): ApiParameterSemantics
     roles('ductPosition', ['Offset along main axis', 'Offset along A axis']);
     roles('ductParams', ['Duct width', 'Duct height', 'Duct length']);
     roles('interTubePosition', ['Offset along main axis', 'Offset along A axis']);
-    roles('interTubeParams', ['Branch A diameter', 'Branch B diameter', 'Branch length']);
+    roles('interTubeParams', ['Branch length', 'Branch A diameter', 'Branch B diameter']);
   }
   if (oneOf(name, ['makePlane', 'makeRotatablePlane'])) {
     set('points', 'Face vertices');

@@ -18,8 +18,46 @@ for (const type of kSdkTypes) {
     detail: type.baseType + (type.arrayExtent ? `[${type.arrayExtent}]` : ''),
   });
 }
-for (const label of ['FdPoint3d', 'FdVector3d', 'AcGePoint3d', 'AcGeVector3d']) {
+for (const label of [
+  'FdPoint3d',
+  'FdVector3d',
+  'AcGePoint3d',
+  'AcGeVector3d',
+  'FdBowlInfo',
+  'FdBowlFace',
+  'FdBowlCorner',
+]) {
   options.set(label, { label, type: 'type' });
+}
+for (const label of [
+  'getFace',
+  'getFaceForInit',
+  'initAsRectangle',
+  'setRadii',
+  'setRadiusAll',
+  'setTransitionTypes',
+  'setTransitionTypesAll',
+  'setTruncated',
+  'setTruncatedAll',
+  'setCovered',
+  'setCovers',
+  'getCornersNum',
+  'setCornersNum',
+  'getCopmlexityR',
+  'getCopmlexityV',
+  'setCopmlexity',
+  'setCopmlexityR',
+  'setCopmlexityV',
+  'getVertix',
+  'setVertix',
+  'getRadii',
+  'getCenter',
+  'getUpVector',
+  'getDirection',
+  'clearCornerInformation',
+  'turnOnDebugDrawing',
+]) {
+  options.set(label, { label, type: 'method', detail: 'FLM3 bowl method' });
 }
 for (const constant of kSdkConstants) {
   options.set(constant.name, { label: constant.name, type: 'constant', detail: String(constant.value) });

@@ -94,6 +94,7 @@ export function appendScrew(scene: PreviewGeometryScene, context: MeshBuildConte
 
     return true;
   }
+  if (context.call.name === 'makeScrew2') diameter.v /= Math.cos(Math.PI / 6);
   const dir = normalized(toVec(direction.v));
   const end = toPoint(toVec(start.v).add(dir.mul(screwLength.v)));
   scene.meshes.push(buildFacettedCylinderMesh(context, start.v, end, up.v, diameter.v, 0.0, 360.0, 6, front.v, back.v));

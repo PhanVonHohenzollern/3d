@@ -1,4 +1,5 @@
 import { kNativeApiSignatures } from './ApiMetadata.generated';
+import { additionalApiSignatures } from './ApiMetadata.additional';
 import type { RuntimeApiCall } from './RuntimeTypes';
 import { isArray, isBool, isDouble, isInt, isPoint, isString, isVector, type RuntimeValue } from './RuntimeValue';
 import { sdkCanonicalType, sdkTypeDefinition } from './SdkDefinitions';
@@ -111,13 +112,13 @@ function signatureScore(sig: ApiSignatureMetadata, call: RuntimeApiCall): number
 }
 
 export function allNativeApiSignatures(): readonly ApiSignatureMetadata[] {
-  return kNativeApiSignatures;
+  return [...kNativeApiSignatures, ...additionalApiSignatures];
 }
 
 export function apiSignatureMetadataForCall(call: RuntimeApiCall): ApiSignatureMetadata | null {
   let best: ApiSignatureMetadata | null = null;
   let bestScore = NO_MATCH;
-  for (const sig of kNativeApiSignatures) {
+  for (const sig of allNativeApiSignatures()) {
     const score = signatureScore(sig, call);
     if (score > bestScore) {
       bestScore = score;

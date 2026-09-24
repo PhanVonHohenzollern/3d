@@ -1,7 +1,13 @@
 import { RuntimeArray, runtimeDefaultValueForType } from '../RuntimeValue';
+import { runtimeError } from '../../../utils/cpp';
 import { isSymbol, sliceTokens, splitTopLevel, type Token } from './tokens';
 
 export function createArray(elementType: string, dims: readonly number[], level = 0): RuntimeArray {
+  if (
+    dims.some((n) => !Number.isSafeInteger(n) || n < 0) ||
+    dims.reduce((total, n) => total * Math.max(1, n), 1) > 1000000
+  )
+    throw runtimeError('array dimensions must be non-negative integers with at most 1000000 elements');
   const array = new RuntimeArray(elementType, dims.slice(level));
   const n = level < dims.length ? dims[level] : 0;
   for (let i = 0; i < n; ++i) {

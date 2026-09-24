@@ -24,6 +24,8 @@ const isPureIndexToken = (t: Token): boolean =>
     (t.text === '+' || t.text === '-' || t.text === '*' || t.text === '/' || t.text === '%'));
 
 export class RuntimeState {
+  callFunction?: (name: string, args: readonly Token[][], line: number) => RuntimeValue;
+  mutateValue?: (target: readonly Token[], method: string, args: readonly RuntimeValue[], line: number) => RuntimeValue;
   m_values = new Map<string, RuntimeValue>();
   m_variableIds = new Map<string, number>();
   m_nextVariableId = 0;
@@ -37,6 +39,8 @@ export class RuntimeState {
   m_functionMacros = new Map<string, RuntimeFunctionMacro>();
 
   reset(): void {
+    this.callFunction = undefined;
+    this.mutateValue = undefined;
     this.m_values = new Map();
     this.m_variableIds = new Map();
     this.m_nextVariableId = 0;

@@ -8,6 +8,12 @@ export function useDockArea(raised: DockName, raise: (name: DockName) => void) {
   const [dockHeight, setDockHeight] = useState(() => Math.min(360, Math.round(window.innerHeight * 0.36)));
   const startDrag = usePointerDrag();
   const [areaHeight, setAreaHeight] = useState(window.innerHeight);
+  const [areaWidth, setAreaWidth] = useState(window.innerWidth);
+  // Match the Link form's 4 / 2 / 1 column layout, including the dock insets.
+  const linkMinimum = areaWidth >= 990 ? 280 : areaWidth >= 550 ? 380 : 560;
+  const minimum = raised === 'LinkDock' ? linkMinimum : clampDockHeight(0, areaHeight);
+  const maximum = Math.max(minimum, clampDockHeight(Infinity, areaHeight));
+  const visibleHeight = Math.min(Math.max(dockHeight, minimum), maximum);
 
   useLayoutEffect(() => {
     const area = mainAreaRef.current;
@@ -15,6 +21,7 @@ export function useDockArea(raised: DockName, raise: (name: DockName) => void) {
 
     const measure = () => {
       setAreaHeight(area.clientHeight);
+      setAreaWidth(area.clientWidth);
       setDockHeight((height) => clampDockHeight(height, area.clientHeight));
     };
 
@@ -27,9 +34,9 @@ export function useDockArea(raised: DockName, raise: (name: DockName) => void) {
 
   const onSeparatorPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     event.currentTarget.focus();
-    const startHeight = dockHeight;
+    const startHeight = visibleHeight;
     const areaHeight = mainAreaRef.current?.clientHeight ?? window.innerHeight;
-    startDrag(event, (_dx, dy) => setDockHeight(clampDockHeight(startHeight - dy, areaHeight)));
+    startDrag(event, (_dx, dy) => setDockHeight(Math.max(minimum, clampDockHeight(startHeight - dy, areaHeight))));
   };
 
   const onSeparatorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -37,7 +44,9 @@ export function useDockArea(raised: DockName, raise: (name: DockName) => void) {
     event.preventDefault();
     const step = event.shiftKey ? 48 : 16;
     const areaHeight = mainAreaRef.current?.clientHeight ?? window.innerHeight;
-    setDockHeight((height) => clampDockHeight(height + (event.key === 'ArrowUp' ? step : -step), areaHeight));
+    setDockHeight(
+      Math.max(minimum, clampDockHeight(visibleHeight + (event.key === 'ArrowUp' ? step : -step), areaHeight)),
+    );
   };
 
   const tabs = kDocks.map((dock) => ({ ...dock, selected: dock.name === raised, raise: () => raise(dock.name) }));
@@ -45,11 +54,11 @@ export function useDockArea(raised: DockName, raise: (name: DockName) => void) {
 
   return {
     mainAreaRef,
-    dockHeight,
+    dockHeight: visibleHeight,
     onSeparatorPointerDown,
     onSeparatorKeyDown,
-    minimum: clampDockHeight(0, areaHeight),
-    maximum: clampDockHeight(Infinity, areaHeight),
+    minimum,
+    maximum,
     title,
     tabs,
   };

@@ -1,5 +1,7 @@
 import { runtimeError } from '../../../utils/cpp';
-import { FdVector3d } from '../FdMath';
+import { FdPoint3d, FdVector3d } from '../FdMath';
+import { FdBowlCorner, isBowlValue } from '../FdBowlData';
+import { callBowlMethod } from './bowlMethods';
 import {
   isArray,
   isPoint,
@@ -7,6 +9,7 @@ import {
   runtimeDeepCopy,
   runtimeNumber,
   runtimeTypeName,
+  RuntimeArray,
   type RuntimeValue,
 } from '../RuntimeValue';
 
@@ -32,6 +35,13 @@ function withinTolerance(v: FdVector3d, args: readonly RuntimeValue[]): boolean 
 }
 
 export function callMethod(value: RuntimeValue, method: string, args: readonly RuntimeValue[]): RuntimeValue {
+  if (isBowlValue(value)) return callBowlMethod(value, method, args);
+  if ((isPoint(value) || isVector(value)) && method === 'set') {
+    if (args.length !== 3) throw runtimeError('set requires x, y, z');
+    const xyz = args.map(runtimeNumber) as [number, number, number];
+
+    return isPoint(value) ? new FdPoint3d(...xyz) : new FdVector3d(...xyz);
+  }
   if (isVector(value)) {
     const v = value;
     switch (method) {
@@ -96,5 +106,11 @@ export function indexValue(value: RuntimeValue, index: bigint): RuntimeValue {
 
 export function memberValue(value: RuntimeValue, member: string): RuntimeValue {
   if ((isPoint(value) || isVector(value)) && (member === 'x' || member === 'y' || member === 'z')) return value[member];
+  if (value instanceof FdBowlCorner) {
+    if (member === 'vertex') return value.vertex;
+    if (member === 'radii') return new RuntimeArray('double', [2], value.radii);
+    if (member === 'trType') return BigInt(value.trType);
+    if (member === 'truncated') return value.truncated;
+  }
   throw runtimeError('member .' + member + ' is not available on ' + runtimeTypeName(value));
 }

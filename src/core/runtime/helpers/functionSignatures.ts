@@ -104,7 +104,7 @@ export function writableReferenceParameter(param: readonly Token[]): boolean {
   let hasReference = false;
   let isConst = false;
   for (let i = 0; i < end; ++i) {
-    if (isSymbol(param[i], '&')) hasReference = true;
+    if (['&', '*', '['].includes(param[i].text)) hasReference = true;
     if (isIdentifier(param[i], 'const')) isConst = true;
   }
 

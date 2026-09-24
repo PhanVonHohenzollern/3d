@@ -12,7 +12,6 @@ import { cpp, cppLanguage } from '@codemirror/lang-cpp';
 import { bracketMatching, HighlightStyle, indentOnInput, indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { EditorState, type Extension } from '@codemirror/state';
 import {
-  drawSelection,
   EditorView,
   highlightActiveLine,
   highlightActiveLineGutter,
@@ -34,10 +33,11 @@ const editorTheme = EditorView.theme(
     '.cm-content': { padding: '12px 0', caretColor: 'var(--foreground)' },
     '.cm-line': { padding: '0 8px' },
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--foreground)' },
-    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground': {
+    // Native selection paints the selected characters above the full-line highlights.
+    '.cm-content::selection, .cm-content ::selection': {
       backgroundColor: 'var(--editor-selection)',
+      color: '#fff',
     },
-    '.cm-content ::selection': { backgroundColor: 'var(--editor-selection)' },
     '.cm-gutters': {
       backgroundColor: 'var(--editor-gutter)',
       color: 'var(--muted-foreground)',
@@ -175,7 +175,6 @@ export function createEditorExtensions(onUpdate: (update: ViewUpdate) => void): 
     lineNumbers(),
     placeholder('Write or paste C++ geometry code here…'),
     history(),
-    drawSelection(),
     highlightActiveLine(),
     highlightActiveLineGutter(),
     EditorState.tabSize.of(4),

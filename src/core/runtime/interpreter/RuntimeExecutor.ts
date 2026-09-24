@@ -1,6 +1,8 @@
 import { runtimeError, stdException } from '../../../utils/cpp';
 import { apiSignatureMetadataForCall } from '../ApiMetadata';
 import { FdPoint3d, FdVector3d } from '../FdMath';
+import { FdBowlCorner, isBowlValue } from '../FdBowlData';
+import { builtinFunction } from '../helpers/builtinFunctions';
 import { createApiCall } from '../helpers/apiCalls';
 import { braceListItems, createArray, inferArrayDimensions, isBraceList } from '../helpers/arrays';
 import {
@@ -14,7 +16,7 @@ import {
   writableReferenceParameter,
 } from '../helpers/functionSignatures';
 import { lineIntersection } from '../helpers/lineIntersection';
-import { arraySlot, mapSlot, readLValue, writeLValue, type LValueRef } from '../helpers/lvalues';
+import { arraySlot, bowlCornerSlot, mapSlot, readLValue, writeLValue, type LValueRef } from '../helpers/lvalues';
 import { parameterDisplayText, parameterTextToValue } from '../helpers/parameters';
 import { kMutatingMethods, mutatedValue, mutatingMethodDot } from '../helpers/mutatingMethods';
 import {
@@ -70,6 +72,11 @@ interface ReferenceOutput {
 
 export class RuntimeExecutor {
   private m_returned = false;
+  private m_returnValue: RuntimeValue = undefined;
+  private m_break = false;
+  private m_continue = false;
+  private m_loopDepth = 0;
+  private m_switchDepth = 0;
   private m_functionCallDepth = 0;
   private readonly m_functions = new Map<string, Statement[]>();
   private readonly m_parentApiStack: number[] = [];
@@ -80,6 +87,24 @@ export class RuntimeExecutor {
   ) {}
 
   executeProgram(root: Statement): void {
+    this.m_state.callFunction = (name, args, line) => this.executeCall(name, args, line, true);
+    this.m_state.mutateValue = (target, method, args, line) => {
+      const ref = this.resolveLValue(target),
+        before = readLValue(ref),
+        next = mutatedValue(method, before, args);
+      if (!next) throw runtimeError('invalid mutating method target');
+      ref.slot.set(next);
+      this.m_state.recordVariableChange(
+        line || this.m_state.m_apiCalls[this.parentApiIndex()]?.line || 1,
+        ref.path,
+        method,
+        tokensToExpression(target),
+        before,
+        next,
+      );
+
+      return next;
+    };
     for (const child of root.children) {
       if (child.kind !== StatementKind.Function || child.functionName === '') continue;
       const overloads = this.m_functions.get(child.functionName) ?? [];
@@ -124,17 +149,20 @@ export class RuntimeExecutor {
     try {
       fn();
     } catch (e) {
-      this.m_state.addDiagnostic(s.startLine, stdException(e).message);
+      this.m_state.addDiagnostic(
+        s.startLine || this.m_state.m_apiCalls[this.parentApiIndex()]?.line || 1,
+        stdException(e).message,
+      );
     }
   }
 
   private executeNode(s: Statement, skipFunctions = true): void {
-    if (this.m_returned) return;
+    if (this.m_returned || this.m_break || this.m_continue) return;
     if (this.m_functionCallDepth === 0 && s.startLine > this.m_maxLine) return;
     switch (s.kind) {
       case StatementKind.Block:
         for (const c of s.children) {
-          if (this.m_returned) break;
+          if (this.m_returned || this.m_break || this.m_continue) break;
           if (skipFunctions && c.kind === StatementKind.Function) continue;
           this.executeNode(c, skipFunctions);
         }
@@ -152,24 +180,125 @@ export class RuntimeExecutor {
       case StatementKind.For:
         this.safeExecute(s, () => this.executeFor(s));
         break;
+      case StatementKind.While:
+      case StatementKind.Do:
+        this.safeExecute(s, () => this.executeLoop(s));
+        break;
+      case StatementKind.Switch:
+        this.safeExecute(s, () => this.executeSwitch(s));
+        break;
     }
   }
 
   private executeFor(s: Statement): void {
+    const range = splitTopLevel(s.forInit, ':');
+    if (range.length === 2 && !s.forCondition.length && !s.forIncrement.length) {
+      const name = parameterName(range[0]),
+        isReference = range[0].some((token) => token.text === '&');
+      const target = this.resolveLValue(range[1]),
+        values = target.slot.get();
+      if (!isArray(values)) throw runtimeError('range-for requires an array');
+      const saved = this.m_state.m_values.get(name),
+        existed = this.m_state.m_values.has(name);
+      ++this.m_loopDepth;
+      try {
+        for (let i = 0; i < values.elements.length; ++i) {
+          if (i >= kMaxIterations) throw runtimeError('loop exceeded 10000 iterations');
+          this.m_state.setVariable(name, values.elements[i], false, s.startLine, 'bind', tokensToExpression(range[1]));
+          if (s.body) this.executeNode(s.body);
+          if (isReference) values.elements[i] = runtimeDeepCopy(this.m_state.m_values.get(name));
+          if (this.m_returned || this.m_break) break;
+          this.m_continue = false;
+        }
+      } finally {
+        --this.m_loopDepth;
+        this.m_break = this.m_continue = false;
+        if (existed) this.m_state.m_values.set(name, saved);
+        else this.m_state.m_values.delete(name);
+      }
+
+      return;
+    }
     if (s.forInit.length !== 0) this.executeSimple(s.forInit, s.startLine);
     let count = 0;
-    while (s.forCondition.length === 0 || runtimeTruthy(this.evaluate(s.forCondition))) {
-      if (++count > kMaxIterations) throw runtimeError('loop exceeded 10000 iterations');
-      if (s.body) this.executeNode(s.body);
-      if (this.m_returned) return;
-      if (s.forIncrement.length !== 0) this.executeSimple(s.forIncrement, s.startLine);
+    ++this.m_loopDepth;
+    try {
+      while (s.forCondition.length === 0 || runtimeTruthy(this.evaluate(s.forCondition))) {
+        if (++count > kMaxIterations) throw runtimeError('loop exceeded 10000 iterations');
+        if (s.body) this.executeNode(s.body);
+        if (this.m_returned) return;
+        if (this.m_break) break;
+        this.m_continue = false;
+        if (s.forIncrement.length !== 0) this.executeSimple(s.forIncrement, s.startLine);
+      }
+    } finally {
+      --this.m_loopDepth;
+      this.m_break = false;
+      this.m_continue = false;
+    }
+  }
+
+  private executeLoop(s: Statement): void {
+    let count = 0;
+    ++this.m_loopDepth;
+    try {
+      while ((s.kind === StatementKind.Do && count === 0) || runtimeTruthy(this.evaluate(s.condition))) {
+        if (++count > kMaxIterations) throw runtimeError('loop exceeded 10000 iterations');
+        if (s.body) this.executeNode(s.body);
+        if (this.m_returned || this.m_break) break;
+        this.m_continue = false;
+      }
+    } finally {
+      --this.m_loopDepth;
+      this.m_break = false;
+      this.m_continue = false;
+    }
+  }
+
+  private executeSwitch(s: Statement): void {
+    const value = runtimeInteger(this.evaluate(s.condition));
+    const cases = s.body?.children.filter((child) => child.kind === StatementKind.Case) ?? [];
+    let index = cases.findIndex(
+      (child) => child.condition.length > 0 && runtimeInteger(this.evaluate(child.condition)) === value,
+    );
+    if (index < 0) index = cases.findIndex((child) => child.condition.length === 0);
+    if (index < 0) return;
+    ++this.m_switchDepth;
+    try {
+      for (const child of cases.slice(index)) {
+        if (child.body) this.executeNode(child.body);
+        if (this.m_returned || this.m_break || this.m_continue) break;
+      }
+    } finally {
+      --this.m_switchDepth;
+      this.m_break = false;
     }
   }
 
   private executeSimple(tokens: readonly Token[], line: number): void {
+    line = line || this.m_state.m_apiCalls[this.parentApiIndex()]?.line || 1;
     if (tokens.length === 0) return;
+    const expressions = splitTopLevel(tokens, ',');
+    if (expressions.length > 1 && !parseRuntimeType(tokens, 0)) {
+      for (const expression of expressions) this.executeSimple(expression, line);
+
+      return;
+    }
     if (isIdentifier(tokens[0], 'return')) {
+      this.m_returnValue = tokens.length > 1 ? this.evaluate(tokens.slice(1)) : undefined;
       this.m_returned = true;
+
+      return;
+    }
+    if (isIdentifier(tokens[0], 'break')) {
+      if (this.m_loopDepth === 0 && this.m_switchDepth === 0) throw runtimeError('break outside loop or switch');
+      this.m_break = true;
+
+      return;
+    }
+    if (isIdentifier(tokens[0], 'continue')) {
+      if (this.m_loopDepth === 0) throw runtimeError('continue outside loop');
+      this.m_continue = true;
 
       return;
     }
@@ -189,12 +318,12 @@ export class RuntimeExecutor {
       return;
     }
     if (this.executeIncrement(tokens, line)) return;
-    if (this.executeMutatingMethod(tokens, line)) return;
     if (findTopLevelAssignment(tokens)) {
       this.evaluateAssignmentExpression(tokens, line);
 
       return;
     }
+    if (this.executeMutatingMethod(tokens, line)) return;
     if (this.executeFreeCall(tokens, line)) return;
     this.evaluate(tokens);
   }
@@ -214,10 +343,25 @@ export class RuntimeExecutor {
       return array;
     }
     const parts = braceListItems(tokens);
-    for (let i = 0; i < parts.length && i < array.elements.length; ++i) {
-      if (parts[i].length === 0) continue;
-      array.elements[i] = this.initializerValue(parts[i], type, dims, level + 1);
-    }
+    if (parts.at(-1)?.length === 0) parts.pop();
+    let cursor = 0;
+
+    const fill = (target: typeof array) => {
+      for (let i = 0; i < target.elements.length && cursor < parts.length; ++i) {
+        const child = target.elements[i];
+        if (isArray(child)) {
+          if (isBraceList(parts[cursor]))
+            target.elements[i] = this.initializerValue(parts[cursor++], type, child.dimensions, 0);
+          else fill(child);
+        } else {
+          const part = parts[cursor++];
+          if (part.length)
+            target.elements[i] = runtimeCoerceToType(this.evaluate(isBraceList(part) ? part.slice(1, -1) : part), type);
+        }
+      }
+    };
+
+    fill(array);
 
     return array;
   }
@@ -227,6 +371,8 @@ export class RuntimeExecutor {
       throw runtimeError('invalid direct initializer');
     const inner = sliceTokens(tail, 1, tail.length - 1);
     const args = splitTopLevel(inner, ',');
+    if (type.startsWith('FdBowl'))
+      return builtinFunction(type)?.(inner.length ? args.map((arg) => this.evaluate(arg)) : []);
     if (type === 'FdPoint3d' || type === 'FdVector3d') {
       if (inner.length === 0) return runtimeDefaultValueForType(type);
       if (args.length === 3) {
@@ -268,10 +414,13 @@ export class RuntimeExecutor {
     for (const decl of splitTopLevel(sliceTokens(tokens, parsed.end, tokens.length), ',')) {
       if (decl.length === 0) continue;
       let p = 0;
+      const parenthesizedPointer = decl[0]?.text === '(' && decl[1]?.text === '*';
+      if (parenthesizedPointer) ++p;
       while (p < decl.length && (isSymbol(decl[p], '&') || isSymbol(decl[p], '*'))) ++p;
       if (p >= decl.length || decl[p].kind !== TokKind.Identifier)
         throw runtimeError('expected variable name in declaration');
       const name = decl[p++].text;
+      if (parenthesizedPointer && decl[p]?.text === ')') ++p;
       const { dims, end } = this.arrayDimensions(decl, p);
       if (alias && alias.arrayExtent) dims.push(alias.arrayExtent);
       const tail = sliceTokens(decl, end, decl.length);
@@ -280,7 +429,8 @@ export class RuntimeExecutor {
       if (dims.length !== 0 && assigned) inferArrayDimensions(initializer, dims, 0);
       let value: RuntimeValue = dims.length === 0 ? runtimeDefaultValueForType(type) : createArray(type, dims);
       if (assigned) {
-        if (dims.length !== 0) value = this.initializerValue(initializer, type, dims, 0);
+        if (initializer.length > 0 && isIdentifier(initializer[0], 'new')) value = this.evaluate(initializer);
+        else if (dims.length !== 0) value = this.initializerValue(initializer, type, dims, 0);
         else value = runtimeCoerceToType(this.evaluateAssignmentExpression(initializer), type);
       } else if (tail.length !== 0) {
         if (!isSymbol(tail[0], '(')) throw runtimeError('unsupported declaration tail near ' + tokensToText(tail));
@@ -295,6 +445,10 @@ export class RuntimeExecutor {
         'declare',
         tokensToExpression(initializer),
       );
+      // getFaceForInit returns a C++ reference. Keep the same face instance for
+      // reference declarations, while ordinary bowl assignments remain copies.
+      if (decl.slice(0, p).some((token) => token.text === '&') && isBowlValue(value))
+        this.m_state.m_values.set(name, value);
     }
   }
 
@@ -311,6 +465,11 @@ export class RuntimeExecutor {
         p = matchingBracketEnd(tokens, begin).end;
         const idx = runtimeInteger(this.evaluate(sliceTokens(tokens, begin, p)));
         const arr = slot.get();
+        if (isPoint(arr) || arr instanceof FdVector3d) {
+          if (idx < 0n || idx > 2n || p + 1 !== tokens.length) throw runtimeError('invalid point/vector component');
+
+          return { slot, member: 'xyz'[Number(idx)], path: path + `[${idx}]` };
+        }
         if (!isArray(arr)) throw runtimeError('indexing requires array lvalue');
         if (idx < 0n || idx >= BigInt(arr.elements.length)) throw runtimeError('array index out of range');
         slot = arraySlot(arr, Number(idx));
@@ -323,6 +482,12 @@ export class RuntimeExecutor {
         if (p >= tokens.length || tokens[p].kind !== TokKind.Identifier)
           throw runtimeError('expected member name after .');
         const member = tokens[p++].text;
+        const current = slot.get();
+        if (current instanceof FdBowlCorner) {
+          slot = bowlCornerSlot(current, member);
+          path += '.' + member;
+          continue;
+        }
         if (member !== 'x' && member !== 'y' && member !== 'z')
           throw runtimeError('member is not assignable: ' + member);
         if (p !== tokens.length) throw runtimeError('unexpected tokens after member lvalue');
@@ -372,6 +537,21 @@ export class RuntimeExecutor {
   }
 
   private executeMutatingMethod(tokens: readonly Token[], line: number): boolean {
+    const root = tokens[0]?.text;
+    if (isBowlValue(this.m_state.m_values.get(root)) && tokens[1]?.text === '.') {
+      const before = runtimeDeepCopy(this.m_state.m_values.get(root));
+      this.evaluate(tokens);
+      this.m_state.recordVariableChange(
+        line,
+        root,
+        'method',
+        tokensToExpression(tokens),
+        before,
+        this.m_state.m_values.get(root),
+      );
+
+      return true;
+    }
     const dot = mutatingMethodDot(tokens);
     if (dot === -1) return false;
     const method = tokens[dot + 1].text;
@@ -496,7 +676,8 @@ export class RuntimeExecutor {
     );
   }
 
-  private executeCall(name: string, argGroups: readonly Token[][], line: number): void {
+  private executeCall(name: string, argGroups: readonly Token[][], line: number, expression = false): RuntimeValue {
+    line = line || this.m_state.m_apiCalls[this.parentApiIndex()]?.line || 1;
     const args: RuntimeValue[] = [];
     let hasUnresolvedArgument = false;
     argGroups.forEach((group, i) => {
@@ -518,9 +699,81 @@ export class RuntimeExecutor {
       call.userFunctionCall = true;
       populateFormalParameterMetadata(call, fn);
       const functionIndex = this.m_state.recordApiCall(call);
-      if (!hasUnresolvedArgument) this.executeUserFunction(fn, args, argGroups, functionIndex);
+      if (!hasUnresolvedArgument) return this.executeUserFunction(fn, args, argGroups, functionIndex);
 
       return;
+    }
+    if (name === 'GetFlgSize' || name === 'GetFlgThick' || name === 'GetFlgDiam') {
+      if (args.length !== 1 || !isString(args[0])) throw runtimeError(name + ' requires a link identifier');
+      const query = name === 'GetFlgSize' ? 'get_fln_size' : name === 'GetFlgThick' ? 'get_fln_thick' : 'get_fln_diam';
+      const key = args[0] + ':' + query;
+      const value = parameterTextToValue(this.m_state.m_parameters.get(key) ?? '0', 0.0);
+      this.m_state.recordParameterRequest({
+        name: key,
+        type: 'double',
+        defaultValue: '0',
+        currentValue: runtimeValueToCompactString(value),
+        sourceFunction: query,
+        variableName: '',
+        line,
+      });
+
+      return value;
+    }
+    if (expression) throw runtimeError('unsupported expression function: ' + name);
+    if (['setpt', 'addpt', 'rotate', 'rotatePoint'].includes(name)) {
+      const target = this.resolveLValue(argGroups[0]);
+      const before = readLValue(target);
+      if (!isArray(before) || before.elements.length !== 3) throw runtimeError(name + ' requires ads_point');
+
+      const tuple = (value: RuntimeValue): [number, number, number] => {
+        if (!isArray(value) || value.elements.length !== 3) throw runtimeError('expected three coordinates');
+
+        return value.elements.map(runtimeNumber) as [number, number, number];
+      };
+
+      let coords = tuple(before);
+      if (name === 'setpt') {
+        if (args.length === 2) coords = tuple(args[1]);
+        else if (args.length >= 4 && args.length <= 6)
+          coords = [
+            runtimeNumber(args[1]) * (args.length > 4 ? runtimeNumber(args[4]) : 1),
+            runtimeNumber(args[2]) * (args.length > 5 ? runtimeNumber(args[5]) : 1),
+            runtimeNumber(args[3]),
+          ];
+        else throw runtimeError('setpt requires a source point or x, y, z');
+      } else if (name === 'addpt') {
+        if (args.length !== 2) throw runtimeError('addpt requires two points');
+        const offset = tuple(args[1]);
+        coords = coords.map((v, i) => v + offset[i]) as [number, number, number];
+      } else {
+        let axis = new FdVector3d(0, 0, 1),
+          origin = new FdPoint3d(),
+          angle: number;
+        if (name === 'rotate' && args.length === 2) angle = runtimeNumber(args[1]);
+        else if (name === 'rotatePoint' && args.length === 4) {
+          axis = new FdVector3d(...tuple(args[1]));
+          origin = new FdPoint3d(...tuple(args[2]));
+          angle = runtimeNumber(args[3]);
+        } else if (name === 'rotatePoint' && args.length === 8) {
+          axis = new FdVector3d(...(args.slice(1, 4).map(runtimeNumber) as [number, number, number]));
+          origin = new FdPoint3d(...(args.slice(4, 7).map(runtimeNumber) as [number, number, number]));
+          angle = runtimeNumber(args[7]);
+        } else throw runtimeError('invalid ' + name + ' arguments');
+        const rotated = new FdPoint3d(...coords).rotateBy(angle, axis, origin);
+        coords = [rotated.x, rotated.y, rotated.z];
+      }
+      const next = runtimeDeepCopy(before);
+      if (isArray(next)) next.elements = coords;
+      writeLValue(target, next);
+      this.m_state.recordVariableChange(
+        line,
+        target.path,
+        name,
+        tokensToExpression(argGroups[0]),
+        before,
+        readLValue(target),
+      );
     }
     if (!apiSignatureMetadataForCall(call) && /^(make|add|draw)/.test(name)) {
       this.m_state.addDiagnostic(line, 'unknown native geometry API: ' + name);
@@ -562,6 +815,8 @@ export class RuntimeExecutor {
           value = undefined;
         }
       }
+      const parsed = parseRuntimeType(param, 0);
+      if (parsed && value !== undefined && !isArray(value)) value = runtimeCoerceToType(value, parsed.type);
       const trace = i < traces.length ? traces[i] : null;
       const expression = trace ? trace.expression : tokensToExpression(parameterDefaultExpression(param));
       this.m_state.setVariable(name, value, false, fn.startLine, 'bind', expression, trace);
@@ -573,7 +828,7 @@ export class RuntimeExecutor {
     args: readonly RuntimeValue[],
     argumentTokens: readonly Token[][],
     parentApiIndex: number,
-  ): void {
+  ): RuntimeValue {
     if (this.m_functionCallDepth >= kMaxFunctionCallDepth) throw runtimeError('C++ function call depth exceeded 64');
 
     const state = this.m_state;
@@ -581,27 +836,51 @@ export class RuntimeExecutor {
     const savedVariableIds = new Map(state.m_variableIds);
     const savedOrder = [...state.m_userVariableOrder];
     const savedReturned = this.m_returned;
+    const savedReturnValue = this.m_returnValue;
+    const savedBreak = this.m_break,
+      savedContinue = this.m_continue;
+    const savedLoopDepth = this.m_loopDepth,
+      savedSwitchDepth = this.m_switchDepth;
 
     this.bindFunctionArguments(fn, args, state.m_apiCalls[parentApiIndex].argumentTraces);
     this.m_returned = false;
+    this.m_returnValue = undefined;
+    this.m_break = this.m_continue = false;
+    this.m_loopDepth = this.m_switchDepth = 0;
     ++this.m_functionCallDepth;
     this.m_parentApiStack.push(parentApiIndex);
-    if (fn.body) this.executeNode(fn.body);
-    this.m_parentApiStack.pop();
-    --this.m_functionCallDepth;
-
-    const outputs = this.referenceOutputs(fn, argumentTokens.length);
-
-    state.m_values = savedValues;
-    state.m_variableIds = savedVariableIds;
-    state.m_userVariableOrder = savedOrder;
-    this.m_returned = savedReturned;
+    let outputs: ReferenceOutput[];
+    let returned: RuntimeValue;
+    try {
+      if (fn.body) this.executeNode(fn.body);
+      outputs = this.referenceOutputs(fn, argumentTokens.length);
+      const returnType = parseRuntimeType(fn.signature, 0);
+      returned = runtimeDeepCopy(
+        returnType && this.m_returnValue !== undefined
+          ? runtimeCoerceToType(this.m_returnValue, returnType.type)
+          : this.m_returnValue,
+      );
+    } finally {
+      this.m_parentApiStack.pop();
+      --this.m_functionCallDepth;
+      state.m_values = savedValues;
+      state.m_variableIds = savedVariableIds;
+      state.m_userVariableOrder = savedOrder;
+      this.m_returned = savedReturned;
+      this.m_returnValue = savedReturnValue;
+      this.m_break = savedBreak;
+      this.m_continue = savedContinue;
+      this.m_loopDepth = savedLoopDepth;
+      this.m_switchDepth = savedSwitchDepth;
+    }
 
     const callLine =
       parentApiIndex >= 0 && parentApiIndex < state.m_apiCalls.length
         ? state.m_apiCalls[parentApiIndex].line
         : fn.startLine;
     for (const output of outputs) this.writeBackReference(fn, callLine, argumentTokens[output.index], output);
+
+    return returned;
   }
 
   private referenceOutputs(fn: Statement, argumentCount: number): ReferenceOutput[] {

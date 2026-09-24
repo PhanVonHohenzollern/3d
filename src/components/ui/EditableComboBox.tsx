@@ -6,13 +6,22 @@ import { LineEdit } from './LineEdit';
 interface EditableComboBoxProps {
   value: string;
   label?: string;
+  compact?: boolean;
   items: readonly string[];
   disabled: boolean;
   placeholder: string;
   onTextChanged: (text: string) => void;
 }
 
-export function EditableComboBox({ value, label, items, disabled, placeholder, onTextChanged }: EditableComboBoxProps) {
+export function EditableComboBox({
+  value,
+  label,
+  compact = false,
+  items,
+  disabled,
+  placeholder,
+  onTextChanged,
+}: EditableComboBoxProps) {
   const { rootRef, open, popupRect, onKeyDown, onChange, toggle, choose } = useEditableComboBox(
     value,
     items,
@@ -20,9 +29,9 @@ export function EditableComboBox({ value, label, items, disabled, placeholder, o
   );
 
   return (
-    <div ref={rootRef} className="relative flex min-w-[100px]">
+    <div ref={rootRef} className={cn('relative flex', compact ? 'min-w-0 flex-1' : 'min-w-[100px]')}>
       <LineEdit
-        className="flex-1 rounded-r-none"
+        className={cn('flex-1 rounded-r-none', compact && 'h-7 px-2')}
         aria-label={label}
         value={value}
         disabled={disabled}
@@ -34,7 +43,10 @@ export function EditableComboBox({ value, label, items, disabled, placeholder, o
         type="button"
         aria-label="Show parameter suggestions"
         aria-expanded={open}
-        className="relative h-8 w-7 rounded-r-md border border-l-0 border-line bg-base hover:bg-secondary"
+        className={cn(
+          'relative w-7 shrink-0 rounded-r-md border border-l-0 border-line bg-base hover:bg-secondary',
+          compact ? 'h-7' : 'h-8',
+        )}
         disabled={disabled}
         tabIndex={-1}
         onMouseDown={preventDefault}
@@ -42,7 +54,7 @@ export function EditableComboBox({ value, label, items, disabled, placeholder, o
       >
         <span
           className={cn(
-            'absolute top-3.5 left-2 border-4 border-transparent',
+            'absolute top-1/2 left-2 -translate-y-1/4 border-4 border-transparent',
             disabled ? 'border-t-arrow-disabled' : 'border-t-arrow',
           )}
         />

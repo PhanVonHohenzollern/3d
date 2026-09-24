@@ -58,7 +58,7 @@ export class ProgramParser {
     if (
       isIdentifier(this.current(), 'if') ||
       isIdentifier(this.current(), 'for') ||
-      isIdentifier(this.current(), 'else')
+      ['else', 'while', 'do', 'switch', 'case', 'default'].some((name) => isIdentifier(this.current(), name))
     )
       return false;
     let paren = 0,
@@ -134,6 +134,10 @@ export class ProgramParser {
     if (allowFunction && this.looksLikeFunctionDefinition()) return this.parseFunction();
     if (isIdentifier(this.current(), 'if')) return this.parseIf();
     if (isIdentifier(this.current(), 'for')) return this.parseFor();
+    if (isIdentifier(this.current(), 'while')) return this.parseLoop(StatementKind.While);
+    if (isIdentifier(this.current(), 'do')) return this.parseLoop(StatementKind.Do);
+    if (isIdentifier(this.current(), 'switch')) return this.parseSwitch();
+    if (isIdentifier(this.current(), 'case') || isIdentifier(this.current(), 'default')) return this.parseCase();
 
     return this.parseSimple();
   }
@@ -149,6 +153,57 @@ export class ProgramParser {
       s.elseBranch = this.parseStatement(false);
       if (s.elseBranch) s.endLine = s.elseBranch.endLine;
     }
+
+    return s;
+  }
+
+  private parseLoop(kind: typeof StatementKind.While | typeof StatementKind.Do): Statement {
+    const s = new Statement(kind, this.current().line);
+    this.advance();
+    if (kind === StatementKind.While) s.condition = this.readParenthesized();
+    s.body = this.parseStatement(false);
+    if (kind === StatementKind.Do) {
+      if (!isIdentifier(this.current(), 'while')) throw runtimeError("expected 'while' after do body");
+      this.advance();
+      s.condition = this.readParenthesized();
+      if (isSymbol(this.current(), ';')) this.advance();
+    }
+    s.endLine = s.body?.endLine ?? s.startLine;
+
+    return s;
+  }
+
+  private parseSwitch(): Statement {
+    const s = new Statement(StatementKind.Switch, this.current().line);
+    this.advance();
+    s.condition = this.readParenthesized();
+    if (!isSymbol(this.current(), '{')) throw runtimeError("expected '{' after switch");
+    s.body = this.parseBlock();
+    s.endLine = s.body.endLine;
+
+    return s;
+  }
+
+  private parseCase(): Statement {
+    const s = new Statement(StatementKind.Case, this.current().line);
+    const isDefault = isIdentifier(this.current(), 'default');
+    this.advance();
+    const start = this.m_pos;
+    while (!this.atEnd() && !isSymbol(this.current(), ':')) this.advance();
+    if (!isSymbol(this.current(), ':')) throw runtimeError("expected ':' after case");
+    if (!isDefault) s.condition = sliceTokens(this.m_tokens, start, this.m_pos);
+    this.advance();
+    s.body = new Statement(StatementKind.Block, s.startLine);
+    while (
+      !this.atEnd() &&
+      !isSymbol(this.current(), '}') &&
+      !isIdentifier(this.current(), 'case') &&
+      !isIdentifier(this.current(), 'default')
+    ) {
+      const child = this.parseStatement(false);
+      if (child) s.body.children.push(child);
+    }
+    s.endLine = s.body.endLine = s.body.children.at(-1)?.endLine ?? s.startLine;
 
     return s;
   }

@@ -16,8 +16,10 @@ const kMultiCharSymbols: ReadonlySet<string> = new Set([
   '||',
   '::',
   '->',
+  '<<',
+  '>>',
 ]);
-const kSingleCharSymbols = '+-*/%(){}[];,.?:=<>!&';
+const kSingleCharSymbols = '+-*/%(){}[];,.?:=<>!&|^~';
 
 // strtod only sees the literal's own character run; parsing the whole remaining source made lexing quadratic.
 function numericRunEnd(source: string, start: number): number {
@@ -84,6 +86,11 @@ export class Lexer {
       }
       if (c === '"' || c === "'") {
         out.push(this.scanString(c));
+        continue;
+      }
+      if (c === 'L' && this.peek(1) === '"') {
+        ++this.m_pos;
+        out.push(this.scanString('"'));
         continue;
       }
       if (isdigit(c) || (c === '.' && isdigit(this.peek(1)))) {

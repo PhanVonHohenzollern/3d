@@ -11,8 +11,6 @@ export function LinkPanel(props: LinkPanelProps) {
     nameRef,
     table,
     form,
-    section,
-    steps,
     isEditing,
     hasConnectors,
     canEdit,
@@ -45,20 +43,6 @@ export function LinkPanel(props: LinkPanelProps) {
               <Trash2 className="size-3" />
             </Button>
           </div>
-          <nav aria-label="Connector setup steps" className="flex h-6 gap-1 px-1 pb-0.5">
-            {steps.map((step) => (
-              <Button
-                key={step.section}
-                variant={step.active ? 'secondary' : 'ghost'}
-                className="h-[21px] min-w-0 flex-1 gap-1 px-1 text-[10px]"
-                aria-current={step.active ? 'step' : undefined}
-                onClick={step.select}
-              >
-                <span className="opacity-60">{step.number}</span>
-                {step.label}
-              </Button>
-            ))}
-          </nav>
         </div>
       ) : hasConnectors ? (
         <div className="flex h-8 shrink-0 items-center gap-1 border-b border-line px-1.5">
@@ -85,7 +69,7 @@ export function LinkPanel(props: LinkPanelProps) {
         <LinkTable tableRef={tableRef} {...table} />
       </div>
       <div className={isEditing ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-        <LinkForm nameRef={nameRef} section={section} {...form} />
+        <LinkForm nameRef={nameRef} {...form} />
       </div>
     </div>
   );

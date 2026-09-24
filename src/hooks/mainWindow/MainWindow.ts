@@ -15,7 +15,7 @@ import {
 } from '../../helpers/keyboard';
 import { pointDeclaration, unusedPreviewPointName } from '../../helpers/viewportPoints';
 import type { CodeEditorHandle } from '../../types/editor';
-import type { ActionListItem, DockName, Menu } from '../../types/mainWindow';
+import type { ActionListItem, DockName, Menu, PreviewMode } from '../../types/mainWindow';
 import type {
   ApiTracePanelHandle,
   LinkPanelHandle,
@@ -84,6 +84,7 @@ export class MainWindow extends Observable {
   readonly m_runtime = new GeometryRuntime();
   readonly m_geometryEngine = new PreviewGeometryEngine();
   m_geometryScene: PreviewGeometryScene = { meshes: [], warnings: [] };
+  previewMode: PreviewMode = 'debug';
   importedObj: { name: string; scene: PreviewGeometryScene } | null = null;
   #connectorPreviews: readonly ConnectorPreview[] = [];
   #selectedConnectorId = -1;
@@ -110,7 +111,12 @@ export class MainWindow extends Observable {
 
   readonly returnToCodePreview = (): void => {
     this.importedObj = null;
-    this.runPreview();
+    if (this.previewMode === 'debug') this.runPreview();
+    else {
+      this.m_viewport.setGeometryScene(this.m_geometryScene);
+      this.m_viewport.setRuntimeResult(this.m_lastResult);
+      this.applyApiFocus(this.m_apiTrace.selectedApiCall());
+    }
     this.m_viewport.setConnectorPreviews(this.#connectorPreviews, this.#selectedConnectorId);
     this.m_viewport.fitScene();
     this.changed();
@@ -159,6 +165,26 @@ export class MainWindow extends Observable {
 
   dispose(): void {
     this.m_previewTimer.stop();
+  }
+
+  readonly buildPreview = (): void => {
+    this.activatePreviewMode('build');
+    this.updatePreview(this.m_editor.blockCount());
+  };
+
+  readonly debugPreview = (): void => {
+    this.activatePreviewMode('debug');
+    this.runPreview();
+  };
+
+  private activatePreviewMode(mode: PreviewMode): void {
+    this.m_previewTimer.stop();
+    this.previewMode = mode;
+    this.importedObj = null;
+    this.m_browsingTrace = false;
+    this.m_apiTrace.clearApiFocus();
+    this.m_editor.setTraceSourceLines(new Set());
+    this.changed();
   }
 
   readonly onEditorTextChanged = (): void => {
@@ -366,7 +392,10 @@ export class MainWindow extends Observable {
     ];
     this.shortcutActions = [exitAction, runAction, fitAction, hideSelectedAction, showSelectedAction];
 
-    runAction.onTriggered(() => this.runPreview());
+    runAction.onTriggered(() => {
+      if (this.previewMode === 'build') this.buildPreview();
+      else this.runPreview();
+    });
     showGeometryAction.onToggled((checked) => this.m_viewport.setShowGeometry(checked));
     wireframeAction.onToggled((checked) => this.m_viewport.setGeometryWireframe(checked));
     fitSceneAction.onTriggered(() => this.m_viewport.fitScene());
@@ -413,16 +442,29 @@ export class MainWindow extends Observable {
   }
 
   readonly exitPreviewFocus = (): void => {
+    if (this.importedObj) {
+      this.m_viewport.setSelectedApiCall(-1);
+      this.m_viewport.clearApiFocus();
+
+      return;
+    }
     this.m_links.exitPreview();
     this.m_apiTrace.clearApiFocus();
   };
 
   schedulePreview(): void {
-    this.m_previewTimer.start();
+    if (this.previewMode === 'debug') this.m_previewTimer.start();
   }
 
   runPreview(): void {
+    if (this.previewMode === 'build') return;
     const line = this.m_browsingTrace ? this.m_currentPreviewLine : this.m_editor.currentLine();
+
+    this.updatePreview(line);
+  }
+
+  private updatePreview(line: number): void {
+    this.m_previewTimer.stop();
     const source = this.m_editor.toPlainText();
 
     const parameterDefinitions = this.m_runtime.discoverParameters(source);
@@ -464,7 +506,8 @@ export class MainWindow extends Observable {
     else if (selected !== '') this.m_viewport.setSelectedVariable(selected);
 
     if (result.diagnostics.length === 0) {
-      let message = `Line ${line} | ${this.m_geometryScene.meshes.length} live mesh(es) | ${result.apiCalls.length} API call(s)`;
+      const mode = this.previewMode === 'build' ? 'Build' : `Line ${line}`;
+      let message = `${mode} | ${this.m_geometryScene.meshes.length} live mesh(es) | ${result.apiCalls.length} API call(s)`;
       if (this.m_geometryScene.warnings.length)
         message += ` | geometry warning: ${this.m_geometryScene.warnings[this.m_geometryScene.warnings.length - 1]}`;
       this.statusBar().showMessage(message, 2600, this.m_geometryScene.warnings.length ? 'warning' : 'info');

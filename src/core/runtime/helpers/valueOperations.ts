@@ -59,6 +59,7 @@ export function mulValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
 export function divValues(a: RuntimeValue, b: RuntimeValue): RuntimeValue {
   const divisor = runtimeNumber(b);
   if (divisor === 0.0) throw runtimeError('division by zero');
+  if (isInt(a) && isInt(b)) return wrapInt64(a / b);
   if (isNumeric(a)) return runtimeNumber(a) / divisor;
   if (isVector(a)) return a.div(divisor);
   throw runtimeError('invalid operands for /');

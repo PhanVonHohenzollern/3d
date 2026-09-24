@@ -1,4 +1,13 @@
-import { isInt, isBool, isDouble, isString, runtimeValueToCompactString, type RuntimeValue } from '../RuntimeValue';
+import {
+  isInt,
+  isBool,
+  isDouble,
+  isString,
+  isArray,
+  RuntimeArray,
+  runtimeValueToCompactString,
+  type RuntimeValue,
+} from '../RuntimeValue';
 import { stdException, stod, stoll, trim } from '../../../utils/cpp';
 import { Lexer } from '../interpreter/Lexer';
 import type { RuntimeParameterRequest } from '../RuntimeTypes';
@@ -178,6 +187,15 @@ export function scanGetValParameters(code: string): RuntimeParameterRequest[] {
 }
 
 export function parameterTextToValue(text: string, current: RuntimeValue): RuntimeValue {
+  if (isArray(current) && ['char', 'WCHAR', 'wchar_t'].includes(current.elementType)) {
+    const count = current.elements.length;
+
+    return new RuntimeArray(
+      current.elementType,
+      current.dimensions,
+      Array.from({ length: count }, (_, i) => text[i] ?? '\0'),
+    );
+  }
   if (isString(current)) return text;
   if (isBool(current)) {
     const value = trim(text);

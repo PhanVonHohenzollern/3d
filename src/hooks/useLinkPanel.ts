@@ -1,4 +1,3 @@
-import { connectorSteps } from '../helpers/connectorSteps';
 import { useContainerPagination } from './useContainerPagination';
 import {
   useImperativeHandle,
@@ -27,7 +26,7 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
   useObservable(model);
   const tableRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLDivElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useLayoutEffect(() => {
     model.setExpressionEvaluator(expressionEvaluator ?? null);
@@ -37,10 +36,10 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
 
   const focusNameSerial = model.focusNameSerial;
   useLayoutEffect(() => {
-    if (!focusNameSerial) return;
-    nameRef.current?.focus();
+    if (!isEditing) return;
+    nameRef.current?.focus({ preventScroll: true });
     nameRef.current?.select();
-  }, [focusNameSerial]);
+  }, [focusNameSerial, isEditing]);
 
   const pagination = useContainerPagination(
     model.tableRows.map((row, index) => ({ ...row, index })),
@@ -51,34 +50,10 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
       selectionKey: `${model.currentRow}:${model.scrollRequest?.serial}`,
     },
   );
-  const [section, setSection] = useState<string>('Connectors');
-  useLayoutEffect(() => {
-    formRef.current
-      ?.querySelector(`[data-section="${section}"]`)
-      ?.querySelector<HTMLElement>('input, select')
-      ?.focus({ preventScroll: true });
-  }, [section]);
 
-  const stepIndex = connectorSteps.findIndex((step) => step.section === section);
-  const step = connectorSteps[stepIndex];
-  const canContinue =
-    section === 'Identity'
-      ? Boolean(model.nameText.trim() && model.pointText.trim())
-      : section === 'Dimensions'
-        ? Boolean(
-            model.circularFields
-              ? model.sizeTexts.diameter.trim()
-              : model.sizeTexts.aSize.trim() && model.sizeTexts.bSize.trim(),
-          )
-        : true;
+  const showList = () => setIsEditing(false);
 
-  const showList = () => setSection('Connectors');
-
-  const editSelected = () => setSection('Identity');
-
-  const nextStep = () => setSection(connectorSteps[Math.min(stepIndex + 1, connectorSteps.length - 1)].section);
-
-  const previousStep = () => (stepIndex > 0 ? setSection(connectorSteps[stepIndex - 1].section) : showList());
+  const editSelected = () => setIsEditing(true);
 
   const onTableMouseDown = (event: MouseEvent) => {
     if (event.button !== 0 || isInTableHeader(event) || isInElement(event, 'button')) return;
@@ -95,19 +70,12 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
 
   return {
     tableRef,
-    section,
     showList,
     editSelected,
-    isEditing: section !== 'Connectors',
+    isEditing,
     hasConnectors: model.tableRows.length > 0,
     canEdit: model.formEnabled,
     selectedName: model.nameText,
-    steps: connectorSteps.map((step, index) => ({
-      ...step,
-      number: index + 1,
-      active: section === step.section,
-      select: () => setSection(step.section),
-    })),
     nameRef,
     table: {
       headers: kLinkTableHeaders,
@@ -120,15 +88,7 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
       togglePreview: (id: number) => () => model.togglePreview(id),
     },
     form: {
-      formRef,
-      previousStep,
-      canContinue,
-      feedback: model.statusIsError ? model.statusText : model.statusText ? 'Preview ready' : (step?.hint ?? ''),
-      nextStep,
-      lastStep: stepIndex === connectorSteps.length - 1,
-      nextLabel: `Next: ${connectorSteps[stepIndex + 1]?.label ?? 'Preview'}`,
-      guidance: step?.hint ?? '',
-
+      feedback: model.statusText || 'Set the connector details, then Make to preview.',
       typeOptions: kConnectorTypes,
       sizePlaceholder: kSizePlaceholder,
       orientations: kOrientationLabels.map((label, id) => ({
@@ -153,7 +113,6 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
       sizeTexts: model.sizeTexts,
       parameterNames: model.parameterNames,
       circular: model.circularFields,
-      status: model.statusText,
       statusIsError: model.statusIsError,
       onNameChange: (event: ChangeEvent<HTMLInputElement>) => model.nameEdited(event.target.value),
       onPointChange: (event: ChangeEvent<HTMLInputElement>) => model.pointEdited(event.target.value),
@@ -166,7 +125,7 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
       test: () => model.testSelection(),
     },
     addConnector: () => {
-      setSection('Identity');
+      setIsEditing(true);
       model.addConnector();
     },
     removeConnector: () => {

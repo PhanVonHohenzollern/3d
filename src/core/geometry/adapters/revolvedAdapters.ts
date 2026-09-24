@@ -249,7 +249,6 @@ export function appendTubularBend(
     (args.length > 9 && !asBool(args[9], half))
   )
     return false;
-  if (half.v) return false;
   if (
     !validDirection(normal.v) ||
     !validDirection(radiusVector.v) ||
@@ -272,6 +271,7 @@ export function appendTubularBend(
       sweep.v,
       n.v,
       segmentation.v,
+      half.v,
     ),
   );
 

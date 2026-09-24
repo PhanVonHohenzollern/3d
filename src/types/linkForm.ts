@@ -1,4 +1,4 @@
-import type { ChangeEvent, KeyboardEvent, ReactNode, Ref } from 'react';
+import type { ChangeEvent, KeyboardEvent, Ref } from 'react';
 import type { ConnectorType } from '../core/geometry/ConnectorPreview';
 import type { SizeField } from './panels';
 
@@ -15,16 +15,7 @@ export interface LinkAxisField {
 }
 
 export interface LinkFormProps {
-  children?: ReactNode;
-  section: string;
-  formRef: Ref<HTMLDivElement>;
-  canContinue: boolean;
   feedback: string;
-  previousStep: () => void;
-  nextStep: () => void;
-  lastStep: boolean;
-  nextLabel: string;
-  guidance: string;
   nameRef: Ref<HTMLInputElement>;
   typeOptions: readonly ConnectorType[];
   sizePlaceholder: string;
@@ -38,7 +29,6 @@ export interface LinkFormProps {
   sizeTexts: Record<SizeField, string>;
   parameterNames: readonly string[];
   circular: boolean;
-  status: string;
   statusIsError: boolean;
   onNameChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onPointChange: (event: ChangeEvent<HTMLInputElement>) => void;

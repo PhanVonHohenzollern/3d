@@ -35,7 +35,7 @@
   --editor: #fafafa;
   --editor-gutter: var(--editor);
   --editor-line: #f4f4f5;
-  --editor-selection: #dbeafe;
+  --editor-selection: #2563eb;
   --syntax-keyword: #7c3aed;
   --syntax-control: #9333ea;
   --syntax-type: #0369a1;
@@ -66,7 +66,6 @@
   --editor: #09090b;
   --editor-gutter: var(--editor);
   --editor-line: #222225;
-  --editor-selection: #334155;
   --syntax-keyword: #c4b5fd;
   --syntax-control: #d8b4fe;
   --syntax-type: #7dd3fc;
