@@ -49,11 +49,17 @@ the SDK headers, run `npm run generate`.
 ## Continuous integration and GitHub Pages
 
 The [GitHub Actions workflow](.github/workflows/ci.yml) runs on pull requests and
-pushes to `main`, and can also be started manually from the Actions tab. It installs
-from `package-lock.json` with `npm ci`, then runs ESLint (zero warnings), Prettier,
-TypeScript, the standalone UI/renderer tests, and the production build. Successful
-`main` builds are deployed to <https://kienmai160598.github.io/3d/>. Pull requests
-validate and build without deploying.
+pushes to `main`, and can also be started manually from the Actions tab. It has
+three sequential jobs: **Validate → Build → Deploy**. Each job runs only after
+the previous job succeeds.
+
+1. **Validate** installs dependencies with `npm ci` and runs ESLint (zero warnings),
+   Prettier, TypeScript, and the standalone UI/renderer tests.
+2. **Build** installs dependencies in a fresh runner, produces the production
+   build, and uploads the Pages artifact for `main`.
+3. **Deploy** publishes that artifact to <https://kienmai160598.github.io/3d/>.
+
+Pull requests run Validate and Build; Deploy runs only for `main` outside pull requests.
 
 GitHub Pages must be enabled under **Settings → Pages → Source → GitHub Actions**.
 Deployment uses the built-in `GITHUB_TOKEN`; no personal token or deploy secret is
