@@ -65,7 +65,7 @@ export function parseFixture(file: string): Fixture {
   for (const line of textLines) {
     const at = line.indexOf('//@');
     if (at < 0) continue;
-    const directive = line.slice(at + 3);
+    const directive = trimmed(line.slice(at + 3));
     const space = directive.indexOf(' ');
     const key = space < 0 ? directive : directive.slice(0, space);
     const rest = space < 0 ? '' : trimmed(directive.slice(space + 1));

@@ -1,1 +1,4 @@
 *.json.gz binary
+
+# Keep the multiline string fixture identical on Windows and Linux.
+tests/fixtures/runtime/strings_chars.cpp text eol=crlf
