@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { useContainerPagination } from './useContainerPagination';
+import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import { eventModifiers } from '../helpers/keyboard';
 import { kTreeIndentation } from '../helpers/layout';
 import { resizeToContentsWidth } from '../helpers/treeColumns';
@@ -48,15 +49,24 @@ export function useTreeView(tree: TreeWidget) {
   });
   for (const row of rows) row.cells.forEach((cell, column) => (cell.width = columns[column].width));
   const totalWidth = columns.reduce((sum, column) => sum + column.width, 0);
+  const firstWidth = Math.min(96, Math.max(48, ...rows.map((row) => row.cells[0].indent + 12)));
+  const remainingWidth = Math.max(1, totalWidth - (columns[0]?.width ?? 0));
+  const fittedWidths = columns.map((column, index) =>
+    index === 0
+      ? `${firstWidth}px`
+      : `calc(${(column.width / remainingWidth) * 100}% - ${(column.width / remainingWidth) * firstWidth}px)`,
+  );
+  for (const row of rows) {
+    row.branchLeft = Math.min(row.branchLeft, firstWidth - 24);
+    row.cells[0].indent = Math.min(row.cells[0].indent, firstWidth - 12);
+  }
 
-  const scrollSerial = tree.scrollRequest?.serial;
-  useLayoutEffect(() => {
-    const request = tree.scrollRequest;
-    if (!request) return;
-    containerRef.current
-      ?.querySelector<HTMLElement>(`[data-key="${request.item.id}"]`)
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [scrollSerial, tree]);
+  const pagination = useContainerPagination(rows, {
+    rowHeight: 28,
+    headerHeight: 28,
+    selectedIndex: visible.findIndex(({ item }) => item === tree.scrollRequest?.item),
+    selectionKey: tree.scrollRequest?.serial,
+  });
 
   const hit = (event: MouseEvent): TreeMouseEvent => {
     const target = event.target as Element;
@@ -98,5 +108,15 @@ export function useTreeView(tree: TreeWidget) {
     startDrag(event, (dx) => tree.setColumnWidth(column, Math.max(startWidth + dx, 8)));
   };
 
-  return { containerRef, columns, rows, totalWidth, onMouseDown, onMouseUp, onKeyDown, onResizeStart };
+  return {
+    containerRef,
+    columns,
+    rows: pagination.items,
+    pagination,
+    fittedWidths,
+    onMouseDown,
+    onMouseUp,
+    onKeyDown,
+    onResizeStart,
+  };
 }

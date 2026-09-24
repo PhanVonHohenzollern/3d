@@ -13,16 +13,16 @@ export function TableView({
     <div
       tabIndex={0}
       className={cn(
-        'group/table min-h-0 flex-1 overflow-auto bg-base outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
+        'group/table min-h-0 flex-1 overflow-hidden bg-base outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
         className,
       )}
       {...props}
     >
-      <Table className="min-w-full border-separate border-spacing-0 [&_tbody_tr:hover]:bg-secondary/50">
+      <Table className="min-w-full table-fixed border-separate border-spacing-0 [&_tbody_tr:hover]:bg-secondary/50">
         {children}
       </Table>
       {emptyMessage && (
-        <div className="flex min-h-28 flex-col items-center justify-center gap-1.5 px-6 py-6 text-center text-xs text-muted-foreground">
+        <div className="flex min-h-0 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{emptyTitle}</span>
           <span className="max-w-sm leading-relaxed">{emptyMessage}</span>
         </div>
@@ -36,8 +36,8 @@ export function HeaderCell({ stretch = false, align = 'left', children }: Header
     <TableHead
       scope="col"
       className={cn(
-        'sticky top-0 z-1 h-9 border-b border-line bg-window px-4 text-[11px] font-medium whitespace-nowrap text-muted-foreground',
-        !stretch && 'w-px',
+        'sticky top-0 z-1 h-7 overflow-hidden border-b border-line bg-window px-2 text-[11px] font-medium text-ellipsis whitespace-nowrap text-muted-foreground',
+        stretch && 'w-2/5',
         align === 'right' ? 'text-right' : 'text-left',
       )}
     >
@@ -57,12 +57,13 @@ export function Cell({
 }: CellProps) {
   return (
     <TableCell
+      title={typeof children === 'string' ? children : undefined}
       data-column={column}
       className={cn(
-        'h-9 cursor-default scroll-mt-9 border-b border-grid py-0 text-xs whitespace-nowrap tabular-nums',
+        'h-7 cursor-default scroll-mt-9 overflow-hidden border-b border-grid py-0 text-xs text-ellipsis whitespace-nowrap tabular-nums',
         align === 'right' ? 'text-right' : 'text-left',
         mono && 'font-code',
-        padding === 'text' && 'px-4',
+        padding === 'text' && 'px-2',
         padding === 'none' && 'p-0',
         padding === 'widget' && 'px-[3px] py-px',
         selected && 'bg-highlight text-highlight-fg',

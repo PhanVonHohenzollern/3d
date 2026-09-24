@@ -1,3 +1,4 @@
+import type { TreeWidget } from '../hooks/treeWidget/TreeWidget';
 import type { TreeWidgetItem } from '../hooks/treeWidget/TreeWidgetItem';
 import type { Modifiers } from './qt';
 
@@ -42,4 +43,9 @@ export interface TreeColumnView {
   label: string;
   width: number;
   resizable: boolean;
+}
+
+export interface TreeViewProps {
+  tree: TreeWidget;
+  variant?: 'default' | 'trace';
 }

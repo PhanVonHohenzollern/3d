@@ -10,9 +10,15 @@ export function ApiTracePanel(props: ApiTracePanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-none justify-start border-b border-line px-4 py-2">
-        <ToolButton onMouseDown={preventDefault} onClick={clearFocus}>
-          Clear API Focus
+      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-2">
+        <span
+          className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+          title="Select a call to highlight its geometry. Expand the arrow to inspect inputs."
+        >
+          Select a call · Expand to see inputs
+        </span>
+        <ToolButton sizeClassName="h-6 px-2 text-[11px]" onMouseDown={preventDefault} onClick={clearFocus}>
+          Clear selection
         </ToolButton>
       </div>
       <TreeView tree={tree} variant="trace" />

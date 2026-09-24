@@ -7,23 +7,23 @@ import { FormLabel } from './ui/FormLabel';
 import { LineEdit } from './ui/LineEdit';
 import { PushButton } from './ui/PushButton';
 
-export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
+export function LinkForm({ nameRef, formRef, children, section, ...props }: LinkFormProps) {
   const id = useId();
 
   return (
-    <div className="@container flex h-full min-h-0 w-full flex-1 flex-col bg-base">
-      <div className="min-h-0 flex-1 overflow-auto">
+    <div ref={formRef} className="@container flex h-full min-h-0 w-full flex-1 flex-col bg-base">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {children}
-        <fieldset disabled={props.disabled} className="group/form grid gap-3 p-3 @min-[600px]:grid-cols-2">
-          <fieldset className="space-y-3">
-            <legend className="mb-3 text-xs font-semibold">Identity</legend>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="min-w-0 space-y-1.5">
-                <FormLabel htmlFor={`${id}-name`}>Identifier</FormLabel>
+        <fieldset disabled={props.disabled} className="group/form p-1 [&_input]:h-7 [&_select[data-size=sm]]:h-7">
+          <fieldset data-section="Identity" className={section === 'Identity' ? '' : 'hidden'}>
+            <legend className="sr-only">Identity</legend>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="min-w-0 space-y-1">
+                <FormLabel htmlFor={`${id}-name`}>Name</FormLabel>
                 <LineEdit id={`${id}-name`} ref={nameRef} value={props.name} onChange={props.onNameChange} />
               </div>
-              <div className="min-w-0 space-y-1.5">
-                <FormLabel htmlFor={`${id}-point`}>Point</FormLabel>
+              <div className="min-w-0 space-y-1">
+                <FormLabel htmlFor={`${id}-point`}>Point variable</FormLabel>
                 <LineEdit
                   id={`${id}-point`}
                   value={props.point}
@@ -34,9 +34,12 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
               </div>
             </div>
           </fieldset>
-          <fieldset className="space-y-3">
-            <legend className="mb-3 text-xs font-semibold">Dimensions</legend>
-            <div className="space-y-1.5">
+          <fieldset
+            data-section="Dimensions"
+            className={section === 'Dimensions' ? 'grid grid-cols-2 gap-2' : 'hidden'}
+          >
+            <legend className="sr-only">Dimensions</legend>
+            <div className="space-y-1">
               <FormLabel htmlFor={`${id}-type`}>Type</FormLabel>
               <ComboBox id={`${id}-type`} value={props.typeIndex} onChange={props.onTypeChange}>
                 {props.typeOptions.map((type, index) => (
@@ -47,7 +50,7 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
               </ComboBox>
             </div>
             {props.circular ? (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <FormLabel>Diameter</FormLabel>
                 <EditableComboBox
                   label="Diameter"
@@ -59,8 +62,8 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
                 />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="min-w-0 space-y-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="min-w-0 space-y-1">
                   <FormLabel>A</FormLabel>
                   <EditableComboBox
                     label="A dimension"
@@ -71,7 +74,7 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
                     onTextChanged={props.sizeTextChanged('aSize')}
                   />
                 </div>
-                <div className="min-w-0 space-y-1.5">
+                <div className="min-w-0 space-y-1">
                   <FormLabel>B</FormLabel>
                   <EditableComboBox
                     label="B dimension"
@@ -85,11 +88,11 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
               </div>
             )}
           </fieldset>
-          <fieldset className="space-y-3">
-            <legend className="mb-3 text-xs font-semibold">Position</legend>
+          <fieldset data-section="Position" className={section === 'Position' ? '' : 'hidden'}>
+            <legend className="sr-only">Position</legend>
             <div className="grid grid-cols-3 gap-2">
               {props.positionFields.map((field, index) => (
-                <div key={field.label} className="min-w-0 space-y-1.5">
+                <div key={field.label} className="min-w-0 space-y-1">
                   <FormLabel htmlFor={`${id}-position-${index}`}>{field.label}</FormLabel>
                   <LineEdit
                     id={`${id}-position-${index}`}
@@ -101,27 +104,28 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
               ))}
             </div>
           </fieldset>
-          <fieldset className="space-y-3">
-            <legend className="mb-3 text-xs font-semibold">Rotation</legend>
-            <div className="space-y-1.5">
+          <fieldset
+            data-section="Rotation"
+            className={section === 'Rotation' ? 'grid grid-cols-[80px_minmax(0,1fr)] gap-2' : 'hidden'}
+          >
+            <legend className="sr-only">Rotation</legend>
+            <div className="space-y-1">
               <FormLabel>Orientation</FormLabel>
-              <div className="flex flex-wrap gap-1" role="group" aria-label="Orientation">
-                {props.orientations.map((option) => (
-                  <PushButton
-                    key={option.label}
-                    checked={option.selected}
-                    aria-pressed={option.selected}
-                    sizeClassName="h-7 min-w-9 px-2 text-[11px]"
-                    onClick={option.onClick}
-                  >
+              <ComboBox
+                aria-label="Orientation"
+                value={props.orientations.findIndex((option) => option.selected)}
+                onChange={(event) => props.orientations[Number(event.target.value)]?.onClick()}
+              >
+                {props.orientations.map((option, index) => (
+                  <option key={option.label} value={index}>
                     {option.label}
-                  </PushButton>
+                  </option>
                 ))}
-              </div>
+              </ComboBox>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {props.angleFields.map((field, index) => (
-                <div key={field.label} className="min-w-0 space-y-1.5">
+                <div key={field.label} className="min-w-0 space-y-1">
                   <FormLabel htmlFor={`${id}-angle-${index}`}>{field.label}</FormLabel>
                   <LineEdit
                     id={`${id}-angle-${index}`}
@@ -135,19 +139,39 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
           </fieldset>
         </fieldset>
       </div>
-      <div className="flex shrink-0 items-center gap-3 border-t border-line bg-base p-3">
+      <div className="flex shrink-0 items-center gap-2 border-t border-line bg-base px-1.5 py-1">
+        <PushButton sizeClassName="h-7 px-2" onClick={props.previousStep}>
+          Back
+        </PushButton>
         <div
           role="status"
+          title={props.feedback}
           className={cn(
-            'max-h-16 min-w-0 flex-1 overflow-auto text-xs whitespace-pre-wrap text-muted-foreground select-text',
+            'min-w-0 flex-1 truncate text-[11px] text-muted-foreground select-text',
             props.statusIsError && 'text-error',
           )}
         >
-          {props.status}
+          {props.feedback}
         </div>
-        <PushButton variant="primary" sizeClassName="h-8 min-w-24 px-4" disabled={props.disabled} onClick={props.test}>
-          Make
-        </PushButton>
+        {props.lastStep ? (
+          <PushButton
+            variant="primary"
+            sizeClassName="h-7 min-w-16 px-3"
+            disabled={props.disabled}
+            onClick={props.test}
+          >
+            Make
+          </PushButton>
+        ) : (
+          <PushButton
+            variant="primary"
+            sizeClassName="h-7 px-3"
+            disabled={props.disabled || !props.canContinue}
+            onClick={props.nextStep}
+          >
+            {props.nextLabel}
+          </PushButton>
+        )}
       </div>
     </div>
   );
