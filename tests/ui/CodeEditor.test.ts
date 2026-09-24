@@ -7,6 +7,7 @@ async function complete(doc: string, explicit = false): Promise<CompletionResult
   const state = EditorState.create({ doc, extensions: createEditorExtensions(() => {}) });
   const sources = state.languageDataAt<CompletionSource>('autocomplete', doc.length);
   expect(sources).toHaveLength(1);
+
   return sources[0](new CompletionContext(state, doc.length, explicit));
 }
 

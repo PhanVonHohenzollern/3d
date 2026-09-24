@@ -79,5 +79,6 @@ export function codeCompletions(context: CompletionContext): CompletionResult | 
       });
     },
   });
+
   return { from: word?.from ?? context.pos, options: [...candidates.values()], validFor: /^[\w:]*$/ };
 }
