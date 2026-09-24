@@ -8,7 +8,10 @@ export function CodeEditor(props: CodeEditorProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div ref={hostRef} className="min-h-0 w-full flex-1 overflow-hidden bg-editor font-code text-code select-text" />
+      <div
+        ref={hostRef}
+        className="workspace-surface min-h-0 w-full flex-1 overflow-hidden bg-editor font-code text-code select-text"
+      />
       <div className="flex h-7 shrink-0 items-center justify-between gap-2 border-t border-line/60 px-3 text-[11px] text-muted-foreground">
         <Button
           variant="ghost"
