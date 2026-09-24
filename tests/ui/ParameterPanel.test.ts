@@ -131,3 +131,24 @@ describe('ParameterPanel', () => {
     expect(model.editor).toBeNull();
   });
 });
+
+describe('ParameterPanel reset to source', () => {
+  it('restores current source defaults and lets later source changes apply again', () => {
+    const model = new ParameterPanelModel();
+    const changed = vi.fn();
+    model.setChangedCallback(changed);
+    model.setDefinitions([request({ defaultValue: '5' })]);
+    editValue(model, 0, '12');
+    model.setDefinitions([request({ defaultValue: '8' })]);
+    expect(model.values().get('D')).toBe('12');
+    model.edit(0, 3);
+    model.editorTextEdited('99');
+    model.resetToSource();
+    expect(model.editor).toBeNull();
+    expect(model.values().get('D')).toBe('8');
+    expect(model.rows[0].texts[3]).toBe('8');
+    expect(changed).toHaveBeenCalledTimes(2);
+    model.setDefinitions([request({ defaultValue: '10' })]);
+    expect(model.values().get('D')).toBe('10');
+  });
+});

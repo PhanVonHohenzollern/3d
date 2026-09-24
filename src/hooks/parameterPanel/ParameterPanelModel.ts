@@ -123,6 +123,14 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     return new Map(this.#values);
   }
 
+  resetToSource(): void {
+    this.#userEditedKeys.clear();
+    this.#values.clear();
+    for (const definition of this.#definitions) this.#values.set(definition.name, parameterSeed(definition));
+    this.#rebuildTable();
+    this.#changedCallback?.();
+  }
+
   setChangedCallback(callback: (() => void) | null): void {
     this.#changedCallback = callback;
   }

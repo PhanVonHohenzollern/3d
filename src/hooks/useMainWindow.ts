@@ -24,6 +24,7 @@ export function useMainWindow() {
     menus: mainWindow.menus,
     toolbarItems: mainWindow.toolbarItems,
     statusBar: mainWindow.statusBar(),
+    inspectorCounts: mainWindow.inspectorCounts,
     raisedDock: mainWindow.raisedDock(),
     raiseDock: mainWindow.raiseDock,
     editor: {

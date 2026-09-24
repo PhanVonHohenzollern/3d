@@ -1,3 +1,4 @@
+import type { InspectorCounts } from '../../types/dockArea';
 import type { ConnectorPreview } from '../../core/geometry/ConnectorPreview';
 import { PreviewGeometryEngine, type PreviewGeometryScene } from '../../core/geometry/PreviewGeometryEngine';
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '../../core/runtime/DebugAnchorResolver';
@@ -82,6 +83,7 @@ export class MainWindow extends Observable {
   readonly m_runtime = new GeometryRuntime();
   readonly m_geometryEngine = new PreviewGeometryEngine();
   m_geometryScene: PreviewGeometryScene = { meshes: [], warnings: [] };
+  inspectorCounts: InspectorCounts = { VariablesDock: 0, ParametersDock: 0, ApiTraceDock: 0 };
   m_lastResult: RuntimeResult = emptyRuntimeResult();
   m_currentPreviewLine = 0;
   m_navigatingToTrace = false;
@@ -384,6 +386,12 @@ export class MainWindow extends Observable {
 
       return;
     }
+    this.inspectorCounts = {
+      VariablesDock: result.variables.length,
+      ParametersDock: parameterDefinitions.length,
+      ApiTraceDock: result.apiCalls.length,
+    };
+    this.changed();
     this.m_lastResult = result;
     this.m_currentPreviewLine = line;
 

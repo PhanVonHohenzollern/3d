@@ -67,6 +67,7 @@ export function App() {
                   onKeyDown={onSeparatorKeyDown}
                 />
                 <DockArea
+                  counts={mainWindow.inspectorCounts}
                   height={dockHeight}
                   title={title}
                   tabs={tabs}
