@@ -54,11 +54,7 @@ export function App() {
               aria-label="3D Viewport"
               className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
             >
-              <PanelHeader icon={Box} title="3D Viewport">
-                <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  <span className="size-1 rounded-full bg-emerald-500" /> Live
-                </span>
-              </PanelHeader>
+              <PanelHeader icon={Box} title="3D Viewport" />
               <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">
                 <Viewport3D {...mainWindow.viewport} />
               </div>
