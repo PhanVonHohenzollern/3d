@@ -51,7 +51,11 @@ the SDK headers, run `npm run generate`.
 The [GitHub Actions workflow](.github/workflows/ci.yml) runs on pull requests and
 pushes to `main`, and can also be started manually from the Actions tab. It has
 three sequential jobs: **Validate → Build → Deploy**. Each job runs only after
-the previous job succeeds.
+the previous job succeeds. `ci.yml` calls three reusable workflow templates with
+job-level `uses`: [validate.yml](.github/workflows/validate.yml),
+[build.yml](.github/workflows/build.yml), and [deploy.yml](.github/workflows/deploy.yml).
+Each template exposes `workflow_call`; triggers and stage dependencies stay in
+`ci.yml`.
 
 1. **Validate** installs dependencies with `npm ci` and runs ESLint (zero warnings),
    Prettier, TypeScript, and the standalone UI/renderer tests.
