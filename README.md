@@ -2,7 +2,7 @@
 
 Write C++ geometry code against the FLM3Geo SDK and see the result in a live 3D preview. The app interprets the code up to the cursor line and draws the geometry it produces. It also shows variables, the API call trace and parameters. Everything runs in the browser; there is no backend.
 
-Live version: <https://kienmai160598.github.io/3d/>
+Live version: <https://geomnetry.Phan.io/3d/>
 
 ## Run locally
 
