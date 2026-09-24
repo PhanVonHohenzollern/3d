@@ -24,6 +24,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <TableView
+        emptyTitle="No editable parameters"
         emptyMessage={
           rows.length === 0 ? 'Add a get_val() call in your code to expose an editable parameter.' : undefined
         }
@@ -35,7 +36,11 @@ export function ParameterPanel(props: ParameterPanelProps) {
         <thead>
           <tr>
             {headers.map((header, column) => (
-              <HeaderCell key={header} stretch={column === valueColumn}>
+              <HeaderCell
+                key={header}
+                stretch={column === valueColumn}
+                align={column >= valueColumn ? 'right' : 'left'}
+              >
                 {header}
               </HeaderCell>
             ))}
@@ -48,6 +53,8 @@ export function ParameterPanel(props: ParameterPanelProps) {
                 <Cell
                   key={column}
                   column={column}
+                  align={column >= valueColumn ? 'right' : 'left'}
+                  mono={column > 0}
                   selected={index === selectedRow}
                   current={index === currentRow && column === currentColumn}
                   padding={editor?.row === index && column === valueColumn ? 'none' : 'text'}
@@ -56,7 +63,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
                     <input
                       ref={editorRef}
                       data-serial={editor.serial}
-                      className="h-8 w-full rounded-sm border border-line-hover bg-base px-3 text-fg outline-none"
+                      className="h-8 w-full rounded-sm border border-line-hover bg-base px-4 text-right font-code text-fg outline-none"
                       value={editor.text}
                       spellCheck={false}
                       onChange={onEditorChange}

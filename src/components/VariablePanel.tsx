@@ -11,7 +11,10 @@ export function VariablePanel(props: VariablePanelProps) {
         {summary}
       </div>
       <TableView
-        emptyMessage={rows.length === 0 ? 'Variables will appear as you write and preview code.' : undefined}
+        emptyTitle="No variables at this cursor"
+        emptyMessage={
+          rows.length === 0 ? 'Declare a variable, then move the cursor below it to inspect its value.' : undefined
+        }
         ref={tableRef}
         onMouseDown={onMouseDown}
         onMouseUp={onMouseUp}
@@ -28,9 +31,15 @@ export function VariablePanel(props: VariablePanelProps) {
         <tbody>
           {rows.map((row, index) => (
             <tr key={index} data-row={index}>
-              <Cell selected={index === selectedRow}>{row.name}</Cell>
-              <Cell selected={index === selectedRow}>{row.type}</Cell>
-              <Cell selected={index === selectedRow}>{row.value}</Cell>
+              <Cell mono selected={index === selectedRow}>
+                {row.name}
+              </Cell>
+              <Cell mono selected={index === selectedRow}>
+                {row.type}
+              </Cell>
+              <Cell mono selected={index === selectedRow}>
+                {row.value}
+              </Cell>
               <Cell selected={index === selectedRow}>{row.changed}</Cell>
             </tr>
           ))}
