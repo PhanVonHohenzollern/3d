@@ -1,11 +1,8 @@
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Box, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
-import type { Menu } from '../types/mainWindow';
-import { MenuBar } from './MenuBar';
 
-export function WorkspaceHeader({ menus }: { menus: readonly Menu[] }) {
+export function WorkspaceHeader() {
   const { theme, toggleTheme } = useTheme();
   const ThemeIcon = theme === 'light' ? Moon : Sun;
 
@@ -19,11 +16,6 @@ export function WorkspaceHeader({ menus }: { menus: readonly Menu[] }) {
         WORKSPACE
       </span>
       <div className="flex-1" />
-      <MenuBar menus={menus} />
-      <Badge variant="secondary" className="hidden gap-2 px-2.5 py-1 text-[11px] sm:flex">
-        <span className="size-1.5 rounded-full bg-emerald-500" />
-        Live preview
-      </Badge>
       <Button
         type="button"
         variant="outline"

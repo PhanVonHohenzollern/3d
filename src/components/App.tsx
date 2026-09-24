@@ -25,7 +25,7 @@ export function App() {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden bg-window select-none">
-      <WorkspaceHeader menus={mainWindow.menus} />
+      <WorkspaceHeader />
       <ToolBar items={mainWindow.toolbarItems} />
       <main ref={mainAreaRef} className="flex min-h-0 flex-1 flex-col px-2 pb-3 sm:px-5">
         <div className="min-h-0 flex-1">
