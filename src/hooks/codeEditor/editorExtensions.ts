@@ -32,7 +32,7 @@ const editorTheme = EditorView.theme(
     '&.cm-focused': { outline: 'none' },
     '.cm-scroller': { fontFamily: 'inherit', lineHeight: '1.6' },
     '.cm-content': { padding: '12px 0', caretColor: 'var(--foreground)' },
-    '.cm-line': { padding: '0 12px' },
+    '.cm-line': { padding: '0 8px' },
     '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--foreground)' },
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground': {
       backgroundColor: 'var(--editor-selection)',
@@ -42,10 +42,9 @@ const editorTheme = EditorView.theme(
       backgroundColor: 'var(--editor-gutter)',
       color: 'var(--muted-foreground)',
       border: 'none',
-      borderRight: '1px solid var(--border)',
     },
     '.cm-activeLineGutter': { backgroundColor: 'var(--editor-line)', color: 'var(--foreground)', fontWeight: '600' },
-    '.cm-lineNumbers .cm-gutterElement': { padding: '0 12px 0 16px', minWidth: '0' },
+    '.cm-lineNumbers .cm-gutterElement': { padding: '0 4px', minWidth: '0' },
     '.cm-gutterElement.cm-tracedLineNumber': {
       backgroundColor: 'var(--trace)',
       color: 'var(--trace-foreground)',
