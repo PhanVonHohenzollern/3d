@@ -13,7 +13,7 @@ export function LinkPanel(props: LinkPanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-none gap-2 border-b border-line px-4 py-2">
+      <div className="flex flex-none gap-2 border-b border-line px-3 py-2">
         <PushButton onClick={addConnector}>
           <Plus className="size-3.5" aria-hidden />
           Add connector

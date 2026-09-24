@@ -7,7 +7,7 @@ export function WorkspaceHeader() {
   const ThemeIcon = theme === 'light' ? Moon : Sun;
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2.5 bg-base px-4 sm:px-5">
+    <header className="flex h-12 shrink-0 items-center gap-2 bg-base px-3">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
         <Box className="size-[19px]" strokeWidth={1.7} aria-hidden />
       </div>

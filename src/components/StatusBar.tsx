@@ -15,7 +15,7 @@ export function StatusBar({ model }: StatusBarProps) {
   const { icon: Icon, label, style } = presentation[tone];
 
   return (
-    <footer className={cn('flex h-8 shrink-0 items-center gap-2 border-t border-line px-2 text-[11px] sm:px-5', style)}>
+    <footer className={cn('flex h-8 shrink-0 items-center gap-2 border-t border-line px-3 text-[11px]', style)}>
       <Icon className="size-3.5 shrink-0" aria-hidden />
       <TooltipProvider delayDuration={300}>
         <Tooltip>

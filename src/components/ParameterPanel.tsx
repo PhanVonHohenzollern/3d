@@ -10,7 +10,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
 
   return (
     <div className="@container/parameters flex h-full min-h-0 flex-col bg-window">
-      <div className="flex min-h-10 shrink-0 items-center gap-2 border-b border-line pr-2 pl-4">
+      <div className="flex min-h-10 shrink-0 items-center gap-2 border-b border-line px-3">
         <h3 className="text-xs font-semibold">get_val parameters</h3>
         <span className="rounded-full bg-secondary px-1.5 font-code text-[10px] tabular-nums">{fields.length}</span>
         <span className="ml-auto hidden text-[11px] text-muted-foreground @min-[650px]/parameters:inline">
@@ -33,7 +33,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
           <p className="text-muted-foreground">Add a get_val() call in your code to expose an editable parameter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 content-start gap-4 overflow-auto p-4 @min-[340px]/parameters:grid-cols-2 @min-[800px]/parameters:grid-cols-4">
+        <div className="grid grid-cols-1 content-start gap-3 overflow-auto p-3 @min-[340px]/parameters:grid-cols-2 @min-[800px]/parameters:grid-cols-4">
           {fields.map((field) => (
             <label key={field.key} className="flex min-w-0 flex-col gap-1.5">
               <span className="flex items-center justify-between gap-2 text-xs font-medium">

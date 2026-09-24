@@ -14,7 +14,7 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
     <div className="@container flex h-full min-h-0 w-full flex-1 flex-col bg-base">
       <div className="min-h-0 flex-1 overflow-auto">
         {children}
-        <fieldset disabled={props.disabled} className="group/form grid gap-5 p-4 @min-[600px]:grid-cols-2">
+        <fieldset disabled={props.disabled} className="group/form grid gap-3 p-3 @min-[600px]:grid-cols-2">
           <fieldset className="space-y-3">
             <legend className="mb-3 text-xs font-semibold">Identity</legend>
             <div className="grid grid-cols-2 gap-3">
@@ -135,7 +135,7 @@ export function LinkForm({ nameRef, children, ...props }: LinkFormProps) {
           </fieldset>
         </fieldset>
       </div>
-      <div className="flex shrink-0 items-center gap-3 border-t border-line bg-base px-4 py-3">
+      <div className="flex shrink-0 items-center gap-3 border-t border-line bg-base p-3">
         <div
           role="status"
           className={cn(
