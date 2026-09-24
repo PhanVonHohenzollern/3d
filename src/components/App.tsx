@@ -23,19 +23,15 @@ export function App() {
     useDockArea(mainWindow.raisedDock, mainWindow.raiseDock);
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden bg-window select-none [@media(max-height:600px)]:overflow-y-auto">
+    <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
       <WorkspaceHeader />
-      <ToolBar items={mainWindow.toolbarItems} />
-      <main
-        ref={mainAreaRef}
-        className="flex min-h-0 flex-1 flex-col px-2 pb-3 sm:px-5 [@media(max-height:600px)]:min-h-[480px]"
-      >
+      <main className="flex min-h-[1000px] flex-1 flex-col px-2 pb-3 sm:px-5 md:min-h-[600px]">
         <div className="min-h-0 flex-1">
           <Splitter
             label="Resize editor and viewport"
             orientation={compact ? 'vertical' : 'horizontal'}
-            initialSizes={[450, 550]}
-            stretchFactors={[45, 55]}
+            initialSizes={compact ? [320, 680] : [330, 670]}
+            stretchFactors={compact ? [0, 1] : [33, 67]}
           >
             <section
               aria-label="Code Editor"
@@ -48,37 +44,44 @@ export function App() {
                 <CodeEditor {...mainWindow.editor} />
               </div>
             </section>
-            <section
-              aria-label="3D Viewport"
-              className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
-            >
-              <PanelHeader icon={Box} title="3D Viewport" />
-              <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">
-                <Viewport3D {...mainWindow.viewport} />
+            <div className="flex h-full min-w-0 flex-col">
+              <div ref={mainAreaRef} className="flex min-h-0 flex-1 flex-col">
+                <section
+                  aria-label="3D Viewport"
+                  className="@container/preview flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
+                >
+                  <PanelHeader icon={Box} title="3D Viewport">
+                    <ToolBar items={mainWindow.toolbarItems} />
+                  </PanelHeader>
+                  <div className="relative m-3 min-h-0 flex-1 overflow-hidden rounded-md bg-viewport">
+                    <Viewport3D {...mainWindow.viewport} />
+                  </div>
+                </section>
+                <ResizeHandle
+                  orientation="horizontal"
+                  label="Resize inspector"
+                  value={dockHeight}
+                  min={minimum}
+                  max={maximum}
+                  onPointerDown={onSeparatorPointerDown}
+                  onKeyDown={onSeparatorKeyDown}
+                />
+                <DockArea
+                  counts={mainWindow.inspectorCounts}
+                  height={dockHeight}
+                  title={title}
+                  tabs={tabs}
+                  panels={{
+                    VariablesDock: <VariablePanel {...mainWindow.variables} />,
+                    ParametersDock: <ParameterPanel {...mainWindow.parameters} />,
+                    ApiTraceDock: <ApiTracePanel {...mainWindow.apiTrace} />,
+                    LinkDock: <LinkPanel {...mainWindow.links} />,
+                  }}
+                />
               </div>
-            </section>
+            </div>
           </Splitter>
         </div>
-        <ResizeHandle
-          orientation="horizontal"
-          label="Resize inspector"
-          value={dockHeight}
-          min={minimum}
-          max={maximum}
-          onPointerDown={onSeparatorPointerDown}
-          onKeyDown={onSeparatorKeyDown}
-        />
-        <DockArea
-          height={dockHeight}
-          title={title}
-          tabs={tabs}
-          panels={{
-            VariablesDock: <VariablePanel {...mainWindow.variables} />,
-            ParametersDock: <ParameterPanel {...mainWindow.parameters} />,
-            ApiTraceDock: <ApiTracePanel {...mainWindow.apiTrace} />,
-            LinkDock: <LinkPanel {...mainWindow.links} />,
-          }}
-        />
       </main>
       <StatusBar model={mainWindow.statusBar} />
     </div>

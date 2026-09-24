@@ -1,19 +1,6 @@
-import { Braces, Link2, ListTree, SlidersHorizontal } from 'lucide-react';
-import type { ReactNode } from 'react';
-import type { Dock, DockName } from '../types/mainWindow';
+import { Braces, Info, Link2, ListTree, SlidersHorizontal } from 'lucide-react';
+import type { DockAreaProps } from '../types/dockArea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
-
-interface DockTab extends Dock {
-  selected: boolean;
-  raise: () => void;
-}
-
-interface DockAreaProps {
-  height: number;
-  title: string;
-  tabs: readonly DockTab[];
-  panels: Record<DockName, ReactNode>;
-}
 
 const icons = { VariablesDock: Braces, ParametersDock: SlidersHorizontal, ApiTraceDock: ListTree, LinkDock: Link2 };
 const hints = {
@@ -23,7 +10,7 @@ const hints = {
   LinkDock: 'Configure and preview connectors',
 };
 
-export function DockArea({ height, title, tabs, panels }: DockAreaProps) {
+export function DockArea({ height, title, tabs, counts, panels }: DockAreaProps) {
   const active = tabs.find((tab) => tab.selected);
 
   return (
@@ -31,14 +18,13 @@ export function DockArea({ height, title, tabs, panels }: DockAreaProps) {
       value={active?.name}
       onValueChange={(name) => tabs.find((tab) => tab.name === name)?.raise()}
       aria-label={`${title} inspector`}
-      className="flex min-h-0 shrink-0 flex-col gap-0 overflow-hidden rounded-lg border border-line bg-base shadow-xs"
+      className="@container flex min-h-0 shrink-0 flex-col gap-0 overflow-hidden rounded-lg border border-line bg-base p-1.5 shadow-xs"
       style={{ height }}
     >
-      <div className="flex min-h-11 shrink-0 items-center gap-4 border-b border-line px-2 sm:px-4">
+      <div className="flex h-9 shrink-0 items-center gap-2 pr-2 pl-0.5">
         <TabsList
-          variant="line"
           aria-label="Inspector panels"
-          className="max-w-full justify-start overflow-x-auto p-0 group-data-[orientation=horizontal]/tabs:h-11"
+          className="max-w-full justify-start gap-0.5 overflow-x-auto bg-secondary p-[3px] group-data-[orientation=horizontal]/tabs:h-8"
         >
           {tabs.map((tab) => {
             const Icon = icons[tab.name];
@@ -47,19 +33,23 @@ export function DockArea({ height, title, tabs, panels }: DockAreaProps) {
               <TabsTrigger
                 key={tab.name}
                 value={tab.name}
-                className="shrink-0 rounded-none px-2 text-xs group-data-[orientation=horizontal]/tabs:after:bottom-0 hover:bg-secondary/50 data-[state=active]:font-semibold sm:px-3"
+                className="h-[26px] shrink-0 rounded-sm px-2.5 py-0 text-xs data-[state=active]:bg-base data-[state=active]:font-medium dark:data-[state=active]:bg-base"
               >
                 <Icon className="size-3.5" aria-hidden />
                 {tab.title}
+                {tab.name !== 'LinkDock' && (
+                  <span className="rounded-sm bg-line px-1 font-code text-[10px] tabular-nums">{counts[tab.name]}</span>
+                )}
               </TabsTrigger>
             );
           })}
         </TabsList>
-        <span className="ml-auto hidden text-[11px] text-muted-foreground lg:inline">
+        <span className="ml-auto hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground @3xl:flex">
+          <Info className="size-3.5" aria-hidden />
           {active && hints[active.name]}
         </span>
       </div>
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-md bg-window">
         {tabs.map((tab) => (
           <TabsContent
             key={tab.name}
