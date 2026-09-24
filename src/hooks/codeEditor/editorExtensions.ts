@@ -1,4 +1,10 @@
-import { acceptCompletion, autocompletion, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import {
+  acceptCompletion,
+  startCompletion,
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+} from '@codemirror/autocomplete';
 import { history, historyKeymap, insertNewlineAndIndent, standardKeymap } from '@codemirror/commands';
 import { cpp, cppLanguage } from '@codemirror/lang-cpp';
 import { bracketMatching, HighlightStyle, indentOnInput, indentUnit, syntaxHighlighting } from '@codemirror/language';
@@ -102,6 +108,7 @@ export function createEditorExtensions(onUpdate: (update: ViewUpdate) => void): 
     closeBrackets(),
     autocompletion(),
     keymap.of([
+      { mac: 'Meta-Shift-Space', run: startCompletion, preventDefault: true },
       ...closeBracketsKeymap,
       { key: 'Enter', run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
       { key: 'Tab', run: acceptCompletion },
