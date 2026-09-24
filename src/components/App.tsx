@@ -1,4 +1,3 @@
-import { isMacPlatform } from '../utils/platform';
 import { Box, CodeXml } from 'lucide-react';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { useDockArea } from '../hooks/useDockArea';
@@ -40,12 +39,6 @@ export function App() {
               </PanelHeader>
               <div className="min-h-0 flex-1">
                 <CodeEditor {...mainWindow.editor} />
-              </div>
-              <div className="flex h-7 shrink-0 items-center justify-end gap-2 border-t border-line/60 px-3 text-[11px] text-muted-foreground">
-                <span>Suggestions</span>
-                <kbd className="rounded bg-secondary px-1.5 py-0.5 font-ui text-[10px]">
-                  {isMacPlatform ? '⌘⇧Space' : 'Ctrl Space'}
-                </kbd>
               </div>
             </section>
             <section

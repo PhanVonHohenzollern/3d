@@ -1,3 +1,5 @@
+import { linter, lintGutter, lintKeymap } from '@codemirror/lint';
+import { lintCppSyntax } from './linting';
 import {
   acceptCompletion,
   startCompletion,
@@ -107,6 +109,21 @@ const editorTheme = EditorView.theme(
       whiteSpace: 'pre-wrap',
       overflowWrap: 'anywhere',
     },
+    '.cm-panel.cm-panel-lint': {
+      backgroundColor: 'var(--card)',
+      color: 'var(--foreground)',
+      borderTop: '1px solid var(--border)',
+    },
+    '.cm-panel.cm-panel-lint ul': { maxHeight: '160px' },
+    '.cm-panel.cm-panel-lint ul [aria-selected], .cm-panel.cm-panel-lint ul:focus [aria-selected]': {
+      backgroundColor: 'var(--secondary)',
+      color: 'var(--foreground)',
+    },
+    '.cm-panel.cm-panel-lint [aria-selected] u': { textDecoration: 'none' },
+    '.cm-diagnostic': { padding: '8px 28px 8px 12px', fontSize: '12px', lineHeight: '1.5', whiteSpace: 'normal' },
+    '.cm-diagnostic-error': { borderLeftColor: 'var(--destructive)' },
+    '.cm-diagnosticSource': { color: 'var(--muted-foreground)' },
+    '.cm-tooltip-lint': { maxWidth: 'min(420px, calc(100vw - 24px))' },
     '@media (max-width: 600px)': {
       '.cm-tooltip.cm-tooltip-autocomplete > ul': { maxHeight: 'min(224px, 30vh)' },
       '.cm-tooltip.cm-completionInfo': {
@@ -168,8 +185,11 @@ export function createEditorExtensions(onUpdate: (update: ViewUpdate) => void): 
     bracketMatching(),
     closeBrackets(),
     autocompletion(),
+    linter((view) => lintCppSyntax(view.state.doc.toString()), { delay: 500 }),
+    lintGutter(),
     keymap.of([
       { mac: 'Meta-Shift-Space', run: startCompletion, preventDefault: true },
+      ...lintKeymap,
       ...closeBracketsKeymap,
       { key: 'Enter', run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
       { key: 'Tab', run: acceptCompletion },
