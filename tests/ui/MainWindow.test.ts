@@ -204,6 +204,89 @@ describe('MainWindow', () => {
     vi.useRealTimers();
   });
 
+  it('builds the outer insulation mesh only when enabled and applies thickness on the next Build', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    const source = [
+      'double diameter = 100;',
+      'get_val("diameter", diameter);',
+      'double size;',
+      'FdPoint3d p0(0, 0, 0), p1(0, 0, 100);',
+      'makeVerySimpleTube(p0, p1, diameter, 8);',
+      'if (getExtInsSize(size)) {',
+      '  setPrimitiveMode(FLM3Geo::pmExtInsulation);',
+      '  makeVerySimpleTube(p0, p1, diameter + 2 * size, 8);',
+      '}',
+    ].join('\n');
+    mw.start();
+    editor.type(source, 1);
+    vi.advanceTimersByTime(220);
+    expect(parameters.rows.map((row) => row.texts[0])).toEqual(['diameter', 'getExtInsSize', 'size']);
+    mw.buildPreview();
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    const scene = mw.m_geometryScene;
+    parameters.setExtInsulationEnabled(true);
+    const sizeRow = parameters.rows.findIndex((row) => row.key === 'getExtInsSize');
+    parameters.edit(sizeRow, 3);
+    parameters.editorTextEdited('25');
+    parameters.commitEditor();
+    expect(mw.m_geometryScene).toBe(scene);
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.m_geometryScene.meshes).toHaveLength(2);
+    expect(mw.m_geometryScene.meshes[1].color).toEqual({ r: Math.fround(139 / 255), g: 0, b: 0 });
+    expect(mw.m_runtime.evaluateNumericExpression('size')).toBe(25);
+    const outerCall = mw.m_lastResult.apiCalls.findLast((call) => call.name === 'makeVerySimpleTube');
+    expect(outerCall?.arguments[2]).toBe(150);
+    parameters.setExtInsulationEnabled(false);
+    expect(mw.m_geometryScene.meshes).toHaveLength(2);
+    mw.buildPreview();
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    expect(parameters.rows[sizeRow].disabled).toBe(true);
+    mw.dispose();
+  });
+
+  it('blocks Debug after code edits in Build mode until the next Build', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 6);
+    mw.buildPreview();
+    expect(mw.debugBlocked).toBe(false);
+    // Moving the cursor or editing a parameter does not count as a code edit.
+    editor.moveTo(3);
+    parameters.edit(0, 3);
+    parameters.editorTextEdited('8');
+    parameters.commitEditor();
+    expect(mw.debugBlocked).toBe(false);
+    editor.type(kSource.replace('double after = 1', 'double after = 9'), 3);
+    const builtScene = mw.m_geometryScene;
+    const builtResult = mw.m_lastResult;
+    expect(mw.debugBlocked).toBe(true);
+    mw.debugPreview();
+    vi.advanceTimersByTime(1000);
+    expect(mw.previewMode).toBe('build');
+    expect(mw.m_geometryScene).toBe(builtScene);
+    expect(mw.m_lastResult).toBe(builtResult);
+    mw.buildPreview();
+    expect(mw.debugBlocked).toBe(false);
+    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(9);
+    mw.debugPreview();
+    expect(mw.previewMode).toBe('debug');
+    expect(mw.m_currentPreviewLine).toBe(3);
+    mw.dispose();
+  });
+
+  it('recognizes when an edit is undone back to the built source', () => {
+    const { mw, editor } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 6);
+    mw.buildPreview();
+    editor.type(kSource + '\n// draft', 1);
+    expect(mw.debugBlocked).toBe(true);
+    editor.type(kSource, 1);
+    expect(mw.debugBlocked).toBe(false);
+    mw.dispose();
+  });
+
   it('rebuilds computed source defaults and commits a pending parameter edit', () => {
     const { mw, editor, parameters } = createMainWindow();
     mw.start();

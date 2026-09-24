@@ -70,7 +70,12 @@ export function App() {
                     size="xs"
                     variant={mainWindow.previewMode === 'debug' ? 'default' : 'outline'}
                     aria-pressed={mainWindow.previewMode === 'debug'}
-                    title="Debug to the current line and update the preview while editing"
+                    disabled={mainWindow.debugBlocked}
+                    title={
+                      mainWindow.debugBlocked
+                        ? 'Code changed — Build again to enable Debug'
+                        : 'Debug to the current line and update the preview while editing'
+                    }
                     onClick={mainWindow.debugPreview}
                   >
                     Debug

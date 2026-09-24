@@ -33,6 +33,8 @@ export interface ParameterRow {
   key: string;
   line: number;
   texts: string[];
+  checkbox?: boolean;
+  disabled?: boolean;
 }
 
 export interface ParameterEditor {

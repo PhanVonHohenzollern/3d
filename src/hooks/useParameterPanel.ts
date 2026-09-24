@@ -1,8 +1,9 @@
-import { useImperativeHandle, useLayoutEffect, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import type { ParameterPanelProps } from '../types/panels';
 import { kParameterValueColumn, ParameterPanelModel } from './parameterPanel/ParameterPanelModel';
 import { useObservable } from './useObservable';
 import { parameterTableCells, parameterTableText } from '../helpers/parameterTable';
+import { parameterGridLayout } from '../helpers/parameters';
 
 interface TableDraft {
   text: string;
@@ -21,7 +22,25 @@ function tableDraftFromText(text: string): TableDraft {
 export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
   const [model] = useState(() => new ParameterPanelModel());
   const [draft, setDraft] = useState<TableDraft | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
   useObservable(model);
+
+  useLayoutEffect(() => {
+    const element = gridRef.current;
+    if (!element) return;
+
+    const measure = () => {
+      if (!element.clientWidth) return;
+      setGridSize({ width: element.clientWidth - 8, height: element.clientHeight - 8 });
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
 
   useLayoutEffect(() => {
     model.setChangedCallback(onChanged ?? null);
@@ -60,9 +79,10 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
     return {
       key: `${row.key}:${row.line}:${row.texts[2]}`,
       label: row.texts[0],
-      line: `L${row.line}`,
-      description: `${row.texts[1]} ${row.texts[2]}`,
       value,
+      checkbox: !!row.checkbox,
+      disabled: !!row.disabled,
+      setChecked: (checked: boolean) => model.setExtInsulationEnabled(checked),
       options: model.dataSets.flatMap((data, rowIndex) => {
         const option = data.get(row.key);
 
@@ -76,6 +96,10 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
       onKeyDown,
     };
   });
+  const grid = parameterGridLayout(fields.length, gridSize.width, gridSize.height);
+  const groups = Array.from({ length: grid.columns }, (_, column) =>
+    fields.slice(column * grid.rows, (column + 1) * grid.rows),
+  );
 
   const onPaste = (event: ClipboardEvent) => {
     const text = event.clipboardData.getData('text/plain');
@@ -100,6 +124,8 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
 
   return {
     fields,
+    gridRef,
+    groups,
     onPaste,
     pasteMessage: model.pasteMessage,
     pasteIsError: model.pasteIsError,
@@ -111,6 +137,7 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
       text: draft.text,
       cells: draft.cells,
       columnCount: Math.max(0, ...draft.cells.map((row) => row.length)),
+      parameterNames: [...new Set(model.rows.filter((row) => !row.checkbox).map((row) => row.key))],
       error: draftError,
       summary: draftSummary,
       canApply: !!draftSummary && !draftError,

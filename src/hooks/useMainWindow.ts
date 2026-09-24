@@ -29,6 +29,7 @@ export function useMainWindow() {
     previewMode: mainWindow.previewMode,
     buildPreview: mainWindow.buildPreview,
     debugPreview: mainWindow.debugPreview,
+    debugBlocked: mainWindow.debugBlocked,
     menus: mainWindow.menus,
     toolbarItems: mainWindow.toolbarItems,
     inspectorCounts: mainWindow.inspectorCounts,

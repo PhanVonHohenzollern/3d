@@ -28,6 +28,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   dataSetIndex = -1;
   pasteMessage = '';
   pasteIsError = false;
+  extInsulationEnabled = false;
 
   #definitions: RuntimeParameterRequest[] = [];
   readonly #values = new Map<string, string>();
@@ -40,12 +41,15 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   setPlaceholderData(): void {
     this.#definitions = [];
+    this.extInsulationEnabled = false;
     this.#setRowCount0();
     this.changed();
   }
 
   setDefinitions(definitions: readonly RuntimeParameterRequest[]): void {
     this.#definitions = definitions.map((definition) => ({ ...definition }));
+    if (!this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize'))
+      this.extInsulationEnabled = false;
 
     for (const definition of this.#definitions) {
       const seed = parameterSeed(definition);
@@ -96,12 +100,23 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
     let selectedRow = -1;
     for (const definition of this.#definitions) {
+      const insulation = definition.sourceFunction === 'getExtInsSize';
+      if (insulation)
+        this.rows.push({
+          key: 'getExtInsSize.enabled',
+          line: definition.line,
+          checkbox: true,
+          texts: ['getExtInsSize', 'bool', '', String(this.extInsulationEnabled), String(definition.line)],
+        });
       const row = this.rows.length;
       const value = this.#values.get(definition.name) ?? neutralValueForType(definition.type);
+      const texts = parameterRowTexts(definition, value);
+      if (insulation) texts[0] = 'size';
       this.rows.push({
         key: definition.name,
         line: definition.line,
-        texts: parameterRowTexts(definition, value),
+        texts,
+        ...(insulation ? { disabled: !this.extInsulationEnabled } : {}),
       });
       if (selectedKey !== '' && selectedKey === definition.name) selectedRow = row;
     }
@@ -129,7 +144,27 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   overrides(): Map<string, string> {
-    return new Map([...this.#values].filter(([key]) => this.#userEditedKeys.has(key)));
+    const insulation = this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize');
+    const values = new Map(
+      [...this.#values].filter(([key]) => (!insulation || key !== 'getExtInsSize') && this.#userEditedKeys.has(key)),
+    );
+    // A removed query must not leave an enabled thickness in the runtime configuration.
+    if (!insulation && !this.#definitions.some((definition) => definition.name === 'getExtInsSize'))
+      values.delete('getExtInsSize');
+    if (insulation && this.extInsulationEnabled) values.set('getExtInsSize', this.#values.get('getExtInsSize') ?? '0');
+
+    return values;
+  }
+
+  setExtInsulationEnabled(enabled: boolean): void {
+    if (
+      this.extInsulationEnabled === enabled ||
+      !this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize')
+    )
+      return;
+    this.extInsulationEnabled = enabled;
+    this.#rebuildTable();
+    this.#changedCallback?.();
   }
 
   previewTable(text: string) {
@@ -170,6 +205,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   resetToSource(): void {
+    this.extInsulationEnabled = false;
     this.dataSetIndex = -1;
     this.#userEditedKeys.clear();
     this.#values.clear();
@@ -210,6 +246,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   edit(row: number, column: number): boolean {
     if (column !== ValueColumn || row < 0 || row >= this.rows.length) return false;
+    if (this.rows[row].disabled || this.rows[row].checkbox) return false;
     this.editor = { row, text: this.rows[row].texts[ValueColumn], serial: ++this.#editorSerial };
     this.changed();
 

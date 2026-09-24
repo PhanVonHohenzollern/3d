@@ -1,4 +1,3 @@
-import { useContainerPagination } from './useContainerPagination';
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { eventModifiers } from '../helpers/keyboard';
 import { isInTableHeader, tableRowOf } from '../helpers/tableEvents';
@@ -16,15 +15,28 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
   }, [model, onSelectionChanged]);
   useImperativeHandle(ref, () => model, [model]);
 
-  const pagination = useContainerPagination(
-    model.rows.map((row, index) => ({ ...row, index, selected: index === model.selectedRow })),
-    {
-      rowHeight: 28,
-      headerHeight: 28,
-      selectedIndex: model.scrollRequest?.row,
-      selectionKey: model.scrollRequest?.serial,
-    },
-  );
+  const scrollRequest = model.scrollRequest;
+  useLayoutEffect(() => {
+    const table = tableRef.current;
+    if (!table || !scrollRequest) return;
+
+    const scrollToSelection = () => {
+      const row = table.querySelector<HTMLElement>(`tr[data-row="${scrollRequest.row}"]`);
+      if (!row || !table.clientHeight) return;
+      const top = row.getBoundingClientRect().top - table.getBoundingClientRect().top + table.scrollTop;
+      const bottom = top + row.offsetHeight;
+      // Scroll this inspector only, keeping the selected row below its sticky header.
+      if (scrollRequest.center) table.scrollTop = top - (table.clientHeight - row.offsetHeight) / 2;
+      else if (top < table.scrollTop + 28) table.scrollTop = top - 28;
+      else if (bottom > table.scrollTop + table.clientHeight) table.scrollTop = bottom - table.clientHeight;
+    };
+
+    scrollToSelection();
+    const observer = new ResizeObserver(scrollToSelection);
+    observer.observe(table);
+
+    return () => observer.disconnect();
+  }, [scrollRequest]);
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0 || isInTableHeader(event)) return;
@@ -46,8 +58,7 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
   return {
     tableRef,
     summary: model.summary,
-    pagination,
-    rows: pagination.items,
+    rows: model.rows.map((row, index) => ({ ...row, index, selected: index === model.selectedRow })),
     onMouseDown,
     onMouseUp,
     onKeyDown,

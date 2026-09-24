@@ -3,6 +3,8 @@ import type { RuntimeParameterRequest, RuntimeResult } from '../../src/core/runt
 import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
 import { ParameterPanelModel } from '../../src/hooks/parameterPanel/ParameterPanelModel';
 import { parameterTableCells, parameterTableText } from '../../src/helpers/parameterTable';
+import { parameterGridLayout } from '../../src/helpers/parameters';
+import { GeometryRuntime } from '../../src/core/runtime/GeometryRuntime';
 
 function request(overrides: Partial<RuntimeParameterRequest>): RuntimeParameterRequest {
   return {
@@ -28,6 +30,93 @@ function editValue(model: ParameterPanelModel, row: number, text: string): void 
 }
 
 describe('ParameterPanel', () => {
+  it('shows an insulation checkbox and gated size only for an actual query in the source', () => {
+    const runtime = new GeometryRuntime();
+    const model = new ParameterPanelModel();
+    const changed = vi.fn();
+    model.setChangedCallback(changed);
+    model.setDefinitions(runtime.discoverParameters('double size = 10; if (getExtInsSize(size)) {}'));
+    expect(model.rows.map((row) => row.texts[0])).toEqual(['getExtInsSize', 'size']);
+    expect(model.rows[0].checkbox).toBe(true);
+    expect(model.rows[1].disabled).toBe(true);
+    expect(model.edit(1, 3)).toBe(false);
+    expect(model.overrides().has('getExtInsSize')).toBe(false);
+    model.setExtInsulationEnabled(true);
+    expect(model.rows[1].disabled).toBe(false);
+    expect(model.overrides().get('getExtInsSize')).toBe('10');
+    editValue(model, 1, '25');
+    expect(model.overrides().get('getExtInsSize')).toBe('25');
+    model.setExtInsulationEnabled(false);
+    expect(model.overrides().has('getExtInsSize')).toBe(false);
+    expect(model.rows[1].disabled).toBe(true);
+    model.setExtInsulationEnabled(true);
+    expect(model.overrides().get('getExtInsSize')).toBe('25');
+    model.resetToSource();
+    expect(model.extInsulationEnabled).toBe(false);
+    expect(model.rows[1].texts[3]).toBe('10');
+    model.setExtInsulationEnabled(true);
+    model.setDefinitions(runtime.discoverParameters('double size = 10;'));
+    expect(model.rows).toEqual([]);
+    expect(model.overrides().has('getExtInsSize')).toBe(false);
+    model.setExtInsulationEnabled(true);
+    expect(model.extInsulationEnabled).toBe(false);
+    expect(changed).toHaveBeenCalledTimes(6);
+  });
+
+  it('ignores mentions, prototypes and unrelated methods while deduplicating real insulation calls', () => {
+    const runtime = new GeometryRuntime();
+    expect(
+      runtime.discoverParameters(
+        [
+          '// getExtInsSize(size)',
+          'const char* label = "getExtInsSize(size)";',
+          'bool getExtInsSize(double& size);',
+          'object.getExtInsSize(size);',
+          'other::getExtInsSize(size);',
+        ].join('\n'),
+      ),
+    ).toEqual([]);
+    const definitions = runtime.discoverParameters(
+      'double size; double ext; if(getExtInsSize(size)){} if(getExtInsSize(ext)){}',
+    );
+    expect(definitions).toHaveLength(1);
+    expect(definitions[0]).toMatchObject({ sourceFunction: 'getExtInsSize', variableName: 'size' });
+  });
+
+  it.each([
+    [2000, 280],
+    [960, 200],
+    [760, 210],
+  ])('fits 24 parameters across a %i × %i panel', (width, height) => {
+    const { columns, rows } = parameterGridLayout(24, width, height);
+    expect(columns * rows).toBeGreaterThanOrEqual(24);
+    expect(24 + rows * 28).toBeLessThanOrEqual(height);
+    expect((width - (columns - 1) * 8) / columns).toBeGreaterThanOrEqual(180);
+  });
+
+  it('keeps every parameter reachable in a narrow panel', () => {
+    expect(parameterGridLayout(24, 280, 200)).toEqual({ columns: 1, rows: 24 });
+    expect(parameterGridLayout(0, 0, 0)).toEqual({ columns: 1, rows: 1 });
+  });
+
+  it('maps pasted columns to existing get_val names chosen in the preview', () => {
+    const model = new ParameterPanelModel();
+    model.setDefinitions([
+      request({ name: 'diam', variableName: 'ndiam' }),
+      request({ name: 'Length', variableName: 'L' }),
+      request({ name: 'Count', variableName: 'n', type: 'int' }),
+    ]);
+    const cells = parameterTableCells('a\tb\tquantity\n550\t350\t8\n610\t410\t16');
+    cells[0] = ['diam', 'Length', 'Count'];
+    const preview = model.previewTable(parameterTableText(cells));
+    expect(preview.columns).toBe(3);
+    expect(preview.ignored).toEqual([]);
+    expect(model.overrides().size).toBe(0);
+    model.importTable(parameterTableText(cells));
+    model.selectDataSet(1);
+    expect(Object.fromEntries(model.values())).toEqual({ diam: '610', Length: '410', Count: '16' });
+  });
+
   it('previews and edits a pasted table without changing active values until Apply', () => {
     const model = new ParameterPanelModel();
     const changed = vi.fn();

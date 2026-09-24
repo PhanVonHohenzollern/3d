@@ -87,7 +87,13 @@ export class MainWindow extends Observable {
   previewMode: PreviewMode = 'debug';
   buildNumber = 0;
   previewDirty = false;
+  #builtSource: string | null = null;
+  #codeDirty = false;
   executionFeedback: EditorExecutionFeedback = { source: '', diagnostics: [] };
+
+  get debugBlocked(): boolean {
+    return this.previewMode === 'build' && this.#codeDirty;
+  }
 
   get previewStatus(): string {
     if (this.previewMode === 'debug') return 'Debug · live preview';
@@ -184,11 +190,14 @@ export class MainWindow extends Observable {
     const source = this.m_editor.toPlainText();
     ++this.buildNumber;
     this.updatePreview(source.split('\n').length, source);
+    this.#builtSource = source;
+    this.#codeDirty = false;
     this.previewDirty = false;
     this.changed();
   };
 
   readonly debugPreview = (): void => {
+    if (this.debugBlocked) return;
     this.activatePreviewMode('debug');
     this.runPreview();
   };
@@ -205,6 +214,7 @@ export class MainWindow extends Observable {
 
   readonly onEditorTextChanged = (): void => {
     this.m_editor.setTraceSourceLines(new Set());
+    this.#codeDirty = this.m_editor.toPlainText() !== this.#builtSource;
     this.previewDirty = true;
     this.changed();
     this.schedulePreview();
@@ -503,7 +513,10 @@ export class MainWindow extends Observable {
     this.executionFeedback = { source, diagnostics: result.diagnostics };
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
-      ParametersDock: parameterDefinitions.length,
+      ParametersDock: parameterDefinitions.reduce(
+        (count, definition) => count + (definition.sourceFunction === 'getExtInsSize' ? 2 : 1),
+        0,
+      ),
       ApiTraceDock: result.apiCalls.length,
     };
     this.changed();

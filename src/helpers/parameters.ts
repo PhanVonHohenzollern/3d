@@ -1,5 +1,16 @@
 import type { RuntimeParameterRequest } from '../core/runtime/RuntimeTypes';
 
+/** Use the available width, narrowing pairs only when needed to fit the panel height. */
+export function parameterGridLayout(count: number, width: number, height: number) {
+  const preferredColumns = Math.max(1, Math.floor((width + 8) / 248));
+  const compactColumns = Math.max(1, Math.floor((width + 8) / 188));
+  const visibleRows = Math.max(1, Math.floor((height - 24) / 28));
+  const wantedColumns = Math.max(preferredColumns, Math.ceil(count / visibleRows));
+  const rows = Math.max(1, Math.ceil(count / Math.min(compactColumns, wantedColumns)));
+
+  return { columns: Math.max(1, Math.ceil(count / rows)), rows };
+}
+
 export function neutralValueForType(type: string): string {
   if (type === 'bool') return 'false';
   if (type === 'string') return '';

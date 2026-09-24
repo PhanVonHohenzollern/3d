@@ -183,6 +183,30 @@ export function scanGetValParameters(code: string): RuntimeParameterRequest[] {
     if (duplicate === undefined) out.push(req);
   }
 
+  // Insulation is an optional numeric query: the UI supplies its value only when enabled.
+  for (let i = 0; i + 3 < tokens.length; ++i) {
+    if (
+      !isIdentifier(tokens[i], 'getExtInsSize') ||
+      !isSymbol(tokens[i + 1], '(') ||
+      tokens[i + 2].kind !== TokKind.Identifier ||
+      !isSymbol(tokens[i + 3], ')')
+    )
+      continue;
+    if (['.', '->', '::'].includes(tokens[i - 1]?.text)) continue;
+    const variableName = tokens[i + 2].text;
+    const defaultValue = declarations.get(variableName)?.defaultValue ?? '0';
+    out.push({
+      name: 'getExtInsSize',
+      type: 'double',
+      defaultValue,
+      currentValue: defaultValue,
+      sourceFunction: 'getExtInsSize',
+      variableName,
+      line: tokens[i].line,
+    });
+    break;
+  }
+
   return out;
 }
 

@@ -1,12 +1,9 @@
-import { PaginationControls } from './PaginationControls';
 import { useVariablePanel } from '../hooks/useVariablePanel';
 import type { VariablePanelProps } from '../types/panels';
 import { Cell, HeaderCell, TableView } from './ui/TableView';
 
 export function VariablePanel(props: VariablePanelProps) {
-  const { tableRef, summary, rows, pagination, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
-
-  const { containerRef: paginationRef, controls } = pagination;
+  const { tableRef, summary, rows, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -16,11 +13,12 @@ export function VariablePanel(props: VariablePanelProps) {
       >
         Read-only values at the code cursor
       </div>
-      <div ref={paginationRef} className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <TableView
+          className="overflow-auto"
           emptyTitle="Move the cursor below a declaration"
           emptyMessage={
-            controls.total === 0
+            rows.length === 0
               ? 'Try double width = 20; in the editor, then place the cursor on the next line.'
               : undefined
           }
@@ -54,7 +52,6 @@ export function VariablePanel(props: VariablePanelProps) {
             ))}
           </tbody>
         </TableView>
-        <PaginationControls {...controls} />
       </div>
     </div>
   );

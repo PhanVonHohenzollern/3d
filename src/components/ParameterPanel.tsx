@@ -7,7 +7,7 @@ import { FloatingWindow } from './ui/FloatingWindow';
 import { Input } from './ui/input';
 
 export function ParameterPanel(props: ParameterPanelProps) {
-  const panel = useParameterPanel(props);
+  const { gridRef, ...panel } = useParameterPanel(props);
   const dialog = panel.tableDialog;
 
   return (
@@ -61,7 +61,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
             <textarea
               aria-label="Table to preview"
               rows={3}
-              className="w-full resize-y rounded border border-input bg-base p-2 font-code text-xs select-text"
+              className="w-full resize-y rounded border border-input bg-base p-2 font-code text-xs text-foreground select-text"
               placeholder="Paste your cells here, then edit the preview below."
               value={dialog.text}
               onChange={(event) => dialog.setText(event.target.value)}
@@ -70,26 +70,32 @@ export function ParameterPanel(props: ParameterPanelProps) {
           </label>
           <div className="flex shrink-0 items-center justify-between text-xs">
             <span className="font-semibold">Preview</span>
-            <span className="text-muted-foreground">Edit column names and values before applying.</span>
+            <span className="text-muted-foreground">Map columns to get_val parameters, then edit values.</span>
           </div>
           <div className="min-h-0 flex-1 overflow-auto rounded border border-line">
             {dialog.cells.length === 0 ? (
               <p className="p-4 text-center text-xs text-muted-foreground">Your pasted table will appear here.</p>
             ) : (
-              <table aria-label="Parameter table preview" className="w-full border-collapse text-xs">
+              <table aria-label="Parameter table preview" className="w-full border-collapse text-xs text-foreground">
                 <thead className="sticky top-0 z-10 bg-base">
                   <tr>
                     <th scope="col" className="border-b border-line px-2 text-muted-foreground">
                       Row
                     </th>
                     {Array.from({ length: dialog.columnCount }, (_, column) => (
-                      <th key={column} scope="col" className="min-w-28 border-b border-line p-1">
-                        <Input
-                          aria-label={`Column ${column + 1} name`}
-                          className="h-8 font-semibold md:text-xs"
+                      <th
+                        key={column}
+                        scope="col"
+                        className="min-w-36 border-b border-line p-1"
+                        onPaste={(event) => event.stopPropagation()}
+                      >
+                        <EditableComboBox
+                          label={`get_val for column ${column + 1}`}
+                          compact
                           value={dialog.cells[0][column] ?? ''}
-                          onChange={(event) => dialog.editCell(0, column, event.target.value)}
-                          onPaste={(event) => event.stopPropagation()}
+                          items={dialog.parameterNames}
+                          placeholder="Select or type get_val"
+                          onTextChanged={(value) => dialog.editCell(0, column, value)}
                         />
                       </th>
                     ))}
@@ -142,46 +148,72 @@ export function ParameterPanel(props: ParameterPanelProps) {
           {panel.pasteMessage}
         </p>
       )}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div ref={gridRef} className="min-h-0 flex-1 overflow-auto p-1">
         {panel.fields.length === 0 ? (
           <p className="p-4 text-center text-xs text-muted-foreground">
             Add get_val parameters in the editor, then Build or Debug to edit their values here.
           </p>
         ) : (
-          <table className="w-full border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-base text-muted-foreground">
-              <tr>
-                {['Parameter', 'Value', 'Variable', 'Line'].map((title) => (
-                  <th key={title} className="border-b border-line px-3 py-1.5 font-medium">
-                    {title}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {panel.fields.map((field) => (
-                <tr key={field.key} className="border-b border-line/50">
-                  <th className="px-3 py-1 font-medium">{field.label}</th>
-                  <td className="min-w-36 px-2 py-1">
-                    <EditableComboBox
-                      label={field.label}
-                      compact
-                      value={field.value}
-                      items={field.options.map((option) => `${option.value} · Row ${option.row + 1}`)}
-                      selectedIndex={field.options.findIndex((option) => option.row === field.selectedDataSet)}
-                      onItemSelected={(index) => field.selectDataSet(field.options[index].row)}
-                      onTextChanged={field.change}
-                      onFocus={field.beginEdit}
-                      onBlur={field.commit}
-                      onKeyDown={field.onKeyDown}
-                    />
-                  </td>
-                  <td className="px-3 py-1 font-code text-[11px] text-muted-foreground">{field.description}</td>
-                  <td className="px-3 py-1 font-code text-[11px] text-muted-foreground">{field.line}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div
+            className="grid items-start gap-2"
+            style={{ gridTemplateColumns: `repeat(${panel.groups.length}, minmax(0, 1fr))` }}
+          >
+            {panel.groups.map((group, index) => (
+              <table
+                key={index}
+                aria-label={`Parameters ${index + 1}`}
+                className="w-full table-fixed border-collapse text-left text-xs text-foreground"
+              >
+                <colgroup>
+                  <col className="w-[38%]" />
+                  <col />
+                </colgroup>
+                <thead className="bg-base text-muted-foreground">
+                  <tr>
+                    {['Parameter', 'Value'].map((title) => (
+                      <th key={title} className="h-6 border-b border-line px-1 font-medium">
+                        {title}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.map((field) => (
+                    <tr key={field.key} className="h-7 border-b border-line/50">
+                      <th title={field.label} scope="row" className="truncate px-1 font-medium">
+                        {field.label}
+                      </th>
+                      <td className="px-1 py-0 [&_button]:h-6 [&_input]:h-6 [&_input]:py-0.5">
+                        {field.checkbox ? (
+                          <input
+                            type="checkbox"
+                            aria-label={field.label}
+                            className="block w-4 cursor-pointer accent-primary"
+                            checked={field.value === 'true'}
+                            onChange={(event) => field.setChecked(event.target.checked)}
+                          />
+                        ) : (
+                          <EditableComboBox
+                            label={field.label}
+                            compact
+                            value={field.value}
+                            disabled={field.disabled}
+                            items={field.options.map((option) => `${option.value} · Row ${option.row + 1}`)}
+                            selectedIndex={field.options.findIndex((option) => option.row === field.selectedDataSet)}
+                            onItemSelected={(index) => field.selectDataSet(field.options[index].row)}
+                            onTextChanged={field.change}
+                            onFocus={field.beginEdit}
+                            onBlur={field.commit}
+                            onKeyDown={field.onKeyDown}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ))}
+          </div>
         )}
       </div>
     </div>

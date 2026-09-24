@@ -5,6 +5,7 @@ import { appendCompositeApiMeshes, appendPrimitiveApiMeshes, supportedPreviewApi
 import { effectiveArguments, isGeometryCallName, warningFor } from './helpers/apiCall';
 import { meshColorUpdate } from './helpers/colors';
 import { applyTransform, meshTransformDelta } from './helpers/meshTransform';
+import { asNumber, ref } from './helpers/valueDecoding';
 import { MeshBuildContext } from './MeshBuildContext';
 import { defaultPreviewColor, type PreviewColor, type PreviewGeometryScene } from './previewScene';
 
@@ -41,6 +42,8 @@ export class PreviewGeometryEngine {
   build(result: RuntimeResult): PreviewGeometryScene {
     const scene: PreviewGeometryScene = { meshes: [], warnings: [] };
     let currentColor: PreviewColor = defaultPreviewColor();
+    let externalInsulation = false;
+    const insulationColor: PreviewColor = { r: Math.fround(139 / 255), g: 0, b: 0 };
     let currentTransform = identityMatrix();
     const transformByApi = new Map<number, DMat4>();
 
@@ -56,7 +59,11 @@ export class PreviewGeometryEngine {
         continue;
       }
 
-      if (call.name === 'setPrimitiveMode') continue;
+      if (call.name === 'setPrimitiveMode') {
+        const mode = ref(0);
+        if (args.length === 1 && asNumber(args[0], mode)) externalInsulation = Math.trunc(mode.v) === 2; // FLM3Geo::pmExtInsulation
+        continue;
+      }
       transformByApi.set(apiIndex, currentTransform);
 
       if (call.name === 'setMeshColor') {
@@ -66,7 +73,7 @@ export class PreviewGeometryEngine {
         continue;
       }
 
-      const context = new MeshBuildContext(call, apiIndex, currentColor);
+      const context = new MeshBuildContext(call, apiIndex, externalInsulation ? insulationColor : currentColor);
       const firstMesh = scene.meshes.length;
       if (appendPrimitiveApiMeshes(scene, context, args) || appendCompositeApiMeshes(scene, context, args)) {
         // Repeated grille blades and symbol strokes share one draw call. Keep
