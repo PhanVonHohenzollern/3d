@@ -27,6 +27,7 @@ export function LinkTable({
 }: LinkTableProps) {
   return (
     <TableView
+      emptyTitle="No connectors yet"
       emptyMessage={rows.length === 0 ? 'Add a connector to configure its point and dimensions.' : undefined}
       ref={tableRef}
       className="h-full w-full min-w-[260px]"

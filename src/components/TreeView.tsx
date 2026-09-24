@@ -15,7 +15,7 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
     <div
       ref={containerRef}
       tabIndex={0}
-      className="group/tree relative min-h-0 flex-1 overflow-auto bg-base outline-none"
+      className="group/tree relative min-h-0 flex-1 overflow-auto bg-base outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onKeyDown={onKeyDown}
@@ -25,7 +25,7 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
           {columns.map((column, index) => (
             <div
               key={index}
-              className="relative h-9 flex-none overflow-hidden border-r border-b border-line bg-window px-2 text-left text-[11px] leading-9 font-medium text-ellipsis whitespace-nowrap text-muted-foreground last:flex-[1_0_auto]"
+              className="relative h-9 flex-none overflow-hidden border-b border-line bg-window px-2 text-left text-[11px] leading-9 font-medium text-ellipsis whitespace-nowrap text-muted-foreground last:flex-[1_0_auto]"
               style={{ width: column.width }}
             >
               <span>{column.label}</span>
@@ -39,8 +39,11 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
           ))}
         </div>
         {rows.length === 0 && (
-          <div className="px-4 py-8 text-center text-xs text-muted-foreground">
-            No calls to inspect. Preview geometry code to explore its API trace.
+          <div className="flex min-h-28 flex-col items-center justify-center gap-1.5 px-6 py-6 text-center text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">No API calls yet</span>
+            <span className="max-w-sm leading-relaxed">
+              Add a geometry API call, then move the cursor below it to inspect its inputs and results.
+            </span>
           </div>
         )}
         {rows.map((row) => (
@@ -49,7 +52,8 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
             data-key={row.key}
             data-row={row.index}
             className={cn(
-              'flex h-8 cursor-default scroll-mt-9 text-xs leading-8 hover:bg-secondary/50',
+              'flex h-9 cursor-default scroll-mt-9 border-b border-grid text-xs leading-9 tabular-nums',
+              !row.selected && 'hover:bg-secondary/50',
               row.selected &&
                 (variant === 'trace' ? 'bg-trace-selected text-trace-selected-fg' : 'bg-highlight text-highlight-fg'),
               row.current &&

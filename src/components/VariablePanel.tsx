@@ -3,7 +3,7 @@ import type { VariablePanelProps } from '../types/panels';
 import { Cell, HeaderCell, TableView } from './ui/TableView';
 
 export function VariablePanel(props: VariablePanelProps) {
-  const { tableRef, summary, rows, selectedRow, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
+  const { tableRef, summary, rows, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -11,7 +11,10 @@ export function VariablePanel(props: VariablePanelProps) {
         {summary}
       </div>
       <TableView
-        emptyMessage={rows.length === 0 ? 'Variables will appear as you write and preview code.' : undefined}
+        emptyTitle="No variables at this cursor"
+        emptyMessage={
+          rows.length === 0 ? 'Declare a variable, then move the cursor below it to inspect its value.' : undefined
+        }
         ref={tableRef}
         onMouseDown={onMouseDown}
         onMouseUp={onMouseUp}
@@ -28,10 +31,16 @@ export function VariablePanel(props: VariablePanelProps) {
         <tbody>
           {rows.map((row, index) => (
             <tr key={index} data-row={index}>
-              <Cell selected={index === selectedRow}>{row.name}</Cell>
-              <Cell selected={index === selectedRow}>{row.type}</Cell>
-              <Cell selected={index === selectedRow}>{row.value}</Cell>
-              <Cell selected={index === selectedRow}>{row.changed}</Cell>
+              <Cell mono selected={row.selected}>
+                {row.name}
+              </Cell>
+              <Cell mono selected={row.selected}>
+                {row.type}
+              </Cell>
+              <Cell mono selected={row.selected}>
+                {row.value}
+              </Cell>
+              <Cell selected={row.selected}>{row.changed}</Cell>
             </tr>
           ))}
         </tbody>

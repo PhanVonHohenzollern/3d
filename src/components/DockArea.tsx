@@ -34,13 +34,21 @@ export function DockArea({ height, title, tabs, panels }: DockAreaProps) {
       className="flex min-h-0 shrink-0 flex-col gap-0 overflow-hidden rounded-lg border border-line bg-base shadow-xs"
       style={{ height }}
     >
-      <div className="flex min-h-12 shrink-0 items-center gap-4 border-b border-line px-2 sm:px-4">
-        <TabsList aria-label="Inspector panels" className="max-w-full overflow-x-auto">
+      <div className="flex min-h-11 shrink-0 items-center gap-4 border-b border-line px-2 sm:px-4">
+        <TabsList
+          variant="line"
+          aria-label="Inspector panels"
+          className="max-w-full justify-start overflow-x-auto p-0 group-data-[orientation=horizontal]/tabs:h-11"
+        >
           {tabs.map((tab) => {
             const Icon = icons[tab.name];
 
             return (
-              <TabsTrigger key={tab.name} value={tab.name} className="shrink-0 px-3 text-xs">
+              <TabsTrigger
+                key={tab.name}
+                value={tab.name}
+                className="shrink-0 rounded-none px-2 text-xs group-data-[orientation=horizontal]/tabs:after:bottom-0 hover:bg-secondary/50 data-[state=active]:font-semibold sm:px-3"
+              >
                 <Icon className="size-3.5" aria-hidden />
                 {tab.title}
               </TabsTrigger>
