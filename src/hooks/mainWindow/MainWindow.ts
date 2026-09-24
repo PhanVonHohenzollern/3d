@@ -380,7 +380,7 @@ export class MainWindow extends Observable {
     try {
       result = this.m_runtime.executeUpToLine(source, line);
     } catch (e) {
-      this.statusBar().showMessage(`Line ${line}: preview stopped: ${what(e)}`, 4000);
+      this.statusBar().showMessage(`Line ${line}: preview stopped: ${what(e)}`, 4000, 'error');
 
       return;
     }
@@ -406,10 +406,10 @@ export class MainWindow extends Observable {
       let message = `Line ${line} | ${this.m_geometryScene.meshes.length} live mesh(es) | ${result.apiCalls.length} API call(s)`;
       if (this.m_geometryScene.warnings.length)
         message += ` | geometry warning: ${this.m_geometryScene.warnings[this.m_geometryScene.warnings.length - 1]}`;
-      this.statusBar().showMessage(message, 2600);
+      this.statusBar().showMessage(message, 2600, this.m_geometryScene.warnings.length ? 'warning' : 'info');
     } else {
       const d = result.diagnostics[result.diagnostics.length - 1];
-      this.statusBar().showMessage(`Line ${d.line}: ${d.message}`, 4000);
+      this.statusBar().showMessage(`Line ${d.line}: ${d.message}`, 4000, 'error');
     }
   }
 
