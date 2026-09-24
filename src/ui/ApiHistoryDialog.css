@@ -1,0 +1,73 @@
+/* Modeless floating window (QDialog with its own window frame). */
+.floating-window {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+  min-height: 160px;
+  background: var(--color-window);
+  border: 1px solid #8f8f8f;
+  border-radius: 6px 6px 3px 3px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-ui);
+  color: var(--color-text);
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+.floating-window-titlebar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 6px 6px 0 0;
+  background: var(--gradient-bar);
+  cursor: default;
+  touch-action: none;
+}
+.floating-window:focus-within .floating-window-titlebar,
+.floating-window:focus .floating-window-titlebar { background: linear-gradient(#f0f0f0, #dedede); }
+.floating-window-title { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.floating-window-close {
+  width: 24px;
+  height: 22px;
+  font: inherit;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: #444;
+}
+.floating-window-close:hover { background: #e0e0e0; }
+.floating-window-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px;
+}
+.floating-window-grip {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(135deg, transparent 55%, #9a9a9a 55%, #9a9a9a 62%, transparent 62%, transparent 75%, #9a9a9a 75%, #9a9a9a 82%, transparent 82%);
+}
+
+/* Caption: plain text, selectable, word-wrapped. */
+.api-history-caption {
+  flex: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.api-history-tree { flex: 1; }
+.dialog-button-box { flex: none; display: flex; justify-content: flex-end; }

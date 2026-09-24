@@ -1,0 +1,170 @@
+/* renderer/Viewport3D and renderer/DebugLabelPanel.
+   Colors and sizes come from the C++ widgets (QColor values, style sheets and
+   logical-pixel geometry); the viewport background is the glClearColor
+   (0.075, 0.078, 0.085), shown until the first WebGL frame. */
+
+.viewport3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: rgb(19, 20, 22);
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.viewport3d-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.viewport3d-gl {
+  pointer-events: none;
+}
+
+.viewport3d-overlay {
+  touch-action: none;
+}
+
+/* QPushButton#previewSelectionModeButton */
+.viewport3d-selection-mode {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 2px 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: inherit;
+  font-weight: bold;
+  line-height: 1;
+  color: #ecf2fa;
+  background: #252d38;
+  border: 1px solid #64748b;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+}
+
+.viewport3d-selection-mode:hover {
+  background: #36475c;
+  border-color: #a6dcff;
+}
+
+.viewport3d-selection-mode:active {
+  background: #435a75;
+}
+
+.viewport3d-selection-mode:focus {
+  border-color: #a6dcff;
+}
+
+/* DebugLabelPanel: a 25 px header over a scrollable QListWidget. */
+.debug-label-panel {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: default;
+}
+
+.debug-label-panel[hidden] {
+  display: none;
+}
+
+.debug-label-panel-header {
+  flex: 0 0 25px;
+  box-sizing: border-box;
+  height: 25px;
+  padding: 0 8px;
+  overflow: hidden;
+  white-space: pre;
+  line-height: 24px;
+  color: #b7c2d0;
+  background: #20252c;
+  border-bottom: 1px solid #353c46;
+}
+
+.debug-label-panel-list {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #181b20;
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: #56616e #181b20;
+}
+
+.debug-label-panel-list::-webkit-scrollbar {
+  width: 8px;
+  background: #181b20;
+}
+
+.debug-label-panel-list::-webkit-scrollbar-thumb {
+  min-height: 24px;
+  background: #56616e;
+  border-radius: 3px;
+}
+
+.debug-label-panel-rows {
+  position: relative;
+}
+
+.debug-label-panel-row {
+  position: absolute;
+  left: 0;
+  overflow: hidden;
+  background: rgb(24, 27, 32);
+}
+
+.debug-label-panel-row:hover {
+  background: rgb(40, 45, 53);
+}
+
+.debug-label-panel-row.selected {
+  font-weight: bold;
+  background: rgb(76, 64, 23);
+}
+
+.debug-label-panel-dot {
+  position: absolute;
+  left: 5.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.debug-label-panel-name,
+.debug-label-panel-value {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.debug-label-panel-name {
+  text-align: left;
+  color: rgb(223, 226, 231);
+}
+
+.debug-label-panel-value {
+  text-align: right;
+  color: rgb(153, 166, 181);
+}
+
+.debug-label-panel-row.selected .debug-label-panel-name,
+.debug-label-panel-row.selected .debug-label-panel-value {
+  color: rgb(255, 240, 180);
+}

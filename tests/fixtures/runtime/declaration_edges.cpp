@@ -1,0 +1,32 @@
+// Less common declaration and l-value paths.
+//@line 999
+int idx[2] = {1, 0};
+double arr[3] = {1, 2, 3};
+double emptyRhs[2] = ;
+double sizedByElem[idx[0] + 2];
+double viaNested = arr[idx[0]];
+arr[idx[1]] = 10;
+arr[idx[idx[1]]] += 5;
+double direct(1) + 2;
+FdPoint3d emptyDirect();
+FdVector3d emptyDirectV();
+double a, , b;
+double ,c;
+double 5;
+double &;
+double;
+double x "str" y;
+double y2 12 "s";
+FdPoint3d p(1, 2, 3);
+FdVector3d v(4, 5, 6);
+p.z += 1;
+v.y -= 1;
+p.z = p.z * 2;
+v.y = 7;
+v.x++;
+p.y--;
+p. = 1;
+double grow[2] = {1, 2};
+double bigger[5] = {5, 6, 7, 8, 9};
+grow = bigger;
+grow[4] = 99;

@@ -1,0 +1,55 @@
+// Point/vector member functions in expressions, including temporaries.
+//@eval FdVector3d(3, 4, 0).length()
+//@eval vx.angleTo(vy)
+FdPoint3d a(1, 2, 3);
+FdPoint3d b(4, 6, 3);
+FdVector3d d = b - a;
+FdVector3d n1 = d.normal();
+FdVector3d n2 = (b - a).normal();
+FdVector3d n3 = d.normal(10);
+FdVector3d n4 = d.normal(1e-6);
+FdVector3d n5 = d.normal(-5);
+FdVector3d z0;
+FdVector3d n6 = z0.normal();
+FdVector3d m1 = d.normalize();
+FdVector3d m2 = d.normalize(5);
+FdVector3d m3 = d.normalize(4.9);
+FdVector3d p1 = d.perpVector();
+FdVector3d p2 = vz.perpVector();
+FdVector3d p3 = (vz * 5 + vx * 0.1).perpVector();
+FdVector3d p4 = z0.perpVector();
+FdVector3d p5 = FdVector3d(0, 1, 0.9).perpVector();
+FdVector3d r1 = vx.rotateBy(M_PI / 2, vz);
+FdVector3d r2 = d.rotateBy(0.3, FdVector3d(1, 1, 1));
+FdPoint3d r3 = a.rotateBy(M_PI, vz);
+FdPoint3d r4 = a.rotateBy(M_PI / 2, vx, b);
+FdVector3d c1 = vx.crossProduct(vy);
+double dp = d.dotProduct(vx);
+double len = d.length();
+double lsq = d.lengthSqrd();
+double ang = vx.angleTo(vy + vx);
+double ang0 = z0.angleTo(vx);
+FdVector3d mir = d.mirror(vx);
+double i0 = a[0] + a[1] * 10 + a[2] * 100;
+double i1 = d[2];
+double i2 = (b - a)[1];
+double mx = d.x + b.y + (a + d).z;
+double chained = (b - a).normal().rotateBy(M_PI, vz).x;
+double lenTemp = (b - a).length();
+double e1 = a.normal();
+double e2 = vx.crossProduct(a);
+double e3 = vx.length(1);
+double e4 = vx.rotateBy(1);
+FdPoint3d e5 = a.rotateBy(1, vx, vy);
+double e6 = a[3];
+double e7 = d[-1];
+double e8 = a.w;
+double e9 = cpx.x;
+double e10 = vx.normal(1, 2);
+double e11 = vx.perpVector(1);
+double e12 = vx.dotProduct(1);
+double e13 = vx.angleTo();
+double e14 = vx.mirror(a);
+double e15 = vx.normalize(1, 2);
+double e16 = vx.lengthSqrd(2);
+double e17 = vx.

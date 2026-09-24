@@ -1,0 +1,188 @@
+/* QMainWindow layout: menu bar, tool bar, central splitter (editor | viewport),
+   bottom dock area with tabified docks, status bar. The page never scrolls. */
+.main-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* QMenuBar / QMenu */
+.menubar {
+  flex: none;
+  display: flex;
+  height: 24px;
+  padding: 0 2px;
+  background: var(--color-window);
+  border-bottom: 1px solid var(--color-border);
+}
+.menubar-entry { position: relative; }
+.menubar-title {
+  font: inherit;
+  color: var(--color-text);
+  height: 100%;
+  padding: 0 9px;
+  border: none;
+  background: transparent;
+}
+.menubar-title:hover, .menubar-title.open { background: var(--color-highlight); color: var(--color-highlight-text); }
+.menu {
+  position: absolute;
+  z-index: 50;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  margin: 0;
+  padding: 3px 0;
+  list-style: none;
+  background: var(--color-base);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 12px 0 4px;
+  white-space: nowrap;
+  cursor: default;
+}
+.menu-item:hover { background: var(--color-highlight); color: var(--color-highlight-text); }
+.menu-check { width: 20px; text-align: center; }
+.menu-text { flex: 1; }
+.menu-shortcut { margin-left: 28px; color: inherit; opacity: 0.75; }
+.menu-separator { height: 1px; margin: 3px 0; background: var(--color-border); }
+
+/* QToolBar with text-only tool buttons */
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-height: 30px;
+  padding: 2px 4px;
+  background: var(--gradient-bar);
+  border-bottom: 1px solid var(--color-border);
+}
+.toolbar-handle {
+  width: 6px;
+  height: 18px;
+  margin-right: 4px;
+  background-image: radial-gradient(#9a9a9a 1px, transparent 1.2px);
+  background-size: 3px 3px;
+}
+.toolbar-separator { width: 1px; height: 18px; margin: 0 4px; background: var(--color-border-strong); }
+.toolbar-button {
+  font: inherit;
+  color: var(--color-text);
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  white-space: nowrap;
+}
+.toolbar-button:hover { border-color: var(--color-border-strong); background: var(--gradient-button); }
+.toolbar-button:active { background: var(--color-button-pressed); }
+.toolbar-button.checked {
+  border-color: var(--color-border-strong);
+  background: #d6dde8;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+/* Central widget + dock area */
+.main-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.central-widget { flex: 1; min-height: 0; }
+.viewport-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--viewport-background);
+}
+.viewport-container > * { width: 100%; height: 100%; }
+
+/* QSplitter */
+.splitter { display: flex; width: 100%; height: 100%; overflow: hidden; }
+.splitter-vertical { flex-direction: column; }
+.splitter-pane { flex: none; min-width: 0; min-height: 0; overflow: hidden; }
+.splitter-handle { flex: none; background: var(--color-window); touch-action: none; }
+.splitter-horizontal > .splitter-handle { width: 5px; cursor: col-resize; }
+.splitter-vertical > .splitter-handle { height: 5px; cursor: row-resize; }
+.splitter-handle:hover { background: #dcdcdc; }
+
+/* QMainWindow dock separator, QDockWidget title bar, tabified dock tabs (South) */
+.dock-separator { flex: none; height: 5px; cursor: row-resize; background: var(--color-window); touch-action: none; }
+.dock-separator:hover { background: #dcdcdc; }
+.dock-area {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-window);
+}
+.dock-title {
+  flex: none;
+  height: 22px;
+  line-height: 22px;
+  padding: 0 6px;
+  background: var(--gradient-bar);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+}
+.dock-stack {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border: 1px solid var(--color-border);
+  background: var(--color-window);
+}
+.dock-widget { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
+.dock-widget[hidden] { display: none; }
+.dock-widget > * { flex: 1; min-height: 0; }
+.dock-tabs {
+  flex: none;
+  display: flex;
+  gap: 0;
+  height: 25px;
+  padding: 0 2px;
+}
+.dock-tab {
+  font: inherit;
+  color: var(--color-text);
+  margin-top: -1px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--gradient-bar);
+}
+.dock-tab + .dock-tab { margin-left: -1px; }
+.dock-tab.selected {
+  position: relative;
+  background: var(--color-window);
+  height: calc(100% + 1px);
+  font-weight: 500;
+}
+
+/* QStatusBar */
+.statusbar {
+  flex: none;
+  height: 22px;
+  line-height: 22px;
+  padding: 0 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: var(--color-window);
+  border-top: 1px solid var(--color-border);
+}

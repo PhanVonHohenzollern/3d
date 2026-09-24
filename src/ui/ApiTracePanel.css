@@ -1,0 +1,13 @@
+.api-trace-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.api-trace-buttons { flex: none; display: flex; justify-content: flex-start; padding: 0 0 2px; }
+
+/* m_tree->setStyleSheet("QTreeView::item:selected { background:#594820; color:#ffe4a0; }") */
+.api-trace-tree .tree-row.selected {
+  background: var(--trace-selected-background);
+  color: var(--trace-selected-text);
+}
