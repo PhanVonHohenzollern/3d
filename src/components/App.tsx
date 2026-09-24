@@ -25,7 +25,7 @@ export function App() {
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
       <WorkspaceHeader />
-      <main className="flex min-h-[1000px] flex-1 flex-col px-2 pb-3 sm:px-5 md:min-h-[600px]">
+      <main className="flex min-h-[1000px] flex-1 flex-col p-3 md:min-h-[600px]">
         <div className="min-h-0 flex-1">
           <Splitter
             label="Resize editor and viewport"
@@ -35,12 +35,12 @@ export function App() {
           >
             <section
               aria-label="Code Editor"
-              className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
+              className="workspace-panel flex h-full min-w-0 flex-col overflow-hidden border border-line bg-base shadow-xs"
             >
               <PanelHeader icon={CodeXml} title="Code Editor">
                 <span className="font-code text-xs text-muted-foreground">C++</span>
               </PanelHeader>
-              <div className="min-h-0 flex-1">
+              <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
                 <CodeEditor {...mainWindow.editor} />
               </div>
             </section>
@@ -48,12 +48,12 @@ export function App() {
               <div ref={mainAreaRef} className="flex min-h-0 flex-1 flex-col">
                 <section
                   aria-label="3D Viewport"
-                  className="@container/preview flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
+                  className="workspace-panel @container/preview flex min-h-0 flex-1 flex-col overflow-hidden border border-line bg-base shadow-xs"
                 >
                   <PanelHeader icon={Box} title="3D Viewport">
                     <ToolBar items={mainWindow.toolbarItems} />
                   </PanelHeader>
-                  <div className="relative m-3 min-h-0 flex-1 overflow-hidden rounded-md bg-viewport">
+                  <div className="workspace-surface relative min-h-0 flex-1 overflow-hidden bg-viewport">
                     <Viewport3D {...mainWindow.viewport} />
                   </div>
                 </section>

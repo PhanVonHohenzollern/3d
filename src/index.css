@@ -5,6 +5,10 @@
 
 :root {
   --radius: 0.5rem;
+  --workspace-gap: 12px;
+  --panel-inset: 12px;
+  --surface-radius: 8px;
+  --panel-radius: calc(var(--surface-radius) + var(--panel-inset));
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
@@ -223,5 +227,18 @@
   *::after {
     transition-duration: 0s !important;
     animation-duration: 0s !important;
+  }
+}
+
+@layer components {
+  .workspace-panel {
+    border-radius: var(--panel-radius);
+    /* Include the 1px border in the outer-to-inner corner offset. */
+    padding: calc(var(--panel-inset) - 1px);
+    gap: var(--workspace-gap);
+  }
+
+  .workspace-surface {
+    border-radius: var(--surface-radius);
   }
 }
