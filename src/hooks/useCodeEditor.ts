@@ -1,4 +1,3 @@
-import { diagnosticCount, openLintPanel } from '@codemirror/lint';
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -7,7 +6,7 @@ import { createCodeEditorHandle, type EditorSignals } from './codeEditor/codeEdi
 import { createEditorExtensions } from './codeEditor/editorExtensions';
 
 export function useCodeEditor({ onTextChanged, onCursorPositionChanged, ref }: CodeEditorProps) {
-  const [problemCount, setProblemCount] = useState(0);
+  const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const extensionsRef = useRef<Extension[]>([]);
@@ -19,7 +18,14 @@ export function useCodeEditor({ onTextChanged, onCursorPositionChanged, ref }: C
 
   useEffect(() => {
     const extensions = createEditorExtensions((update) => {
-      setProblemCount(diagnosticCount(update.state));
+      if (update.docChanged || update.selectionSet) {
+        const head = update.state.selection.main.head;
+        const line = update.state.doc.lineAt(head);
+        const column = head - line.from + 1;
+        setCursorPosition((previous) =>
+          previous.line === line.number && previous.column === column ? previous : { line: line.number, column },
+        );
+      }
       const moved = update.startState.selection.main.head !== update.state.selection.main.head;
       if (update.docChanged) signalsRef.current.onTextChanged?.();
       if (moved) signalsRef.current.onCursorPositionChanged?.();
@@ -45,9 +51,5 @@ export function useCodeEditor({ onTextChanged, onCursorPositionChanged, ref }: C
     [],
   );
 
-  const showProblems = () => {
-    if (viewRef.current) openLintPanel(viewRef.current);
-  };
-
-  return { hostRef, problemCount, showProblems };
+  return { hostRef, cursorPosition };
 }
