@@ -1,3 +1,4 @@
+import { isMacPlatform } from '../utils/platform';
 import { Box, CodeXml } from 'lucide-react';
 import { useCompactLayout } from '../hooks/useCompactLayout';
 import { useDockArea } from '../hooks/useDockArea';
@@ -43,7 +44,10 @@ export function App() {
                 <CodeEditor {...mainWindow.editor} />
               </div>
               <div className="flex h-7 shrink-0 items-center gap-1.5 border-t border-line px-4 text-[10px] text-muted-foreground">
-                <kbd className="rounded border border-line px-1 font-ui">Ctrl Space</kbd> for suggestions
+                <kbd className="rounded border border-line px-1 font-ui">
+                  {isMacPlatform ? '⌘⇧Space' : 'Ctrl Space'}
+                </kbd>{' '}
+                for suggestions
               </div>
             </section>
             <section
@@ -57,9 +61,6 @@ export function App() {
               </PanelHeader>
               <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">
                 <Viewport3D {...mainWindow.viewport} />
-              </div>
-              <div className="flex h-7 shrink-0 items-center border-t border-line bg-base px-4 text-[10px] text-muted-foreground">
-                Drag to orbit<span className="mx-2 text-disabled">/</span>Scroll to zoom
               </div>
             </section>
           </Splitter>
