@@ -1,5 +1,9 @@
-import type { ReactNode } from 'react';
+import type { LabelHTMLAttributes } from 'react';
 
-export function FormLabel({ children }: { children: ReactNode }) {
-  return <label className="whitespace-nowrap group-disabled/form:text-disabled">{children}</label>;
+export function FormLabel({ children, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label className="text-xs font-medium whitespace-nowrap text-muted group-disabled/form:text-disabled" {...props}>
+      {children}
+    </label>
+  );
 }

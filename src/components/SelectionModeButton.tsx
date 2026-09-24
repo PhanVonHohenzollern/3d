@@ -11,7 +11,7 @@ export function SelectionModeButton({ engine }: SelectionModeButtonProps) {
   return (
     <button
       type="button"
-      className="absolute z-3 m-0 cursor-pointer overflow-hidden rounded-[4px] border border-viewport-button-line bg-viewport-button px-1.5 py-0.5 font-[family-name:inherit] text-[9pt] leading-none font-bold whitespace-nowrap text-viewport-button-fg outline-none hover:border-viewport-button-line-focus hover:bg-viewport-button-hover focus:border-viewport-button-line-focus active:bg-viewport-button-pressed"
+      className="absolute z-3 m-0 cursor-pointer overflow-hidden rounded-md border border-viewport-button-line bg-viewport-button px-1.5 py-0.5 font-[family-name:inherit] text-[9pt] leading-none font-medium whitespace-nowrap text-viewport-button-fg outline-none hover:border-viewport-button-line-focus hover:bg-viewport-button-hover focus:border-viewport-button-line-focus active:bg-viewport-button-pressed"
       data-object-name="previewSelectionModeButton"
       aria-label="Preview selection mode"
       style={button.style}

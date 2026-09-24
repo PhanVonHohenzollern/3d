@@ -6,7 +6,7 @@ export function ComboBox({ className, ...props }: SelectHTMLAttributes<HTMLSelec
     // disabled:opacity-70 restores Chrome's UA select:disabled style that Tailwind preflight resets.
     <select
       className={cn(
-        'h-6 rounded-qt border border-line-strong bg-linear-to-b/srgb from-button-top to-button-bottom px-1 text-fg focus:border-highlight focus:outline-none disabled:border-line disabled:text-disabled disabled:opacity-70',
+        'h-8 rounded-md border border-line bg-base px-2 text-xs text-fg shadow-xs focus:border-line-hover focus:outline-none disabled:opacity-50',
         className,
       )}
       {...props}

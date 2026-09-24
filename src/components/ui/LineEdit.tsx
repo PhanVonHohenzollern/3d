@@ -10,7 +10,7 @@ export function LineEdit({ className, spellCheck = false, ...props }: LineEditPr
     <input
       spellCheck={spellCheck}
       className={cn(
-        'h-6 min-w-0 rounded-[2px] border border-line-strong bg-base px-[5px] py-px text-fg placeholder:text-disabled focus:border-highlight focus:outline-none disabled:border-line disabled:bg-window disabled:text-disabled',
+        'h-8 min-w-0 rounded-md border border-line bg-base px-2.5 py-1 text-xs text-fg shadow-xs transition-colors placeholder:text-muted focus:border-line-hover focus:outline-none disabled:opacity-50',
         className,
       )}
       {...props}

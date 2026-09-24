@@ -23,7 +23,15 @@ export function ParameterPanel(props: ParameterPanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <TableView ref={tableRef} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onKeyDown={onKeyDown}>
+      <TableView
+        emptyMessage={
+          rows.length === 0 ? 'Add a get_val() call in your code to expose an editable parameter.' : undefined
+        }
+        ref={tableRef}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onKeyDown={onKeyDown}
+      >
         <thead>
           <tr>
             {headers.map((header, column) => (
@@ -48,7 +56,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
                     <input
                       ref={editorRef}
                       data-serial={editor.serial}
-                      className="h-[21px] w-full border border-highlight bg-base px-[5px] text-fg outline-none"
+                      className="h-8 w-full rounded-sm border border-line-hover bg-base px-3 text-fg outline-none"
                       value={editor.text}
                       spellCheck={false}
                       onChange={onEditorChange}

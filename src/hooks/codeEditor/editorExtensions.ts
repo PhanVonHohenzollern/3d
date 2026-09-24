@@ -9,6 +9,7 @@ import {
   highlightActiveLine,
   keymap,
   lineNumbers,
+  placeholder,
   type Command,
   type ViewUpdate,
 } from '@codemirror/view';
@@ -18,23 +19,38 @@ import { codeCompletions } from './completions';
 
 const editorTheme = EditorView.theme(
   {
-    '&': { height: '100%', backgroundColor: '#1e1e1e', color: '#d4d4d4' },
+    '&': { height: '100%', backgroundColor: 'var(--editor)', color: 'var(--foreground)' },
     '&.cm-focused': { outline: 'none' },
-    '.cm-scroller': { fontFamily: 'inherit', lineHeight: '1.25' },
-    '.cm-content': { padding: '4px 0', caretColor: '#aeafad' },
-    '.cm-line': { padding: '0 4px' },
-    '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#aeafad' },
+    '.cm-scroller': { fontFamily: 'inherit', lineHeight: '1.7' },
+    '.cm-content': { padding: '16px 0', caretColor: 'var(--foreground)' },
+    '.cm-line': { padding: '0 12px' },
+    '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--foreground)' },
     '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground': {
-      backgroundColor: '#264f78',
+      backgroundColor: 'var(--editor-selection)',
     },
-    '.cm-content ::selection': { backgroundColor: '#264f78' },
-    '.cm-gutters': { backgroundColor: '#252526', color: '#969696', border: 'none' },
-    '.cm-lineNumbers .cm-gutterElement': { padding: '0 6px', minWidth: '0' },
-    '.cm-gutterElement.cm-tracedLineNumber': { backgroundColor: '#554117', color: '#ffde82', fontWeight: 'bold' },
-    '.cm-activeLine': { backgroundColor: 'rgba(60, 60, 66, 0.5)' },
-    '.cm-line.cm-traceLine': { backgroundColor: 'rgba(60, 73, 96, 0.8)' },
-    '.cm-line.cm-traceLine-active': { backgroundColor: 'rgba(108, 75, 18, 0.8)' },
-    '.cm-line.cm-traceLine, .cm-line.cm-traceLine *': { color: '#ffe39d', fontWeight: 'bold' },
+    '.cm-content ::selection': { backgroundColor: 'var(--editor-selection)' },
+    '.cm-gutters': { backgroundColor: 'var(--editor)', color: 'var(--muted-foreground)', border: 'none' },
+    '.cm-lineNumbers .cm-gutterElement': { padding: '0 12px 0 16px', minWidth: '0' },
+    '.cm-gutterElement.cm-tracedLineNumber': {
+      backgroundColor: 'var(--trace)',
+      color: 'var(--trace-foreground)',
+      fontWeight: 'bold',
+    },
+    '.cm-activeLine': { backgroundColor: 'var(--editor-line)' },
+    '.cm-line.cm-traceLine': { backgroundColor: 'var(--secondary)' },
+    '.cm-line.cm-traceLine-active': { backgroundColor: 'var(--trace)' },
+    '.cm-line.cm-traceLine, .cm-line.cm-traceLine *': { color: 'var(--trace-foreground)', fontWeight: 'bold' },
+    '.cm-placeholder': { color: 'var(--muted-foreground)' },
+    '.cm-tooltip': {
+      backgroundColor: 'var(--card)',
+      color: 'var(--foreground)',
+      border: '1px solid var(--border)',
+      borderRadius: '6px',
+    },
+    '.cm-tooltip-autocomplete ul li[aria-selected]': {
+      backgroundColor: 'var(--selection)',
+      color: 'var(--selection-foreground)',
+    },
     '.cm-tooltip-autocomplete': { maxWidth: 'min(600px, 90vw)' },
     '.cm-completionDetail': { marginLeft: '1em', opacity: '0.7' },
     '.cm-completionInfo': { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
@@ -51,30 +67,31 @@ const insertTabCharacter: Command = (view) => {
 const syntaxColors = HighlightStyle.define([
   {
     tag: [tags.keyword, tags.definitionKeyword, tags.modifier, tags.operatorKeyword, tags.self, tags.null, tags.bool],
-    color: '#569cd6',
+    color: 'var(--syntax-keyword)',
   },
-  { tag: tags.controlKeyword, color: '#c586c0' },
-  { tag: [tags.typeName, tags.standard(tags.typeName), tags.namespace], color: '#4ec9b0' },
+  { tag: tags.controlKeyword, color: 'var(--syntax-control)' },
+  { tag: [tags.typeName, tags.standard(tags.typeName), tags.namespace], color: 'var(--syntax-type)' },
   {
     tag: [
       tags.function(tags.variableName),
       tags.function(tags.propertyName),
       tags.function(tags.definition(tags.variableName)),
     ],
-    color: '#dcdcaa',
+    color: 'var(--syntax-function)',
   },
-  { tag: [tags.number, tags.literal], color: '#b5cea8' },
-  { tag: [tags.string, tags.special(tags.string), tags.character], color: '#ce9178' },
-  { tag: tags.escape, color: '#d7ba7d' },
-  { tag: [tags.lineComment, tags.blockComment, tags.comment], color: '#6a9955' },
-  { tag: [tags.processingInstruction, tags.meta], color: '#c586c0' },
-  { tag: tags.special(tags.name), color: '#4fc1ff' },
+  { tag: [tags.number, tags.literal], color: 'var(--syntax-number)' },
+  { tag: [tags.string, tags.special(tags.string), tags.character], color: 'var(--syntax-string)' },
+  { tag: tags.escape, color: 'var(--syntax-string)' },
+  { tag: [tags.lineComment, tags.blockComment, tags.comment], color: 'var(--syntax-comment)' },
+  { tag: [tags.processingInstruction, tags.meta], color: 'var(--syntax-control)' },
+  { tag: tags.special(tags.name), color: 'var(--syntax-type)' },
 ]);
 
 export function createEditorExtensions(onUpdate: (update: ViewUpdate) => void): Extension[] {
   return [
     editorTheme,
     lineNumbers(),
+    placeholder('Write or paste C++ geometry code here…'),
     history(),
     drawSelection(),
     highlightActiveLine(),
@@ -96,7 +113,12 @@ export function createEditorExtensions(onUpdate: (update: ViewUpdate) => void): 
     cppLanguage.data.of({ autocomplete: codeCompletions }),
     syntaxHighlighting(syntaxColors),
     traceLinesField,
-    EditorView.contentAttributes.of({ spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
+    EditorView.contentAttributes.of({
+      spellcheck: 'false',
+      autocorrect: 'off',
+      autocapitalize: 'off',
+      'aria-label': 'C++ code editor',
+    }),
     EditorView.updateListener.of(onUpdate),
   ];
 }

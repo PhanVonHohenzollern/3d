@@ -3,12 +3,14 @@ import { cn } from '../../utils/cn';
 
 interface PushButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   checked?: boolean;
+  variant?: 'outline' | 'primary';
   sizeClassName?: string;
 }
 
 export function PushButton({
   checked = false,
-  sizeClassName = 'min-h-6 px-3 py-0.5',
+  variant = 'outline',
+  sizeClassName = 'h-8 px-3 py-1.5',
   className,
   type = 'button',
   ...props
@@ -17,10 +19,10 @@ export function PushButton({
     <button
       type={type}
       className={cn(
-        'cursor-default rounded-qt border border-line-strong focus-visible:outline-1 focus-visible:-outline-offset-3 focus-visible:outline-highlight enabled:hover:border-line-hover enabled:active:bg-button-pressed enabled:active:bg-none disabled:border-line disabled:text-disabled',
-        checked
-          ? 'bg-orientation-checked font-bold text-orientation-checked-fg'
-          : 'bg-linear-to-b/srgb from-button-top to-button-bottom text-fg',
+        'inline-flex items-center justify-center gap-2 rounded-md border text-xs font-medium whitespace-nowrap shadow-xs transition-colors disabled:pointer-events-none disabled:opacity-50',
+        checked || variant === 'primary'
+          ? 'border-transparent bg-primary text-primary-foreground enabled:hover:opacity-85'
+          : 'border-line bg-base text-fg enabled:hover:bg-secondary',
         sizeClassName,
         className,
       )}

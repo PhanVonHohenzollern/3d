@@ -26,7 +26,13 @@ export function LinkTable({
   togglePreview,
 }: LinkTableProps) {
   return (
-    <TableView ref={tableRef} className="h-full w-full min-w-[260px]" onMouseDown={onMouseDown} onKeyDown={onKeyDown}>
+    <TableView
+      emptyMessage={rows.length === 0 ? 'Add a connector to configure its point and dimensions.' : undefined}
+      ref={tableRef}
+      className="h-full w-full min-w-[260px]"
+      onMouseDown={onMouseDown}
+      onKeyDown={onKeyDown}
+    >
       <thead>
         <tr>
           {headers.map((header, column) => (
