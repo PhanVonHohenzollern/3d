@@ -1,64 +1,59 @@
+import { stripMnemonic } from '../helpers/keyboard';
 import { useAction } from '../hooks/useAction';
 import type { Action } from '../hooks/mainWindow/Action';
-import { useMenuBar } from '../hooks/useMenuBar';
 import type { Menu } from '../types/mainWindow';
-import { cn } from '../utils/cn';
-import { preventDefault } from '../utils/events';
+import { Button } from './ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+} from './ui/dropdown-menu';
 
-function MenuItem({ action, onTriggered }: { action: Action; onTriggered: () => void }) {
-  const { menuText, shortcutText, checked, trigger } = useAction(action, onTriggered);
+function MenuItem({ action }: { action: Action }) {
+  const { menuText, shortcutText, checkable, checked, trigger } = useAction(action);
+  const content = (
+    <>
+      {menuText}
+      <DropdownMenuShortcut>{shortcutText}</DropdownMenuShortcut>
+    </>
+  );
 
-  return (
-    <li
-      role="menuitem"
-      className="flex h-6 cursor-default items-center pr-3 pl-1 whitespace-nowrap hover:bg-highlight hover:text-highlight-fg"
-      onMouseDown={preventDefault}
-      onClick={trigger}
-    >
-      <span className="w-5 text-center">{checked ? '\u2713' : ''}</span>
-      <span className="flex-1">{menuText}</span>
-      <span className="ml-7 opacity-75">{shortcutText}</span>
-    </li>
+  return checkable ? (
+    <DropdownMenuCheckboxItem checked={checked} onSelect={trigger} className="text-xs">
+      {content}
+    </DropdownMenuCheckboxItem>
+  ) : (
+    <DropdownMenuItem onSelect={trigger} inset className="text-xs">
+      {content}
+    </DropdownMenuItem>
   );
 }
 
 export function MenuBar({ menus }: { menus: readonly Menu[] }) {
-  const { barRef, open, titles, titleMouseDown, titleMouseEnter, close } = useMenuBar(menus);
-
   return (
-    <div ref={barRef} role="menubar" className="flex h-6 flex-none border-b border-line bg-window px-0.5">
-      {menus.map((menu, index) => (
-        <div key={menu.title} className="relative">
-          <button
-            type="button"
-            tabIndex={-1}
-            className={cn(
-              'h-full border-none px-[9px]',
-              open === index
-                ? 'bg-highlight text-highlight-fg'
-                : 'bg-transparent text-fg hover:bg-highlight hover:text-highlight-fg',
+    <nav aria-label="Application menu" className="flex shrink-0 items-center gap-0.5">
+      {menus.map((menu) => (
+        <DropdownMenu key={menu.title}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+              {stripMnemonic(menu.title)}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-60">
+            {menu.items.map((item, i) =>
+              item === 'separator' ? (
+                <DropdownMenuSeparator key={`separator-${i}`} />
+              ) : (
+                <MenuItem key={item.text} action={item} />
+              ),
             )}
-            onMouseDown={titleMouseDown(index)}
-            onMouseEnter={titleMouseEnter(index)}
-          >
-            {titles[index]}
-          </button>
-          {open === index && (
-            <ul
-              role="menu"
-              className="absolute top-full left-0 z-50 m-0 min-w-[220px] list-none border border-line-strong bg-base py-[3px] shadow-[0_4px_12px_rgba(0,0,0,0.22)]"
-            >
-              {menu.items.map((item, i) =>
-                item === 'separator' ? (
-                  <li key={`separator-${i}`} role="separator" className="my-[3px] h-px bg-line" />
-                ) : (
-                  <MenuItem key={item.text} action={item} onTriggered={close} />
-                ),
-              )}
-            </ul>
-          )}
-        </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ))}
-    </div>
+    </nav>
   );
 }

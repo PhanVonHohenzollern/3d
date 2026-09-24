@@ -5,13 +5,14 @@ import { LineEdit } from './LineEdit';
 
 interface EditableComboBoxProps {
   value: string;
+  label?: string;
   items: readonly string[];
   disabled: boolean;
   placeholder: string;
   onTextChanged: (text: string) => void;
 }
 
-export function EditableComboBox({ value, items, disabled, placeholder, onTextChanged }: EditableComboBoxProps) {
+export function EditableComboBox({ value, label, items, disabled, placeholder, onTextChanged }: EditableComboBoxProps) {
   const { rootRef, open, popupRect, onKeyDown, onChange, toggle, choose } = useEditableComboBox(
     value,
     items,
@@ -22,6 +23,7 @@ export function EditableComboBox({ value, items, disabled, placeholder, onTextCh
     <div ref={rootRef} className="relative flex min-w-[100px]">
       <LineEdit
         className="flex-1 rounded-r-none"
+        aria-label={label}
         value={value}
         disabled={disabled}
         placeholder={placeholder}
@@ -30,7 +32,9 @@ export function EditableComboBox({ value, items, disabled, placeholder, onTextCh
       />
       <button
         type="button"
-        className="relative h-6 w-5 rounded-r-[2px] border border-l-0 border-line-strong bg-linear-to-b/srgb from-button-top to-button-bottom"
+        aria-label="Show parameter suggestions"
+        aria-expanded={open}
+        className="relative h-8 w-7 rounded-r-md border border-l-0 border-line bg-base hover:bg-secondary"
         disabled={disabled}
         tabIndex={-1}
         onMouseDown={preventDefault}
@@ -38,21 +42,21 @@ export function EditableComboBox({ value, items, disabled, placeholder, onTextCh
       >
         <span
           className={cn(
-            'absolute top-2.5 left-1.5 border-4 border-transparent',
+            'absolute top-3.5 left-2 border-4 border-transparent',
             disabled ? 'border-t-arrow-disabled' : 'border-t-arrow',
           )}
         />
       </button>
       {open && !disabled && (
         <ul
-          className="fixed z-60 mt-px max-h-[220px] list-none overflow-auto border border-line-strong bg-base py-0.5 shadow-[0_3px_8px_rgba(0,0,0,0.2)] empty:hidden"
+          className="fixed z-60 mt-1 max-h-[220px] list-none overflow-auto rounded-md border border-line bg-base p-1 shadow-lg empty:hidden"
           style={popupRect}
         >
           {items.map((item) => (
             <li
               key={item}
               className={cn(
-                'px-2 py-0.5 whitespace-nowrap hover:bg-highlight hover:text-highlight-fg',
+                'rounded-sm px-2 py-1.5 text-xs whitespace-nowrap hover:bg-secondary',
                 item === value && 'font-bold',
               )}
               onMouseDown={preventDefault}

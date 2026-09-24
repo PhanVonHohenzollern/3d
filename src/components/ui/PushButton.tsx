@@ -1,29 +1,27 @@
 import type { ButtonHTMLAttributes } from 'react';
-import { cn } from '../../utils/cn';
+import { cn } from '@/lib/utils';
+import { Button } from './button';
 
 interface PushButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   checked?: boolean;
+  variant?: 'outline' | 'primary';
   sizeClassName?: string;
 }
 
 export function PushButton({
   checked = false,
-  sizeClassName = 'min-h-6 px-3 py-0.5',
+  variant = 'outline',
+  sizeClassName = 'h-8 px-3 py-1.5',
   className,
   type = 'button',
   ...props
 }: PushButtonProps) {
   return (
-    <button
+    <Button
       type={type}
-      className={cn(
-        'cursor-default rounded-qt border border-line-strong focus-visible:outline-1 focus-visible:-outline-offset-3 focus-visible:outline-highlight enabled:hover:border-line-hover enabled:active:bg-button-pressed enabled:active:bg-none disabled:border-line disabled:text-disabled',
-        checked
-          ? 'bg-orientation-checked font-bold text-orientation-checked-fg'
-          : 'bg-linear-to-b/srgb from-button-top to-button-bottom text-fg',
-        sizeClassName,
-        className,
-      )}
+      variant={checked || variant === 'primary' ? 'default' : 'outline'}
+      size="sm"
+      className={cn('text-xs', sizeClassName, className)}
       {...props}
     />
   );

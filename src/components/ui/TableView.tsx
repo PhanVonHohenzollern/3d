@@ -1,32 +1,41 @@
+import { Table, TableHead, TableCell } from './table';
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { cn } from '../../utils/cn';
 
 interface TableViewProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
+  emptyMessage?: string;
 }
 
-export function TableView({ className, children, ...props }: TableViewProps) {
+export function TableView({ className, children, emptyMessage, ...props }: TableViewProps) {
   return (
     <div
       tabIndex={0}
-      className={cn('group/table min-h-0 flex-1 overflow-auto border border-line bg-base outline-none', className)}
+      className={cn('group/table min-h-0 flex-1 overflow-auto bg-base outline-none', className)}
       {...props}
     >
-      <table className="min-w-full border-separate border-spacing-0">{children}</table>
+      <Table className="min-w-full border-separate border-spacing-0 [&_tbody_tr:hover]:bg-secondary/50">
+        {children}
+      </Table>
+      {emptyMessage && (
+        <div className="flex min-h-24 items-center justify-center px-6 py-8 text-center text-xs text-muted-foreground">
+          {emptyMessage}
+        </div>
+      )}
     </div>
   );
 }
 
 export function HeaderCell({ stretch = false, children }: { stretch?: boolean; children: ReactNode }) {
   return (
-    <th
+    <TableHead
       className={cn(
-        'sticky top-0 z-1 h-[23px] border-r border-b border-line bg-linear-to-b/srgb from-header-top to-header-bottom px-1.5 text-center font-normal whitespace-nowrap',
+        'sticky top-0 z-1 h-9 border-b border-line bg-window px-4 text-left text-[11px] font-medium whitespace-nowrap text-muted-foreground',
         !stretch && 'w-px',
       )}
     >
       {children}
-    </th>
+    </TableHead>
   );
 }
 
@@ -40,11 +49,11 @@ interface CellProps {
 
 export function Cell({ column, selected, current = false, padding = 'text', children }: CellProps) {
   return (
-    <td
+    <TableCell
       data-column={column}
       className={cn(
-        'h-[22px] cursor-default border-r border-b border-grid whitespace-nowrap',
-        padding === 'text' && 'px-1.5',
+        'h-9 cursor-default border-b border-grid py-0 text-xs whitespace-nowrap',
+        padding === 'text' && 'px-4',
         padding === 'widget' && 'px-[3px] py-px',
         selected && 'bg-highlight text-highlight-fg',
         current &&
@@ -52,6 +61,6 @@ export function Cell({ column, selected, current = false, padding = 'text', chil
       )}
     >
       {children}
-    </td>
+    </TableCell>
   );
 }

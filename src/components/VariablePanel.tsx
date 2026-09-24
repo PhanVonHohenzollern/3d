@@ -6,9 +6,17 @@ export function VariablePanel(props: VariablePanelProps) {
   const { tableRef, summary, rows, selectedRow, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);
 
   return (
-    <div className="flex h-full min-h-0 flex-col p-1.5">
-      <div className="flex-none overflow-hidden pb-1 text-ellipsis whitespace-pre">{summary}</div>
-      <TableView ref={tableRef} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onKeyDown={onKeyDown}>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex-none overflow-hidden border-b border-line px-4 py-2 text-[11px] text-ellipsis whitespace-pre text-muted-foreground">
+        {summary}
+      </div>
+      <TableView
+        emptyMessage={rows.length === 0 ? 'Variables will appear as you write and preview code.' : undefined}
+        ref={tableRef}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onKeyDown={onKeyDown}
+      >
         <thead>
           <tr>
             <HeaderCell>Name</HeaderCell>

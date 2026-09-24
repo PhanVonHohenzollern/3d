@@ -1,7 +1,7 @@
+import { Braces, Link2, ListTree, SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Dock, DockName } from '../types/mainWindow';
-import { cn } from '../utils/cn';
-import { preventDefault } from '../utils/events';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 
 interface DockTab extends Dock {
   selected: boolean;
@@ -15,44 +15,55 @@ interface DockAreaProps {
   panels: Record<DockName, ReactNode>;
 }
 
+const icons = { VariablesDock: Braces, ParametersDock: SlidersHorizontal, ApiTraceDock: ListTree, LinkDock: Link2 };
+const hints = {
+  VariablesDock: 'Inspect values at the cursor',
+  ParametersDock: 'Edit a value to update the preview',
+  ApiTraceDock: 'Explore calls and their source values',
+  LinkDock: 'Configure and preview connectors',
+};
+
 export function DockArea({ height, title, tabs, panels }: DockAreaProps) {
+  const active = tabs.find((tab) => tab.selected);
+
   return (
-    <div className="flex min-h-0 flex-none flex-col bg-window" style={{ height }}>
-      <div className="h-[22px] flex-none border border-b-0 border-line bg-linear-to-b/srgb from-bar-top to-bar-bottom px-1.5 leading-[22px]">
-        {title}
+    <Tabs
+      value={active?.name}
+      onValueChange={(name) => tabs.find((tab) => tab.name === name)?.raise()}
+      aria-label={`${title} inspector`}
+      className="flex min-h-0 shrink-0 flex-col gap-0 overflow-hidden rounded-lg border border-line bg-base shadow-xs"
+      style={{ height }}
+    >
+      <div className="flex min-h-12 shrink-0 items-center gap-4 border-b border-line px-2 sm:px-4">
+        <TabsList aria-label="Inspector panels" className="max-w-full overflow-x-auto">
+          {tabs.map((tab) => {
+            const Icon = icons[tab.name];
+
+            return (
+              <TabsTrigger key={tab.name} value={tab.name} className="shrink-0 px-3 text-xs">
+                <Icon className="size-3.5" aria-hidden />
+                {tab.title}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+        <span className="ml-auto hidden text-[11px] text-muted-foreground lg:inline">
+          {active && hints[active.name]}
+        </span>
       </div>
-      <div className="relative min-h-0 flex-1 border border-line bg-window">
+      <div className="relative min-h-0 flex-1">
         {tabs.map((tab) => (
-          <div
+          <TabsContent
             key={tab.name}
+            value={tab.name}
+            forceMount
             hidden={!tab.selected}
-            className="absolute inset-0 flex min-h-0 flex-col *:min-h-0 *:flex-1"
+            className="absolute inset-0 m-0 flex min-h-0 flex-col *:min-h-0 *:flex-1"
           >
             {panels[tab.name]}
-          </div>
+          </TabsContent>
         ))}
       </div>
-      <div role="tablist" className="flex h-[25px] flex-none px-0.5">
-        {tabs.map((tab) => (
-          <button
-            key={tab.name}
-            type="button"
-            role="tab"
-            aria-selected={tab.selected}
-            tabIndex={-1}
-            className={cn(
-              '-mt-px rounded-b-qt border border-t-0 border-line px-3 text-fg not-first:-ml-px',
-              tab.selected
-                ? 'relative h-[calc(100%+1px)] bg-window font-medium'
-                : 'bg-linear-to-b/srgb from-bar-top to-bar-bottom',
-            )}
-            onMouseDown={preventDefault}
-            onClick={tab.raise}
-          >
-            {tab.title}
-          </button>
-        ))}
-      </div>
-    </div>
+    </Tabs>
   );
 }

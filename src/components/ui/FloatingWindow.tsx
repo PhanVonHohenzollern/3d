@@ -22,19 +22,19 @@ export function FloatingWindow({ title, raiseSerial, onClose, children }: Floati
       role="dialog"
       aria-label={title}
       tabIndex={-1}
-      className="group/window fixed z-100 flex min-h-40 min-w-80 flex-col rounded-t-md rounded-b-qt border border-frame bg-window font-ui text-ui text-fg shadow-[0_10px_30px_rgba(0,0,0,0.3)] outline-none select-none"
+      className="group/window fixed z-100 flex min-h-40 min-w-80 flex-col rounded-lg border border-line bg-base font-ui text-ui text-fg shadow-[0_10px_30px_rgba(0,0,0,0.3)] outline-none select-none"
       style={{ left: geometry.x, top: geometry.y, width: geometry.width, height: geometry.height }}
       onKeyDown={onKeyDown}
     >
       <div
-        className="flex h-7 flex-none cursor-default touch-none items-center rounded-t-md border-b border-line bg-linear-to-b/srgb from-bar-top to-bar-bottom pr-1 pl-2.5 group-focus-within/window:from-title-active-top group-focus-within/window:to-title-active-bottom"
+        className="flex h-12 flex-none cursor-default touch-none items-center rounded-t-lg border-b border-line bg-base px-4 font-medium"
         onPointerDown={onTitlePointerDown}
       >
         <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{title}</span>
         <button
           type="button"
           aria-label="Close"
-          className="h-[22px] w-6 rounded-qt bg-transparent text-arrow hover:bg-close-hover"
+          className="h-7 w-7 rounded-md bg-transparent text-arrow hover:bg-close-hover"
           onClick={onClose}
         >
           {'\u2715'}

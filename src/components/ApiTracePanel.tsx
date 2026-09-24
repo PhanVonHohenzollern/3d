@@ -10,7 +10,7 @@ export function ApiTracePanel(props: ApiTracePanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-none justify-start pb-0.5">
+      <div className="flex flex-none justify-start border-b border-line px-4 py-2">
         <ToolButton onMouseDown={preventDefault} onClick={clearFocus}>
           Clear API Focus
         </ToolButton>

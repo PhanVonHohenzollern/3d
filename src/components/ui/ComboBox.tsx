@@ -1,15 +1,11 @@
 import type { SelectHTMLAttributes } from 'react';
-import { cn } from '../../utils/cn';
+import { cn } from '@/lib/utils';
+import { NativeSelect } from './native-select';
 
-export function ComboBox({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+export function ComboBox({ className, size: _size, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    // disabled:opacity-70 restores Chrome's UA select:disabled style that Tailwind preflight resets.
-    <select
-      className={cn(
-        'h-6 rounded-qt border border-line-strong bg-linear-to-b/srgb from-button-top to-button-bottom px-1 text-fg focus:border-highlight focus:outline-none disabled:border-line disabled:text-disabled disabled:opacity-70',
-        className,
-      )}
-      {...props}
-    />
+    <div className={cn('min-w-0 [&>div]:w-full', className)}>
+      <NativeSelect size="sm" className="text-xs" {...props} />
+    </div>
   );
 }

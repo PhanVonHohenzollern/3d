@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { ChangeEvent, KeyboardEvent, Ref } from 'react';
 import type { ConnectorType } from '../core/geometry/ConnectorPreview';
 import type { SizeField } from '../types/panels';
@@ -40,24 +41,32 @@ interface LinkFormProps {
 }
 
 export function LinkForm({ nameRef, ...props }: LinkFormProps) {
+  const id = useId();
+
   return (
-    <div className="h-full w-full overflow-auto border border-line bg-window">
+    <div className="@container h-full w-full overflow-auto bg-base">
       <fieldset
         disabled={props.disabled}
-        className="group/form grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5 p-[9px]"
+        className="group/form grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 p-4 @min-[480px]:grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)]"
       >
-        <FormLabel>Identifier</FormLabel>
-        <LineEdit ref={nameRef} value={props.name} onChange={props.onNameChange} />
-        <FormLabel>Point</FormLabel>
+        <FormLabel htmlFor={`${id}-name`}>Identifier</FormLabel>
+        <LineEdit id={`${id}-name`} ref={nameRef} value={props.name} onChange={props.onNameChange} />
+        <FormLabel htmlFor={`${id}-point`}>Point</FormLabel>
         <LineEdit
+          id={`${id}-point`}
           value={props.point}
           onChange={props.onPointChange}
           onBlur={props.onPointBlur}
           onKeyDown={props.onPointKeyDown}
         />
 
-        <FormLabel>Type</FormLabel>
-        <ComboBox className="col-span-3" value={props.typeIndex} onChange={props.onTypeChange}>
+        <FormLabel htmlFor={`${id}-type`}>Type</FormLabel>
+        <ComboBox
+          id={`${id}-type`}
+          className="col-span-1 @min-[480px]:col-span-3"
+          value={props.typeIndex}
+          onChange={props.onTypeChange}
+        >
           {props.typeOptions.map((type, index) => (
             <option key={type} value={index}>
               {type}
@@ -68,8 +77,9 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
         {props.circular ? (
           <>
             <FormLabel>Diameter</FormLabel>
-            <div className="col-span-3">
+            <div className="col-span-1 @min-[480px]:col-span-3">
               <EditableComboBox
+                label="Diameter"
                 value={props.sizeTexts.diameter}
                 items={props.parameterNames}
                 disabled={props.disabled}
@@ -82,6 +92,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
           <>
             <FormLabel>A</FormLabel>
             <EditableComboBox
+              label="A dimension"
               value={props.sizeTexts.aSize}
               items={props.parameterNames}
               disabled={props.disabled}
@@ -90,6 +101,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
             />
             <FormLabel>B</FormLabel>
             <EditableComboBox
+              label="B dimension"
               value={props.sizeTexts.bSize}
               items={props.parameterNames}
               disabled={props.disabled}
@@ -100,13 +112,13 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
         )}
 
         <FormLabel>Orientation</FormLabel>
-        <div className="col-span-3 flex gap-[3px]">
+        <div className="col-span-1 flex flex-wrap gap-[3px] @min-[480px]:col-span-3">
           {props.orientationLabels.map((label, id) => (
             <PushButton
               key={label}
               checked={props.orientationId === id}
               aria-pressed={props.orientationId === id}
-              sizeClassName="min-h-6 min-w-[30px] px-3 py-0.5"
+              sizeClassName="h-7 min-w-[30px] px-2 text-[11px]"
               onClick={props.orientationClicked(id)}
             >
               {label}
@@ -116,15 +128,15 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
 
         {props.axisLabels.map((axis, i) => (
           <div key={axis} className="contents">
-            <FormLabel>{axis}</FormLabel>
-            <LineEdit value={props.positions[i]} onChange={props.positionChanged(i)} />
-            <FormLabel>{props.angleLabels[i]}</FormLabel>
-            <LineEdit value={props.angles[i]} onChange={props.angleChanged(i)} />
+            <FormLabel htmlFor={`${id}-position-${i}`}>{axis}</FormLabel>
+            <LineEdit id={`${id}-position-${i}`} value={props.positions[i]} onChange={props.positionChanged(i)} />
+            <FormLabel htmlFor={`${id}-angle-${i}`}>{props.angleLabels[i]}</FormLabel>
+            <LineEdit id={`${id}-angle-${i}`} value={props.angles[i]} onChange={props.angleChanged(i)} />
           </div>
         ))}
 
         <div className="col-span-full">
-          <PushButton sizeClassName="h-[26px] min-h-6 w-[150px] px-3 py-0.5" onClick={props.test}>
+          <PushButton variant="primary" sizeClassName="h-8 w-[120px] px-3" onClick={props.test}>
             Make
           </PushButton>
         </div>

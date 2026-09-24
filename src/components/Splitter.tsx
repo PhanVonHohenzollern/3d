@@ -17,7 +17,7 @@ export function Splitter({ className, children, ...options }: SplitterProps) {
       </div>
       <div
         className={cn(
-          'flex-none touch-none bg-window hover:bg-handle-hover',
+          'flex-none touch-none bg-window transition-colors hover:bg-handle-hover',
           horizontal ? 'w-[5px] cursor-col-resize' : 'h-[5px] cursor-row-resize',
         )}
         onPointerDown={onHandlePointerDown}
