@@ -18,4 +18,4 @@ Then open <http://localhost:5173>.
 
 Run `make` to list the other commands: build, test, lint, format and validate.
 
-More detail: [docs/](docs/) describes the app's behavior, and [CLAUDE.md](CLAUDE.md) covers the architecture and development conventions.
+More detail: [docs/](docs/) describes the app's behavior.
