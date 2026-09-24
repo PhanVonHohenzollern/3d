@@ -1,3 +1,4 @@
+import { useContainerPagination } from './useContainerPagination';
 import { useImperativeHandle, useLayoutEffect, useState, type KeyboardEvent } from 'react';
 import type { ParameterPanelProps } from '../types/panels';
 import { kParameterValueColumn, ParameterPanelModel } from './parameterPanel/ParameterPanelModel';
@@ -66,5 +67,7 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
     };
   });
 
-  return { fields, resetToSource: () => model.resetToSource() };
+  const pagination = useContainerPagination(fields, { rowHeight: 86, headerHeight: 12, minimumColumnWidth: 170 });
+
+  return { fields, pagination, resetToSource: () => model.resetToSource() };
 }

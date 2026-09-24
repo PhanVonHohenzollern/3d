@@ -16,6 +16,7 @@ export interface LinkAxisField {
 
 export interface LinkFormProps {
   children?: ReactNode;
+  section: string;
   nameRef: Ref<HTMLInputElement>;
   typeOptions: readonly ConnectorType[];
   sizePlaceholder: string;

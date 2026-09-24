@@ -1,3 +1,4 @@
+import { useContainerPagination } from './useContainerPagination';
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { eventModifiers } from '../helpers/keyboard';
 import { isInTableHeader, tableRowOf } from '../helpers/tableEvents';
@@ -15,14 +16,15 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
   }, [model, onSelectionChanged]);
   useImperativeHandle(ref, () => model, [model]);
 
-  const scrollSerial = model.scrollRequest?.serial;
-  useLayoutEffect(() => {
-    const request = model.scrollRequest;
-    if (!request) return;
-    tableRef.current
-      ?.querySelector<HTMLElement>(`tr[data-row="${request.row}"]`)
-      ?.scrollIntoView({ block: request.center ? 'center' : 'nearest' });
-  }, [model, scrollSerial]);
+  const pagination = useContainerPagination(
+    model.rows.map((row, index) => ({ ...row, index, selected: index === model.selectedRow })),
+    {
+      rowHeight: 28,
+      headerHeight: 28,
+      selectedIndex: model.scrollRequest?.row,
+      selectionKey: model.scrollRequest?.serial,
+    },
+  );
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0 || isInTableHeader(event)) return;
@@ -44,7 +46,8 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
   return {
     tableRef,
     summary: model.summary,
-    rows: model.rows.map((row, index) => ({ ...row, selected: index === model.selectedRow })),
+    pagination,
+    rows: pagination.items,
     onMouseDown,
     onMouseUp,
     onKeyDown,

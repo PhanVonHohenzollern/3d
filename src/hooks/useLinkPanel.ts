@@ -1,3 +1,4 @@
+import { useContainerPagination } from './useContainerPagination';
 import {
   useImperativeHandle,
   useLayoutEffect,
@@ -39,12 +40,16 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
     nameRef.current?.select();
   }, [focusNameSerial]);
 
-  const scrollSerial = model.scrollRequest?.serial;
-  useLayoutEffect(() => {
-    const request = model.scrollRequest;
-    if (!request) return;
-    tableRef.current?.querySelector(`tr[data-row="${request.row}"]`)?.scrollIntoView({ block: 'nearest' });
-  }, [model, scrollSerial]);
+  const pagination = useContainerPagination(
+    model.tableRows.map((row, index) => ({ ...row, index })),
+    {
+      rowHeight: 28,
+      headerHeight: 28,
+      selectedIndex: model.currentRow,
+      selectionKey: `${model.currentRow}:${model.scrollRequest?.serial}`,
+    },
+  );
+  const [section, setSection] = useState('Connectors');
 
   const onTableMouseDown = (event: MouseEvent) => {
     if (event.button !== 0 || isInTableHeader(event) || isInElement(event, 'button')) return;
@@ -61,10 +66,13 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
 
   return {
     tableRef,
+    section,
+    setSection,
     nameRef,
     table: {
       headers: kLinkTableHeaders,
-      rows: model.tableRows,
+      rows: pagination.items,
+      pagination,
       currentRow: model.currentRow,
       currentColumn: model.currentColumn,
       onMouseDown: onTableMouseDown,
@@ -108,7 +116,10 @@ export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: Lin
       sizeTextChanged: (field: SizeField) => (text: string) => model.sizeTextChanged(field, text),
       test: () => model.testSelection(),
     },
-    addConnector: () => model.addConnector(),
+    addConnector: () => {
+      setSection('Identity');
+      model.addConnector();
+    },
     removeConnector: () => model.removeConnector(),
   };
 }
