@@ -1,7 +1,7 @@
 import { Box, CircleDot, Eye, EyeOff, Maximize, MoveUpRight, Scan, Tags, type LucideIcon } from 'lucide-react';
 import { useAction } from '../hooks/useAction';
 import type { Action } from '../hooks/mainWindow/Action';
-import type { ActionListItem } from '../types/mainWindow';
+import type { ToolBarProps, ToolBarButtonProps } from '../types/toolbar';
 import { cn } from '../lib/utils';
 import { preventDefault } from '../utils/events';
 import { Button } from './ui/button';
@@ -10,17 +10,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 const presentation: Record<string, { label: string; icon: LucideIcon; description: string }> = {
   'Show Geometry': { label: 'Geometry', icon: Box, description: 'Show or hide generated geometry.' },
   'Geometry Wireframe': { label: 'Wireframe', icon: Scan, description: 'Display geometry as wireframe.' },
-  'Fit Scene': { label: 'Fit scene', icon: Maximize, description: 'Fit the camera to the scene.' },
+  'Fit Scene': { label: 'Fit', icon: Maximize, description: 'Fit the camera to the scene.' },
   'Show Points': { label: 'Points', icon: CircleDot, description: 'Show or hide point debug markers.' },
   'Show Vectors': { label: 'Vectors', icon: MoveUpRight, description: 'Show or hide vector debug arrows.' },
   'Show Labels': { label: 'Labels', icon: Tags, description: 'Show or hide debug labels.' },
   'Hide Selected': {
-    label: 'Hide selected',
+    label: 'Hide',
     icon: EyeOff,
     description: 'Hide selected point and vector debug overlays.',
   },
   'Show Selected': {
-    label: 'Show selected',
+    label: 'Show',
     icon: Eye,
     description:
       'Restore selected point and vector debug overlays. The Points, Vectors, and Labels toggles still apply.',
@@ -29,7 +29,7 @@ const presentation: Record<string, { label: string; icon: LucideIcon; descriptio
 
 const groupNames = ['Scene', 'Debug overlays', 'Selection visibility'];
 
-function ToolBarButton({ action }: { action: Action }) {
+function ToolBarButton({ action }: ToolBarButtonProps) {
   const { iconText, checkable, checked, shortcutText, trigger } = useAction(action);
   const item = presentation[iconText];
   const Icon = item?.icon;
@@ -44,7 +44,7 @@ function ToolBarButton({ action }: { action: Action }) {
           aria-label={iconText}
           aria-pressed={checkable ? checked : undefined}
           className={cn(
-            'h-8 shrink-0 gap-2 px-3 text-xs focus-visible:ring-2',
+            'h-7 shrink-0 gap-1.5 px-2 text-xs focus-visible:ring-2',
             checked
               ? 'bg-base text-fg shadow-xs ring-1 ring-line hover:bg-base'
               : 'text-muted-foreground hover:bg-base/60 hover:text-fg',
@@ -53,7 +53,7 @@ function ToolBarButton({ action }: { action: Action }) {
           onClick={trigger}
         >
           {Icon && <Icon className="size-3.5" aria-hidden />}
-          {item?.label ?? iconText}
+          <span className="hidden @min-[900px]/preview:inline">{item?.label ?? iconText}</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={8} className="max-w-64">
@@ -69,7 +69,7 @@ function ToolBarButton({ action }: { action: Action }) {
   );
 }
 
-export function ToolBar({ items }: { items: readonly ActionListItem[] }) {
+export function ToolBar({ items }: ToolBarProps) {
   const groups: Action[][] = [[]];
   for (const item of items) {
     if (item === 'separator') groups.push([]);
@@ -78,15 +78,15 @@ export function ToolBar({ items }: { items: readonly ActionListItem[] }) {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div
-        role="toolbar"
-        aria-label="Preview display"
-        className="flex shrink-0 flex-wrap items-end gap-x-4 gap-y-2 overflow-x-auto pt-1 pb-3"
-      >
+      <div role="toolbar" aria-label="Preview display" className="flex min-w-0 items-center gap-2 overflow-x-auto py-1">
         {groups.map((actions, index) => (
-          <div key={index} role="group" aria-label={groupNames[index]} className="flex shrink-0 flex-col gap-1.5">
-            <span className="px-1 text-[11px] font-medium text-muted-foreground">{groupNames[index]}</span>
-            <div className="flex items-center gap-1 rounded-lg bg-secondary/70 p-1">
+          <div
+            key={index}
+            role="group"
+            aria-label={groupNames[index]}
+            className="flex shrink-0 items-center border-l border-line pl-2 first:border-0 first:pl-0"
+          >
+            <div className="flex items-center gap-1">
               {actions.map((action) => (
                 <ToolBarButton key={action.text} action={action} />
               ))}

@@ -45,13 +45,14 @@ export function App() {
               </div>
             </section>
             <div className="flex h-full min-w-0 flex-col">
-              <ToolBar items={mainWindow.toolbarItems} />
               <div ref={mainAreaRef} className="flex min-h-0 flex-1 flex-col">
                 <section
                   aria-label="3D Viewport"
-                  className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
+                  className="@container/preview flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
                 >
-                  <PanelHeader icon={Box} title="3D Viewport" />
+                  <PanelHeader icon={Box} title="3D Viewport">
+                    <ToolBar items={mainWindow.toolbarItems} />
+                  </PanelHeader>
                   <div className="relative min-h-0 flex-1 overflow-hidden bg-viewport">
                     <Viewport3D {...mainWindow.viewport} />
                   </div>
