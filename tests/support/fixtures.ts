@@ -81,7 +81,12 @@ export function parseFixture(file: string): Fixture {
   if (!lines.length) lines.push(textLines.length);
   return {
     name: path.relative(fixturesRoot, file).split(path.sep).join('/'),
-    file, code, lines, parameters, evals, connectors,
+    file,
+    code,
+    lines,
+    parameters,
+    evals,
+    connectors,
   };
 }
 
@@ -99,7 +104,8 @@ export function listFixtures(...subdirs: string[]): Fixture[] {
   };
   roots.forEach(walk);
   const filter = process.env.FIXTURE; // e.g. FIXTURE=loops npx vitest run
-  return files.sort()
+  return files
+    .sort()
     .map(parseFixture)
     .filter((f) => !filter || f.name.includes(filter));
 }

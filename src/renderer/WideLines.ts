@@ -23,7 +23,14 @@ export const kLineQuadBytes = kLineQuadFloats * 4;
 /** Two triangles per line segment. */
 export const kLineQuadVerticesPerSegment = 6;
 
-const kCorners: readonly (readonly [number, number])[] = [[0, -1], [0, 1], [1, -1], [1, -1], [0, 1], [1, 1]];
+const kCorners: readonly (readonly [number, number])[] = [
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, -1],
+  [0, 1],
+  [1, 1],
+];
 
 /**
  * Expands the GL_LINES vertex pairs src[first .. first + count) (interleaved
@@ -38,10 +45,17 @@ export function expandLineQuads(src: Float32Array, first: number, count: number)
     const b = a + kVertexFloats;
     for (const [t, side] of kCorners) {
       const c = t === 0 ? a : b;
-      out[o++] = src[a]; out[o++] = src[a + 1]; out[o++] = src[a + 2];
-      out[o++] = src[b]; out[o++] = src[b + 1]; out[o++] = src[b + 2];
-      out[o++] = src[c + 3]; out[o++] = src[c + 4]; out[o++] = src[c + 5];
-      out[o++] = t; out[o++] = side;
+      out[o++] = src[a];
+      out[o++] = src[a + 1];
+      out[o++] = src[a + 2];
+      out[o++] = src[b];
+      out[o++] = src[b + 1];
+      out[o++] = src[b + 2];
+      out[o++] = src[c + 3];
+      out[o++] = src[c + 4];
+      out[o++] = src[c + 5];
+      out[o++] = t;
+      out[o++] = side;
     }
   }
   return out;
@@ -124,7 +138,11 @@ void main()
 `;
 
 /** QOpenGLShaderProgram::addShaderFromSourceCode + link; logs failures like Qt does. */
-export function createProgram(gl: WebGL2RenderingContext, vertexSource: string, fragmentSource: string): WebGLProgram | null {
+export function createProgram(
+  gl: WebGL2RenderingContext,
+  vertexSource: string,
+  fragmentSource: string,
+): WebGLProgram | null {
   const compile = (type: number, source: string) => {
     const shader = gl.createShader(type);
     if (!shader) return null;

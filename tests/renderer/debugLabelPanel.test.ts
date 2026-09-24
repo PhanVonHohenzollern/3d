@@ -31,10 +31,18 @@ function click(panel: DebugLabelPanel, row: number, modifiers = NoModifier, butt
   panel.mouseReleaseEvent(20, at(row), button, modifiers);
 }
 
-const selectedRows = (panel: DebugLabelPanel) => panel.entries().map((_, row) => row).filter((row) => panel.isRowSelected(row));
+const selectedRows = (panel: DebugLabelPanel) =>
+  panel
+    .entries()
+    .map((_, row) => row)
+    .filter((row) => panel.isRowSelected(row));
 
-beforeEach(() => { vi.useFakeTimers(); });
-afterEach(() => { vi.useRealTimers(); });
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('DebugLabelPanel', () => {
   it('reports the header, content height and ids', () => {
@@ -178,11 +186,14 @@ describe('DebugLabelPanel', () => {
   it('lays out rows like LabelDelegate (value <= 45%, name elided in the middle)', () => {
     const panel = new DebugLabelPanel('Points', qColor(255, 174, 52));
     panel.setTextMeasurer(fixedMeasurer);
-    panel.setEntries([{ id: 'a', name: 'averyveryverylongparametername[12]', value: '(123.456, 7890.12, 3.5)' }], new Set());
+    panel.setEntries(
+      [{ id: 'a', name: 'averyveryverylongparametername[12]', value: '(123.456, 7890.12, 3.5)' }],
+      new Set(),
+    );
     panel.setGeometry(0, 0, 200, 49);
     const layout = panel.rowLayout(0);
     const contentWidth = 200 - 24;
-    expect(layout.valueWidth).toBe(Math.trunc(contentWidth * 45 / 100));
+    expect(layout.valueWidth).toBe(Math.trunc((contentWidth * 45) / 100));
     expect(layout.valueLeft).toBe(17 + contentWidth - layout.valueWidth);
     expect(layout.nameWidth).toBe(contentWidth - layout.valueWidth - 8);
     expect(layout.nameText).toContain('\u2026');

@@ -15,12 +15,23 @@ export const fixedMeasurer: TextMeasurer = {
 };
 
 /** Axis-aligned box [min, max] as 12 outward-facing triangles. */
-export function boxMesh(min: [number, number, number], max: [number, number, number], apiIndex = 0, apiName = 'makeBox'): PreviewMesh {
+export function boxMesh(
+  min: [number, number, number],
+  max: [number, number, number],
+  apiIndex = 0,
+  apiName = 'makeBox',
+): PreviewMesh {
   const [x0, y0, z0] = min;
   const [x1, y1, z1] = max;
   const p = [
-    [x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0],
-    [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1],
+    [x0, y0, z0],
+    [x1, y0, z0],
+    [x1, y1, z0],
+    [x0, y1, z0],
+    [x0, y0, z1],
+    [x1, y0, z1],
+    [x1, y1, z1],
+    [x0, y1, z1],
   ];
   const quads = [
     [0, 3, 2, 1], // bottom (-z)
@@ -84,6 +95,12 @@ export function project(engine: ViewportEngine, p: QVector3D): QPointF {
   return screen;
 }
 
-export function mouse(x: number, y: number, button: number, buttons: number, modifiers: Partial<{ control: boolean; shift: boolean; alt: boolean }> = {}) {
+export function mouse(
+  x: number,
+  y: number,
+  button: number,
+  buttons: number,
+  modifiers: Partial<{ control: boolean; shift: boolean; alt: boolean }> = {},
+) {
   return { x, y, button, buttons, modifiers: { control: false, shift: false, alt: false, ...modifiers } };
 }

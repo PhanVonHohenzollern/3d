@@ -7,7 +7,7 @@
  * CSS uses the same conversion, so 9 pt == 12 px.
  */
 export function pointSizeToPixels(pointSize: number): number {
-  return pointSize * 96 / 72;
+  return (pointSize * 96) / 72;
 }
 
 export interface FontSpec {
@@ -96,16 +96,21 @@ export class CanvasTextMeasurer implements TextMeasurer {
       const m = this.m_context.measureText('Xg');
       const ascent = m.fontBoundingBoxAscent;
       const descent = m.fontBoundingBoxDescent;
-      metrics = Number.isFinite(ascent) && Number.isFinite(descent) && ascent + descent > 0
-        ? { ascent, descent }
-        : { ascent: font.pixelSize * 0.93, descent: font.pixelSize * 0.25 };
+      metrics =
+        Number.isFinite(ascent) && Number.isFinite(descent) && ascent + descent > 0
+          ? { ascent, descent }
+          : { ascent: font.pixelSize * 0.93, descent: font.pixelSize * 0.25 };
       this.m_vertical.set(css, metrics);
     }
     return metrics;
   }
 
-  ascent(font: FontSpec): number { return this.vertical(font).ascent; }
-  descent(font: FontSpec): number { return this.vertical(font).descent; }
+  ascent(font: FontSpec): number {
+    return this.vertical(font).ascent;
+  }
+  descent(font: FontSpec): number {
+    return this.vertical(font).descent;
+  }
 }
 
 /** Rough metrics used until a canvas measurer is available (e.g. before mount). */
@@ -123,7 +128,13 @@ const kEllipsis = '\u2026';
  * QFontMetrics::elidedText(text, mode, width): the QTextEngine algorithm,
  * advancing one character (grapheme approximation: code point) at a time.
  */
-export function elidedText(measurer: TextMeasurer, font: FontSpec, text: string, mode: TextElideMode, width: number): string {
+export function elidedText(
+  measurer: TextMeasurer,
+  font: FontSpec,
+  text: string,
+  mode: TextElideMode,
+  width: number,
+): string {
   const chars = Array.from(text);
   const to = chars.length;
   if (measurer.horizontalAdvance(text, font) <= width || to <= 1) return text;
@@ -146,9 +157,9 @@ export function elidedText(measurer: TextMeasurer, font: FontSpec, text: string,
 
   let leftWidth = 0;
   let rightWidth = 0;
-  let leftPos = 0;
+  let leftPos: number;
   let nextLeftBreak = 0;
-  let rightPos = to;
+  let rightPos: number;
   let nextRightBreak = to;
   do {
     leftPos = nextLeftBreak;

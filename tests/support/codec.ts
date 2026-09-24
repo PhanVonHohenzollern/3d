@@ -7,11 +7,13 @@
 
 import { FdPoint3d, FdVector3d } from '../../src/runtime/FdMath';
 import type {
-  RuntimeApiCall, RuntimeArgumentTrace, RuntimeParameterRequest, RuntimeResult, RuntimeValueSource,
+  RuntimeApiCall,
+  RuntimeArgumentTrace,
+  RuntimeParameterRequest,
+  RuntimeResult,
+  RuntimeValueSource,
 } from '../../src/runtime/RuntimeTypes';
-import {
-  RuntimeArray, runtimeTypeName, runtimeValueToString, type RuntimeValue,
-} from '../../src/runtime/RuntimeValue';
+import { RuntimeArray, runtimeTypeName, runtimeValueToString, type RuntimeValue } from '../../src/runtime/RuntimeValue';
 import type { PreviewGeometryScene, PreviewMesh } from '../../src/geometry/PreviewGeometryEngine';
 import type { ConnectorPreview } from '../../src/geometry/ConnectorPreview';
 
@@ -49,8 +51,13 @@ export function encodeTrace(t: RuntimeArgumentTrace): Json {
 
 export function encodeParameterRequest(r: RuntimeParameterRequest): Json {
   return {
-    name: r.name, type: r.type, defaultValue: r.defaultValue, currentValue: r.currentValue,
-    sourceFunction: r.sourceFunction, variableName: r.variableName, line: r.line,
+    name: r.name,
+    type: r.type,
+    defaultValue: r.defaultValue,
+    currentValue: r.currentValue,
+    sourceFunction: r.sourceFunction,
+    variableName: r.variableName,
+    line: r.line,
   };
 }
 
@@ -74,12 +81,20 @@ export function encodeApiCall(c: RuntimeApiCall): Json {
 export function encodeResult(r: RuntimeResult): Json {
   return {
     variables: r.variables.map((v) => ({
-      name: v.name, value: encodeValue(v.value), text: runtimeValueToString(v.value),
-      type: runtimeTypeName(v.value), lastChangedLine: v.lastChangedLine,
+      name: v.name,
+      value: encodeValue(v.value),
+      text: runtimeValueToString(v.value),
+      type: runtimeTypeName(v.value),
+      lastChangedLine: v.lastChangedLine,
     })),
     variableChanges: r.variableChanges.map((c) => ({
-      line: c.line, name: c.name, operation: c.operation, expression: c.expression,
-      before: encodeValue(c.before), after: encodeValue(c.after), variableId: c.variableId,
+      line: c.line,
+      name: c.name,
+      operation: c.operation,
+      expression: c.expression,
+      before: encodeValue(c.before),
+      after: encodeValue(c.after),
+      variableId: c.variableId,
       sources: c.sources.map(encodeSource),
     })),
     diagnostics: r.diagnostics.map((d) => ({ line: d.line, message: d.message })),
@@ -92,8 +107,12 @@ export function encodeMesh(m: PreviewMesh): Json {
   const vertices: Json[] = [];
   for (const v of m.vertices) vertices.push(v.x, v.y, v.z, v.nx, v.ny, v.nz);
   return {
-    apiIndex: m.apiIndex, sourceLine: m.sourceLine, apiName: m.apiName,
-    color: [m.color.r, m.color.g, m.color.b].map(encodeNumber), vertices: vertices.map(encodeNumber), indices: [...m.indices],
+    apiIndex: m.apiIndex,
+    sourceLine: m.sourceLine,
+    apiName: m.apiName,
+    color: [m.color.r, m.color.g, m.color.b].map(encodeNumber),
+    vertices: vertices.map(encodeNumber),
+    indices: [...m.indices],
   };
 }
 
@@ -103,8 +122,14 @@ export function encodeScene(s: PreviewGeometryScene): Json {
 
 export function encodeConnector(c: ConnectorPreview): Json {
   return {
-    id: c.id, name: c.name, pointName: c.pointName, point: xyz(c.point), direction: xyz(c.direction),
-    up: xyz(c.up), length: encodeNumber(c.length), meshes: c.meshes.map(encodeMesh),
+    id: c.id,
+    name: c.name,
+    pointName: c.pointName,
+    point: xyz(c.point),
+    direction: xyz(c.direction),
+    up: xyz(c.up),
+    length: encodeNumber(c.length),
+    meshes: c.meshes.map(encodeMesh),
     outline: c.outline.map(([a, b]) => [xyz(a), xyz(b)]),
   };
 }
@@ -121,41 +146,71 @@ function decodeNumber(v: Json): number {
 
 export function decodeValue(j: Json): RuntimeValue {
   switch (j.t) {
-    case 'unset': return undefined;
-    case 'd': return decodeNumber(j.v);
-    case 'i': return BigInt(j.v);
-    case 'b': return j.v;
-    case 's': return j.v;
-    case 'p': return new FdPoint3d(decodeNumber(j.v[0]), decodeNumber(j.v[1]), decodeNumber(j.v[2]));
-    case 'v': return new FdVector3d(decodeNumber(j.v[0]), decodeNumber(j.v[1]), decodeNumber(j.v[2]));
+    case 'unset':
+      return undefined;
+    case 'd':
+      return decodeNumber(j.v);
+    case 'i':
+      return BigInt(j.v);
+    case 'b':
+      return j.v;
+    case 's':
+      return j.v;
+    case 'p':
+      return new FdPoint3d(decodeNumber(j.v[0]), decodeNumber(j.v[1]), decodeNumber(j.v[2]));
+    case 'v':
+      return new FdVector3d(decodeNumber(j.v[0]), decodeNumber(j.v[1]), decodeNumber(j.v[2]));
     case 'a':
       if (j.null) throw new Error('null RuntimeArrayPtr is not representable');
       return new RuntimeArray(j.elementType, [...j.dimensions], j.elements.map(decodeValue));
-    default: throw new Error(`bad encoded value ${JSON.stringify(j)}`);
+    default:
+      throw new Error(`bad encoded value ${JSON.stringify(j)}`);
   }
 }
 
-const decodeSource = (s: Json): RuntimeValueSource =>
-  ({ name: s.name, value: decodeValue(s.value), variableId: s.variableId, historyEnd: s.historyEnd });
+const decodeSource = (s: Json): RuntimeValueSource => ({
+  name: s.name,
+  value: decodeValue(s.value),
+  variableId: s.variableId,
+  historyEnd: s.historyEnd,
+});
 
-const decodeTrace = (t: Json): RuntimeArgumentTrace =>
-  ({ expression: t.expression, sources: t.sources.map(decodeSource), elements: t.elements.map(decodeTrace) });
+const decodeTrace = (t: Json): RuntimeArgumentTrace => ({
+  expression: t.expression,
+  sources: t.sources.map(decodeSource),
+  elements: t.elements.map(decodeTrace),
+});
 
 export function decodeApiCall(c: Json): RuntimeApiCall {
   return {
-    line: c.line, parentApiIndex: c.parentApiIndex, userFunctionCall: c.userFunctionCall, name: c.name,
-    arguments: c.arguments.map(decodeValue), argumentExpressions: [...c.argumentExpressions],
-    formalParameterNames: [...c.formalParameterNames], formalParameterTypes: [...c.formalParameterTypes],
-    display: c.display, argumentTraces: c.argumentTraces.map(decodeTrace),
+    line: c.line,
+    parentApiIndex: c.parentApiIndex,
+    userFunctionCall: c.userFunctionCall,
+    name: c.name,
+    arguments: c.arguments.map(decodeValue),
+    argumentExpressions: [...c.argumentExpressions],
+    formalParameterNames: [...c.formalParameterNames],
+    formalParameterTypes: [...c.formalParameterTypes],
+    display: c.display,
+    argumentTraces: c.argumentTraces.map(decodeTrace),
   };
 }
 
 export function decodeResult(r: Json): RuntimeResult {
   return {
-    variables: r.variables.map((v: Json) => ({ name: v.name, value: decodeValue(v.value), lastChangedLine: v.lastChangedLine })),
+    variables: r.variables.map((v: Json) => ({
+      name: v.name,
+      value: decodeValue(v.value),
+      lastChangedLine: v.lastChangedLine,
+    })),
     variableChanges: r.variableChanges.map((c: Json) => ({
-      line: c.line, name: c.name, operation: c.operation, expression: c.expression,
-      before: decodeValue(c.before), after: decodeValue(c.after), variableId: c.variableId,
+      line: c.line,
+      name: c.name,
+      operation: c.operation,
+      expression: c.expression,
+      before: decodeValue(c.before),
+      after: decodeValue(c.after),
+      variableId: c.variableId,
       sources: c.sources.map(decodeSource),
     })),
     diagnostics: r.diagnostics.map((d: Json) => ({ line: d.line, message: d.message })),

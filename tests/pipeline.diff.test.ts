@@ -27,14 +27,16 @@ for (const fixture of listFixtures()) {
             scene: encodeScene(new PreviewGeometryEngine().build(result)),
             connectors: fixture.connectors.map((directive) => {
               try {
-                const preview = buildConnectorPreview(connectorDefinition(directive),
-                  (expression) => runtime.evaluateNumericExpression(expression));
+                const preview = buildConnectorPreview(connectorDefinition(directive), (expression) =>
+                  runtime.evaluateNumericExpression(expression),
+                );
                 return { preview: encodeConnector(preview), error: null };
               } catch (e) {
                 return { preview: null, error: what(e) };
               }
             }),
-          });
+          },
+        );
       });
     });
   });

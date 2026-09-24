@@ -19,7 +19,7 @@ describe('projection', () => {
     const engine = createEngine(800, 600);
     const i = internals(engine);
     i.updateProjectionMatrix();
-    const f = 1 / Math.tan(22.5 * Math.PI / 180);
+    const f = 1 / Math.tan((22.5 * Math.PI) / 180);
     expect(i.m_projection.get(1, 1)).toBeCloseTo(f, 5);
     expect(i.m_projection.get(0, 0)).toBeCloseTo(f / (800 / 600), 5);
     // nearPlane = max(0.001, min(10000, distance * 0.001)); farPlane >= 1000
@@ -79,7 +79,11 @@ describe('mesh picking', () => {
     i.updateViewMatrix();
     const eye = i.cameraPosition() as QVector3D;
     const toward = eye.normalized().mul(4);
-    const nearBox = boxMesh([toward.x - 0.5, toward.y - 0.5, toward.z - 0.5], [toward.x + 0.5, toward.y + 0.5, toward.z + 0.5], 7);
+    const nearBox = boxMesh(
+      [toward.x - 0.5, toward.y - 0.5, toward.z - 0.5],
+      [toward.x + 0.5, toward.y + 0.5, toward.z + 0.5],
+      7,
+    );
     engine.setGeometryScene(scene(boxMesh([-1, -1, -1], [1, 1, 1], 3), nearBox));
     i.updateViewMatrix();
     i.updateProjectionMatrix();
@@ -102,7 +106,9 @@ describe('mesh picking', () => {
 
   it('selects the whole API invocation from a Mesh-mode click', () => {
     const engine = createEngine();
-    engine.setGeometryScene(scene(boxMesh([-1, -1, -1], [1, 1, 1], 4), boxMesh([2, 2, 2], [3, 3, 3], 4), boxMesh([-9, 5, 0], [-8, 6, 1], 5)));
+    engine.setGeometryScene(
+      scene(boxMesh([-1, -1, -1], [1, 1, 1], 4), boxMesh([2, 2, 2], [3, 3, 3], 4), boxMesh([-9, 5, 0], [-8, 6, 1], 5)),
+    );
     const onMesh = vi.fn();
     engine.setMeshSelectionCallback(onMesh);
     engine.selectionModeButtonClicked(); // Vector
@@ -213,7 +219,7 @@ describe('debug points and clicks', () => {
     const target = i.m_target as QVector3D;
     expect([target.x, target.y, target.z]).toEqual([12, 11, 1]);
     const radius = 0.5 * Math.hypot(4, 2, 2);
-    const expected = radius / Math.tan(22.5 * Math.PI / 180) * 1.18 + Math.max(2, radius * 0.05);
+    const expected = (radius / Math.tan((22.5 * Math.PI) / 180)) * 1.18 + Math.max(2, radius * 0.05);
     expect(i.m_distance).toBeCloseTo(expected, 5);
   });
 
@@ -227,7 +233,7 @@ describe('debug points and clicks', () => {
     expect(engine.vectorLabelPanel().isVisible()).toBe(false);
   });
 
-  it('formats debug values like QString::arg(x, 0, \'g\', 7)', () => {
+  it("formats debug values like QString::arg(x, 0, 'g', 7)", () => {
     expect(debugValueText({ x: 0.1 + 0.2, y: 1234567.8, z: 0 })).toBe('(0.3, 1234568, 0)');
     expect(debugValueText({ x: 12345678, y: 1e-5, z: 2.5 })).toBe('(1.234568e+07, 1e-05, 2.5)');
   });
@@ -258,7 +264,8 @@ describe('vector arrows', () => {
     // headLength = clamp(5 * 0.18, max(0.12, 10 * 0.006), max(0.5, 10 * 0.035)) = 0.5 (scene scale 10)
     const headLength = 0.5;
     const wing = headLength * 0.52;
-    const w1 = vertices.position(3), w2 = vertices.position(5);
+    const w1 = vertices.position(3),
+      w2 = vertices.position(5);
     const base = end.sub(new QVector3D(0, 0, headLength));
     // (Vertices are stored as floats, like the C++ Vertex struct.)
     expect(w1.add(w2).mul(0.5).sub(base).length()).toBeLessThan(1e-6);

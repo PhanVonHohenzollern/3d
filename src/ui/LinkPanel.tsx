@@ -4,13 +4,24 @@
 // (LinkModel.ts); the ref handle is that model.
 
 import {
-  useEffect, useImperativeHandle, useLayoutEffect, useRef, useState,
-  type KeyboardEvent, type MouseEvent, type Ref,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type Ref,
 } from 'react';
 import type { ConnectorExpressionEvaluator } from '../geometry/ConnectorPreview';
 import { Splitter } from '../app/Splitter';
 import {
-  kConnectorTypes, kOrientationLabels, LinkPanelModel, type LinkPanelHandle, type PreviewChangedCallback, type SizeField,
+  kConnectorTypes,
+  kOrientationLabels,
+  LinkPanelModel,
+  type LinkPanelHandle,
+  type PreviewChangedCallback,
+  type SizeField,
 } from './LinkModel';
 import { useObservable } from './Observable';
 import './ItemViews.css';
@@ -30,8 +41,16 @@ export interface LinkPanelProps {
  * Editable QComboBox (NoInsert): a line edit with a drop-down list of the
  * executed get_val variables. Every text change is currentTextChanged.
  */
-function SizeComboBox({ value, items, disabled, onTextChanged }: {
-  value: string; items: readonly string[]; disabled: boolean; onTextChanged: (text: string) => void;
+function SizeComboBox({
+  value,
+  items,
+  disabled,
+  onTextChanged,
+}: {
+  value: string;
+  items: readonly string[];
+  disabled: boolean;
+  onTextChanged: (text: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [popupRect, setPopupRect] = useState({ left: 0, top: 0, width: 0 });
@@ -82,14 +101,28 @@ function SizeComboBox({ value, items, disabled, onTextChanged }: {
         onChange={(e) => onTextChanged(e.target.value)}
         onKeyDown={onKeyDown}
       />
-      <button type="button" className="combo-arrow" disabled={disabled} tabIndex={-1}
-        onMouseDown={(e) => e.preventDefault()} onClick={() => (open ? setOpen(false) : openPopup())} />
+      <button
+        type="button"
+        className="combo-arrow"
+        disabled={disabled}
+        tabIndex={-1}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => (open ? setOpen(false) : openPopup())}
+      />
       {open && !disabled && (
         <ul className="combo-popup" style={popupRect}>
           {items.map((item) => (
-            <li key={item} className={item === value ? 'current' : undefined}
+            <li
+              key={item}
+              className={item === value ? 'current' : undefined}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { setOpen(false); onTextChanged(item); }}>{item}</li>
+              onClick={() => {
+                setOpen(false);
+                onTextChanged(item);
+              }}
+            >
+              {item}
+            </li>
           ))}
         </ul>
       )}
@@ -144,23 +177,39 @@ export function LinkPanel({ expressionEvaluator, onPreviewChanged, ref }: LinkPa
 
   const disabled = !model.formEnabled;
   const sizeCombo = (field: SizeField) => (
-    <SizeComboBox value={model.sizeTexts[field]} items={model.parameterNames} disabled={disabled}
-      onTextChanged={(text) => model.sizeTextChanged(field, text)} />
+    <SizeComboBox
+      value={model.sizeTexts[field]}
+      items={model.parameterNames}
+      disabled={disabled}
+      onTextChanged={(text) => model.sizeTextChanged(field, text)}
+    />
   );
 
   return (
     <div className="link-panel">
       <div className="link-buttons">
-        <button type="button" className="push-button" onClick={() => model.addConnector()}>Add connector</button>
-        <button type="button" className="push-button" onClick={() => model.removeConnector()}>Remove</button>
+        <button type="button" className="push-button" onClick={() => model.addConnector()}>
+          Add connector
+        </button>
+        <button type="button" className="push-button" onClick={() => model.removeConnector()}>
+          Remove
+        </button>
       </div>
       <Splitter orientation="horizontal" initialSizes={[480, 520]} className="link-splitter">
-        <div ref={tableRef} className="table-view link-table" tabIndex={0} onMouseDown={onTableMouseDown} onKeyDown={onTableKeyDown}>
+        <div
+          ref={tableRef}
+          className="table-view link-table"
+          tabIndex={0}
+          onMouseDown={onTableMouseDown}
+          onKeyDown={onTableKeyDown}
+        >
           <table className="item-table">
             <thead>
               <tr className="item-header">
                 {kTableHeaders.map((header, column) => (
-                  <th key={header} className={column === 3 ? 'stretch' : 'fit'}>{header}</th>
+                  <th key={header} className={column === 3 ? 'stretch' : 'fit'}>
+                    {header}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -168,15 +217,25 @@ export function LinkPanel({ expressionEvaluator, onPreviewChanged, ref }: LinkPa
               {model.tableRows.map((row, index) => (
                 <tr key={row.id} data-row={index} className={index === model.currentRow ? 'selected' : undefined}>
                   {row.texts.map((text, column) => (
-                    <td key={column} data-column={column}
-                      className={index === model.currentRow && column === model.currentColumn ? 'current-cell' : undefined}>
+                    <td
+                      key={column}
+                      data-column={column}
+                      className={
+                        index === model.currentRow && column === model.currentColumn ? 'current-cell' : undefined
+                      }
+                    >
                       {text}
                     </td>
                   ))}
                   <td data-column={4} className="cell-widget">
-                    <button type="button" className="tool-button link-preview-button"
+                    <button
+                      type="button"
+                      className="tool-button link-preview-button"
                       onMouseDown={(e) => e.stopPropagation()}
-                      onClick={() => model.togglePreview(row.id)}>{row.buttonText}</button>
+                      onClick={() => model.togglePreview(row.id)}
+                    >
+                      {row.buttonText}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -186,18 +245,36 @@ export function LinkPanel({ expressionEvaluator, onPreviewChanged, ref }: LinkPa
         <div className="link-form-scroll">
           <fieldset className="link-form" disabled={disabled}>
             <label>Identifier</label>
-            <input ref={nameRef} className="line-edit" value={model.nameText} spellCheck={false}
-              onChange={(e) => model.nameEdited(e.target.value)} />
+            <input
+              ref={nameRef}
+              className="line-edit"
+              value={model.nameText}
+              spellCheck={false}
+              onChange={(e) => model.nameEdited(e.target.value)}
+            />
             <label>Point</label>
-            <input className="line-edit" value={model.pointText} spellCheck={false}
+            <input
+              className="line-edit"
+              value={model.pointText}
+              spellCheck={false}
               onChange={(e) => model.pointEdited(e.target.value)}
               onBlur={() => model.pointEditingFinished(false)}
-              onKeyDown={(e) => { if (e.key === 'Enter') model.pointEditingFinished(true); }} />
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') model.pointEditingFinished(true);
+              }}
+            />
 
             <label>Type</label>
-            <select className="combo-box span-3" value={model.typeIndex}
-              onChange={(e) => model.typeChanged(Number(e.target.value))}>
-              {kConnectorTypes.map((type, index) => <option key={type} value={index}>{type}</option>)}
+            <select
+              className="combo-box span-3"
+              value={model.typeIndex}
+              onChange={(e) => model.typeChanged(Number(e.target.value))}
+            >
+              {kConnectorTypes.map((type, index) => (
+                <option key={type} value={index}>
+                  {type}
+                </option>
+              ))}
             </select>
 
             {model.circularFields ? (
@@ -217,21 +294,34 @@ export function LinkPanel({ expressionEvaluator, onPreviewChanged, ref }: LinkPa
             <label>Orientation</label>
             <div className="span-3 link-orientation">
               {kOrientationLabels.map((label, id) => (
-                <button key={label} type="button"
+                <button
+                  key={label}
+                  type="button"
                   className={`push-button orientation-button${model.orientationId === id ? ' checked' : ''}`}
                   aria-pressed={model.orientationId === id}
-                  onClick={() => model.orientationClicked(id)}>{label}</button>
+                  onClick={() => model.orientationClicked(id)}
+                >
+                  {label}
+                </button>
               ))}
             </div>
 
             {[0, 1, 2].map((i) => (
               <div key={i} className="link-form-row">
                 <label>{kAxisLabels[i]}</label>
-                <input className="line-edit" value={model.positionTexts[i]} spellCheck={false}
-                  onChange={(e) => model.positionEdited(i, e.target.value)} />
+                <input
+                  className="line-edit"
+                  value={model.positionTexts[i]}
+                  spellCheck={false}
+                  onChange={(e) => model.positionEdited(i, e.target.value)}
+                />
                 <label>{kAngleLabels[i]}</label>
-                <input className="line-edit" value={model.angleTexts[i]} spellCheck={false}
-                  onChange={(e) => model.angleEdited(i, e.target.value)} />
+                <input
+                  className="line-edit"
+                  value={model.angleTexts[i]}
+                  spellCheck={false}
+                  onChange={(e) => model.angleEdited(i, e.target.value)}
+                />
               </div>
             ))}
 

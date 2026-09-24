@@ -51,13 +51,20 @@ function typeCompatibilityScore(value: RuntimeValue, formalType: string): number
     return elem === '' ? 8 : -10;
   }
 
-  if (isBool(value))
-    return containsWord(t, 'bool') || containsWord(t, 'Adesk::Boolean') ? 16 : 1;
+  if (isBool(value)) return containsWord(t, 'bool') || containsWord(t, 'Adesk::Boolean') ? 16 : 1;
 
   if (isInt(value)) {
-    if (containsWord(t, 'int') || containsWord(t, 'short') || containsWord(t, 'long')
-      || containsWord(t, 'enum') || containsWord(t, 'Type') || containsWord(t, 'Mode')
-      || containsWord(t, 'mode') || containsWord(t, 'line_type')) return 14;
+    if (
+      containsWord(t, 'int') ||
+      containsWord(t, 'short') ||
+      containsWord(t, 'long') ||
+      containsWord(t, 'enum') ||
+      containsWord(t, 'Type') ||
+      containsWord(t, 'Mode') ||
+      containsWord(t, 'mode') ||
+      containsWord(t, 'line_type')
+    )
+      return 14;
     if (containsWord(t, 'double') || containsWord(t, 'float') || containsWord(t, 'ads_real')) return 7;
     return 0;
   }
@@ -69,8 +76,14 @@ function typeCompatibilityScore(value: RuntimeValue, formalType: string): number
   }
 
   if (isString(value)) {
-    if (containsWord(t, 'CHAR') || containsWord(t, 'char') || containsWord(t, 'WCHAR')
-      || containsWord(t, 'CString') || containsWord(t, 'string')) return 16;
+    if (
+      containsWord(t, 'CHAR') ||
+      containsWord(t, 'char') ||
+      containsWord(t, 'WCHAR') ||
+      containsWord(t, 'CString') ||
+      containsWord(t, 'string')
+    )
+      return 16;
     return 0;
   }
 

@@ -17,7 +17,13 @@
 // splitter, bottom dock area, status bar).
 
 import {
-  createRef, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode,
+  createRef,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from 'react';
 import { CodeEditor, type CodeEditorHandle } from '../editor/CodeEditor';
 import type { ConnectorPreview } from '../geometry/ConnectorPreview';
@@ -55,10 +61,16 @@ const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&
 /** QTimer with setSingleShot(true): start() (re)starts the interval. */
 class SingleShotTimer {
   #id: ReturnType<typeof setTimeout> | undefined;
-  constructor(private readonly interval: number, private readonly timeout: () => void) {}
+  constructor(
+    private readonly interval: number,
+    private readonly timeout: () => void,
+  ) {}
   start(): void {
     this.stop();
-    this.#id = setTimeout(() => { this.#id = undefined; this.timeout(); }, this.interval);
+    this.#id = setTimeout(() => {
+      this.#id = undefined;
+      this.timeout();
+    }, this.interval);
   }
   stop(): void {
     if (this.#id !== undefined) clearTimeout(this.#id);
@@ -76,12 +88,24 @@ export class MainWindow extends Observable {
   readonly parametersRef = createRef<ParameterPanelHandle>();
   readonly apiTraceRef = createRef<ApiTracePanelHandle>();
   readonly linksRef = createRef<LinkPanelHandle>();
-  get m_editor(): CodeEditorHandle { return this.editorRef.current!; }
-  get m_viewport(): Viewport3DHandle { return this.viewportRef.current!; }
-  get m_variables(): VariablePanelHandle { return this.variablesRef.current!; }
-  get m_parameters(): ParameterPanelHandle { return this.parametersRef.current!; }
-  get m_apiTrace(): ApiTracePanelHandle { return this.apiTraceRef.current!; }
-  get m_links(): LinkPanelHandle { return this.linksRef.current!; }
+  get m_editor(): CodeEditorHandle {
+    return this.editorRef.current!;
+  }
+  get m_viewport(): Viewport3DHandle {
+    return this.viewportRef.current!;
+  }
+  get m_variables(): VariablePanelHandle {
+    return this.variablesRef.current!;
+  }
+  get m_parameters(): ParameterPanelHandle {
+    return this.parametersRef.current!;
+  }
+  get m_apiTrace(): ApiTracePanelHandle {
+    return this.apiTraceRef.current!;
+  }
+  get m_links(): LinkPanelHandle {
+    return this.linksRef.current!;
+  }
 
   readonly m_previewTimer = new SingleShotTimer(220, () => this.runPreview());
   readonly m_runtime = new GeometryRuntime();
@@ -104,7 +128,9 @@ export class MainWindow extends Observable {
     this.createActions();
   }
 
-  statusBar(): StatusBarModel { return this.#statusBar; }
+  statusBar(): StatusBarModel {
+    return this.#statusBar;
+  }
 
   /**
    * The rest of MainWindow::MainWindow(), run once the widgets exist. The
@@ -135,12 +161,18 @@ export class MainWindow extends Observable {
     this.schedulePreview();
   };
 
-  readonly onParametersChanged = (): void => { this.runPreview(); };
+  readonly onParametersChanged = (): void => {
+    this.runPreview();
+  };
 
   readonly linkExpressionEvaluator = (expression: string): number =>
     this.m_runtime.evaluateNumericExpression(expression);
 
-  readonly onLinkPreviewChanged = (previews: readonly ConnectorPreview[], selectedId: number, tested: boolean): void => {
+  readonly onLinkPreviewChanged = (
+    previews: readonly ConnectorPreview[],
+    selectedId: number,
+    tested: boolean,
+  ): void => {
     if (tested) this.m_apiTrace.clearApiFocus();
     this.m_viewport.setConnectorPreviews(previews, selectedId);
     if (tested) this.m_viewport.fitScene();
@@ -224,7 +256,8 @@ export class MainWindow extends Observable {
       const name = variable.name;
       if (!names.has(name)) continue;
       if (variable.lastChangedLine > 0) lines.add(variable.lastChangedLine);
-      primary = name; primaryLine = variable.lastChangedLine;
+      primary = name;
+      primaryLine = variable.lastChangedLine;
     }
     if (primary !== '') this.m_variables.selectVariable(primary);
     if (primaryLine > 0) this.navigateToSource(primaryLine, lines);
@@ -236,7 +269,9 @@ export class MainWindow extends Observable {
     this.#raisedDock = 'ParametersDock'; // parametersDock->raise();
   }
 
-  raisedDock(): DockName { return this.#raisedDock; }
+  raisedDock(): DockName {
+    return this.#raisedDock;
+  }
 
   /** QDockWidget::raise() */
   raiseDock(name: DockName): void {
@@ -292,18 +327,41 @@ export class MainWindow extends Observable {
       {
         title: '&Preview',
         items: [
-          runAction, clearFocusAction, 'separator',
-          showGeometryAction, wireframeAction, fitSceneAction, 'separator',
-          showPointsAction, showVectorsAction, showLabelsAction, fitAction, 'separator',
-          hideSelectedAction, showSelectedAction, hideAllDebugAction, showAllDebugAction,
+          runAction,
+          clearFocusAction,
+          'separator',
+          showGeometryAction,
+          wireframeAction,
+          fitSceneAction,
+          'separator',
+          showPointsAction,
+          showVectorsAction,
+          showLabelsAction,
+          fitAction,
+          'separator',
+          hideSelectedAction,
+          showSelectedAction,
+          hideAllDebugAction,
+          showAllDebugAction,
         ],
       },
     ];
     this.toolbarItems = [
-      runAction, 'separator',
-      showGeometryAction, wireframeAction, fitSceneAction, 'separator',
-      showPointsAction, showVectorsAction, showLabelsAction, fitAction, 'separator',
-      hideSelectedAction, showSelectedAction, hideAllDebugAction, showAllDebugAction,
+      runAction,
+      'separator',
+      showGeometryAction,
+      wireframeAction,
+      fitSceneAction,
+      'separator',
+      showPointsAction,
+      showVectorsAction,
+      showLabelsAction,
+      fitAction,
+      'separator',
+      hideSelectedAction,
+      showSelectedAction,
+      hideAllDebugAction,
+      showAllDebugAction,
     ];
     this.shortcutActions = [exitAction, runAction, fitAction, hideSelectedAction, showSelectedAction];
 
@@ -319,7 +377,10 @@ export class MainWindow extends Observable {
       let names = this.m_apiTrace.selectedDebugItems();
       if (names.size === 0) names = this.m_viewport.selectedDebugItems();
       if (names.size === 0) {
-        this.statusBar().showMessage('Select a point/vector parameter in API Trace, Variables, or the viewport first', 2500);
+        this.statusBar().showMessage(
+          'Select a point/vector parameter in API Trace, Variables, or the viewport first',
+          2500,
+        );
         return;
       }
       for (const name of names) this.m_viewport.setDebugItemVisible(name, false);
@@ -393,7 +454,8 @@ export class MainWindow extends Observable {
     this.applyApiFocus(this.m_apiTrace.selectedApiCall());
 
     const selected = this.m_variables.selectedVariable();
-    if (this.m_apiTrace.selectedApiCall() >= 0) this.m_viewport.setSelectedVariables(this.m_apiTrace.selectedDebugItems());
+    if (this.m_apiTrace.selectedApiCall() >= 0)
+      this.m_viewport.setSelectedVariables(this.m_apiTrace.selectedDebugItems());
     else if (selected !== '') this.m_viewport.setSelectedVariable(selected);
 
     if (result.diagnostics.length === 0) {
@@ -422,7 +484,10 @@ export class MainWindow extends Observable {
     for (let i = 0; i < calls.length; ++i) {
       let parent = calls[i].parentApiIndex;
       while (parent >= 0) {
-        if (selectedCalls.has(parent)) { focusedApiIndices.add(i); break; }
+        if (selectedCalls.has(parent)) {
+          focusedApiIndices.add(i);
+          break;
+        }
         if (parent >= calls.length) break;
         parent = calls[parent].parentApiIndex;
       }
@@ -433,7 +498,8 @@ export class MainWindow extends Observable {
     const snapshotDebugCount = resolveDebugPointSnapshots(call).length + resolveDebugVectorAnchors(call).length;
     this.statusBar().showMessage(
       `API #${apiIndex + 1} ${call.name} | ${snapshotDebugCount} point/vector input(s), ${focusedApiIndices.size} call(s) in focus`,
-      3000);
+      3000,
+    );
   }
 
   insertPointFromViewport(point: Vec3): void {
@@ -519,8 +585,10 @@ export function App() {
   useLayoutEffect(() => {
     const area = mainAreaRef.current;
     if (!area) return;
-    const clamp = () => setDockHeight((height) =>
-      Math.max(Math.min(height, area.clientHeight - kMinimumCentralHeight), kMinimumDockHeight));
+    const clamp = () =>
+      setDockHeight((height) =>
+        Math.max(Math.min(height, area.clientHeight - kMinimumCentralHeight), kMinimumDockHeight),
+      );
     const observer = new ResizeObserver(clamp);
     observer.observe(area);
     return () => observer.disconnect();
@@ -548,7 +616,9 @@ export function App() {
 
   const raised = mainWindow.raisedDock();
   const panels: Record<DockName, ReactNode> = {
-    VariablesDock: <VariablePanel ref={mainWindow.variablesRef} onSelectionChanged={mainWindow.onVariableSelectionChanged} />,
+    VariablesDock: (
+      <VariablePanel ref={mainWindow.variablesRef} onSelectionChanged={mainWindow.onVariableSelectionChanged} />
+    ),
     ParametersDock: <ParameterPanel ref={mainWindow.parametersRef} onChanged={mainWindow.onParametersChanged} />,
     ApiTraceDock: (
       <ApiTracePanel
@@ -595,7 +665,9 @@ export function App() {
           <div className="dock-title">{kDocks.find((dock) => dock.name === raised)?.title}</div>
           <div className="dock-stack">
             {kDocks.map((dock) => (
-              <div key={dock.name} className="dock-widget" hidden={dock.name !== raised}>{panels[dock.name]}</div>
+              <div key={dock.name} className="dock-widget" hidden={dock.name !== raised}>
+                {panels[dock.name]}
+              </div>
             ))}
           </div>
           <div className="dock-tabs" role="tablist">

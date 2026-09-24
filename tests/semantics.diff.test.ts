@@ -1,7 +1,11 @@
 // Differential test: API metadata, semantics and debug anchors, run on the
 // C++ runtime's RuntimeResult so this test does not depend on the TS runtime.
 import { describe, it } from 'vitest';
-import { allNativeApiSignatures, apiParameterMetadataForCall, apiSignatureMetadataForCall } from '../src/runtime/ApiMetadata';
+import {
+  allNativeApiSignatures,
+  apiParameterMetadataForCall,
+  apiSignatureMetadataForCall,
+} from '../src/runtime/ApiMetadata';
 import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from '../src/runtime/ApiSemantics';
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '../src/runtime/DebugAnchorResolver';
 import type { RuntimeApiCall } from '../src/runtime/RuntimeTypes';
@@ -20,8 +24,14 @@ function callInfo(call: RuntimeApiCall) {
     signature: sig ? allNativeApiSignatures().indexOf(sig) : -1,
     parameterNames: apiParameterMetadataForCall(call).map((p) => p.name),
     semantics: semantics.map((s) => ({
-      role: s.role, anchorParameter: s.anchorParameter, anchorBinding: s.anchorBinding, arrayMeaning: s.arrayMeaning,
-      countParameter: s.countParameter, countOffset: s.countOffset, fixedCount: s.fixedCount, output: s.output,
+      role: s.role,
+      anchorParameter: s.anchorParameter,
+      anchorBinding: s.anchorBinding,
+      arrayMeaning: s.arrayMeaning,
+      countParameter: s.countParameter,
+      countOffset: s.countOffset,
+      fixedCount: s.fixedCount,
+      output: s.output,
       elementRoles: [...s.elementRoles],
     })),
     parameters: call.arguments.map((arg, i) => {
@@ -34,7 +44,11 @@ function callInfo(call: RuntimeApiCall) {
     }),
     points: resolveDebugPointSnapshots(call).map((p) => ({ name: p.name, point: xyz(p.point), role: p.role })),
     vectors: resolveDebugVectorAnchors(call).map((v) => ({
-      sourceName: v.sourceName, parameterName: v.parameterName, anchor: xyz(v.anchor), direction: xyz(v.direction), role: v.role,
+      sourceName: v.sourceName,
+      parameterName: v.parameterName,
+      anchor: xyz(v.anchor),
+      direction: xyz(v.direction),
+      role: v.role,
     })),
   };
 }
@@ -43,9 +57,13 @@ for (const fixture of listFixtures()) {
   describe(fixture.name, () => {
     it('matches C++ API metadata, semantics and debug anchors', () => {
       const reference = referenceOutput(fixture);
-      reference.runs.forEach((run: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      reference.runs.forEach((run: any) => {
         const result = decodeResult(run.result);
-        expectSameJson({ line: run.line, callInfo: run.callInfo }, { line: run.line, callInfo: result.apiCalls.map(callInfo) });
+        expectSameJson(
+          { line: run.line, callInfo: run.callInfo },
+          { line: run.line, callInfo: result.apiCalls.map(callInfo) },
+        );
       });
     });
   });

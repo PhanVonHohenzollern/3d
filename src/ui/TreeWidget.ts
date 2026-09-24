@@ -21,9 +21,13 @@ const kInvisibleRoot = Symbol('invisibleRootItem');
 
 export class Signal<Args extends unknown[]> {
   readonly #slots: ((...args: Args) => void)[] = [];
-  connect(slot: (...args: Args) => void): void { this.#slots.push(slot); }
+  connect(slot: (...args: Args) => void): void {
+    this.#slots.push(slot);
+  }
   /** Called by the owner, which checks QObject::signalsBlocked(). */
-  emit(...args: Args): void { for (const slot of [...this.#slots]) slot(...args); }
+  emit(...args: Args): void {
+    for (const slot of [...this.#slots]) slot(...args);
+  }
 }
 
 export class TreeWidgetItem {
@@ -66,15 +70,29 @@ export class TreeWidgetItem {
     return parent;
   }
   /** @internal parent including the invisible root. */
-  _rawParent(): TreeWidgetItem | null { return this.#parent; }
-  treeWidget(): TreeWidget | null { return this.#tree; }
+  _rawParent(): TreeWidgetItem | null {
+    return this.#parent;
+  }
+  treeWidget(): TreeWidget | null {
+    return this.#tree;
+  }
 
-  childCount(): number { return this.#children.length; }
-  child(index: number): TreeWidgetItem { return this.#children[index]; }
-  children(): readonly TreeWidgetItem[] { return this.#children; }
-  indexOfChild(child: TreeWidgetItem): number { return this.#children.indexOf(child); }
+  childCount(): number {
+    return this.#children.length;
+  }
+  child(index: number): TreeWidgetItem {
+    return this.#children[index];
+  }
+  children(): readonly TreeWidgetItem[] {
+    return this.#children;
+  }
+  indexOfChild(child: TreeWidgetItem): number {
+    return this.#children.indexOf(child);
+  }
 
-  text(column: number): string { return this.#texts[column] ?? ''; }
+  text(column: number): string {
+    return this.#texts[column] ?? '';
+  }
   setText(column: number, text: string): void {
     if (this.#texts[column] === text) return;
     this.#texts[column] = text;
@@ -82,7 +100,9 @@ export class TreeWidgetItem {
   }
 
   /** QTreeWidgetItem::data(column, role); undefined is an invalid QVariant. */
-  data(column: number, role: number): unknown { return this.#data.get(`${column}:${role}`); }
+  data(column: number, role: number): unknown {
+    return this.#data.get(`${column}:${role}`);
+  }
   setData(column: number, role: number, value: unknown): void {
     this.#data.set(`${column}:${role}`, value);
     this.#tree?._itemsChanged();
@@ -101,24 +121,34 @@ export class TreeWidgetItem {
     return 0;
   }
   /** data(column, role).isValid() */
-  hasData(column: number, role: number): boolean { return this.#data.has(`${column}:${role}`); }
+  hasData(column: number, role: number): boolean {
+    return this.#data.has(`${column}:${role}`);
+  }
 
-  isBold(column: number): boolean { return this.#bold.has(column); }
+  isBold(column: number): boolean {
+    return this.#bold.has(column);
+  }
   /** QFont font = item->font(column); font.setBold(bold); item->setFont(column, font); */
   setBold(column: number, bold: boolean): void {
     if (bold === this.#bold.has(column)) return;
-    if (bold) this.#bold.add(column); else this.#bold.delete(column);
+    if (bold) this.#bold.add(column);
+    else this.#bold.delete(column);
     this.#tree?._itemsChanged();
   }
-  foreground(column: number): string | undefined { return this.#foreground.get(column); }
+  foreground(column: number): string | undefined {
+    return this.#foreground.get(column);
+  }
   /** setForeground(column, QBrush(color)); undefined is the default QBrush(). */
   setForeground(column: number, color: string | undefined): void {
     if (this.#foreground.get(column) === color) return;
-    if (color === undefined) this.#foreground.delete(column); else this.#foreground.set(column, color);
+    if (color === undefined) this.#foreground.delete(column);
+    else this.#foreground.set(column, color);
     this.#tree?._itemsChanged();
   }
 
-  childIndicatorPolicy(): ChildIndicatorPolicy { return this.#policy; }
+  childIndicatorPolicy(): ChildIndicatorPolicy {
+    return this.#policy;
+  }
   setChildIndicatorPolicy(policy: ChildIndicatorPolicy): void {
     this.#policy = policy;
     this.#tree?._itemsChanged();
@@ -130,11 +160,21 @@ export class TreeWidgetItem {
     return this.#children.length > 0;
   }
 
-  isExpanded(): boolean { return this._expanded; }
-  setExpanded(expanded: boolean): void { this.#tree?._setItemExpanded(this, expanded); }
-  isSelected(): boolean { return this._selected; }
-  setSelected(selected: boolean): void { this.#tree?._setItemSelected(this, selected); }
-  isHidden(): boolean { return this._hidden; }
+  isExpanded(): boolean {
+    return this._expanded;
+  }
+  setExpanded(expanded: boolean): void {
+    this.#tree?._setItemExpanded(this, expanded);
+  }
+  isSelected(): boolean {
+    return this._selected;
+  }
+  setSelected(selected: boolean): void {
+    this.#tree?._setItemSelected(this, selected);
+  }
+  isHidden(): boolean {
+    return this._hidden;
+  }
   setHidden(hidden: boolean): void {
     if (this._hidden === hidden) return;
     this._hidden = hidden;
@@ -147,7 +187,9 @@ export class TreeWidgetItem {
     for (const child of this.#children) child._detach();
   }
   /** @internal removes every child (QTreeWidget::clear on the invisible root). */
-  _takeChildren(): TreeWidgetItem[] { return this.#children.splice(0); }
+  _takeChildren(): TreeWidgetItem[] {
+    return this.#children.splice(0);
+  }
 }
 
 export interface TreeMouseEvent {
@@ -208,7 +250,9 @@ export class TreeWidget extends Observable {
     this.#signalsBlocked = block;
     return previous;
   }
-  signalsBlocked(): boolean { return this.#signalsBlocked; }
+  signalsBlocked(): boolean {
+    return this.#signalsBlocked;
+  }
 
   /** Emit `signal` unless signals are blocked. */
   protected emitSignal<Args extends unknown[]>(signal: Signal<Args>, ...args: Args): void {
@@ -221,29 +265,46 @@ export class TreeWidget extends Observable {
     for (let c = 0; c < count; ++c) this.#headerLabels[c] ??= String(c + 1);
     this.changed();
   }
-  columnCount(): number { return this.#headerLabels.length; }
+  columnCount(): number {
+    return this.#headerLabels.length;
+  }
   setHeaderLabels(labels: readonly string[]): void {
     this.#headerLabels = [...labels];
     this.changed();
   }
-  headerLabels(): readonly string[] { return this.#headerLabels; }
+  headerLabels(): readonly string[] {
+    return this.#headerLabels;
+  }
   setColumnWidth(column: number, width: number): void {
     this.#columnWidths[column] = Math.max(0, Math.round(width));
     this.changed();
   }
-  columnWidth(column: number): number { return this.#columnWidths[column] ?? 100; }
+  columnWidth(column: number): number {
+    return this.#columnWidths[column] ?? 100;
+  }
   /** header()->setSectionResizeMode(column, QHeaderView::ResizeToContents) */
   setColumnResizeToContents(column: number, resize: boolean): void {
-    if (resize) this.#resizeToContents.add(column); else this.#resizeToContents.delete(column);
+    if (resize) this.#resizeToContents.add(column);
+    else this.#resizeToContents.delete(column);
     this.changed();
   }
-  isColumnResizeToContents(column: number): boolean { return this.#resizeToContents.has(column); }
-  setExpandsOnDoubleClick(enable: boolean): void { this.#expandsOnDoubleClick = enable; }
+  isColumnResizeToContents(column: number): boolean {
+    return this.#resizeToContents.has(column);
+  }
+  setExpandsOnDoubleClick(enable: boolean): void {
+    this.#expandsOnDoubleClick = enable;
+  }
 
   // --- items ---------------------------------------------------------------
-  invisibleRootItem(): TreeWidgetItem { return this.#root; }
-  topLevelItemCount(): number { return this.#root.childCount(); }
-  topLevelItem(index: number): TreeWidgetItem { return this.#root.child(index); }
+  invisibleRootItem(): TreeWidgetItem {
+    return this.#root;
+  }
+  topLevelItemCount(): number {
+    return this.#root.childCount();
+  }
+  topLevelItem(index: number): TreeWidgetItem {
+    return this.#root.child(index);
+  }
 
   /** QTreeWidget::clear() */
   clear(): void {
@@ -283,7 +344,9 @@ export class TreeWidget extends Observable {
   }
 
   /** @internal */
-  _itemsChanged(): void { this.changed(); }
+  _itemsChanged(): void {
+    this.changed();
+  }
 
   // --- root index ------------------------------------------------------------
   /** QTreeView::setRootIndex(indexFromItem(item)); null is the invisible root. */
@@ -291,7 +354,9 @@ export class TreeWidget extends Observable {
     this.#rootItem = item;
     this.changed();
   }
-  rootItem(): TreeWidgetItem | null { return this.#rootItem; }
+  rootItem(): TreeWidgetItem | null {
+    return this.#rootItem;
+  }
 
   /** Rows the view shows: below the root index, not hidden, inside expanded branches. */
   visibleRows(): VisibleTreeRow[] {
@@ -475,11 +540,14 @@ export class TreeWidget extends Observable {
     if (this.#noSelectionOnMousePress) {
       this.#noSelectionOnMousePress = false;
       // ClearAndSelect on release after pressing an already selected item or the empty area.
-      const clearAndSelect = ((item && item === this.#pressedItem && item._selected) || !item)
-        && !modifiers.shift && !modifiers.control;
+      const clearAndSelect =
+        ((item && item === this.#pressedItem && item._selected) || !item) && !modifiers.shift && !modifiers.control;
       if (clearAndSelect) {
         if (item) {
-          this.#trackSelection(() => { this.#clearSelectionFlags(); this.#setFlag(item, true); });
+          this.#trackSelection(() => {
+            this.#clearSelectionFlags();
+            this.#setFlag(item, true);
+          });
         } else {
           this.clearSelection();
         }
@@ -508,22 +576,47 @@ export class TreeWidget extends Observable {
     if (!rows.length) return false;
     const old = this.currentItem();
     const index = old ? rows.indexOf(old) : -1;
-    let next: TreeWidgetItem | null = null;
+    let next: TreeWidgetItem | null;
     switch (event.key) {
-      case 'ArrowUp': next = index < 0 ? rows[0] : rows[Math.max(index - 1, 0)]; break;
-      case 'ArrowDown': next = index < 0 ? rows[0] : rows[Math.min(index + 1, rows.length - 1)]; break;
-      case 'PageUp': next = rows[Math.max(index - kPageStep, 0)]; break;
-      case 'PageDown': next = rows[Math.min(Math.max(index, 0) + kPageStep, rows.length - 1)]; break;
-      case 'Home': next = rows[0]; break;
-      case 'End': next = rows[rows.length - 1]; break;
+      case 'ArrowUp':
+        next = index < 0 ? rows[0] : rows[Math.max(index - 1, 0)];
+        break;
+      case 'ArrowDown':
+        next = index < 0 ? rows[0] : rows[Math.min(index + 1, rows.length - 1)];
+        break;
+      case 'PageUp':
+        next = rows[Math.max(index - kPageStep, 0)];
+        break;
+      case 'PageDown':
+        next = rows[Math.min(Math.max(index, 0) + kPageStep, rows.length - 1)];
+        break;
+      case 'Home':
+        next = rows[0];
+        break;
+      case 'End':
+        next = rows[rows.length - 1];
+        break;
       case 'ArrowRight':
-        if (!old || index < 0) { next = rows[0]; break; }
-        if (old.hasChildIndicator() && !old.isExpanded()) { old.setExpanded(true); return true; }
-        next = old.isExpanded() && index + 1 < rows.length && rows[index + 1]._rawParent() === old ? rows[index + 1] : old;
+        if (!old || index < 0) {
+          next = rows[0];
+          break;
+        }
+        if (old.hasChildIndicator() && !old.isExpanded()) {
+          old.setExpanded(true);
+          return true;
+        }
+        next =
+          old.isExpanded() && index + 1 < rows.length && rows[index + 1]._rawParent() === old ? rows[index + 1] : old;
         break;
       case 'ArrowLeft': {
-        if (!old || index < 0) { next = rows[0]; break; }
-        if (old.isExpanded() && old.hasChildIndicator()) { old.setExpanded(false); return true; }
+        if (!old || index < 0) {
+          next = rows[0];
+          break;
+        }
+        if (old.isExpanded() && old.hasChildIndicator()) {
+          old.setExpanded(false);
+          return true;
+        }
         const parent = old.parent();
         next = parent && parent !== this.#rootItem && rows.includes(parent) ? parent : old;
         break;
@@ -540,7 +633,8 @@ export class TreeWidget extends Observable {
     if (event.modifiers.control && !event.modifiers.shift) {
       this.setCurrentNoUpdate(next);
     } else if (event.modifiers.shift) {
-      if (!this.#currentSelectionStart || !this.isItemVisible(this.#currentSelectionStart)) this.#currentSelectionStart = old ?? next;
+      if (!this.#currentSelectionStart || !this.isItemVisible(this.#currentSelectionStart))
+        this.#currentSelectionStart = old ?? next;
       this.#current = next;
       this.selectVisualRange(this.#currentSelectionStart, next, 'ClearAndSelect');
     } else {

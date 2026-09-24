@@ -60,6 +60,7 @@ Pipeline, same as `MainWindow::runPreview()` in the C++: `CodeEditor` text chang
 ## Known C++ quirks reproduced on purpose
 
 Found while porting. They are behavior of the original app, not port bugs:
+
 - A `while` loop runs the statement after the loop first, then its body once. A top-level `while` block is parsed as a call to a function named `while`.
 - A helper whose body is a single call to another helper records that inner call twice. The second record has `parentApiIndex` -1.
 - A statement containing `.normalize(`, `.rotateBy(`, `.mirror(` or `.set(` anywhere, even inside call arguments, is treated as a mutating call on its left-hand side.

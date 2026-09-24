@@ -10,7 +10,13 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "reference": "sh reference/build.sh",
-    "generate": "node scripts/convert-generated.mjs"
+    "generate": "node scripts/convert-generated.mjs",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:ci": "vitest run tests/ui tests/renderer",
+    "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test:ci"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",
@@ -24,12 +30,22 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "typescript": "^7.0.2",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "^8.70.1",
     "vite": "^8.3.0",
     "vitest": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

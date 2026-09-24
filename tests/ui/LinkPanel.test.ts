@@ -118,14 +118,21 @@ describe('LinkPanel', () => {
     const { model } = createPanel();
     model.updateRuntimeResult({
       ...emptyRuntimeResult(),
-      parameterRequests: [getVal('D', 'diameter'), getVal('D2', ''), getVal('N', 'name', 'string'), getVal('D', 'diameter')],
+      parameterRequests: [
+        getVal('D', 'diameter'),
+        getVal('D2', ''),
+        getVal('N', 'name', 'string'),
+        getVal('D', 'diameter'),
+      ],
     });
     expect(model.parameterNames).toEqual(['diameter', 'D2']);
 
     model.addConnector();
     model.sizeTextChanged('diameter', '8');
     model.testSelection();
-    model.setExpressionEvaluator(() => { throw new Error('Unknown value: diameter'); });
+    model.setExpressionEvaluator(() => {
+      throw new Error('Unknown value: diameter');
+    });
     model.updateRuntimeResult(emptyRuntimeResult());
     expect(model.tableRows[0].buttonText).toBe('Show');
     expect(model.statusText).toBe('Diameter: Unknown value: diameter'); // prefixed by buildConnectorPreview

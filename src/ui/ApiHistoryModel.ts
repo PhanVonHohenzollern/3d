@@ -5,13 +5,26 @@
 import { apiParameterMetadataForCall } from '../runtime/ApiMetadata';
 import { runtimeSourceHistory } from '../runtime/GeometryRuntime';
 import type { RuntimeArgumentTrace, RuntimeResult, RuntimeValueSource } from '../runtime/RuntimeTypes';
-import { isArray, isUnset, runtimeTypeName, runtimeValueToCompactString, type RuntimeValue } from '../runtime/RuntimeValue';
+import {
+  isArray,
+  isUnset,
+  runtimeTypeName,
+  runtimeValueToCompactString,
+  type RuntimeValue,
+} from '../runtime/RuntimeValue';
 import { Observable } from './Observable';
 import { directSource, displayExpression } from './TraceFormatting';
 import { TreeWidget, TreeWidgetItem, UserRole } from './TreeWidget';
 
 export const HistoryColumn = {
-  Parameter: 0, Variable: 1, Type: 2, Expression: 3, Before: 4, Value: 5, Line: 6, State: 7,
+  Parameter: 0,
+  Variable: 1,
+  Type: 2,
+  Expression: 3,
+  Before: 4,
+  Value: 5,
+  Line: 6,
+  State: 7,
 } as const;
 const ColumnCount = 8;
 const { Parameter, Variable, Type, Expression, Before, Value, Line, State } = HistoryColumn;
@@ -22,7 +35,12 @@ function valueText(value: RuntimeValue): string {
   return isUnset(value) ? '\u2014' : runtimeValueToCompactString(value);
 }
 
-function setCurrentSource(row: TreeWidgetItem, result: RuntimeResult, value: RuntimeValue, trace: RuntimeArgumentTrace): number {
+function setCurrentSource(
+  row: TreeWidgetItem,
+  result: RuntimeResult,
+  value: RuntimeValue,
+  trace: RuntimeArgumentTrace,
+): number {
   let expression = trace.expression;
   const direct = directSource(trace, value);
   // Computed inputs keep their actual expression (e.g. -vCr). When there is
@@ -36,7 +54,12 @@ function setCurrentSource(row: TreeWidgetItem, result: RuntimeResult, value: Run
       line = change.line;
       if (direct && !isArray(value)) {
         expression = change.expression;
-        if (change.operation === '+=' || change.operation === '-=' || change.operation === '*=' || change.operation === '/=')
+        if (
+          change.operation === '+=' ||
+          change.operation === '-=' ||
+          change.operation === '*=' ||
+          change.operation === '/='
+        )
           expression = `${change.name}${change.operation.slice(0, 1)}(${expression})`;
         if (change.name !== direct.name) expression = `${change.name} = ${expression}`;
       }
@@ -75,8 +98,13 @@ export function earlierChanges(result: RuntimeResult, sources: readonly RuntimeV
   return [...changes].sort((a, b) => b - a);
 }
 
-function addParameter(parent: TreeWidgetItem, result: RuntimeResult, name: string,
-  value: RuntimeValue, trace: RuntimeArgumentTrace): void {
+function addParameter(
+  parent: TreeWidgetItem,
+  result: RuntimeResult,
+  name: string,
+  value: RuntimeValue,
+  trace: RuntimeArgumentTrace,
+): void {
   const row = new TreeWidgetItem(parent);
   row.setText(Parameter, name);
   row.setText(Type, runtimeTypeName(value));
@@ -84,8 +112,7 @@ function addParameter(parent: TreeWidgetItem, result: RuntimeResult, name: strin
   row.setText(Value, valueText(value));
   row.setText(State, 'At API call');
   const variables: string[] = [];
-  for (const source of trace.sources)
-    if (!variables.includes(source.name)) variables.push(source.name);
+  for (const source of trace.sources) if (!variables.includes(source.name)) variables.push(source.name);
   row.setText(Variable, variables.join(', '));
 
   if (isArray(value)) {
@@ -99,8 +126,12 @@ function addParameter(parent: TreeWidgetItem, result: RuntimeResult, name: strin
         for (const source of trace.sources) {
           const sourceArray = source.value;
           if (isArray(sourceArray) && i < sourceArray.elements.length)
-            element.sources.push({ name: `${source.name}[${i}]`, value: sourceArray.elements[i],
-              variableId: source.variableId, historyEnd: source.historyEnd });
+            element.sources.push({
+              name: `${source.name}[${i}]`,
+              value: sourceArray.elements[i],
+              variableId: source.variableId,
+              historyEnd: source.historyEnd,
+            });
         }
       }
       addParameter(row, result, `${name}[${i}]`, value.elements[i], element);
@@ -149,7 +180,10 @@ export class ApiHistoryDialogModel extends Observable {
     super();
     this.#apiIndex = apiIndex;
     const call = result.apiCalls[apiIndex];
-    if (!call) throw new RangeError(`vector::_M_range_check: __n (which is ${apiIndex}) >= this->size() (which is ${result.apiCalls.length})`);
+    if (!call)
+      throw new RangeError(
+        `vector::_M_range_check: __n (which is ${apiIndex}) >= this->size() (which is ${result.apiCalls.length})`,
+      );
     this.windowTitle = `Earlier values - API #${apiIndex + 1} ${call.name} - line ${call.line}`;
     this.caption = call.display;
     const tree = this.tree;
@@ -166,11 +200,16 @@ export class ApiHistoryDialogModel extends Observable {
     for (let column = 0; column < ColumnCount; ++column) tree.setColumnWidth(column, widths[column]);
     const metadata = apiParameterMetadataForCall(call);
     for (let i = 0; i < call.arguments.length; ++i) {
-      const name = call.userFunctionCall && i < call.formalParameterNames.length
-        ? call.formalParameterNames[i] : i < metadata.length ? metadata[i].name : `arg${i}`;
-      const trace: RuntimeArgumentTrace = i < call.argumentTraces.length
-        ? { ...call.argumentTraces[i] } : { expression: '', sources: [], elements: [] };
-      if (trace.expression === '' && i < call.argumentExpressions.length) trace.expression = call.argumentExpressions[i];
+      const name =
+        call.userFunctionCall && i < call.formalParameterNames.length
+          ? call.formalParameterNames[i]
+          : i < metadata.length
+            ? metadata[i].name
+            : `arg${i}`;
+      const trace: RuntimeArgumentTrace =
+        i < call.argumentTraces.length ? { ...call.argumentTraces[i] } : { expression: '', sources: [], elements: [] };
+      if (trace.expression === '' && i < call.argumentExpressions.length)
+        trace.expression = call.argumentExpressions[i];
       addParameter(tree.invisibleRootItem(), result, name, call.arguments[i], trace);
     }
     for (let i = call.arguments.length; i < metadata.length; ++i) {
@@ -183,17 +222,25 @@ export class ApiHistoryDialogModel extends Observable {
     }
   }
 
-  apiIndex(): number { return this.#apiIndex; }
-  setSourceActivatedCallback(callback: ((line: number) => void) | null): void { this.#sourceActivatedCallback = callback; }
+  apiIndex(): number {
+    return this.#apiIndex;
+  }
+  setSourceActivatedCallback(callback: ((line: number) => void) | null): void {
+    this.#sourceActivatedCallback = callback;
+  }
 
   // --- window lifecycle (QDialog with WA_DeleteOnClose) ----------------------
-  isOpen(): boolean { return this.#open; }
+  isOpen(): boolean {
+    return this.#open;
+  }
   /** show(); raise(); activateWindow(); */
   showAndRaise(): void {
     ++this.#raiseSerial;
     this.changed();
   }
-  raiseSerial(): number { return this.#raiseSerial; }
+  raiseSerial(): number {
+    return this.#raiseSerial;
+  }
   /** QWidget::close(); the dialog deletes itself, so QPointer owners see null. */
   close(): void {
     if (!this.#open) return;
@@ -201,5 +248,7 @@ export class ApiHistoryDialogModel extends Observable {
     this.changed();
     for (const listener of [...this.#closedListeners]) listener();
   }
-  onClosed(listener: () => void): void { this.#closedListeners.push(listener); }
+  onClosed(listener: () => void): void {
+    this.#closedListeners.push(listener);
+  }
 }

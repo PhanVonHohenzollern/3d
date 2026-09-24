@@ -3,7 +3,13 @@
 // events are forwarded to the model's QTreeView/QAbstractItemView handlers.
 
 import {
-  useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { eventModifiers, useObservable } from './Observable';
 import type { TreeMouseEvent, TreeWidget, TreeWidgetItem } from './TreeWidget';
@@ -17,7 +23,7 @@ const itemKeys = new WeakMap<TreeWidgetItem, number>();
 let nextItemKey = 1;
 function itemKey(item: TreeWidgetItem): number {
   let key = itemKeys.get(item);
-  if (key === undefined) itemKeys.set(item, key = nextItemKey++);
+  if (key === undefined) itemKeys.set(item, (key = nextItemKey++));
   return key;
 }
 
@@ -157,8 +163,10 @@ export function TreeView({ tree, className }: TreeViewProps) {
                 return (
                   <div key={column} data-column={column} className="tree-cell" style={style}>
                     {column === 0 && item.hasChildIndicator() && (
-                      <span className={`tree-branch${item.isExpanded() ? ' open' : ''}`}
-                        style={{ left: row.depth * kIndentation, width: kIndentation }} />
+                      <span
+                        className={`tree-branch${item.isExpanded() ? ' open' : ''}`}
+                        style={{ left: row.depth * kIndentation, width: kIndentation }}
+                      />
                     )}
                     {item.text(column)}
                   </div>

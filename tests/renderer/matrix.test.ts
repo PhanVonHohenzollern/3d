@@ -11,7 +11,12 @@ function expectMatrixClose(actual: QMatrix4x4, expected: number[][], digits = 5)
       expect(actual.get(row, col), `(${row}, ${col})`).toBeCloseTo(expected[row][col], digits);
 }
 
-const identityRows = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
+const identityRows = [
+  [1, 0, 0, 0],
+  [0, 1, 0, 0],
+  [0, 0, 1, 0],
+  [0, 0, 0, 1],
+];
 
 describe('QMatrix4x4', () => {
   it('stores elements column-major like QMatrix4x4::constData()', () => {
@@ -23,10 +28,13 @@ describe('QMatrix4x4', () => {
   });
 
   it('perspective() matches the documented projection matrix', () => {
-    const fov = 45, aspect = 1.6, near = 0.018, far = 1000;
+    const fov = 45,
+      aspect = 1.6,
+      near = 0.018,
+      far = 1000;
     const m = new QMatrix4x4();
     m.perspective(fov, aspect, near, far);
-    const f = 1 / Math.tan((fov / 2) * Math.PI / 180);
+    const f = 1 / Math.tan(((fov / 2) * Math.PI) / 180);
     expectMatrixClose(m, [
       [f / aspect, 0, 0, 0],
       [0, f, 0, 0],
@@ -127,8 +135,7 @@ describe('QMatrix4x4', () => {
     view.lookAt(new QVector3D(3, 4, 5), new QVector3D(0, 0, 0), new QVector3D(0, 0, 1));
     const n = view.normalMatrix();
     for (let row = 0; row < 3; ++row)
-      for (let col = 0; col < 3; ++col)
-        expect(n[col * 3 + row]).toBeCloseTo(view.get(row, col), 5);
+      for (let col = 0; col < 3; ++col) expect(n[col * 3 + row]).toBeCloseTo(view.get(row, col), 5);
   });
 });
 

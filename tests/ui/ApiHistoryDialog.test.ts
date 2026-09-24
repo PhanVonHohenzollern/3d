@@ -14,8 +14,26 @@ describe('ApiHistoryDialog', () => {
     const tree = dialog.tree;
     expect(tree.topLevelItemCount()).toBe(4);
     const [center, normal, size, points] = [0, 1, 2, 3].map((i) => tree.topLevelItem(i));
-    expect(row(center)).toEqual(['center', 'p', 'FdPoint3d', 'FdPoint3d(a, 0, 0)', '', '(2, 0, 0)', '2', 'No earlier values']);
-    expect(row(normal)).toEqual(['normal', 'n', 'FdVector3d', 'FdVector3d(0, 0, 1)', '', '(0, 0, 1)', '3', 'No earlier values']);
+    expect(row(center)).toEqual([
+      'center',
+      'p',
+      'FdPoint3d',
+      'FdPoint3d(a, 0, 0)',
+      '',
+      '(2, 0, 0)',
+      '2',
+      'No earlier values',
+    ]);
+    expect(row(normal)).toEqual([
+      'normal',
+      'n',
+      'FdVector3d',
+      'FdVector3d(0, 0, 1)',
+      '',
+      '(0, 0, 1)',
+      '3',
+      'No earlier values',
+    ]);
     expect(row(size)).toEqual(['size', '', 'double', '', '', '3.5', '', 'No earlier values']);
     expect(center.isBold(HistoryColumn.Parameter)).toBe(true);
 
@@ -26,7 +44,16 @@ describe('ApiHistoryDialog', () => {
     const q = points.child(1);
     expect(row(q)).toEqual(['points[1]', 'pts[1]', 'FdPoint3d', 'q', '', '(1, 1, 0)', '7', 'At API call']);
     expect(q.childCount()).toBe(1);
-    expect(row(q.child(0))).toEqual(['', 'q', 'FdPoint3d', 'FdPoint3d(1, 1, 0)', '—', '(1, 1, 0)', '1', 'Initialization']);
+    expect(row(q.child(0))).toEqual([
+      '',
+      'q',
+      'FdPoint3d',
+      'FdPoint3d(1, 1, 0)',
+      '—',
+      '(1, 1, 0)',
+      '1',
+      'Initialization',
+    ]);
   });
 
   it('navigates only from rows with a source line on double-click', () => {
@@ -62,7 +89,10 @@ describe('ApiHistoryDialog', () => {
     expect(displayExpression('a*2', 4)).toBe('a*2');
     const trace = {
       expression: 'pts[i].x',
-      sources: [{ name: 'i', value: 1n, variableId: 9, historyEnd: 1 }, { name: 'pts[1]', value: p, variableId: 6, historyEnd: 9 }],
+      sources: [
+        { name: 'i', value: 1n, variableId: 9, historyEnd: 1 },
+        { name: 'pts[1]', value: p, variableId: 6, historyEnd: 9 },
+      ],
       elements: [],
     };
     expect(directSource(trace, p)?.name).toBe('pts[1]');

@@ -4,7 +4,15 @@
 // VariablePanelModel holds the QTableWidget state and the selection logic;
 // the ref handle is that model, so MainWindow calls it synchronously.
 
-import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type Ref } from 'react';
+import {
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type Ref,
+} from 'react';
 import type { RuntimeResult } from '../runtime/RuntimeTypes';
 import { runtimeTypeName, runtimeValueToString } from '../runtime/RuntimeValue';
 import { eventModifiers, Observable, useObservable } from './Observable';
@@ -38,8 +46,9 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
     const selectionToRestore = this.#selectedName;
     const blocked = this.#blockSignals(true);
 
-    this.summary = `State after line ${currentLine}  |  ${result.variables.length} variable(s)  |  `
-      + `${result.variableChanges.length} change(s)  |  ${result.diagnostics.length} diagnostic(s)`;
+    this.summary =
+      `State after line ${currentLine}  |  ${result.variables.length} variable(s)  |  ` +
+      `${result.variableChanges.length} change(s)  |  ${result.diagnostics.length} diagnostic(s)`;
 
     this.rows = result.variables.map((v) => ({
       name: v.name,
@@ -92,7 +101,9 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
     return previous;
   }
 
-  #selectRow(row: number): void { this.#setSelectedRow(row); }
+  #selectRow(row: number): void {
+    this.#setSelectedRow(row);
+  }
 
   /** Changes the selection; emits itemSelectionChanged unless blocked. */
   #setSelectedRow(row: number): void {
@@ -140,13 +151,26 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
     const current = this.selectedRow;
     let next: number;
     switch (key) {
-      case 'ArrowUp': next = current < 0 ? 0 : Math.max(current - 1, 0); break;
-      case 'ArrowDown': next = current < 0 ? 0 : Math.min(current + 1, last); break;
-      case 'PageUp': next = Math.max(current - 10, 0); break;
-      case 'PageDown': next = Math.min(Math.max(current, 0) + 10, last); break;
-      case 'Home': next = 0; break;
-      case 'End': next = last; break;
-      default: return false;
+      case 'ArrowUp':
+        next = current < 0 ? 0 : Math.max(current - 1, 0);
+        break;
+      case 'ArrowDown':
+        next = current < 0 ? 0 : Math.min(current + 1, last);
+        break;
+      case 'PageUp':
+        next = Math.max(current - 10, 0);
+        break;
+      case 'PageDown':
+        next = Math.min(Math.max(current, 0) + 10, last);
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = last;
+        break;
+      default:
+        return false;
     }
     this.#setSelectedRow(next);
     this.scrollRequest = { row: next, serial: ++this.#scrollSerial, center: false };
@@ -201,7 +225,14 @@ export function VariablePanel({ onSelectionChanged, ref }: VariablePanelProps) {
   return (
     <div className="variable-panel panel-margins">
       <div className="panel-summary">{model.summary}</div>
-      <div ref={tableRef} className="table-view" tabIndex={0} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onKeyDown={onKeyDown}>
+      <div
+        ref={tableRef}
+        className="table-view"
+        tabIndex={0}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onKeyDown={onKeyDown}
+      >
         <table className="item-table">
           <thead>
             <tr className="item-header">

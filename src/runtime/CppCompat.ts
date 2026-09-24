@@ -8,7 +8,10 @@
 
 /** A C++ std::exception; `message` is what(). */
 export class CppException extends Error {
-  constructor(readonly kind: 'runtime_error' | 'invalid_argument' | 'out_of_range' | 'logic_error', what: string) {
+  constructor(
+    readonly kind: 'runtime_error' | 'invalid_argument' | 'out_of_range' | 'logic_error',
+    what: string,
+  ) {
     super(what);
   }
 }
@@ -22,7 +25,10 @@ export function what(e: unknown): string {
 /** std::vector::at() */
 export function vectorAt<T>(v: readonly T[], n: number): T {
   if (n < 0 || n >= v.length || !Number.isInteger(n))
-    throw new CppException('out_of_range', `vector::_M_range_check: __n (which is ${n}) >= this->size() (which is ${v.length})`);
+    throw new CppException(
+      'out_of_range',
+      `vector::_M_range_check: __n (which is ${n}) >= this->size() (which is ${v.length})`,
+    );
   return v[n];
 }
 
@@ -56,7 +62,10 @@ export const wrapInt64 = (value: bigint): bigint => BigInt.asIntN(64, value);
 // ---------------------------------------------------------------------------
 // Exact printf formatting
 
-interface ExactDecimal { digits: bigint; scale: number } // |x| == digits / 10^scale
+interface ExactDecimal {
+  digits: bigint;
+  scale: number;
+} // |x| == digits / 10^scale
 
 function exactDecimal(x: number): ExactDecimal {
   const view = new DataView(new ArrayBuffer(8));
@@ -67,7 +76,10 @@ function exactDecimal(x: number): ExactDecimal {
   let mantissa = (BigInt(hi & 0xfffff) << 32n) | BigInt(lo);
   let exponent: number;
   if (biased === 0) exponent = -1074;
-  else { mantissa |= 1n << 52n; exponent = biased - 1075; }
+  else {
+    mantissa |= 1n << 52n;
+    exponent = biased - 1075;
+  }
   if (exponent >= 0) return { digits: mantissa << BigInt(exponent), scale: 0 };
   return { digits: mantissa * 5n ** BigInt(-exponent), scale: -exponent };
 }
@@ -154,7 +166,10 @@ export function strtod(text: string, start = 0): { value: number; end: number; e
   let i = start;
   while (isspace(text[i])) ++i;
   let sign = 1;
-  if (text[i] === '+' || text[i] === '-') { if (text[i] === '-') sign = -1; ++i; }
+  if (text[i] === '+' || text[i] === '-') {
+    if (text[i] === '-') sign = -1;
+    ++i;
+  }
   const rest = text.slice(i);
   const special = /^(inf(inity)?|nan(\([0-9A-Za-z_]*\))?)/i.exec(rest);
   if (special) {
@@ -167,7 +182,10 @@ export function strtod(text: string, start = 0): { value: number; end: number; e
     let value = 0;
     for (const ch of intPart) value = value * 16 + parseInt(ch, 16);
     let scale = 1 / 16;
-    for (const ch of fracPart) { value += parseInt(ch, 16) * scale; scale /= 16; }
+    for (const ch of fracPart) {
+      value += parseInt(ch, 16) * scale;
+      scale /= 16;
+    }
     value *= 2 ** Number(hex[2] ?? 0);
     return { value: sign * value, end: i + hex[0].length, erange: !Number.isFinite(value) };
   }

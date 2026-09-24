@@ -1,7 +1,7 @@
 /* Shared design tokens (desktop-style light UI, close to the Qt Fusion look). */
 :root {
-  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-code: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   --font-size-ui: 13px;
   /* CodeEditor: QFontDatabase::systemFont(FixedFont) at 11 pt. */
   --font-size-code: 11pt;
@@ -27,7 +27,7 @@
   --gradient-bar: linear-gradient(#f6f6f6, #e9e9e9);
 
   /* Explicit colors from the Qt sources. */
-  --trace-selected-background: #594820;   /* ApiTracePanel stylesheet */
+  --trace-selected-background: #594820; /* ApiTracePanel stylesheet */
   --trace-selected-text: #ffe4a0;
   --orientation-checked-background: #66551a; /* LinkPanel orientation buttons */
   --orientation-checked-text: #fff1a0;
@@ -38,8 +38,15 @@
   --radius: 3px;
 }
 
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
 body {
   font-family: var(--font-ui);
   font-size: var(--font-size-ui);
@@ -59,10 +66,20 @@ body {
   background: var(--gradient-button);
   cursor: default;
 }
-.push-button:hover:not(:disabled) { border-color: #8a8a8a; }
-.push-button:active:not(:disabled) { background: var(--color-button-pressed); }
-.push-button:disabled { color: #9a9a9a; border-color: var(--color-border); }
-.push-button:focus-visible { outline: 1px solid var(--color-highlight); outline-offset: -3px; }
+.push-button:hover:not(:disabled) {
+  border-color: #8a8a8a;
+}
+.push-button:active:not(:disabled) {
+  background: var(--color-button-pressed);
+}
+.push-button:disabled {
+  color: #9a9a9a;
+  border-color: var(--color-border);
+}
+.push-button:focus-visible {
+  outline: 1px solid var(--color-highlight);
+  outline-offset: -3px;
+}
 
 /* QToolButton (auto-raise look) */
 .tool-button {
@@ -75,9 +92,15 @@ body {
   background: var(--gradient-button);
   cursor: default;
 }
-.tool-button:hover:not(:disabled) { border-color: #8a8a8a; }
-.tool-button:active:not(:disabled) { background: var(--color-button-pressed); }
-.tool-button:disabled { color: #9a9a9a; }
+.tool-button:hover:not(:disabled) {
+  border-color: #8a8a8a;
+}
+.tool-button:active:not(:disabled) {
+  background: var(--color-button-pressed);
+}
+.tool-button:disabled {
+  color: #9a9a9a;
+}
 
 /* QLineEdit */
 .line-edit {
@@ -90,9 +113,18 @@ body {
   border-radius: 2px;
   background: var(--color-base);
 }
-.line-edit:focus { outline: none; border-color: var(--color-highlight); }
-.line-edit:disabled { color: #9a9a9a; background: var(--color-window); border-color: var(--color-border); }
-.line-edit::placeholder { color: #9a9a9a; }
+.line-edit:focus {
+  outline: none;
+  border-color: var(--color-highlight);
+}
+.line-edit:disabled {
+  color: #9a9a9a;
+  background: var(--color-window);
+  border-color: var(--color-border);
+}
+.line-edit::placeholder {
+  color: #9a9a9a;
+}
 
 /* QComboBox (non-editable: <select>) */
 select.combo-box {
@@ -104,8 +136,14 @@ select.combo-box {
   border-radius: var(--radius);
   background: var(--gradient-button);
 }
-select.combo-box:disabled { color: #9a9a9a; border-color: var(--color-border); }
-select.combo-box:focus { outline: none; border-color: var(--color-highlight); }
+select.combo-box:disabled {
+  color: #9a9a9a;
+  border-color: var(--color-border);
+}
+select.combo-box:focus {
+  outline: none;
+  border-color: var(--color-highlight);
+}
 
 /* Editable QComboBox */
 .combo-box.editable {
@@ -128,14 +166,16 @@ select.combo-box:focus { outline: none; border-color: var(--color-highlight); }
   position: relative;
 }
 .combo-box.editable .combo-arrow::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 6px;
   top: 10px;
   border: 4px solid transparent;
   border-top-color: #444;
 }
-.combo-box.editable.disabled .combo-arrow::after { border-top-color: #aaa; }
+.combo-box.editable.disabled .combo-arrow::after {
+  border-top-color: #aaa;
+}
 .combo-popup {
   position: fixed;
   z-index: 60;
@@ -148,10 +188,27 @@ select.combo-box:focus { outline: none; border-color: var(--color-highlight); }
   border: 1px solid var(--color-border-strong);
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
 }
-.combo-popup:empty { display: none; }
-.combo-popup li { padding: 2px 8px; white-space: nowrap; }
-.combo-popup li:hover { background: var(--color-highlight); color: var(--color-highlight-text); }
-.combo-popup li.current { font-weight: bold; }
+.combo-popup:empty {
+  display: none;
+}
+.combo-popup li {
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.combo-popup li:hover {
+  background: var(--color-highlight);
+  color: var(--color-highlight-text);
+}
+.combo-popup li.current {
+  font-weight: bold;
+}
 
-fieldset { margin: 0; padding: 0; border: none; min-width: 0; }
-label { cursor: default; }
+fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+label {
+  cursor: default;
+}

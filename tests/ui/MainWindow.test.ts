@@ -36,18 +36,35 @@ class FakeEditor implements CodeEditorHandle {
     this.#setCursor(this.#lineStart(cursorLine));
   }
   /** A user cursor move. */
-  moveTo(line: number): void { this.#setCursor(this.#lineStart(line)); }
+  moveTo(line: number): void {
+    this.#setCursor(this.#lineStart(line));
+  }
 
-  toPlainText() { return this.text; }
-  clear() { this.text = ''; this.cursor = 0; this.onTextChanged(); this.onCursorPositionChanged(); }
-  currentLine() { return this.text.slice(0, this.cursor).split('\n').length; }
-  blockCount() { return this.text.split('\n').length; }
+  toPlainText() {
+    return this.text;
+  }
+  clear() {
+    this.text = '';
+    this.cursor = 0;
+    this.onTextChanged();
+    this.onCursorPositionChanged();
+  }
+  currentLine() {
+    return this.text.slice(0, this.cursor).split('\n').length;
+  }
+  blockCount() {
+    return this.text.split('\n').length;
+  }
   setTraceSourceLines(lines: ReadonlySet<number>, activeLine = -1) {
     this.traceLines = { lines: [...lines].sort((a, b) => a - b), active: activeLine };
   }
-  setTextCursorToLine(line: number) { this.#setCursor(this.#lineStart(line)); }
+  setTextCursorToLine(line: number) {
+    this.#setCursor(this.#lineStart(line));
+  }
   centerCursor() {}
-  cursorBlockText() { return this.text.split('\n')[this.currentLine() - 1]; }
+  cursorBlockText() {
+    return this.text.split('\n')[this.currentLine() - 1];
+  }
   insertAtCursorBlockEnd(text: string) {
     const start = this.#lineStart(this.currentLine());
     const end = start + this.cursorBlockText().length;
@@ -55,15 +72,27 @@ class FakeEditor implements CodeEditorHandle {
     this.onTextChanged();
     this.#setCursor(end + text.length);
   }
-  setFocus() { this.focused = true; }
+  setFocus() {
+    this.focused = true;
+  }
 }
 
 function fakeViewport(log: string[]): Viewport3DHandle {
   let apiFocus = false;
-  const record = (name: string) => (...args: unknown[]) => {
-    const printable = args.map((a) => (a instanceof Set ? `{${[...a].join(',')}}` : Array.isArray(a) ? `[${a.length}]` : typeof a === 'object' ? 'obj' : String(a)));
-    log.push(`${name}(${printable.join(', ')})`);
-  };
+  const record =
+    (name: string) =>
+    (...args: unknown[]) => {
+      const printable = args.map((a) =>
+        a instanceof Set
+          ? `{${[...a].join(',')}}`
+          : Array.isArray(a)
+            ? `[${a.length}]`
+            : typeof a === 'object'
+              ? 'obj'
+              : String(a),
+      );
+      log.push(`${name}(${printable.join(', ')})`);
+    };
   return {
     setRuntimeResult: record('setRuntimeResult'),
     setShowPoints: record('setShowPoints'),
@@ -84,8 +113,14 @@ function fakeViewport(log: string[]): Viewport3DHandle {
     isMeshSelected: () => false,
     hasApiFocus: () => apiFocus,
     hasMeshFocus: () => false,
-    setApiFocusIndices: (indices) => { apiFocus = true; record('setApiFocusIndices')(indices); },
-    clearApiFocus: () => { apiFocus = false; record('clearApiFocus')(); },
+    setApiFocusIndices: (indices) => {
+      apiFocus = true;
+      record('setApiFocusIndices')(indices);
+    },
+    clearApiFocus: () => {
+      apiFocus = false;
+      record('clearApiFocus')();
+    },
     fitScene: record('fitScene'),
     setConnectorPreviews: record('setConnectorPreviews'),
   };
@@ -131,7 +166,11 @@ const kSource = [
 const isMac = /Mac|iPhone|iPad|iPod/i.test(globalThis.navigator?.platform || globalThis.navigator?.userAgent || '');
 
 /** A keydown event whose target is in a text input, a tree view or the floating window. */
-function keyEvent(key: string, modifiers: { control?: boolean; shift?: boolean } = {}, target: 'input' | 'tree' | 'dialog' = 'tree') {
+function keyEvent(
+  key: string,
+  modifiers: { control?: boolean; shift?: boolean } = {},
+  target: 'input' | 'tree' | 'dialog' = 'tree',
+) {
   const matches: Record<string, string> = { input: 'input', tree: '.tree-view', dialog: '.floating-window' };
   return {
     key,
@@ -145,8 +184,12 @@ function keyEvent(key: string, modifiers: { control?: boolean; shift?: boolean }
 }
 
 describe('MainWindow', () => {
-  beforeEach(() => { vi.useFakeTimers(); });
-  afterEach(() => { vi.useRealTimers(); });
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('starts like the Qt constructor and debounces edits by 220 ms', () => {
     const { mw, log, editor, variables } = createMainWindow();
@@ -189,9 +232,19 @@ describe('MainWindow', () => {
 
     // Selecting an API row focuses it; clicking a row with a line navigates there.
     const api = apiTrace.m_tree.topLevelItem(0);
-    apiTrace.m_tree.mousePressEvent({ item: api, column: 1, modifiers: { shift: false, control: false }, onDecoration: false });
+    apiTrace.m_tree.mousePressEvent({
+      item: api,
+      column: 1,
+      modifiers: { shift: false, control: false },
+      onDecoration: false,
+    });
     expect(mw.statusBar().currentMessage()).toBe('API #1 makeDisc | 2 point/vector input(s), 1 call(s) in focus');
-    apiTrace.m_tree.mouseReleaseEvent({ item: api, column: 1, modifiers: { shift: false, control: false }, onDecoration: false });
+    apiTrace.m_tree.mouseReleaseEvent({
+      item: api,
+      column: 1,
+      modifiers: { shift: false, control: false },
+      onDecoration: false,
+    });
     expect(editor.currentLine()).toBe(5);
     expect(editor.traceLines).toEqual({ lines: [5], active: 5 });
     expect(mw.m_browsingTrace).toBe(true);

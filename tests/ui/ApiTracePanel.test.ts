@@ -125,7 +125,9 @@ describe('ApiTracePanel row model', () => {
     click(model, center);
     click(model, points, ctrl);
     expect(names(tree.selectedItems())).toEqual(['center (p)', 'points']);
-    expect(model.selectedDebugItems()).toEqual(new Set(['@api0:point:center', '@api0:point:points[0]', '@api0:point:points[1]']));
+    expect(model.selectedDebugItems()).toEqual(
+      new Set(['@api0:point:center', '@api0:point:points[0]', '@api0:point:points[1]']),
+    );
     expect(model.selectedSourceLines()).toEqual(new Set([2, 7]));
 
     click(model, size, shift); // anchor is still `points` (Shift does not move it)

@@ -8,7 +8,14 @@
 // model, so MainWindow calls it synchronously.
 
 import {
-  useImperativeHandle, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type Ref,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type Ref,
 } from 'react';
 import type { RuntimeParameterRequest, RuntimeResult } from '../runtime/RuntimeTypes';
 import { eventModifiers, isMacPlatform, Observable, trimmed, useObservable } from './Observable';
@@ -98,8 +105,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     for (const request of result.parameterRequests) {
       if (request.sourceFunction !== 'get_val') continue;
 
-      const it = this.#definitions.find((definition) =>
-        ParameterPanelModel.definitionId(definition) === ParameterPanelModel.definitionId(request));
+      const it = this.#definitions.find(
+        (definition) => ParameterPanelModel.definitionId(definition) === ParameterPanelModel.definitionId(request),
+      );
       if (!it) continue;
 
       if (request.type !== '' && request.type !== 'unknown' && it.type !== request.type) {
@@ -248,9 +256,13 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     let row = Math.max(this.currentRow, 0);
     let column = Math.max(this.currentColumn, 0);
     if (direction === 'next') {
-      if (++column >= ColumnCount) { column = 0; row = (row + 1) % rowCount; }
+      if (++column >= ColumnCount) {
+        column = 0;
+        row = (row + 1) % rowCount;
+      }
     } else if (--column < 0) {
-      column = ColumnCount - 1; row = (row - 1 + rowCount) % rowCount;
+      column = ColumnCount - 1;
+      row = (row - 1 + rowCount) % rowCount;
     }
     this.#setCurrentCell(row, column);
   }
@@ -290,18 +302,34 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     const row = Math.max(this.currentRow, 0);
     const column = Math.max(this.currentColumn, 0);
     switch (key) {
-      case 'F2': return this.edit(this.currentRow, this.currentColumn);
+      case 'F2':
+        return this.edit(this.currentRow, this.currentColumn);
       case 'Enter':
         if (!isMacPlatform) return false;
         return this.edit(this.currentRow, this.currentColumn); // the macOS edit key
-      case 'ArrowUp': this.#setCurrentCell(this.currentRow < 0 ? 0 : Math.max(row - 1, 0), column); return true;
-      case 'ArrowDown': this.#setCurrentCell(this.currentRow < 0 ? 0 : Math.min(row + 1, last), column); return true;
-      case 'ArrowLeft': this.#setCurrentCell(row, Math.max(column - 1, 0)); return true;
-      case 'ArrowRight': this.#setCurrentCell(row, Math.min(column + 1, ColumnCount - 1)); return true;
-      case 'Home': this.#setCurrentCell(0, column); return true;
-      case 'End': this.#setCurrentCell(last, column); return true;
-      case 'Tab': this.#moveCurrentCell(shift ? 'previous' : 'next'); return true; // setTabKeyNavigation(true)
-      default: return false;
+      case 'ArrowUp':
+        this.#setCurrentCell(this.currentRow < 0 ? 0 : Math.max(row - 1, 0), column);
+        return true;
+      case 'ArrowDown':
+        this.#setCurrentCell(this.currentRow < 0 ? 0 : Math.min(row + 1, last), column);
+        return true;
+      case 'ArrowLeft':
+        this.#setCurrentCell(row, Math.max(column - 1, 0));
+        return true;
+      case 'ArrowRight':
+        this.#setCurrentCell(row, Math.min(column + 1, ColumnCount - 1));
+        return true;
+      case 'Home':
+        this.#setCurrentCell(0, column);
+        return true;
+      case 'End':
+        this.#setCurrentCell(last, column);
+        return true;
+      case 'Tab':
+        this.#moveCurrentCell(shift ? 'previous' : 'next');
+        return true; // setTabKeyNavigation(true)
+      default:
+        return false;
     }
   }
 }
@@ -335,7 +363,9 @@ export function ParameterPanel({ onChanged, ref }: ParameterPanelProps) {
   const cellOf = (event: MouseEvent) => {
     const cell = (event.target as Element).closest<HTMLElement>('td[data-column]');
     const row = cell?.closest<HTMLElement>('tr[data-row]');
-    return row && cell ? { row: Number(row.dataset.row), column: Number(cell.dataset.column) } : { row: -1, column: -1 };
+    return row && cell
+      ? { row: Number(row.dataset.row), column: Number(cell.dataset.column) }
+      : { row: -1, column: -1 };
   };
   const inEditor = (event: MouseEvent) => !!(event.target as Element).closest('input');
   const onMouseDown = (event: MouseEvent) => {
@@ -376,16 +406,26 @@ export function ParameterPanel({ onChanged, ref }: ParameterPanelProps) {
       if (!model.editor) tableRef.current?.focus({ preventScroll: true });
     }
   };
-  const onEditorBlur = (event: FocusEvent<HTMLInputElement>) => model.commitEditor(Number(event.currentTarget.dataset.serial));
+  const onEditorBlur = (event: FocusEvent<HTMLInputElement>) =>
+    model.commitEditor(Number(event.currentTarget.dataset.serial));
 
   return (
     <div className="parameter-panel">
-      <div ref={tableRef} className="table-view" tabIndex={0} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onKeyDown={onKeyDown}>
+      <div
+        ref={tableRef}
+        className="table-view"
+        tabIndex={0}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onKeyDown={onKeyDown}
+      >
         <table className="item-table">
           <thead>
             <tr className="item-header">
               {kHeaders.map((header, column) => (
-                <th key={header} className={column === ValueColumn ? 'stretch' : 'fit'}>{header}</th>
+                <th key={header} className={column === ValueColumn ? 'stretch' : 'fit'}>
+                  {header}
+                </th>
               ))}
             </tr>
           </thead>
@@ -396,7 +436,11 @@ export function ParameterPanel({ onChanged, ref }: ParameterPanelProps) {
                   const editing = model.editor && model.editor.row === index && column === ValueColumn;
                   const current = index === model.currentRow && column === model.currentColumn;
                   return (
-                    <td key={column} data-column={column} className={`${current ? 'current-cell' : ''}${editing ? ' editing' : ''}`}>
+                    <td
+                      key={column}
+                      data-column={column}
+                      className={`${current ? 'current-cell' : ''}${editing ? ' editing' : ''}`}
+                    >
                       {editing ? (
                         <input
                           ref={editorRef}
@@ -408,7 +452,9 @@ export function ParameterPanel({ onChanged, ref }: ParameterPanelProps) {
                           onKeyDown={onEditorKeyDown}
                           onBlur={onEditorBlur}
                         />
-                      ) : text}
+                      ) : (
+                        text
+                      )}
                     </td>
                   );
                 })}

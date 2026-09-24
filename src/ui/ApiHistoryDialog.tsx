@@ -10,12 +10,22 @@ import { useObservable } from './Observable';
 import { TreeView } from './TreeView';
 import './ApiHistoryDialog.css';
 
-interface Geometry { x: number; y: number; width: number; height: number }
+interface Geometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 function initialGeometry(): Geometry {
   const width = Math.max(Math.min(1380, window.innerWidth - 60), 320);
   const height = Math.max(Math.min(720, window.innerHeight - 60), 200);
-  return { x: Math.max((window.innerWidth - width) / 2, 0), y: Math.max((window.innerHeight - height) / 2, 0), width, height };
+  return {
+    x: Math.max((window.innerWidth - width) / 2, 0),
+    y: Math.max((window.innerHeight - height) / 2, 0),
+    width,
+    height,
+  };
 }
 
 function dragWith(event: ReactPointerEvent<HTMLElement>, onMove: (dx: number, dy: number) => void): void {
@@ -52,17 +62,23 @@ export function ApiHistoryDialog({ dialog }: { dialog: ApiHistoryDialogModel }) 
   const onTitlePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if ((event.target as Element).closest('button')) return;
     const start = geometry;
-    dragWith(event, (dx, dy) => setGeometry({
-      ...start,
-      x: Math.min(Math.max(start.x + dx, 40 - start.width), window.innerWidth - 40),
-      y: Math.min(Math.max(start.y + dy, 0), window.innerHeight - 24),
-    }));
+    dragWith(event, (dx, dy) =>
+      setGeometry({
+        ...start,
+        x: Math.min(Math.max(start.x + dx, 40 - start.width), window.innerWidth - 40),
+        y: Math.min(Math.max(start.y + dy, 0), window.innerHeight - 24),
+      }),
+    );
   };
   const onGripPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     const start = geometry;
-    dragWith(event, (dx, dy) => setGeometry({
-      ...start, width: Math.max(start.width + dx, 320), height: Math.max(start.height + dy, 160),
-    }));
+    dragWith(event, (dx, dy) =>
+      setGeometry({
+        ...start,
+        width: Math.max(start.width + dx, 320),
+        height: Math.max(start.height + dy, 160),
+      }),
+    );
   };
   const onKeyDown = (event: KeyboardEvent) => {
     // Keys inside the dialog never reach MainWindow's shortcuts (another window).
@@ -93,7 +109,9 @@ export function ApiHistoryDialog({ dialog }: { dialog: ApiHistoryDialogModel }) 
         <div className="api-history-caption">{dialog.caption}</div>
         <TreeView tree={dialog.tree} className="api-history-tree" />
         <div className="dialog-button-box">
-          <button type="button" className="push-button" onClick={() => dialog.close()}>Close</button>
+          <button type="button" className="push-button" onClick={() => dialog.close()}>
+            Close
+          </button>
         </div>
       </div>
       <div className="floating-window-grip" onPointerDown={onGripPointerDown} />

@@ -3,7 +3,16 @@
 
 import type { RuntimeArgumentTrace, RuntimeValueSource, RuntimeVariableChange } from '../runtime/RuntimeTypes';
 import {
-  isArray, isBool, isDouble, isInt, isPoint, isString, isUnset, isVector, runtimeNumber, runtimeValueToCompactString,
+  isArray,
+  isBool,
+  isDouble,
+  isInt,
+  isPoint,
+  isString,
+  isUnset,
+  isVector,
+  runtimeNumber,
+  runtimeValueToCompactString,
   type RuntimeValue,
 } from '../runtime/RuntimeValue';
 
@@ -49,7 +58,8 @@ export function directSource(trace: RuntimeArgumentTrace, value: RuntimeValue): 
   if (!match) return null;
   const root = match[1];
   for (const source of trace.sources)
-    if (sourceRootName(source.name) === root && runtimeValueIndex(source.value) === runtimeValueIndex(value)) return source;
+    if (sourceRootName(source.name) === root && runtimeValueIndex(source.value) === runtimeValueIndex(value))
+      return source;
   return null;
 }
 

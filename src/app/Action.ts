@@ -11,8 +11,7 @@ export interface KeySequence {
   shift?: boolean;
 }
 
-const isWindowsPlatform = typeof navigator !== 'undefined'
-  && /Win/i.test(navigator.platform || navigator.userAgent);
+const isWindowsPlatform = typeof navigator !== 'undefined' && /Win/i.test(navigator.platform || navigator.userAgent);
 
 /** QKeySequence::Quit: Ctrl+Q (Cmd+Q on macOS); Windows has no standard binding. */
 export const quitKeySequence: KeySequence | null = isWindowsPlatform ? null : { key: 'q', control: true };
@@ -45,13 +44,25 @@ export class Action extends Observable {
     super();
   }
 
-  setShortcut(shortcut: KeySequence | null): void { this.#shortcut = shortcut; this.changed(); }
-  shortcut(): KeySequence | null { return this.#shortcut; }
+  setShortcut(shortcut: KeySequence | null): void {
+    this.#shortcut = shortcut;
+    this.changed();
+  }
+  shortcut(): KeySequence | null {
+    return this.#shortcut;
+  }
 
-  setCheckable(checkable: boolean): void { this.#checkable = checkable; this.changed(); }
-  isCheckable(): boolean { return this.#checkable; }
+  setCheckable(checkable: boolean): void {
+    this.#checkable = checkable;
+    this.changed();
+  }
+  isCheckable(): boolean {
+    return this.#checkable;
+  }
 
-  isChecked(): boolean { return this.#checked; }
+  isChecked(): boolean {
+    return this.#checked;
+  }
   setChecked(checked: boolean): void {
     if (this.#checked === checked) return;
     this.#checked = checked;
@@ -61,9 +72,13 @@ export class Action extends Observable {
   }
 
   /** connect(action, &QAction::triggered, ...) */
-  onTriggered(slot: (checked: boolean) => void): void { this.#triggered.push(slot); }
+  onTriggered(slot: (checked: boolean) => void): void {
+    this.#triggered.push(slot);
+  }
   /** connect(action, &QAction::toggled, ...) */
-  onToggled(slot: (checked: boolean) => void): void { this.#toggled.push(slot); }
+  onToggled(slot: (checked: boolean) => void): void {
+    this.#toggled.push(slot);
+  }
 
   /** QAction::trigger(): toggles a checkable action, then emits triggered. */
   trigger(): void {
@@ -71,5 +86,7 @@ export class Action extends Observable {
     for (const slot of [...this.#triggered]) slot(this.#checked);
   }
 
-  iconText(): string { return stripMnemonic(this.text); }
+  iconText(): string {
+    return stripMnemonic(this.text);
+  }
 }

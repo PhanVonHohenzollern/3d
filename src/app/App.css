@@ -19,7 +19,9 @@
   background: var(--color-window);
   border-bottom: 1px solid var(--color-border);
 }
-.menubar-entry { position: relative; }
+.menubar-entry {
+  position: relative;
+}
 .menubar-title {
   font: inherit;
   color: var(--color-text);
@@ -28,7 +30,11 @@
   border: none;
   background: transparent;
 }
-.menubar-title:hover, .menubar-title.open { background: var(--color-highlight); color: var(--color-highlight-text); }
+.menubar-title:hover,
+.menubar-title.open {
+  background: var(--color-highlight);
+  color: var(--color-highlight-text);
+}
 .menu {
   position: absolute;
   z-index: 50;
@@ -50,11 +56,27 @@
   white-space: nowrap;
   cursor: default;
 }
-.menu-item:hover { background: var(--color-highlight); color: var(--color-highlight-text); }
-.menu-check { width: 20px; text-align: center; }
-.menu-text { flex: 1; }
-.menu-shortcut { margin-left: 28px; color: inherit; opacity: 0.75; }
-.menu-separator { height: 1px; margin: 3px 0; background: var(--color-border); }
+.menu-item:hover {
+  background: var(--color-highlight);
+  color: var(--color-highlight-text);
+}
+.menu-check {
+  width: 20px;
+  text-align: center;
+}
+.menu-text {
+  flex: 1;
+}
+.menu-shortcut {
+  margin-left: 28px;
+  color: inherit;
+  opacity: 0.75;
+}
+.menu-separator {
+  height: 1px;
+  margin: 3px 0;
+  background: var(--color-border);
+}
 
 /* QToolBar with text-only tool buttons */
 .toolbar {
@@ -75,7 +97,12 @@
   background-image: radial-gradient(#9a9a9a 1px, transparent 1.2px);
   background-size: 3px 3px;
 }
-.toolbar-separator { width: 1px; height: 18px; margin: 0 4px; background: var(--color-border-strong); }
+.toolbar-separator {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--color-border-strong);
+}
 .toolbar-button {
   font: inherit;
   color: var(--color-text);
@@ -86,8 +113,13 @@
   background: transparent;
   white-space: nowrap;
 }
-.toolbar-button:hover { border-color: var(--color-border-strong); background: var(--gradient-button); }
-.toolbar-button:active { background: var(--color-button-pressed); }
+.toolbar-button:hover {
+  border-color: var(--color-border-strong);
+  background: var(--gradient-button);
+}
+.toolbar-button:active {
+  background: var(--color-button-pressed);
+}
 .toolbar-button.checked {
   border-color: var(--color-border-strong);
   background: #d6dde8;
@@ -101,7 +133,10 @@
   display: flex;
   flex-direction: column;
 }
-.central-widget { flex: 1; min-height: 0; }
+.central-widget {
+  flex: 1;
+  min-height: 0;
+}
 .viewport-container {
   position: relative;
   width: 100%;
@@ -109,20 +144,55 @@
   overflow: hidden;
   background: var(--viewport-background);
 }
-.viewport-container > * { width: 100%; height: 100%; }
+.viewport-container > * {
+  width: 100%;
+  height: 100%;
+}
 
 /* QSplitter */
-.splitter { display: flex; width: 100%; height: 100%; overflow: hidden; }
-.splitter-vertical { flex-direction: column; }
-.splitter-pane { flex: none; min-width: 0; min-height: 0; overflow: hidden; }
-.splitter-handle { flex: none; background: var(--color-window); touch-action: none; }
-.splitter-horizontal > .splitter-handle { width: 5px; cursor: col-resize; }
-.splitter-vertical > .splitter-handle { height: 5px; cursor: row-resize; }
-.splitter-handle:hover { background: #dcdcdc; }
+.splitter {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.splitter-vertical {
+  flex-direction: column;
+}
+.splitter-pane {
+  flex: none;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.splitter-handle {
+  flex: none;
+  background: var(--color-window);
+  touch-action: none;
+}
+.splitter-horizontal > .splitter-handle {
+  width: 5px;
+  cursor: col-resize;
+}
+.splitter-vertical > .splitter-handle {
+  height: 5px;
+  cursor: row-resize;
+}
+.splitter-handle:hover {
+  background: #dcdcdc;
+}
 
 /* QMainWindow dock separator, QDockWidget title bar, tabified dock tabs (South) */
-.dock-separator { flex: none; height: 5px; cursor: row-resize; background: var(--color-window); touch-action: none; }
-.dock-separator:hover { background: #dcdcdc; }
+.dock-separator {
+  flex: none;
+  height: 5px;
+  cursor: row-resize;
+  background: var(--color-window);
+  touch-action: none;
+}
+.dock-separator:hover {
+  background: #dcdcdc;
+}
 .dock-area {
   flex: none;
   display: flex;
@@ -146,9 +216,20 @@
   border: 1px solid var(--color-border);
   background: var(--color-window);
 }
-.dock-widget { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
-.dock-widget[hidden] { display: none; }
-.dock-widget > * { flex: 1; min-height: 0; }
+.dock-widget {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.dock-widget[hidden] {
+  display: none;
+}
+.dock-widget > * {
+  flex: 1;
+  min-height: 0;
+}
 .dock-tabs {
   flex: none;
   display: flex;
@@ -166,7 +247,9 @@
   border-radius: 0 0 var(--radius) var(--radius);
   background: var(--gradient-bar);
 }
-.dock-tab + .dock-tab { margin-left: -1px; }
+.dock-tab + .dock-tab {
+  margin-left: -1px;
+}
 .dock-tab.selected {
   position: relative;
   background: var(--color-window);

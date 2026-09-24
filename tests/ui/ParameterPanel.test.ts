@@ -6,7 +6,13 @@ import { ParameterPanelModel } from '../../src/ui/ParameterPanel';
 
 function request(overrides: Partial<RuntimeParameterRequest>): RuntimeParameterRequest {
   return {
-    name: 'D', type: 'double', defaultValue: '', currentValue: '', sourceFunction: 'get_val', variableName: 'd', line: 1,
+    name: 'D',
+    type: 'double',
+    defaultValue: '',
+    currentValue: '',
+    sourceFunction: 'get_val',
+    variableName: 'd',
+    line: 1,
     ...overrides,
   };
 }
@@ -46,13 +52,19 @@ describe('ParameterPanel', () => {
     const model = new ParameterPanelModel();
     const changed = vi.fn();
     model.setChangedCallback(changed);
-    model.setDefinitions([request({ name: 'A', defaultValue: '5' }), request({ name: 'B', defaultValue: '1', variableName: 'b' })]);
+    model.setDefinitions([
+      request({ name: 'A', defaultValue: '5' }),
+      request({ name: 'B', defaultValue: '1', variableName: 'b' }),
+    ]);
 
     editValue(model, 0, '  12 ');
     expect(changed).toHaveBeenCalledTimes(1);
     expect(model.values().get('A')).toBe('12'); // trimmed
 
-    model.setDefinitions([request({ name: 'A', defaultValue: '6' }), request({ name: 'B', defaultValue: '2', variableName: 'b' })]);
+    model.setDefinitions([
+      request({ name: 'A', defaultValue: '6' }),
+      request({ name: 'B', defaultValue: '2', variableName: 'b' }),
+    ]);
     expect(model.values().get('A')).toBe('12');
     expect(model.values().get('B')).toBe('2');
     expect(model.rows[0].texts[3]).toBe('12');
@@ -79,12 +91,14 @@ describe('ParameterPanel', () => {
     ]);
     editValue(model, 2, '9');
 
-    model.updateRuntimeResult(resultWith([
-      request({ name: 'A', type: 'int', currentValue: '3', variableName: 'a' }),
-      request({ name: 'B', currentValue: '4', variableName: 'other' }), // different definition id
-      request({ name: 'C', currentValue: '8', variableName: 'c' }),
-      request({ name: 'A', sourceFunction: 'other', currentValue: '99', variableName: 'a' }),
-    ]));
+    model.updateRuntimeResult(
+      resultWith([
+        request({ name: 'A', type: 'int', currentValue: '3', variableName: 'a' }),
+        request({ name: 'B', currentValue: '4', variableName: 'other' }), // different definition id
+        request({ name: 'C', currentValue: '8', variableName: 'c' }),
+        request({ name: 'A', sourceFunction: 'other', currentValue: '99', variableName: 'a' }),
+      ]),
+    );
     expect(model.rows.map((row) => row.texts[1])).toEqual(['int', 'double', 'double']);
     expect(Object.fromEntries(model.values())).toEqual({ A: '3', B: '0', C: '9' });
   });
@@ -95,7 +109,11 @@ describe('ParameterPanel', () => {
     model.mousePress(1, 0, false);
     model.mouseRelease(1, 0);
     expect(model.selectedRow).toBe(1);
-    model.setDefinitions([request({ name: 'X', variableName: 'x' }), request({ name: 'A' }), request({ name: 'B', variableName: 'b' })]);
+    model.setDefinitions([
+      request({ name: 'X', variableName: 'x' }),
+      request({ name: 'A' }),
+      request({ name: 'B', variableName: 'b' }),
+    ]);
     expect(model.selectedRow).toBe(2);
     expect([model.currentRow, model.currentColumn]).toEqual([2, 3]);
     model.setPlaceholderData();

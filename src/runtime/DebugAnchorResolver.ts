@@ -24,7 +24,11 @@ export interface DebugVectorAnchor {
   role: string;
 }
 
-interface Element { name: string; value: RuntimeValue; indices: number[] }
+interface Element {
+  name: string;
+  value: RuntimeValue;
+  indices: number[];
+}
 
 function elements(call: RuntimeApiCall, argument: number, label: string): Element[] {
   const out: Element[] = [];
@@ -34,7 +38,8 @@ function elements(call: RuntimeApiCall, argument: number, label: string): Elemen
     if (indices.length > 4) return;
     if (isArray(value)) {
       let count = value.elements.length;
-      if (indices.length === 0 && argument < semantics.length) count = apiUsedElementCount(call, semantics[argument], count);
+      if (indices.length === 0 && argument < semantics.length)
+        count = apiUsedElementCount(call, semantics[argument], count);
       for (let i = 0; i < count; ++i) visit(value.elements[i], `${name}[${i}]`, [...indices, i]);
     } else {
       out.push({ name, value, indices });
@@ -102,11 +107,18 @@ export function resolveDebugVectorAnchors(call: RuntimeApiCall): DebugVectorAnch
       let sourceName = source;
       for (const index of e.indices) sourceName += `[${index}]`;
       const add = (index: number) => {
-        result.push({ sourceName, parameterName: e.name, anchor: points[index], direction, role: apiParameterRole(call, i, e.indices) });
+        result.push({
+          sourceName,
+          parameterName: e.name,
+          anchor: points[index],
+          direction,
+          role: apiParameterRole(call, i, e.indices),
+        });
       };
       if (s.anchorBinding === 'EveryPoint') for (let k = 0; k < points.length; ++k) add(k);
-      else if (s.anchorBinding === 'SameIndex') { if (j < points.length) add(j); }
-      else add(s.anchorBinding === 'Last' ? points.length - 1 : 0);
+      else if (s.anchorBinding === 'SameIndex') {
+        if (j < points.length) add(j);
+      } else add(s.anchorBinding === 'Last' ? points.length - 1 : 0);
     }
   }
   return result;

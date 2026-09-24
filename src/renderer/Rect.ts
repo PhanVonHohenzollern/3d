@@ -5,7 +5,12 @@
 import { QPoint, QPointF } from './Vector3D';
 
 export class QRectF {
-  constructor(readonly x = 0, readonly y = 0, readonly width = 0, readonly height = 0) {}
+  constructor(
+    readonly x = 0,
+    readonly y = 0,
+    readonly width = 0,
+    readonly height = 0,
+  ) {}
 
   /** QRectF(topLeft, size) */
   static fromTopLeft(topLeft: QPointF, width: number, height: number): QRectF {
@@ -17,21 +22,35 @@ export class QRectF {
     return new QRectF(r.x, r.y, r.width, r.height);
   }
 
-  left(): number { return this.x; }
-  top(): number { return this.y; }
-  right(): number { return this.x + this.width; }
-  bottom(): number { return this.y + this.height; }
-  center(): QPointF { return new QPointF(this.x + this.width / 2, this.y + this.height / 2); }
+  left(): number {
+    return this.x;
+  }
+  top(): number {
+    return this.y;
+  }
+  right(): number {
+    return this.x + this.width;
+  }
+  bottom(): number {
+    return this.y + this.height;
+  }
+  center(): QPointF {
+    return new QPointF(this.x + this.width / 2, this.y + this.height / 2);
+  }
 
   adjusted(dx1: number, dy1: number, dx2: number, dy2: number): QRectF {
     return new QRectF(this.x + dx1, this.y + dy1, this.width + dx2 - dx1, this.height + dy2 - dy1);
   }
 
   private spans(): { l: number; r: number; t: number; b: number } {
-    let l = this.x, r = this.x;
-    if (this.width < 0) l += this.width; else r += this.width;
-    let t = this.y, b = this.y;
-    if (this.height < 0) t += this.height; else b += this.height;
+    let l = this.x,
+      r = this.x;
+    if (this.width < 0) l += this.width;
+    else r += this.width;
+    let t = this.y,
+      b = this.y;
+    if (this.height < 0) t += this.height;
+    else b += this.height;
     return { l, r, t, b };
   }
 
@@ -60,16 +79,33 @@ export class QRectF {
 
 /** Integer QRect: right() == x + width - 1 and bottom() == y + height - 1. */
 export class QRect {
-  constructor(readonly x = 0, readonly y = 0, readonly width = 0, readonly height = 0) {}
+  constructor(
+    readonly x = 0,
+    readonly y = 0,
+    readonly width = 0,
+    readonly height = 0,
+  ) {}
 
-  left(): number { return this.x; }
-  top(): number { return this.y; }
-  right(): number { return this.x + this.width - 1; }
-  bottom(): number { return this.y + this.height - 1; }
+  left(): number {
+    return this.x;
+  }
+  top(): number {
+    return this.y;
+  }
+  right(): number {
+    return this.x + this.width - 1;
+  }
+  bottom(): number {
+    return this.y + this.height - 1;
+  }
   /** QRect::center(): integer average of the inclusive edges. */
-  center(): QPoint { return new QPoint(Math.trunc((this.left() + this.right()) / 2), Math.trunc((this.top() + this.bottom()) / 2)); }
+  center(): QPoint {
+    return new QPoint(Math.trunc((this.left() + this.right()) / 2), Math.trunc((this.top() + this.bottom()) / 2));
+  }
 
-  isEmpty(): boolean { return this.left() > this.right() || this.top() > this.bottom(); }
+  isEmpty(): boolean {
+    return this.left() > this.right() || this.top() > this.bottom();
+  }
 
   /** QRect::contains(QPoint) for a normalized rect. */
   contains(p: QPoint): boolean {

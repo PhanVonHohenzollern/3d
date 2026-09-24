@@ -16,16 +16,26 @@ for (const fixture of listFixtures()) {
   describe(fixture.name, () => {
     it('matches C++ preview geometry', () => {
       const reference = referenceOutput(fixture);
-      reference.runs.forEach((run: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      reference.runs.forEach((run: any) => {
         const scene = new PreviewGeometryEngine().build(decodeResult(run.result));
         expectSameJson({ line: run.line, scene: run.scene }, { line: run.line, scene: encodeScene(scene) });
 
         fixture.connectors.forEach((directive, index) => {
-          const fields = [directive.diameter, directive.aSize, directive.bSize, ...directive.position, ...directive.angles];
+          const fields = [
+            directive.diameter,
+            directive.aSize,
+            directive.bSize,
+            ...directive.position,
+            ...directive.angles,
+          ];
           if (!fields.every(isLiteral)) return;
           let actual;
           try {
-            actual = { preview: encodeConnector(buildConnectorPreview(connectorDefinition(directive), literalEvaluator)), error: null };
+            actual = {
+              preview: encodeConnector(buildConnectorPreview(connectorDefinition(directive), literalEvaluator)),
+              error: null,
+            };
           } catch (e) {
             actual = { preview: null, error: what(e) };
           }

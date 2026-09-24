@@ -17,7 +17,9 @@ export class Observable {
 
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
-    return () => { this.#listeners.delete(listener); };
+    return () => {
+      this.#listeners.delete(listener);
+    };
   };
 
   readonly version = (): number => this.#version;
@@ -50,8 +52,8 @@ export interface Modifiers {
   control: boolean;
 }
 
-export const isMacPlatform = typeof navigator !== 'undefined'
-  && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
+export const isMacPlatform =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
 
 export function eventModifiers(event: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }): Modifiers {
   return { shift: event.shiftKey, control: isMacPlatform ? event.metaKey : event.ctrlKey };

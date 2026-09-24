@@ -9,11 +9,20 @@ import { apiParameterMetadataForCall, type ApiParameterMetadata } from '../runti
 import { apiParameterRole } from '../runtime/ApiSemantics';
 import { runtimeSourceHistory } from '../runtime/GeometryRuntime';
 import {
-  emptyRuntimeResult, type RuntimeApiCall, type RuntimeArgumentTrace, type RuntimeResult, type RuntimeValueSource,
+  emptyRuntimeResult,
+  type RuntimeApiCall,
+  type RuntimeArgumentTrace,
+  type RuntimeResult,
+  type RuntimeValueSource,
   type RuntimeVariableChange,
 } from '../runtime/RuntimeTypes';
 import {
-  isArray, isPoint, isVector, runtimeTypeName, runtimeValueToCompactString, type RuntimeValue,
+  isArray,
+  isPoint,
+  isVector,
+  runtimeTypeName,
+  runtimeValueToCompactString,
+  type RuntimeValue,
 } from '../runtime/RuntimeValue';
 import { apiDebugItemId } from '../renderer/Viewport3DHandle';
 import { ApiHistoryDialogModel } from './ApiHistoryModel';
@@ -27,7 +36,17 @@ const kSourceLineRole = UserRole + 4;
 const kParameterRole = UserRole + 5;
 const kArraySummaryRole = UserRole + 6;
 export const TraceColumn = {
-  Number: 0, Name: 1, Type: 2, Expression: 3, Value: 4, X: 5, Y: 6, Z: 7, Role: 8, Line: 9, ColumnCount: 10,
+  Number: 0,
+  Name: 1,
+  Type: 2,
+  Expression: 3,
+  Value: 4,
+  X: 5,
+  Y: 6,
+  Z: 7,
+  Role: 8,
+  Line: 9,
+  ColumnCount: 10,
 } as const;
 const { Number: NumberColumn, Name, Type, Expression, Value, X, Y, Z, Role, Line, ColumnCount } = TraceColumn;
 
@@ -45,8 +64,8 @@ class TraceTree extends TreeWidget {
   override mousePressEvent(event: TreeMouseEvent): void {
     const index = event.item;
     const anchor = this.#anchor && this.#anchor.treeWidget() === this ? this.#anchor : null;
-    this.#rangePress = event.modifiers.shift && !!anchor && !!index
-      && this.isItemVisible(anchor) && this.isItemVisible(index);
+    this.#rangePress =
+      event.modifiers.shift && !!anchor && !!index && this.isItemVisible(anchor) && this.isItemVisible(index);
     if (this.#rangePress) {
       // Keep a persistent source index and select the visible row span.
       this.setCurrentNoUpdate(index);
@@ -58,7 +77,10 @@ class TraceTree extends TreeWidget {
   }
 
   override mouseReleaseEvent(event: TreeMouseEvent): void {
-    if (!this.#rangePress) { super.mouseReleaseEvent(event); return; }
+    if (!this.#rangePress) {
+      super.mouseReleaseEvent(event);
+      return;
+    }
     this.#rangePress = false;
     if (event.item) this.emitSignal(this.itemClicked, event.item, event.column);
   }
@@ -166,15 +188,29 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
   }
 
   /** The "Clear API Focus" tool button. */
-  clearFocusClicked(): void { this.clearApiFocus(); }
+  clearFocusClicked(): void {
+    this.clearApiFocus();
+  }
 
   /** The Earlier values window, if open (QPointer<ApiHistoryDialog>). */
-  historyDialog(): ApiHistoryDialogModel | null { return this.#historyDialog; }
+  historyDialog(): ApiHistoryDialogModel | null {
+    return this.#historyDialog;
+  }
 
-  setPlaceholderData(): void { this.setRuntimeResult(emptyRuntimeResult()); }
+  setPlaceholderData(): void {
+    this.setRuntimeResult(emptyRuntimeResult());
+  }
 
-  #appendParameter(parent: TreeWidgetItem, call: RuntimeApiCall, apiIndex: number, parameter: number,
-    formal: string, value: RuntimeValue, trace: RuntimeArgumentTrace, indices: number[] = []): void {
+  #appendParameter(
+    parent: TreeWidgetItem,
+    call: RuntimeApiCall,
+    apiIndex: number,
+    parameter: number,
+    formal: string,
+    value: RuntimeValue,
+    trace: RuntimeArgumentTrace,
+    indices: number[] = [],
+  ): void {
     const item = new TreeWidgetItem(parent);
     item.setData(0, UserRole, apiIndex);
     item.setData(0, kNodeKeyRole, `api:${apiIndex}/parameter:${formal}`);
@@ -185,7 +221,8 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     setValue(item, value);
     if (indices.length === 0 && !isArray(value)) {
       const metadata = apiParameterMetadataForCall(call);
-      if (!call.userFunctionCall && parameter < metadata.length) item.setText(Type, metadataTypeText(metadata[parameter].type));
+      if (!call.userFunctionCall && parameter < metadata.length)
+        item.setText(Type, metadataTypeText(metadata[parameter].type));
     }
     const point = isPoint(value);
     const vector = isVector(value);
@@ -201,8 +238,10 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
       if (trace.expression === formal) item.setText(Expression, '');
       for (let i = 0; i < value.elements.length; ++i) {
         const path = [...indices, i];
-        const childTrace = i < trace.elements.length ? trace.elements[i]
-          : { expression: `${trace.expression}[${i}]`, sources: [], elements: [] };
+        const childTrace =
+          i < trace.elements.length
+            ? trace.elements[i]
+            : { expression: `${trace.expression}[${i}]`, sources: [], elements: [] };
         this.#appendParameter(item, call, apiIndex, parameter, `${formal}[${i}]`, value.elements[i], childTrace, path);
       }
       if (indices.length && source) item.setText(Name, source.name);
@@ -217,7 +256,10 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
   }
 
   setRuntimeResult(result: RuntimeResult): void {
-    if (this.#historyDialog) { this.#historyDialog.close(); this.#historyDialog = null; }
+    if (this.#historyDialog) {
+      this.#historyDialog.close();
+      this.#historyDialog = null;
+    }
     const tree = this.m_tree;
     const previous = this.#selectedApiIndex;
     const currentItem = tree.currentItem();
@@ -230,17 +272,21 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     }
     const blocked = tree.blockSignals(true); // QSignalBlocker blocker(m_tree);
     this.#clearMeshFilter();
-    this.#pendingTraceRows.clear(); tree.clear();
+    this.#pendingTraceRows.clear();
+    tree.clear();
     this.#runtimeResult = result;
     const apiItems: TreeWidgetItem[] = [];
     for (let i = 0; i < result.apiCalls.length; ++i) {
       const call = result.apiCalls[i];
-      const item = call.parentApiIndex >= 0 && call.parentApiIndex < i
-        ? new TreeWidgetItem(apiItems[call.parentApiIndex]) : new TreeWidgetItem(tree);
+      const item =
+        call.parentApiIndex >= 0 && call.parentApiIndex < i
+          ? new TreeWidgetItem(apiItems[call.parentApiIndex])
+          : new TreeWidgetItem(tree);
       apiItems[i] = item;
       item.setData(0, UserRole, i);
       item.setData(0, kNodeKeyRole, `api:${i}`);
-      item.setText(NumberColumn, String(i + 1)); item.setText(Name, call.name);
+      item.setText(NumberColumn, String(i + 1));
+      item.setText(Name, call.name);
       item.setText(Type, call.userFunctionCall ? 'C++' : 'API');
       item.setText(Expression, call.display);
       setLine(item, call.line);
@@ -248,22 +294,38 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
       if (call.userFunctionCall) {
         metadata = [];
         for (let p = 0; p < call.formalParameterNames.length; ++p)
-          metadata.push({ name: call.formalParameterNames[p],
-            type: p < call.formalParameterTypes.length ? call.formalParameterTypes[p] : '', defaultValue: '' });
+          metadata.push({
+            name: call.formalParameterNames[p],
+            type: p < call.formalParameterTypes.length ? call.formalParameterTypes[p] : '',
+            defaultValue: '',
+          });
       }
       for (let p = 0; p < call.arguments.length; ++p) {
-        const trace: RuntimeArgumentTrace = p < call.argumentTraces.length
-          ? { ...call.argumentTraces[p] } : { expression: '', sources: [], elements: [] };
-        if (trace.expression === '' && p < call.argumentExpressions.length) trace.expression = call.argumentExpressions[p];
-        this.#appendParameter(item, call, i, p, p < metadata.length ? metadata[p].name : `arg${p}`, call.arguments[p], trace);
+        const trace: RuntimeArgumentTrace =
+          p < call.argumentTraces.length
+            ? { ...call.argumentTraces[p] }
+            : { expression: '', sources: [], elements: [] };
+        if (trace.expression === '' && p < call.argumentExpressions.length)
+          trace.expression = call.argumentExpressions[p];
+        this.#appendParameter(
+          item,
+          call,
+          i,
+          p,
+          p < metadata.length ? metadata[p].name : `arg${p}`,
+          call.arguments[p],
+          trace,
+        );
       }
       for (let p = call.arguments.length; p < metadata.length; ++p) {
         if (metadata[p].defaultValue === '') continue;
         const child = new TreeWidgetItem(item);
         child.setData(0, UserRole, i);
         child.setData(0, kNodeKeyRole, `api:${i}/default:${metadata[p].name}`);
-        child.setText(Name, metadata[p].name); child.setText(Type, metadata[p].type);
-        child.setText(Value, metadata[p].defaultValue); child.setText(Role, 'Default argument');
+        child.setText(Name, metadata[p].name);
+        child.setText(Type, metadata[p].type);
+        child.setText(Value, metadata[p].defaultValue);
+        child.setText(Role, 'Default argument');
       }
     }
     let selection: TreeWidgetItem | null = null;
@@ -274,9 +336,13 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
       const prefix = `${key}/`;
       if (key === previousNode) selection = item;
       const expanded = expandedNodes.has(key);
-      if (expanded || previousNode.startsWith(prefix)
-        || selectedList.some((s) => s.startsWith(prefix))
-        || expandedList.some((s) => s.startsWith(prefix))) this.#populateTrace(item);
+      if (
+        expanded ||
+        previousNode.startsWith(prefix) ||
+        selectedList.some((s) => s.startsWith(prefix)) ||
+        expandedList.some((s) => s.startsWith(prefix))
+      )
+        this.#populateTrace(item);
       item.setExpanded(expanded);
       updateArraySummary(item);
       item.setSelected(selectedNodes.has(key));
@@ -304,7 +370,8 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
       const item = new TreeWidgetItem(parent);
       item.setData(0, UserRole, parent.data(0, UserRole));
       item.setData(0, kNodeKeyRole, `${parent.dataString(0, kNodeKeyRole)}/source:${i}:${source.name}`);
-      item.setText(Name, source.name); setValue(item, source.value);
+      item.setText(Name, source.name);
+      setValue(item, source.value);
       item.setText(Role, 'Source variable');
       this.#configureSource(item, source);
       const array = source.value;
@@ -313,8 +380,12 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
         this.#pendingTraceRows.set(item, () => {
           const children: RuntimeValueSource[] = [];
           for (let j = 0; j < array.elements.length; ++j)
-            children.push({ name: `${source.name}[${j}]`, value: array.elements[j],
-              variableId: source.variableId, historyEnd: source.historyEnd });
+            children.push({
+              name: `${source.name}[${j}]`,
+              value: array.elements[j],
+              variableId: source.variableId,
+              historyEnd: source.historyEnd,
+            });
           this.#appendTraceSources(item, children);
         });
       }
@@ -349,7 +420,8 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
   #showApiHistory(apiIndex: number): void {
     if (apiIndex < 0 || apiIndex >= this.#runtimeResult.apiCalls.length) return;
     if (this.#historyDialog && this.#historyDialog.apiIndex() !== apiIndex) {
-      this.#historyDialog.close(); this.#historyDialog = null;
+      this.#historyDialog.close();
+      this.#historyDialog = null;
     }
     if (!this.#historyDialog) {
       const dialog = new ApiHistoryDialogModel(this.#runtimeResult, apiIndex);
@@ -367,17 +439,29 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     this.changed();
   }
 
-  setSelectionChangedCallback(callback: ((apiIndex: number) => void) | null): void { this.#selectionChangedCallback = callback; }
-  setSourceActivatedCallback(callback: ((line: number) => void) | null): void { this.#sourceActivatedCallback = callback; }
-  setHistorySourceActivatedCallback(callback: ((line: number) => void) | null): void { this.#historySourceActivatedCallback = callback; }
+  setSelectionChangedCallback(callback: ((apiIndex: number) => void) | null): void {
+    this.#selectionChangedCallback = callback;
+  }
+  setSourceActivatedCallback(callback: ((line: number) => void) | null): void {
+    this.#sourceActivatedCallback = callback;
+  }
+  setHistorySourceActivatedCallback(callback: ((line: number) => void) | null): void {
+    this.#historySourceActivatedCallback = callback;
+  }
 
   selectMeshApiCall(apiIndex: number): void {
     const tree = this.m_tree;
     let call: TreeWidgetItem | null = null;
     for (const item of tree.allItems()) {
-      if (item.dataString(0, kNodeKeyRole) === `api:${apiIndex}`) { call = item; break; }
+      if (item.dataString(0, kNodeKeyRole) === `api:${apiIndex}`) {
+        call = item;
+        break;
+      }
     }
-    if (!call) { this.clearApiFocus(); return; }
+    if (!call) {
+      this.clearApiFocus();
+      return;
+    }
     const blocked = tree.blockSignals(true);
     this.#clearMeshFilter();
     this.#meshApiIndex = apiIndex;
@@ -385,8 +469,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     for (let parent = call.parent(); parent; parent = parent.parent()) ancestors.add(parent);
     // Keep original call indices and captured values, including loop iterations.
     // For a nested helper, start at its parent so only the mesh's own API appears.
-    for (const item of tree.allItems())
-      item.setHidden(item.dataInt(0, UserRole) !== apiIndex && !ancestors.has(item));
+    for (const item of tree.allItems()) item.setHidden(item.dataInt(0, UserRole) !== apiIndex && !ancestors.has(item));
     tree.setRootItem(call.parent());
     tree.setCurrentItem(call, 0, 'ClearAndSelect');
     this.#selectedApiIndex = apiIndex;
@@ -397,7 +480,9 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     tree.blockSignals(blocked);
   }
 
-  meshApiCall(): number { return this.#meshApiIndex; }
+  meshApiCall(): number {
+    return this.#meshApiIndex;
+  }
 
   #clearMeshFilter(): void {
     if (this.#meshApiIndex < 0) return;
@@ -448,13 +533,17 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     const ids = new Set<string>();
     const collect = (item: TreeWidgetItem): void => {
       const id = item.dataString(0, kDebugItemRole);
-      if (id !== '') { ids.add(id); return; }
+      if (id !== '') {
+        ids.add(id);
+        return;
+      }
       for (let i = 0; i < item.childCount(); ++i) collect(item.child(i));
     };
     for (const selected of this.m_tree.selectedItems()) {
       for (let item: TreeWidgetItem | null = selected; item; item = item.parent()) {
         if (item.dataString(0, kParameterRole) === '') continue;
-        collect(item); break;
+        collect(item);
+        break;
       }
     }
     return ids;
@@ -480,12 +569,16 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     const tree = this.m_tree;
     const blocked = tree.blockSignals(true);
     this.#clearMeshFilter();
-    tree.clearSelection(); tree.setCurrentItem(null); this.#selectedApiIndex = -1;
+    tree.clearSelection();
+    tree.setCurrentItem(null);
+    this.#selectedApiIndex = -1;
     this.#updateSelectionAppearance();
     this.changed();
     if (this.#selectionChangedCallback) this.#selectionChangedCallback(-1);
     tree.blockSignals(blocked);
   }
 
-  selectedApiCall(): number { return this.#selectedApiIndex; }
+  selectedApiCall(): number {
+    return this.#selectedApiIndex;
+  }
 }

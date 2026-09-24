@@ -15,13 +15,21 @@ export class VertexArray {
   }
 
   /** size() in vertices */
-  size(): number { return this.m_size; }
-  empty(): boolean { return this.m_size === 0; }
+  size(): number {
+    return this.m_size;
+  }
+  empty(): boolean {
+    return this.m_size === 0;
+  }
 
-  clear(): void { this.m_size = 0; }
+  clear(): void {
+    this.m_size = 0;
+  }
 
   /** The used part of the interleaved data (a view, not a copy). */
-  data(): Float32Array { return this.m_data.subarray(0, this.m_size * kVertexFloats); }
+  data(): Float32Array {
+    return this.m_data.subarray(0, this.m_size * kVertexFloats);
+  }
 
   private reserve(vertices: number): void {
     if (vertices * kVertexFloats <= this.m_data.length) return;
@@ -37,9 +45,15 @@ export class VertexArray {
     this.reserve(this.m_size + 1);
     const o = this.m_size * kVertexFloats;
     const d = this.m_data;
-    d[o] = px; d[o + 1] = py; d[o + 2] = pz;
-    d[o + 3] = r; d[o + 4] = g; d[o + 5] = b;
-    d[o + 6] = nx; d[o + 7] = ny; d[o + 8] = nz;
+    d[o] = px;
+    d[o + 1] = py;
+    d[o + 2] = pz;
+    d[o + 3] = r;
+    d[o + 4] = g;
+    d[o + 5] = b;
+    d[o + 6] = nx;
+    d[o + 7] = ny;
+    d[o + 8] = nz;
     ++this.m_size;
   }
 

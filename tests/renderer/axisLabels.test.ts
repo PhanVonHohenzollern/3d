@@ -23,7 +23,8 @@ function distanceToProjectedLine(engine: ViewportEngine, p: QPointF, a: QVector3
     const c = transform.map({ x: v.x, y: v.y, z: v.z, w: 1 } as never);
     return new QPointF((c.x / c.w + 1) * engine.width() * 0.5, (1 - c.y / c.w) * engine.height() * 0.5);
   };
-  const pa = toScreen(a), pb = toScreen(b);
+  const pa = toScreen(a),
+    pb = toScreen(b);
   const d = pb.sub(pa);
   return Math.abs(d.x * (p.y - pa.y) - d.y * (p.x - pa.x)) / Math.hypot(d.x, d.y);
 }
@@ -53,8 +54,7 @@ describe('world axis labels', () => {
     }
     // Labels never overlap each other.
     for (let a = 0; a < labels.length; ++a)
-      for (let b = a + 1; b < labels.length; ++b)
-        expect(labels[a].bounds.intersects(labels[b].bounds)).toBe(false);
+      for (let b = a + 1; b < labels.length; ++b) expect(labels[a].bounds.intersects(labels[b].bounds)).toBe(false);
   });
 
   it('uses the Link orientation signs: X+/Y+/Z+ point along the negative SDK axes', () => {

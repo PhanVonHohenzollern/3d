@@ -21,7 +21,11 @@
 //   GL_LINES + glLineWidth                              -> screen-space quads
 //     (see WideLines.ts); widths stay in framebuffer pixels like glLineWidth.
 
-import { connectorOrientations, previewOrientationDirection, type ConnectorPreview } from '../geometry/ConnectorPreview';
+import {
+  connectorOrientations,
+  previewOrientationDirection,
+  type ConnectorPreview,
+} from '../geometry/ConnectorPreview';
 import type { PreviewGeometryScene } from '../geometry/PreviewGeometryEngine';
 import { apiParameterMetadataForCall } from '../runtime/ApiMetadata';
 import { formatGeneral } from '../runtime/CppCompat';
@@ -32,22 +36,39 @@ import { DebugLabelPanel, type DebugLabelEntry } from './DebugLabelPanel';
 import { QMatrix4x4 } from './Matrix4x4';
 import { OverlayPainter, Qt, qColor, qPen, type QColor } from './OverlayPainter';
 import {
-  LeftButton, NoButton, RightButton, NoModifier,
-  type KeyboardModifiers, type MouseEventData, type WheelEventData,
+  LeftButton,
+  NoButton,
+  RightButton,
+  NoModifier,
+  type KeyboardModifiers,
+  type MouseEventData,
+  type WheelEventData,
 } from './QtEvents';
 import { QRect, QRectF } from './Rect';
 import {
-  CanvasTextMeasurer, approximateTextMeasurer, fontHeight, fontHeightF, fontWithPointSize, horizontalAdvance,
-  kDefaultFontFamily, pointSizeToPixels, type FontSpec, type TextMeasurer,
+  CanvasTextMeasurer,
+  approximateTextMeasurer,
+  fontHeight,
+  fontHeightF,
+  fontWithPointSize,
+  horizontalAdvance,
+  kDefaultFontFamily,
+  pointSizeToPixels,
+  type FontSpec,
+  type TextMeasurer,
 } from './TextMetrics';
 import { QPoint, QPointF, QVector3D, QVector4D } from './Vector3D';
 import { VertexArray, kVertexBytes, kVertexFloats } from './VertexArray';
 import { apiDebugItemId, type Vec3 } from './Viewport3DHandle';
 import {
-  createProgram, expandLineQuads, kLineQuadBytes, kWideLineFragmentShader, kWideLineVertexShader,
+  createProgram,
+  expandLineQuads,
+  kLineQuadBytes,
+  kWideLineFragmentShader,
+  kWideLineVertexShader,
 } from './WideLines';
 
-const kPi = 3.14159265358979323846;
+const kPi = Math.PI;
 
 /* Adjust the Point / Vector / Mesh button here (sizes are logical pixels). */
 const kSelectionButtonWidth = 72;
@@ -57,7 +78,7 @@ export const kSelectionButtonFontSize = 9;
 const kOverviewPointName = 'p0';
 
 function radians(degrees: number): number {
-  return degrees * kPi / 180;
+  return (degrees * kPi) / 180;
 }
 
 /** std::clamp */
@@ -296,9 +317,15 @@ export class ViewportEngine {
   /** The Select button's clicked() slot: cycles Point -> Vector -> Mesh. */
   selectionModeButtonClicked(): void {
     switch (this.m_selectionMode) {
-    case 'Point': this.m_selectionMode = 'Vector'; break;
-    case 'Vector': this.m_selectionMode = 'Mesh'; break;
-    case 'Mesh': this.m_selectionMode = 'Point'; break;
+      case 'Point':
+        this.m_selectionMode = 'Vector';
+        break;
+      case 'Vector':
+        this.m_selectionMode = 'Mesh';
+        break;
+      case 'Mesh':
+        this.m_selectionMode = 'Point';
+        break;
     }
     this.clearHover();
     this.updateSelectionModeButton();
@@ -404,13 +431,11 @@ export class ViewportEngine {
 
   private isMeshInGroup(meshIndex: number, pickedIndex: number): boolean {
     const count = this.m_geometryScene.meshes.length;
-    if (pickedIndex < 0 || pickedIndex >= count || meshIndex < 0 || meshIndex >= count)
-      return false;
+    if (pickedIndex < 0 || pickedIndex >= count || meshIndex < 0 || meshIndex >= count) return false;
     const apiIndex = this.m_geometryScene.meshes[pickedIndex].apiIndex;
     // Use the invocation identity, not the source line: loop iterations can
     // produce different blocks from the same line. Unowned meshes stay separate.
-    return apiIndex >= 0 ? this.m_geometryScene.meshes[meshIndex].apiIndex === apiIndex
-      : meshIndex === pickedIndex;
+    return apiIndex >= 0 ? this.m_geometryScene.meshes[meshIndex].apiIndex === apiIndex : meshIndex === pickedIndex;
   }
 
   hasApiFocus(): boolean {
@@ -440,10 +465,21 @@ export class ViewportEngine {
 
   fitScene(): void {
     let haveBounds = false;
-    let minX = 0, minY = 0, minZ = 0, maxX = 0, maxY = 0, maxZ = 0;
+    let minX = 0,
+      minY = 0,
+      minZ = 0,
+      maxX = 0,
+      maxY = 0,
+      maxZ = 0;
 
     const add = (x: number, y: number, z: number) => {
-      if (!haveBounds) { minX = maxX = x; minY = maxY = y; minZ = maxZ = z; haveBounds = true; return; }
+      if (!haveBounds) {
+        minX = maxX = x;
+        minY = maxY = y;
+        minZ = maxZ = z;
+        haveBounds = true;
+        return;
+      }
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       minZ = Math.min(minZ, z);
@@ -461,18 +497,23 @@ export class ViewportEngine {
     for (const item of this.m_debugItems) {
       if (!this.isDebugItemVisible(item)) continue;
       if (item.kind === 'Point') add(item.end.x, item.end.y, item.end.z);
-      else { add(item.start.x, item.start.y, item.start.z); add(item.end.x, item.end.y, item.end.z); }
+      else {
+        add(item.start.x, item.start.y, item.start.z);
+        add(item.end.x, item.end.y, item.end.z);
+      }
     }
 
     if (!this.m_apiFocusActive) {
       for (const connector of this.m_connectors) {
-        for (const mesh of connector.meshes)
-          for (const v of mesh.vertices) add(v.x, v.y, v.z);
+        for (const mesh of connector.meshes) for (const v of mesh.vertices) add(v.x, v.y, v.z);
         const tip = connector.point.add(connector.direction.mul(connector.length * 1.65));
         add(tip.x, tip.y, tip.z);
       }
     }
-    if (!haveBounds) { this.fitDebugOverlay(); return; }
+    if (!haveBounds) {
+      this.fitDebugOverlay();
+      return;
+    }
     this.fitBounds(new QVector3D(minX, minY, minZ), new QVector3D(maxX, maxY, maxZ));
   }
 
@@ -556,11 +597,18 @@ export class ViewportEngine {
 
   fitDebugOverlay(): void {
     let haveBounds = false;
-    let minX = 0, minY = 0, minZ = 0, maxX = 0, maxY = 0, maxZ = 0;
+    let minX = 0,
+      minY = 0,
+      minZ = 0,
+      maxX = 0,
+      maxY = 0,
+      maxZ = 0;
 
     const add = (p: QVector3D) => {
       if (!haveBounds) {
-        minX = maxX = p.x; minY = maxY = p.y; minZ = maxZ = p.z;
+        minX = maxX = p.x;
+        minY = maxY = p.y;
+        minZ = maxZ = p.z;
         haveBounds = true;
         return;
       }
@@ -610,9 +658,15 @@ export class ViewportEngine {
   // Widget surface (QOpenGLWidget plumbing)
   // =====================================================================
 
-  width(): number { return this.m_width; }
-  height(): number { return this.m_height; }
-  private rect(): QRect { return new QRect(0, 0, this.m_width, this.m_height); }
+  width(): number {
+    return this.m_width;
+  }
+  height(): number {
+    return this.m_height;
+  }
+  private rect(): QRect {
+    return new QRect(0, 0, this.m_width, this.m_height);
+  }
 
   /** Called by the React wrapper once its canvases are mounted. */
   attach(surface: ViewportSurface): void {
@@ -649,7 +703,8 @@ export class ViewportEngine {
   detach(): void {
     const surface = this.m_surface;
     if (!surface) return;
-    if (this.m_updateFrame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.m_updateFrame);
+    if (this.m_updateFrame !== null && typeof cancelAnimationFrame === 'function')
+      cancelAnimationFrame(this.m_updateFrame);
     this.m_updateFrame = null;
     surface.glCanvas.removeEventListener('webglcontextlost', this.onContextLost);
     surface.glCanvas.removeEventListener('webglcontextrestored', this.onContextRestored);
@@ -711,25 +766,42 @@ export class ViewportEngine {
   }
 
   /** setCursor(Qt::PointingHandCursor) */
-  private setPointingHandCursor(): void { this.setCursor('pointer'); }
-  private unsetCursor(): void { this.setCursor(''); }
+  private setPointingHandCursor(): void {
+    this.setCursor('pointer');
+  }
+  private unsetCursor(): void {
+    this.setCursor('');
+  }
 
   /** The Points / Vectors lists (child widgets rendered by the React wrapper). */
-  pointLabelPanel(): DebugLabelPanel { return this.m_pointLabels; }
-  vectorLabelPanel(): DebugLabelPanel { return this.m_vectorLabels; }
+  pointLabelPanel(): DebugLabelPanel {
+    return this.m_pointLabels;
+  }
+  vectorLabelPanel(): DebugLabelPanel {
+    return this.m_vectorLabels;
+  }
 
   subscribeWidgets = (listener: () => void): (() => void) => {
     this.m_widgetListeners.add(listener);
-    return () => { this.m_widgetListeners.delete(listener); };
+    return () => {
+      this.m_widgetListeners.delete(listener);
+    };
   };
 
   selectionModeButton = (): SelectionModeButtonState => this.m_selectionModeButton;
 
   private setSelectionModeButton(state: Partial<SelectionModeButtonState>): void {
     const next = { ...this.m_selectionModeButton, ...state };
-    const g = next.geometry, o = this.m_selectionModeButton.geometry;
-    if (next.text === this.m_selectionModeButton.text
-      && g.x === o.x && g.y === o.y && g.width === o.width && g.height === o.height) return;
+    const g = next.geometry,
+      o = this.m_selectionModeButton.geometry;
+    if (
+      next.text === this.m_selectionModeButton.text &&
+      g.x === o.x &&
+      g.y === o.y &&
+      g.width === o.width &&
+      g.height === o.height
+    )
+      return;
     this.m_selectionModeButton = next;
     for (const listener of [...this.m_widgetListeners]) listener();
   }
@@ -1016,8 +1088,7 @@ export class ViewportEngine {
       this.setUniformValue('uLightingEnabled', false);
 
       this.glLineWidth(1.0);
-      if (this.m_axesVertexCount > 0)
-        this.glDrawArrays('GL_LINES', 0, this.m_axesVertexCount);
+      if (this.m_axesVertexCount > 0) this.glDrawArrays('GL_LINES', 0, this.m_axesVertexCount);
 
       if (this.m_showGeometry && this.m_geometryRanges.length > 0) {
         if (this.m_geometryWireframe) {
@@ -1036,11 +1107,13 @@ export class ViewportEngine {
             const selected = this.isMeshSelected(range.meshIndex);
             const hovered = this.isMeshInGroup(range.meshIndex, this.m_hoveredMeshIndex);
             this.setUniformValue('uUseOverrideColor', selected || hovered);
-            if (selected)
-              this.setUniformValue('uOverrideColor', new QVector3D(0.20, 0.78, 0.95));
+            if (selected) this.setUniformValue('uOverrideColor', new QVector3D(0.2, 0.78, 0.95));
             else if (hovered) {
               const color = this.m_geometryScene.meshes[range.meshIndex].color;
-              this.setUniformValue('uOverrideColor', new QVector3D(color.r, color.g, color.b).mul(0.65).add(new QVector3D(0.35, 0.35, 0.35)));
+              this.setUniformValue(
+                'uOverrideColor',
+                new QVector3D(color.r, color.g, color.b).mul(0.65).add(new QVector3D(0.35, 0.35, 0.35)),
+              );
             }
             this.glDrawArrays('GL_TRIANGLES', range.start, range.count);
           }
@@ -1056,13 +1129,22 @@ export class ViewportEngine {
           this.glLineWidth(3.0);
           for (const range of this.m_geometryWireRanges) {
             if (!this.isGeometryApiVisible(range.apiIndex)) continue;
-            const selectedDirectly = this.m_selectedMeshIndex >= 0 ? this.isMeshSelected(range.meshIndex)
-              : this.m_selectedApiIndex >= 0 && range.apiIndex === this.m_selectedApiIndex;
-            const selectedAsHelperChild = this.m_selectedMeshIndex < 0 && this.m_apiFocusActive && this.m_apiFocusIndices.has(range.apiIndex);
+            const selectedDirectly =
+              this.m_selectedMeshIndex >= 0
+                ? this.isMeshSelected(range.meshIndex)
+                : this.m_selectedApiIndex >= 0 && range.apiIndex === this.m_selectedApiIndex;
+            const selectedAsHelperChild =
+              this.m_selectedMeshIndex < 0 && this.m_apiFocusActive && this.m_apiFocusIndices.has(range.apiIndex);
             const hovered = this.isMeshInGroup(range.meshIndex, this.m_hoveredMeshIndex);
             if (!selectedDirectly && !selectedAsHelperChild && !hovered) continue;
-            this.setUniformValue('uOverrideColor', hovered ? new QVector3D(0.7, 0.95, 1.0)
-              : this.m_selectedMeshIndex >= 0 ? new QVector3D(0.82, 1.0, 1.0) : new QVector3D(1.0, 0.92, 0.18));
+            this.setUniformValue(
+              'uOverrideColor',
+              hovered
+                ? new QVector3D(0.7, 0.95, 1.0)
+                : this.m_selectedMeshIndex >= 0
+                  ? new QVector3D(0.82, 1.0, 1.0)
+                  : new QVector3D(1.0, 0.92, 0.18),
+            );
             this.glDrawArrays('GL_LINES', range.start, range.count);
           }
           this.setUniformValue('uUseOverrideColor', false);
@@ -1086,7 +1168,8 @@ export class ViewportEngine {
       if (!this.m_apiFocusActive && this.m_connectorVertexCount > 0) {
         this.setUniformValue('uUseOverrideColor', false);
         this.setUniformValue('uLightingEnabled', true);
-        if (!this.m_geometryWireframe) this.glDrawArrays('GL_TRIANGLES', this.m_connectorVertexStart, this.m_connectorVertexCount);
+        if (!this.m_geometryWireframe)
+          this.glDrawArrays('GL_TRIANGLES', this.m_connectorVertexStart, this.m_connectorVertexCount);
         this.setUniformValue('uLightingEnabled', false);
         this.glLineWidth(2.0);
         // Test outlines and direction arrows stay readable against the source model.
@@ -1178,8 +1261,9 @@ export class ViewportEngine {
         const arrow = new VertexArray(8);
         this.appendVectorArrow(arrow, item, false);
         for (let pass = 0; pass < 2; ++pass) {
-          painter.setPen(qPen(pass === 0 ? qColor(15, 25, 35, 210) : qColor(125, 235, 255),
-            pass === 0 ? 6.0 : 3.0, 'RoundCap'));
+          painter.setPen(
+            qPen(pass === 0 ? qColor(15, 25, 35, 210) : qColor(125, 235, 255), pass === 0 ? 6.0 : 3.0, 'RoundCap'),
+          );
           for (let i = 0; i + 1 < arrow.size(); i += 2) {
             const a = this.projectToScreen(arrow.position(i));
             const b = a ? this.projectToScreen(arrow.position(i + 1)) : null;
@@ -1218,7 +1302,7 @@ export class ViewportEngine {
     if (this.m_dragDistance < 5) return;
 
     const creatingPoint = this.m_selectionMode === 'Point' && this.m_pressModifiers.control;
-    if ((event.buttons & LeftButton) && !creatingPoint) {
+    if (event.buttons & LeftButton && !creatingPoint) {
       // Dragging left should orbit the view to the left (grab-style navigation).
       // The old sign made horizontal orbit feel reversed.
       this.m_yaw -= delta.x * 0.35;
@@ -1259,13 +1343,13 @@ export class ViewportEngine {
         if (this.m_connectorSelectionCallback) this.m_connectorSelectionCallback(connectorId);
       } else if (this.m_selectionMode === 'Point' && this.m_pressModifiers.control) {
         const point = this.screenToGroundPlane(position);
-        if (point && this.m_pointCreationCallback)
-          this.m_pointCreationCallback({ x: point.x, y: point.y, z: point.z });
+        if (point && this.m_pointCreationCallback) this.m_pointCreationCallback({ x: point.x, y: point.y, z: point.z });
       } else if (this.m_selectionMode !== 'Mesh') {
         const name = this.pickDebugItem(position, this.m_selectionMode === 'Point' ? 'Point' : 'Vector');
         if (name !== '') {
           const selected = this.m_pressModifiers.shift ? new Set(this.m_selectedVariables) : new Set<string>();
-          if (selected.has(name)) selected.delete(name); else selected.add(name);
+          if (selected.has(name)) selected.delete(name);
+          else selected.add(name);
           this.setSelectedVariables(selected);
           if (this.m_selectionChangedCallback) this.m_selectionChangedCallback(new Set(this.m_selectedVariables));
         }
@@ -1311,8 +1395,10 @@ export class ViewportEngine {
           const b = mesh.vertices[mesh.indices[i + 1]];
           const c = mesh.vertices[mesh.indices[i + 2]];
           if (!a || !b || !c) continue;
-          const normal = QVector3D.crossProduct(new QVector3D(b.x - a.x, b.y - a.y, b.z - a.z),
-            new QVector3D(c.x - a.x, c.y - a.y, c.z - a.z)).normalized();
+          const normal = QVector3D.crossProduct(
+            new QVector3D(b.x - a.x, b.y - a.y, b.z - a.z),
+            new QVector3D(c.x - a.x, c.y - a.y, c.z - a.z),
+          ).normalized();
           for (const v of [a, b, c])
             this.m_gpuVertices.push(v.x, v.y, v.z, color.x, color.y, color.z, normal.x, normal.y, normal.z);
         }
@@ -1321,7 +1407,8 @@ export class ViewportEngine {
     this.m_connectorVertexCount = this.m_gpuVertices.size() - this.m_connectorVertexStart;
     this.m_connectorLineStart = this.m_gpuVertices.size();
     for (const connector of this.m_connectors) {
-      const color = connector.id === this.m_selectedConnectorId ? new QVector3D(1.0, 0.96, 0.45) : new QVector3D(0.35, 0.7, 0.8);
+      const color =
+        connector.id === this.m_selectedConnectorId ? new QVector3D(1.0, 0.96, 0.45) : new QVector3D(0.35, 0.7, 0.8);
       const line = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) => {
         this.appendLine(this.m_gpuVertices, vector(a), vector(b), color.x, color.y, color.z);
       };
@@ -1356,7 +1443,8 @@ export class ViewportEngine {
       const width = horizontalAdvance(this.m_measurer, label, font) + 12;
       const height = fontHeight(this.m_measurer, font) + 6;
       const area = new QRectF(screen.x + 12, screen.y + 8, width, height);
-      painter.setPen(null); painter.setBrush(qColor(25, 35, 42, 235));
+      painter.setPen(null);
+      painter.setBrush(qColor(25, 35, 42, 235));
       painter.drawRoundedRect(area, 3, 3);
       painter.setPen(qColor(255, 243, 165));
       painter.drawTextCentered(area, label);
@@ -1373,7 +1461,10 @@ export class ViewportEngine {
       if (!point) continue;
       const delta = screen.sub(point);
       const distance = QPointF.dotProduct(delta, delta);
-      if (distance < best) { best = distance; result = connector.id; }
+      if (distance < best) {
+        best = distance;
+        result = connector.id;
+      }
     }
     return result;
   }
@@ -1386,7 +1477,7 @@ export class ViewportEngine {
     this.m_axesVertices.clear();
     // Labels are projected onto these same axes where they meet the viewport edges.
     const extent = Math.max(10, this.m_sceneScale * 1.45, this.m_target.length() + this.m_distance * 2);
-    const colors = [new QVector3D(0.95, 0.20, 0.20), new QVector3D(0.20, 0.90, 0.30), new QVector3D(0.25, 0.45, 1.0)];
+    const colors = [new QVector3D(0.95, 0.2, 0.2), new QVector3D(0.2, 0.9, 0.3), new QVector3D(0.25, 0.45, 1.0)];
     for (let axis = 0; axis < 3; ++axis) {
       const positive = previewOrientationDirection(connectorOrientations[axis * 2]);
       const end = new QVector3D(positive.x * extent, positive.y * extent, positive.z * extent);
@@ -1403,7 +1494,8 @@ export class ViewportEngine {
 
   private worldAxisLabels(): AxisLabel[] {
     const labels: AxisLabel[] = [];
-    const width = this.width(), height = this.height();
+    const width = this.width(),
+      height = this.height();
     if (width < 80 || height < 80 || this.m_axesVertices.size() !== 6) return labels;
     const transform = this.m_projection.times(this.m_view);
     const screen = new QRectF(0, 0, width, height);
@@ -1411,8 +1503,10 @@ export class ViewportEngine {
     const colors = [qColor(242, 70, 70), qColor(65, 230, 90), qColor(95, 145, 255)];
     const labelFont = this.axisLabelFont();
     const occupied: QRectF[] = [];
-    if (this.m_pointLabels.isVisible()) occupied.push(QRectF.fromRect(this.m_pointLabels.geometry()).adjusted(-4, -4, 4, 4));
-    if (this.m_vectorLabels.isVisible()) occupied.push(QRectF.fromRect(this.m_vectorLabels.geometry()).adjusted(-4, -4, 4, 4));
+    if (this.m_pointLabels.isVisible())
+      occupied.push(QRectF.fromRect(this.m_pointLabels.geometry()).adjusted(-4, -4, 4, 4));
+    if (this.m_vectorLabels.isVisible())
+      occupied.push(QRectF.fromRect(this.m_vectorLabels.geometry()).adjusted(-4, -4, 4, 4));
     occupied.push(QRectF.fromRect(this.m_selectionModeButton.geometry).adjusted(-4, -4, 4, 4));
     // Clip a parametric line against a half-space f(t) >= 0. Homogeneous
     // clipping is essential when one end of a world axis is behind the camera.
@@ -1428,23 +1522,29 @@ export class ViewportEngine {
       const vb = this.m_axesVertices.position(axis * 2 + 1);
       const a = transform.map(QVector4D.fromVector3D(va, 1));
       const b = transform.map(QVector4D.fromVector3D(vb, 1));
-      range.lo = 0; range.hi = 1;
+      range.lo = 0;
+      range.hi = 1;
       let visible = true;
       for (let component = 0; component < 3 && visible; ++component) {
-        visible = clip(a.w + a.at(component), b.w + b.at(component))
-          && clip(a.w - a.at(component), b.w - b.at(component));
+        visible =
+          clip(a.w + a.at(component), b.w + b.at(component)) && clip(a.w - a.at(component), b.w - b.at(component));
       }
       if (!visible) continue;
       const ca = a.add(b.sub(a).mul(range.lo));
       const cb = a.add(b.sub(a).mul(range.hi));
       if (ca.w <= 1e-6 || cb.w <= 1e-6) continue;
       const project = (p: QVector4D) => new QPointF((p.x / p.w + 1) * width * 0.5, (1 - p.y / p.w) * height * 0.5);
-      const pa = project(ca), pb = project(cb);
-      range.lo = 0; range.hi = 1;
-      if (!clip(pa.x - inset.left(), pb.x - inset.left())
-        || !clip(inset.right() - pa.x, inset.right() - pb.x)
-        || !clip(pa.y - inset.top(), pb.y - inset.top())
-        || !clip(inset.bottom() - pa.y, inset.bottom() - pb.y)) continue;
+      const pa = project(ca),
+        pb = project(cb);
+      range.lo = 0;
+      range.hi = 1;
+      if (
+        !clip(pa.x - inset.left(), pb.x - inset.left()) ||
+        !clip(inset.right() - pa.x, inset.right() - pb.x) ||
+        !clip(pa.y - inset.top(), pb.y - inset.top()) ||
+        !clip(inset.bottom() - pa.y, inset.bottom() - pb.y)
+      )
+        continue;
       const ends = [pa.add(pb.sub(pa).mul(range.lo)), pa.add(pb.sub(pa).mul(range.hi))];
       const atEdge = (p: QPointF) =>
         Math.min(Math.abs(p.x), Math.abs(p.x - width), Math.abs(p.y), Math.abs(p.y - height)) < 2;
@@ -1521,8 +1621,12 @@ export class ViewportEngine {
       const metadata = apiParameterMetadataForCall(call);
       const sourceLabel = (formal: string): string => {
         for (let p = 0; p < call.argumentExpressions.length; ++p) {
-          const name = call.userFunctionCall && p < call.formalParameterNames.length
-            ? call.formalParameterNames[p] : p < metadata.length ? metadata[p].name : '';
+          const name =
+            call.userFunctionCall && p < call.formalParameterNames.length
+              ? call.formalParameterNames[p]
+              : p < metadata.length
+                ? metadata[p].name
+                : '';
           if (name !== '' && (formal === name || formal.startsWith(`${name}[`)))
             return call.argumentExpressions[p] + formal.slice(name.length);
         }
@@ -1568,8 +1672,7 @@ export class ViewportEngine {
     // making unit directions visible next to models whose coordinates may be hundreds.
     if (maxVectorLength > 1e-6 && maxPointRadius > 8) {
       const desired = Math.max(1.5, maxPointRadius * 0.16);
-      if (maxVectorLength < desired)
-        this.m_vectorDisplayScale = Math.min(100, desired / maxVectorLength);
+      if (maxVectorLength < desired) this.m_vectorDisplayScale = Math.min(100, desired / maxVectorLength);
     }
 
     // Anchors belong to API usages, independently of the current focus filter.
@@ -1588,7 +1691,11 @@ export class ViewportEngine {
       // Repeated placements of one direction share a single name/value row.
       if (!this.isDebugItemVisible(item) || seen.has(item.name)) continue;
       seen.add(item.name);
-      const entry: DebugLabelEntry = { id: item.name, name: item.label === '' ? item.name : item.label, value: item.valueText };
+      const entry: DebugLabelEntry = {
+        id: item.name,
+        name: item.label === '' ? item.name : item.label,
+        value: item.valueText,
+      };
       (item.kind === 'Point' ? points : vectors).push(entry);
     }
     this.m_pointLabels.setEntries(points, this.m_selectedVariables);
@@ -1597,24 +1704,35 @@ export class ViewportEngine {
   }
 
   private layoutDebugLabelPanels(): void {
-    const width = this.width(), height = this.height();
+    const width = this.width(),
+      height = this.height();
     const buttonHeight = kSelectionButtonHeight;
     const buttonWidth = Math.max(0, Math.min(width - 2 * kSelectionButtonMargin, kSelectionButtonWidth));
     this.setSelectionModeButton({
-      geometry: new QRect(kSelectionButtonMargin,
-        Math.max(kSelectionButtonMargin, height - kSelectionButtonMargin - buttonHeight), buttonWidth, buttonHeight),
+      geometry: new QRect(
+        kSelectionButtonMargin,
+        Math.max(kSelectionButtonMargin, height - kSelectionButtonMargin - buttonHeight),
+        buttonWidth,
+        buttonHeight,
+      ),
     });
     // Each side uses at most 27% of the viewport, with independent scrolling.
     // Reserve the bottom control strip so labels cannot cover the mode button.
-    const columnWidth = Math.max(0, Math.min(340, Math.trunc((width - 24) * 27 / 100)));
+    const columnWidth = Math.max(0, Math.min(340, Math.trunc(((width - 24) * 27) / 100)));
     const availableHeight = Math.max(0, height - buttonHeight - 3 * kSelectionButtonMargin);
     this.m_pointLabels.setGeometry(8, 8, columnWidth, Math.min(availableHeight, this.m_pointLabels.contentHeight()));
     const vectorHeight = availableHeight;
-    this.m_vectorLabels.setGeometry(width - 8 - columnWidth, 8, columnWidth, Math.min(vectorHeight, this.m_vectorLabels.contentHeight()));
+    this.m_vectorLabels.setGeometry(
+      width - 8 - columnWidth,
+      8,
+      columnWidth,
+      Math.min(vectorHeight, this.m_vectorLabels.contentHeight()),
+    );
     const show = this.m_showLabels && availableHeight >= 50 && columnWidth >= 60;
     this.m_pointLabels.setVisible(show && this.m_pointLabels.contentHeight() > 25);
-    this.m_vectorLabels.setVisible(show && this.m_apiFocusActive && vectorHeight >= 50
-      && this.m_vectorLabels.contentHeight() > 25);
+    this.m_vectorLabels.setVisible(
+      show && this.m_apiFocusActive && vectorHeight >= 50 && this.m_vectorLabels.contentHeight() > 25,
+    );
   }
 
   private resizeEvent(): void {
@@ -1650,9 +1768,15 @@ export class ViewportEngine {
     let meshIndex = -1;
     const connectorId = this.m_selectionMode === 'Point' ? this.pickConnectorPoint(screen) : -1;
     if (this.m_selectionMode === 'Mesh') meshIndex = this.pickMesh(screen);
-    else if (connectorId >= 0) { /* Link points have their own selection callback. */ }
-    else debugItem = this.pickDebugItem(screen, this.m_selectionMode === 'Point' ? 'Point' : 'Vector');
-    if (debugItem === this.m_hoveredDebugItem && meshIndex === this.m_hoveredMeshIndex && connectorId === this.m_hoveredConnectorId) return;
+    else if (connectorId >= 0) {
+      /* Link points have their own selection callback. */
+    } else debugItem = this.pickDebugItem(screen, this.m_selectionMode === 'Point' ? 'Point' : 'Vector');
+    if (
+      debugItem === this.m_hoveredDebugItem &&
+      meshIndex === this.m_hoveredMeshIndex &&
+      connectorId === this.m_hoveredConnectorId
+    )
+      return;
     this.m_hoveredDebugItem = debugItem;
     this.m_hoveredMeshIndex = meshIndex;
     this.m_hoveredConnectorId = connectorId;
@@ -1694,7 +1818,8 @@ export class ViewportEngine {
     this.m_vectorVertexStart = this.m_gpuVertices.size();
     if (this.m_showVectors) {
       for (const item of this.m_debugItems) {
-        if (item.kind !== 'Vector' || this.m_selectedVariables.has(item.name) || !this.isDebugItemVisible(item)) continue;
+        if (item.kind !== 'Vector' || this.m_selectedVariables.has(item.name) || !this.isDebugItemVisible(item))
+          continue;
         this.appendVectorArrow(this.m_gpuVertices, item, false);
       }
     }
@@ -1703,7 +1828,8 @@ export class ViewportEngine {
     this.m_selectedVectorVertexStart = this.m_gpuVertices.size();
     if (this.m_showVectors) {
       for (const item of this.m_debugItems) {
-        if (item.kind !== 'Vector' || !this.m_selectedVariables.has(item.name) || !this.isDebugItemVisible(item)) continue;
+        if (item.kind !== 'Vector' || !this.m_selectedVariables.has(item.name) || !this.isDebugItemVisible(item))
+          continue;
         this.appendVectorArrow(this.m_gpuVertices, item, true);
       }
     }
@@ -1729,11 +1855,21 @@ export class ViewportEngine {
     const staticStart = this.m_axesVertexCount;
     const staticEnd = this.m_vectorVertexStart;
     const uploaded = this.m_uploaded;
-    if (uploaded.geometryVersion === this.m_geometryVersion && uploaded.staticStart === staticStart
-      && uploaded.staticEnd === staticEnd && size <= uploaded.capacity) {
+    if (
+      uploaded.geometryVersion === this.m_geometryVersion &&
+      uploaded.staticStart === staticStart &&
+      uploaded.staticEnd === staticEnd &&
+      size <= uploaded.capacity
+    ) {
       if (staticStart > 0) gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, staticStart * kVertexFloats);
       if (size > staticEnd)
-        gl.bufferSubData(gl.ARRAY_BUFFER, staticEnd * kVertexBytes, data, staticEnd * kVertexFloats, (size - staticEnd) * kVertexFloats);
+        gl.bufferSubData(
+          gl.ARRAY_BUFFER,
+          staticEnd * kVertexBytes,
+          data,
+          staticEnd * kVertexFloats,
+          (size - staticEnd) * kVertexFloats,
+        );
     } else {
       const capacity = size + 4096;
       gl.bufferData(gl.ARRAY_BUFFER, capacity * kVertexBytes, gl.DYNAMIC_DRAW);
@@ -1745,7 +1881,11 @@ export class ViewportEngine {
     // connector lines (every rebuild, like the C++ upload).
     if (this.m_wireQuads && this.m_wireQuadVersion !== this.m_geometryVersion) {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.m_wireQuads.buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, expandLineQuads(data, this.m_geometryWireVertexStart, this.m_geometryWireVertexCount), gl.STATIC_DRAW);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        expandLineQuads(data, this.m_geometryWireVertexStart, this.m_geometryWireVertexCount),
+        gl.STATIC_DRAW,
+      );
       this.m_wireQuadVersion = this.m_geometryVersion;
     }
     if (this.m_dynamicQuads) {
@@ -1796,9 +1936,9 @@ export class ViewportEngine {
     const length = delta.length();
     if (length <= 1e-6) return;
 
-    const r = selected ? 1.0 : 0.20;
+    const r = selected ? 1.0 : 0.2;
     const g = selected ? 0.92 : 0.78;
-    const b = selected ? 0.20 : 1.0;
+    const b = selected ? 0.2 : 1.0;
 
     // Exactly one vector: one shaft plus a two-line V arrow head.
     this.appendLine(vertices, item.start, item.end, r, g, b);
@@ -1819,7 +1959,8 @@ export class ViewportEngine {
     const headLength = clamp(
       length * 0.18,
       Math.max(0.12, this.m_sceneScale * 0.006),
-      Math.max(0.5, this.m_sceneScale * 0.035));
+      Math.max(0.5, this.m_sceneScale * 0.035),
+    );
     const wing = headLength * 0.52;
     const base = item.end.sub(direction.mul(headLength));
 
@@ -1850,7 +1991,8 @@ export class ViewportEngine {
     const offset = new QVector3D(
       this.m_distance * cp * Math.cos(yaw),
       this.m_distance * cp * Math.sin(yaw),
-      this.m_distance * Math.sin(pitch));
+      this.m_distance * Math.sin(pitch),
+    );
 
     return this.m_target.add(offset);
   }
@@ -1896,8 +2038,8 @@ export class ViewportEngine {
   private screenRay(screen: QPointF): { nearPoint: QVector3D; farPoint: QVector3D } | null {
     if (this.width() <= 0 || this.height() <= 0) return null;
 
-    const x = 2.0 * screen.x / this.width() - 1.0;
-    const y = 1.0 - 2.0 * screen.y / this.height();
+    const x = (2.0 * screen.x) / this.width() - 1.0;
+    const y = 1.0 - (2.0 * screen.y) / this.height();
 
     const { matrix: inverse, invertible } = this.m_projection.times(this.m_view).inverted();
     if (!invertible) return null;
@@ -1938,7 +2080,9 @@ export class ViewportEngine {
     const direction = ray.farPoint.sub(nearPoint).normalized();
     let closest = ray.farPoint.sub(nearPoint).length();
     let picked = -1;
-    const dx = direction.x, dy = direction.y, dz = direction.z;
+    const dx = direction.x,
+      dy = direction.y,
+      dz = direction.z;
     // Intersect the actual triangles, not their bounding boxes, so holes and
     // occluding faces behave like the opaque preview. Both face sides render.
     // (Scalar Moller-Trumbore, the same arithmetic as the QVector3D version.)
@@ -1947,26 +2091,41 @@ export class ViewportEngine {
       if (!this.isGeometryApiVisible(mesh.apiIndex)) continue;
       const vertexCount = mesh.vertices.length;
       for (let i = 0; i + 2 < mesh.indices.length; i += 3) {
-        const ia = mesh.indices[i], ib = mesh.indices[i + 1], ic = mesh.indices[i + 2];
+        const ia = mesh.indices[i],
+          ib = mesh.indices[i + 1],
+          ic = mesh.indices[i + 2];
         if (!(ia >= 0 && ia < vertexCount && ib >= 0 && ib < vertexCount && ic >= 0 && ic < vertexCount)) continue;
-        const a = mesh.vertices[ia], b = mesh.vertices[ib], c = mesh.vertices[ic];
-        const e1x = b.x - a.x, e1y = b.y - a.y, e1z = b.z - a.z;
-        const e2x = c.x - a.x, e2y = c.y - a.y, e2z = c.z - a.z;
+        const a = mesh.vertices[ia],
+          b = mesh.vertices[ib],
+          c = mesh.vertices[ic];
+        const e1x = b.x - a.x,
+          e1y = b.y - a.y,
+          e1z = b.z - a.z;
+        const e2x = c.x - a.x,
+          e2y = c.y - a.y,
+          e2z = c.z - a.z;
         // cross = direction x edge2
-        const cx = dy * e2z - dz * e2y, cy = dz * e2x - dx * e2z, cz = dx * e2y - dy * e2x;
+        const cx = dy * e2z - dz * e2y,
+          cy = dz * e2x - dx * e2z,
+          cz = dx * e2y - dy * e2x;
         const determinant = e1x * cx + e1y * cy + e1z * cz;
         const scale = Math.sqrt((e1x * e1x + e1y * e1y + e1z * e1z) * (e2x * e2x + e2y * e2y + e2z * e2z));
         if (scale === 0 || Math.abs(determinant) <= 1e-8 * scale) continue;
-        const tx = nearPoint.x - a.x, ty = nearPoint.y - a.y, tz = nearPoint.z - a.z;
+        const tx = nearPoint.x - a.x,
+          ty = nearPoint.y - a.y,
+          tz = nearPoint.z - a.z;
         const u = (tx * cx + ty * cy + tz * cz) / determinant;
         if (u < -1e-6 || u > 1 + 1e-6) continue;
         // q = delta x edge1
-        const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x;
+        const qx = ty * e1z - tz * e1y,
+          qy = tz * e1x - tx * e1z,
+          qz = tx * e1y - ty * e1x;
         const v = (dx * qx + dy * qy + dz * qz) / determinant;
         if (v < -1e-6 || u + v > 1 + 1e-6) continue;
         const distance = (e2x * qx + e2y * qy + e2z * qz) / determinant;
         if (Number.isFinite(distance) && distance >= 0 && distance < closest) {
-          closest = distance; picked = meshIndex;
+          closest = distance;
+          picked = meshIndex;
         }
       }
     }
@@ -2002,8 +2161,11 @@ export class ViewportEngine {
       }
       if (distance >= radius) continue;
       const depth = item.end.sub(eye).lengthSquared();
-      if (bestName === '' || distance < bestDistance - 0.01
-        || (Math.abs(distance - bestDistance) <= 0.01 && depth < bestDepth)) {
+      if (
+        bestName === '' ||
+        distance < bestDistance - 0.01 ||
+        (Math.abs(distance - bestDistance) <= 0.01 && depth < bestDepth)
+      ) {
         bestDistance = distance;
         bestDepth = depth;
         bestName = item.name;
@@ -2065,12 +2227,17 @@ export function buildGeometryVertices(scene: PreviewGeometryScene): { vertices: 
     // as vertex normals, which would give all box walls the same brightness.
     const vertexCount = mesh.vertices.length;
     for (let i = 0; i + 2 < mesh.indices.length; i += 3) {
-      const a = mesh.indices[i], b = mesh.indices[i + 1], c = mesh.indices[i + 2];
+      const a = mesh.indices[i],
+        b = mesh.indices[i + 1],
+        c = mesh.indices[i + 2];
       if (!validIndex(a, vertexCount) || !validIndex(b, vertexCount) || !validIndex(c, vertexCount)) continue;
-      const va = mesh.vertices[a], vb = mesh.vertices[b], vc = mesh.vertices[c];
+      const va = mesh.vertices[a],
+        vb = mesh.vertices[b],
+        vc = mesh.vertices[c];
       const areaNormal = QVector3D.crossProduct(
         new QVector3D(vb.x - va.x, vb.y - va.y, vb.z - va.z),
-        new QVector3D(vc.x - va.x, vc.y - va.y, vc.z - va.z));
+        new QVector3D(vc.x - va.x, vc.y - va.y, vc.z - va.z),
+      );
       if (areaNormal.lengthSquared() <= 0) continue;
       const faceIndex = faces.length;
       faces.push({ indices: [a, b, c], areaNormal, normal: areaNormal.normalized() });
@@ -2090,11 +2257,15 @@ export function buildGeometryVertices(scene: PreviewGeometryScene): { vertices: 
       for (const index of face.indices) {
         let normal = face.normal;
         if (smooth) {
-          let sx = 0, sy = 0, sz = 0;
+          let sx = 0,
+            sy = 0,
+            sz = 0;
           for (const neighbor of adjacentFaces.get(position(index)) ?? []) {
             if (QVector3D.dotProduct(face.normal, faces[neighbor].normal) >= creaseCosine) {
               const n = faces[neighbor].areaNormal;
-              sx += n.x; sy += n.y; sz += n.z;
+              sx += n.x;
+              sy += n.y;
+              sz += n.z;
             }
           }
           const sum = new QVector3D(sx, sy, sz);
@@ -2111,7 +2282,10 @@ export function buildGeometryVertices(scene: PreviewGeometryScene): { vertices: 
   return { vertices, ranges };
 }
 
-export function buildGeometryWireVertices(scene: PreviewGeometryScene): { vertices: VertexArray; ranges: GeometryRange[] } {
+export function buildGeometryWireVertices(scene: PreviewGeometryScene): {
+  vertices: VertexArray;
+  ranges: GeometryRange[];
+} {
   interface EdgeData {
     a: number;
     b: number;
@@ -2131,7 +2305,8 @@ export function buildGeometryWireVertices(scene: PreviewGeometryScene): { vertic
     const vertexCount = mesh.vertices.length;
     const addEdge = (ia: number, ib: number, normal: QVector3D) => {
       if (!validIndex(ia, vertexCount) || !validIndex(ib, vertexCount) || ia === ib) return;
-      const first = Math.min(ia, ib), second = Math.max(ia, ib);
+      const first = Math.min(ia, ib),
+        second = Math.max(ia, ib);
       const key = `${first},${second}`;
       let edge = edges.get(key);
       if (!edge) {

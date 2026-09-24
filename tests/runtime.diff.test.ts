@@ -23,7 +23,10 @@ for (const fixture of listFixtures()) {
     it('matches the C++ runtime', () => {
       const reference = referenceOutput(fixture);
       const runtime = new GeometryRuntime();
-      expectSameJson(reference.discoverParameters, runtime.discoverParameters(fixture.code).map(encodeParameterRequest));
+      expectSameJson(
+        reference.discoverParameters,
+        runtime.discoverParameters(fixture.code).map(encodeParameterRequest),
+      );
       fixture.lines.forEach((line, index) => {
         runtime.setParameters(fixture.parameters);
         const result = runtime.executeUpToLine(fixture.code, line);
@@ -41,8 +44,14 @@ for (const fixture of listFixtures()) {
           }),
         };
         expectSameJson(
-          { line: expected.line, result: expected.result, sourceHistories: expected.sourceHistories, evals: expected.evals },
-          actual);
+          {
+            line: expected.line,
+            result: expected.result,
+            sourceHistories: expected.sourceHistories,
+            evals: expected.evals,
+          },
+          actual,
+        );
       });
     });
   });

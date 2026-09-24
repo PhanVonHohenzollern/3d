@@ -23,7 +23,10 @@ function MenuItem({ action, onTriggered }: { action: Action; onTriggered: () => 
       className="menu-item"
       role="menuitem"
       onMouseDown={(e) => e.preventDefault()}
-      onClick={() => { onTriggered(); action.trigger(); }}
+      onClick={() => {
+        onTriggered();
+        action.trigger();
+      }}
     >
       <span className="menu-check">{action.isCheckable() && action.isChecked() ? '\u2713' : ''}</span>
       <span className="menu-text">{stripMnemonic(action.text)}</span>
@@ -65,16 +68,25 @@ export function MenuBar({ menus }: { menus: readonly Menu[] }) {
             type="button"
             className={`menubar-title${open === index ? ' open' : ''}`}
             tabIndex={-1}
-            onMouseDown={(e) => { e.preventDefault(); setOpen(open === index ? -1 : index); }}
-            onMouseEnter={() => { if (open >= 0 && open !== index) setOpen(index); }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setOpen(open === index ? -1 : index);
+            }}
+            onMouseEnter={() => {
+              if (open >= 0 && open !== index) setOpen(index);
+            }}
           >
             {stripMnemonic(menu.title)}
           </button>
           {open === index && (
             <ul className="menu" role="menu">
-              {menu.items.map((item, i) => item === 'separator'
-                ? <li key={`separator-${i}`} className="menu-separator" role="separator" />
-                : <MenuItem key={item.text} action={item} onTriggered={() => setOpen(-1)} />)}
+              {menu.items.map((item, i) =>
+                item === 'separator' ? (
+                  <li key={`separator-${i}`} className="menu-separator" role="separator" />
+                ) : (
+                  <MenuItem key={item.text} action={item} onTriggered={() => setOpen(-1)} />
+                ),
+              )}
             </ul>
           )}
         </div>
@@ -104,9 +116,13 @@ export function ToolBar({ items }: { items: readonly ActionListItem[] }) {
   return (
     <div className="toolbar" role="toolbar">
       <span className="toolbar-handle" />
-      {items.map((item, i) => item === 'separator'
-        ? <span key={`separator-${i}`} className="toolbar-separator" />
-        : <ToolButton key={item.text} action={item} />)}
+      {items.map((item, i) =>
+        item === 'separator' ? (
+          <span key={`separator-${i}`} className="toolbar-separator" />
+        ) : (
+          <ToolButton key={item.text} action={item} />
+        ),
+      )}
     </div>
   );
 }

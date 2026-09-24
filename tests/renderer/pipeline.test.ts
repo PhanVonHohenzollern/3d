@@ -32,7 +32,12 @@ describe('Viewport3D with the real pipeline', () => {
     const { result, geometry, engine } = run();
     expect(result.diagnostics).toEqual([]);
     expect(geometry.meshes.length).toBeGreaterThan(0);
-    expect(engine.pointLabelPanel().entries().map((e) => e.id)).toEqual(['p0']);
+    expect(
+      engine
+        .pointLabelPanel()
+        .entries()
+        .map((e) => e.id),
+    ).toEqual(['p0']);
     expect(engine.vectorLabelPanel().isVisible()).toBe(false);
     const i = internals(engine);
     expect(i.m_hasFitOnce).toBe(true);
@@ -43,7 +48,7 @@ describe('Viewport3D with the real pipeline', () => {
       for (const v of mesh.vertices) expect(i.projectToScreen(new QVector3D(v.x, v.y, v.z))).not.toBeNull();
   });
 
-  it('API focus lists the call\'s point/vector parameters with shared debug ids', () => {
+  it("API focus lists the call's point/vector parameters with shared debug ids", () => {
     const { result, engine } = run();
     const boxIndex = result.apiCalls.findIndex((call) => call.name === 'makeBox');
     engine.setApiFocusIndices(new Set([boxIndex]));
@@ -63,7 +68,12 @@ describe('Viewport3D with the real pipeline', () => {
     expect(engine.vectorLabelPanel().isVisible()).toBe(true);
     // Clearing focus restores p0.
     engine.clearApiFocus();
-    expect(engine.pointLabelPanel().entries().map((e) => e.id)).toEqual(['p0']);
+    expect(
+      engine
+        .pointLabelPanel()
+        .entries()
+        .map((e) => e.id),
+    ).toEqual(['p0']);
   });
 
   it('table and viewport share one selection; Ctrl in a list keeps the other list', () => {
@@ -103,12 +113,22 @@ describe('Viewport3D with the real pipeline', () => {
     engine.setApiFocusIndices(new Set([boxIndex]));
     const first = engine.pointLabelPanel().entries()[0].id;
     engine.setDebugItemVisible(first, false);
-    expect(engine.pointLabelPanel().entries().map((e) => e.id)).not.toContain(first);
+    expect(
+      engine
+        .pointLabelPanel()
+        .entries()
+        .map((e) => e.id),
+    ).not.toContain(first);
     engine.hideAllDebugItems();
     expect(engine.pointLabelPanel().entries()).toEqual([]);
     expect(engine.pointLabelPanel().isVisible()).toBe(false);
     engine.showAllDebugItems();
-    expect(engine.pointLabelPanel().entries().map((e) => e.id)).toContain(first);
+    expect(
+      engine
+        .pointLabelPanel()
+        .entries()
+        .map((e) => e.id),
+    ).toContain(first);
     engine.setSelectedVariables(new Set([first, 'gone']));
     engine.setRuntimeResult(result);
     expect(engine.selectedDebugItems()).toEqual(new Set([first]));
@@ -123,7 +143,10 @@ describe('Viewport3D with the real pipeline', () => {
     const mesh = geometry.meshes[0];
     const v = mesh.vertices;
     const centroid = new QVector3D(
-      v.reduce((s, p) => s + p.x, 0) / v.length, v.reduce((s, p) => s + p.y, 0) / v.length, v.reduce((s, p) => s + p.z, 0) / v.length);
+      v.reduce((s, p) => s + p.x, 0) / v.length,
+      v.reduce((s, p) => s + p.y, 0) / v.length,
+      v.reduce((s, p) => s + p.z, 0) / v.length,
+    );
     const screen = project(engine, centroid);
     const i = internals(engine);
     const picked = i.pickMesh(screen);
@@ -139,7 +162,14 @@ describe('Viewport3D with the real pipeline', () => {
 
   it('connector tests: points are pickable in Point mode and hidden under API focus', () => {
     const { runtime, engine } = run();
-    const definition = { ...defaultConnectorDefinition(), id: 3, name: 'c', pointName: 'linkPoint1', diameter: '100', position: ['0', '0', '600'] as [string, string, string] };
+    const definition = {
+      ...defaultConnectorDefinition(),
+      id: 3,
+      name: 'c',
+      pointName: 'linkPoint1',
+      diameter: '100',
+      position: ['0', '0', '600'] as [string, string, string],
+    };
     const preview = buildConnectorPreview(definition, (e) => runtime.evaluateNumericExpression(e));
     engine.setConnectorPreviews([preview], -1);
     const i = internals(engine);

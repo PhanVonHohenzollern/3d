@@ -5,11 +5,13 @@ directory. The C++ subset interpreter, SDK metadata, preview geometry, 3D viewpo
 (WebGL2) and all panels run entirely in the browser. There is no backend.
 
 ```sh
-npm install
+nvm use           # Node.js version used by CI
+npm ci
 npm run dev        # http://localhost:5173
 npm run build      # static site in dist/
 npm test           # unit + differential tests (needs a C++20 compiler, see below)
 npm run typecheck
+npm run validate  # ESLint, Prettier, TypeScript, standalone tests
 ```
 
 ## Behavior parity with the desktop app
@@ -43,3 +45,35 @@ Differences from the desktop app:
 The API signatures and SDK constants are converted from the parent project's
 generated files (`../runtime/*.generated.inc`). After regenerating those from
 the SDK headers, run `npm run generate`.
+
+## Continuous integration and GitHub Pages
+
+The [GitHub Actions workflow](.github/workflows/ci.yml) runs on pull requests and
+pushes to `main`, and can also be started manually from the Actions tab. It installs
+from `package-lock.json` with `npm ci`, then runs ESLint (zero warnings), Prettier,
+TypeScript, the standalone UI/renderer tests, and the production build. Successful
+`main` builds are deployed to <https://kienmai160598.github.io/3d/>. Pull requests
+validate and build without deploying.
+
+GitHub Pages must be enabled under **Settings → Pages → Source → GitHub Actions**.
+Deployment uses the built-in `GITHUB_TOKEN`; no personal token or deploy secret is
+needed. The deploy job alone receives Pages write and OIDC permissions. Action
+versions are pinned to commit SHAs, and deployments are serialized.
+
+The workflow passes `--base /3d/` to Vite (derived from the repository name) so
+assets load under the Pages project path. To test that production build locally:
+
+```sh
+npm run build -- --base /3d/
+npm run preview -- --base /3d/    # open http://localhost:4173/3d/
+```
+
+Use `npm run lint:fix` and `npm run format` to fix lint/format issues before pushing.
+Generated SDK registries are excluded from ESLint and Prettier but remain included
+in TypeScript checking and the build. TypeScript is pinned to the 6.0 release line,
+which is supported by the ESLint TypeScript parser.
+
+`npm run test:ci` runs the standalone suites in `tests/ui` and `tests/renderer`.
+The full `npm test` command also runs differential tests requiring the original
+C++ sources in the parent directory; those sources are not in this repository and
+are therefore unavailable in GitHub Actions. CI does not claim C++ parity coverage.

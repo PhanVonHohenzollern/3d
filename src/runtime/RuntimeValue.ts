@@ -24,15 +24,7 @@ export class RuntimeArray {
   ) {}
 }
 
-export type RuntimeValue =
-  | undefined
-  | number
-  | bigint
-  | boolean
-  | string
-  | FdPoint3d
-  | FdVector3d
-  | RuntimeArray;
+export type RuntimeValue = undefined | number | bigint | boolean | string | FdPoint3d | FdVector3d | RuntimeArray;
 
 export const isUnset = (v: RuntimeValue): v is undefined => v === undefined;
 export const isDouble = (v: RuntimeValue): v is number => typeof v === 'number';

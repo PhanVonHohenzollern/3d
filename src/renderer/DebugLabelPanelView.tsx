@@ -2,7 +2,14 @@
 // (QListWidget) painted by LabelDelegate. All state and selection behavior
 // live in DebugLabelPanel.ts; this component renders it and forwards input.
 
-import { useLayoutEffect, useRef, useSyncExternalStore, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 import type { DebugLabelPanel } from './DebugLabelPanel';
 import { cssColor, qColor } from './OverlayPainter';
 import { modifiersFromEvent, mouseButtonFromDom, mouseButtonsFromDom } from './QtEvents';
@@ -72,14 +79,22 @@ export function DebugLabelPanelView({ panel, onEnterOrFocus }: DebugLabelPanelVi
 
   // No browser context menu or middle-button autoscroll over the list.
   const suppress = (e: MouseEvent) => e.preventDefault();
-  const onMouseDown = (e: MouseEvent) => { if (e.button === 1) e.preventDefault(); };
+  const onMouseDown = (e: MouseEvent) => {
+    if (e.button === 1) e.preventDefault();
+  };
 
   return (
     <div
       className="debug-label-panel"
       data-panel={panel.title()}
       hidden={!visible}
-      style={{ left: geometry.x, top: geometry.y, width: geometry.width, height: geometry.height, font: cssFont(panel.font()) }}
+      style={{
+        left: geometry.x,
+        top: geometry.y,
+        width: geometry.width,
+        height: geometry.height,
+        font: cssFont(panel.font()),
+      }}
       onPointerEnter={onEnterOrFocus}
       onFocus={onEnterOrFocus}
       onContextMenu={suppress}
@@ -100,7 +115,10 @@ export function DebugLabelPanelView({ panel, onEnterOrFocus }: DebugLabelPanelVi
         onAuxClick={suppress}
         onKeyDown={onKeyDown}
       >
-        <div className="debug-label-panel-rows" style={{ height: entries.length * rowHeight, width: panel.itemWidth() }}>
+        <div
+          className="debug-label-panel-rows"
+          style={{ height: entries.length * rowHeight, width: panel.itemWidth() }}
+        >
           {entries.map((entry, row) => {
             const layout = panel.rowLayout(row);
             return (

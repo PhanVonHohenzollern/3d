@@ -15,9 +15,11 @@ function normalAt(data: Float32Array, vertex: number): QVector3D {
 
 /** Two triangles sharing edge (1,2); their face normals differ by `degrees` (0 = flat). */
 function foldedPair(degrees: number, apiName = 'makeTube'): PreviewMesh {
-  const t = degrees * Math.PI / 180;
+  const t = (degrees * Math.PI) / 180;
   const vertices = [
-    { x: 0, y: -1, z: 0 }, { x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 },
+    { x: 0, y: -1, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 1, y: 0, z: 0 },
     { x: 0, y: Math.cos(t), z: Math.sin(t) },
   ].map((v) => ({ ...v, nx: 0, ny: 0, nz: 0 }));
   return { apiIndex: 0, sourceLine: 1, apiName, color: { r: 1, g: 0, b: 0 }, vertices, indices: [0, 2, 1, 1, 2, 3] };
@@ -94,11 +96,28 @@ describe('feature edges', () => {
     const src = vertices.data();
     // First quad vertex: endpoint A, endpoint B, A's color, corner (0, -1).
     expect(Array.from(quads.slice(0, 11))).toEqual([
-      src[18], src[19], src[20], src[27], src[28], src[29], src[21], src[22], src[23], 0, -1,
+      src[18],
+      src[19],
+      src[20],
+      src[27],
+      src[28],
+      src[29],
+      src[21],
+      src[22],
+      src[23],
+      0,
+      -1,
     ]);
     // Corners of one segment cover both ends and both sides.
     const corners = [];
     for (let v = 0; v < 6; ++v) corners.push([quads[v * 11 + 9], quads[v * 11 + 10]]);
-    expect(corners).toEqual([[0, -1], [0, 1], [1, -1], [1, -1], [0, 1], [1, 1]]);
+    expect(corners).toEqual([
+      [0, -1],
+      [0, 1],
+      [1, -1],
+      [1, -1],
+      [0, 1],
+      [1, 1],
+    ]);
   });
 });

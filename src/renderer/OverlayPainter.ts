@@ -124,7 +124,10 @@ export class OverlayPainter {
     const ctx = this.m_context;
     const rx = Math.min(xRadius, rect.width / 2);
     const ry = Math.min(yRadius, rect.height / 2);
-    const x = rect.x, y = rect.y, w = rect.width, h = rect.height;
+    const x = rect.x,
+      y = rect.y,
+      w = rect.width,
+      h = rect.height;
     ctx.beginPath();
     ctx.moveTo(x + rx, y);
     ctx.lineTo(x + w - rx, y);

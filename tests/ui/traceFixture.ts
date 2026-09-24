@@ -9,7 +9,12 @@
 //   7: FdPoint3d pts[2] = {p, q}; (array argument elements)
 
 import { FdPoint3d, FdVector3d } from '../../src/runtime/FdMath';
-import type { RuntimeApiCall, RuntimeResult, RuntimeValueSource, RuntimeVariableChange } from '../../src/runtime/RuntimeTypes';
+import type {
+  RuntimeApiCall,
+  RuntimeResult,
+  RuntimeValueSource,
+  RuntimeVariableChange,
+} from '../../src/runtime/RuntimeTypes';
 import { RuntimeArray } from '../../src/runtime/RuntimeValue';
 
 export const p = new FdPoint3d(2, 0, 0);
@@ -21,8 +26,16 @@ const pSource: RuntimeValueSource = { name: 'p', value: p, variableId: 2, histor
 const nSource: RuntimeValueSource = { name: 'n', value: n, variableId: 3, historyEnd: 3 };
 const qSource: RuntimeValueSource = { name: 'q', value: q, variableId: 5, historyEnd: 6 };
 
-function change(line: number, name: string, operation: string, expression: string, after: RuntimeVariableChange['after'],
-  variableId: number, sources: RuntimeValueSource[] = [], before: RuntimeVariableChange['before'] = undefined): RuntimeVariableChange {
+function change(
+  line: number,
+  name: string,
+  operation: string,
+  expression: string,
+  after: RuntimeVariableChange['after'],
+  variableId: number,
+  sources: RuntimeValueSource[] = [],
+  before: RuntimeVariableChange['before'] = undefined,
+): RuntimeVariableChange {
   return { line, name, operation, expression, before, after, variableId, sources };
 }
 
@@ -73,7 +86,9 @@ export function traceResult(): RuntimeResult {
     formalParameterNames: ['c'],
     formalParameterTypes: ['FdPoint3d'],
     display: 'inner(c)',
-    argumentTraces: [{ expression: 'c', sources: [{ name: 'c', value: p, variableId: 2, historyEnd: 2 }], elements: [] }],
+    argumentTraces: [
+      { expression: 'c', sources: [{ name: 'c', value: p, variableId: 2, historyEnd: 2 }], elements: [] },
+    ],
   };
   return {
     variables: [

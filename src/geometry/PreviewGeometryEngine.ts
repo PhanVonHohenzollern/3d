@@ -16,7 +16,11 @@
 // - std::min/std::max/std::clamp/std::llround/std::sort/std::unique have small
 //   helpers below that reproduce the C++ results (including NaN handling).
 
-import { apiSignatureMetadataForCall, type ApiParameterMetadata, type ApiSignatureMetadata } from '../runtime/ApiMetadata';
+import {
+  apiSignatureMetadataForCall,
+  type ApiParameterMetadata,
+  type ApiSignatureMetadata,
+} from '../runtime/ApiMetadata';
 import { stod, stoll } from '../runtime/CppCompat';
 import { FdPoint3d, FdVector3d } from '../runtime/FdMath';
 import type { RuntimeApiCall, RuntimeResult } from '../runtime/RuntimeTypes';
@@ -67,7 +71,7 @@ export interface PreviewGeometryScene {
 // ---------------------------------------------------------------------------
 // namespace {
 
-const kPi = 3.1415926535897932384626433832795;
+const kPi = Math.PI;
 const kEps = 1e-9;
 
 const f32 = Math.fround;
@@ -96,7 +100,11 @@ function llroundToInt(d: number): number {
 // libc++ algorithms of the reference build so even such input matches it.
 /** libc++ std::sort of 4 elements with a custom comparator (__sort4). */
 function stdSort4<T>(v: T[], c: (a: T, b: T) => boolean): void {
-  const swap = (i: number, j: number) => { const t = v[i]; v[i] = v[j]; v[j] = t; };
+  const swap = (i: number, j: number) => {
+    const t = v[i];
+    v[i] = v[j];
+    v[j] = t;
+  };
   // __sort3(x1, x2, x3)
   if (!c(v[1], v[0])) {
     if (c(v[2], v[1])) {
@@ -176,20 +184,33 @@ class DVec3 {
   ) {}
 
   /** operator+ */
-  add(b: DVec3): DVec3 { return new DVec3(this.x + b.x, this.y + b.y, this.z + b.z); }
+  add(b: DVec3): DVec3 {
+    return new DVec3(this.x + b.x, this.y + b.y, this.z + b.z);
+  }
   /** operator- */
-  sub(b: DVec3): DVec3 { return new DVec3(this.x - b.x, this.y - b.y, this.z - b.z); }
+  sub(b: DVec3): DVec3 {
+    return new DVec3(this.x - b.x, this.y - b.y, this.z - b.z);
+  }
   /** operator*(double) */
-  mul(s: number): DVec3 { return new DVec3(this.x * s, this.y * s, this.z * s); }
+  mul(s: number): DVec3 {
+    return new DVec3(this.x * s, this.y * s, this.z * s);
+  }
   /** operator/(double) */
-  div(s: number): DVec3 { return new DVec3(this.x / s, this.y / s, this.z / s); }
+  div(s: number): DVec3 {
+    return new DVec3(this.x / s, this.y / s, this.z / s);
+  }
 }
 
 /** double m[4][4] */
 type DMat4 = number[][];
 
 function zeroMatrix(): DMat4 {
-  return [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+  return [
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ];
 }
 
 function identityMatrix(): DMat4 {
@@ -201,26 +222,37 @@ function identityMatrix(): DMat4 {
 function multiply(a: DMat4, b: DMat4): DMat4 {
   const r = zeroMatrix();
   for (let row = 0; row < 4; ++row)
-    for (let col = 0; col < 4; ++col)
-      for (let k = 0; k < 4; ++k) r[row][col] += a[row][k] * b[k][col];
+    for (let col = 0; col < 4; ++col) for (let k = 0; k < 4; ++k) r[row][col] += a[row][k] * b[k][col];
   return r;
 }
 
 function translationMatrix(v: FdVector3d): DMat4 {
   const r = identityMatrix();
-  r[0][3] = v.x; r[1][3] = v.y; r[2][3] = v.z;
+  r[0][3] = v.x;
+  r[1][3] = v.y;
+  r[2][3] = v.z;
   return r;
 }
 
 function rotationMatrix(angle: number, axisInput: FdVector3d): DMat4 {
   const len = Math.sqrt(axisInput.x * axisInput.x + axisInput.y * axisInput.y + axisInput.z * axisInput.z);
   if (len <= 1e-12) return identityMatrix();
-  const x = axisInput.x / len, y = axisInput.y / len, z = axisInput.z / len;
-  const c = Math.cos(angle), si = Math.sin(angle), t = 1.0 - c;
+  const x = axisInput.x / len,
+    y = axisInput.y / len,
+    z = axisInput.z / len;
+  const c = Math.cos(angle),
+    si = Math.sin(angle),
+    t = 1.0 - c;
   const r = identityMatrix();
-  r[0][0] = t * x * x + c;     r[0][1] = t * x * y - si * z; r[0][2] = t * x * z + si * y;
-  r[1][0] = t * x * y + si * z; r[1][1] = t * y * y + c;     r[1][2] = t * y * z - si * x;
-  r[2][0] = t * x * z - si * y; r[2][1] = t * y * z + si * x; r[2][2] = t * z * z + c;
+  r[0][0] = t * x * x + c;
+  r[0][1] = t * x * y - si * z;
+  r[0][2] = t * x * z + si * y;
+  r[1][0] = t * x * y + si * z;
+  r[1][1] = t * y * y + c;
+  r[1][2] = t * y * z - si * x;
+  r[2][0] = t * x * z - si * y;
+  r[2][1] = t * y * z + si * x;
+  r[2][2] = t * z * z + c;
   return r;
 }
 
@@ -228,21 +260,27 @@ function transformPoint(m: DMat4, p: DVec3): DVec3 {
   return new DVec3(
     m[0][0] * p.x + m[0][1] * p.y + m[0][2] * p.z + m[0][3],
     m[1][0] * p.x + m[1][1] * p.y + m[1][2] * p.z + m[1][3],
-    m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3]);
+    m[2][0] * p.x + m[2][1] * p.y + m[2][2] * p.z + m[2][3],
+  );
 }
 
 function transformDirection(m: DMat4, v: DVec3): DVec3 {
   return new DVec3(
     m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z,
     m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z,
-    m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z);
+    m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z,
+  );
 }
 
-function dot(a: DVec3, b: DVec3): number { return a.x * b.x + a.y * b.y + a.z * b.z; }
+function dot(a: DVec3, b: DVec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
 function cross(a: DVec3, b: DVec3): DVec3 {
   return new DVec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
 }
-function length(v: DVec3): number { return Math.sqrt(dot(v, v)); }
+function length(v: DVec3): number {
+  return Math.sqrt(dot(v, v));
+}
 function normalized(v: DVec3): DVec3 {
   const len = length(v);
   if (len <= 1e-12) return new DVec3();
@@ -250,12 +288,18 @@ function normalized(v: DVec3): DVec3 {
 }
 
 /** toVec(const FdPoint3d &) / toVec(const FdVector3d &) */
-function toVec(p: FdPoint3d | FdVector3d): DVec3 { return new DVec3(p.x, p.y, p.z); }
+function toVec(p: FdPoint3d | FdVector3d): DVec3 {
+  return new DVec3(p.x, p.y, p.z);
+}
 
 function vertex(p: DVec3, n: DVec3): PreviewMeshVertex {
   return {
-    x: f32(p.x), y: f32(p.y), z: f32(p.z),
-    nx: f32(n.x), ny: f32(n.y), nz: f32(n.z),
+    x: f32(p.x),
+    y: f32(p.y),
+    z: f32(p.z),
+    nx: f32(n.x),
+    ny: f32(n.y),
+    nz: f32(n.z),
   };
 }
 
@@ -263,28 +307,53 @@ function applyTransform(mesh: PreviewMesh, matrix: DMat4): void {
   for (const v of mesh.vertices) {
     const p = transformPoint(matrix, new DVec3(v.x, v.y, v.z));
     const n = transformDirection(matrix, new DVec3(v.nx, v.ny, v.nz));
-    let nx = n.x, ny = n.y, nz = n.z;
+    let nx = n.x,
+      ny = n.y,
+      nz = n.z;
     const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
-    if (len > 1e-12) { nx /= len; ny /= len; nz /= len; }
-    v.x = f32(p.x); v.y = f32(p.y); v.z = f32(p.z);
-    v.nx = f32(nx); v.ny = f32(ny); v.nz = f32(nz);
+    if (len > 1e-12) {
+      nx /= len;
+      ny /= len;
+      nz /= len;
+    }
+    v.x = f32(p.x);
+    v.y = f32(p.y);
+    v.z = f32(p.z);
+    v.nx = f32(nx);
+    v.ny = f32(ny);
+    v.nz = f32(nz);
   }
 }
 
 function asPoint(value: RuntimeValue, out: Ref<FdPoint3d>): boolean {
-  if (value instanceof FdPoint3d) { out.v = value; return true; }
+  if (value instanceof FdPoint3d) {
+    out.v = value;
+    return true;
+  }
   return false;
 }
 
 function asVector(value: RuntimeValue, out: Ref<FdVector3d>): boolean {
-  if (value instanceof FdVector3d) { out.v = value; return true; }
+  if (value instanceof FdVector3d) {
+    out.v = value;
+    return true;
+  }
   return false;
 }
 
 function asNumber(value: RuntimeValue, out: Ref<number>): boolean {
-  if (typeof value === 'number') { out.v = value; return true; }
-  if (typeof value === 'bigint') { out.v = Number(value); return true; }
-  if (typeof value === 'boolean') { out.v = value ? 1.0 : 0.0; return true; }
+  if (typeof value === 'number') {
+    out.v = value;
+    return true;
+  }
+  if (typeof value === 'bigint') {
+    out.v = Number(value);
+    return true;
+  }
+  if (typeof value === 'boolean') {
+    out.v = value ? 1.0 : 0.0;
+    return true;
+  }
   return false;
 }
 
@@ -296,9 +365,15 @@ function asInt(value: RuntimeValue, out: Ref<number>): boolean {
 }
 
 function asBool(value: RuntimeValue, out: Ref<boolean>): boolean {
-  if (typeof value === 'boolean') { out.v = value; return true; }
+  if (typeof value === 'boolean') {
+    out.v = value;
+    return true;
+  }
   const n = ref(0.0);
-  if (asNumber(value, n)) { out.v = n.v !== 0.0; return true; }
+  if (asNumber(value, n)) {
+    out.v = n.v !== 0.0;
+    return true;
+  }
   return false;
 }
 
@@ -383,11 +458,18 @@ function rotateAroundAxis(v: DVec3, axisInput: DVec3, angle: number): DVec3 {
   if (length(axis) <= kEps) return v;
   const c = Math.cos(angle);
   const s = Math.sin(angle);
-  return v.mul(c).add(cross(axis, v).mul(s)).add(axis.mul(dot(axis, v) * (1.0 - c)));
+  return v
+    .mul(c)
+    .add(cross(axis, v).mul(s))
+    .add(axis.mul(dot(axis, v) * (1.0 - c)));
 }
 
-function toPoint(v: DVec3): FdPoint3d { return new FdPoint3d(v.x, v.y, v.z); }
-function toFdVector(v: DVec3): FdVector3d { return new FdVector3d(v.x, v.y, v.z); }
+function toPoint(v: DVec3): FdPoint3d {
+  return new FdPoint3d(v.x, v.y, v.z);
+}
+function toFdVector(v: DVec3): FdVector3d {
+  return new FdVector3d(v.x, v.y, v.z);
+}
 
 function twoPointsFromArray(value: RuntimeValue, a: Ref<FdPoint3d>, b: Ref<FdPoint3d>): boolean {
   const points: FdPoint3d[] = [];
@@ -403,13 +485,20 @@ function colorComponent(v: number): number {
 
 function acadIndexColor(index: number): PreviewColor {
   switch (index) {
-    case 1: return { r: 1.0, g: 0.0, b: 0.0 };
-    case 2: return { r: 1.0, g: 1.0, b: 0.0 };
-    case 3: return { r: 0.0, g: 1.0, b: 0.0 };
-    case 4: return { r: 0.0, g: 1.0, b: 1.0 };
-    case 5: return { r: 0.0, g: 0.0, b: 1.0 };
-    case 6: return { r: 1.0, g: 0.0, b: 1.0 };
-    case 7: return { r: 1.0, g: 1.0, b: 1.0 };
+    case 1:
+      return { r: 1.0, g: 0.0, b: 0.0 };
+    case 2:
+      return { r: 1.0, g: 1.0, b: 0.0 };
+    case 3:
+      return { r: 0.0, g: 1.0, b: 0.0 };
+    case 4:
+      return { r: 0.0, g: 1.0, b: 1.0 };
+    case 5:
+      return { r: 0.0, g: 0.0, b: 1.0 };
+    case 6:
+      return { r: 1.0, g: 0.0, b: 1.0 };
+    case 7:
+      return { r: 1.0, g: 1.0, b: 1.0 };
     default: {
       const gray = f32(stdClamp(index, 0, 255) / 255.0);
       return { r: gray, g: gray, b: gray };
@@ -466,12 +555,18 @@ function addTriangle(mesh: PreviewMesh, a: number, b: number, c: number): void {
 }
 
 function buildConnectorSleeveMesh(
-  context: MeshBuildContext, center: FdPoint3d, normal: FdVector3d,
-  upVector: FdVector3d, width: number, height: number, connectorLength: number,
-  sideCode: number, directionSign: number): PreviewMesh {
+  context: MeshBuildContext,
+  center: FdPoint3d,
+  normal: FdVector3d,
+  upVector: FdVector3d,
+  width: number,
+  height: number,
+  connectorLength: number,
+  sideCode: number,
+  directionSign: number,
+): PreviewMesh {
   const mesh = context.createMesh();
-  if (sideCode === 5 || width <= 0.0 || height <= 0.0 || connectorLength <= 0.0)
-    return mesh;
+  if (sideCode === 5 || width <= 0.0 || height <= 0.0 || connectorLength <= 0.0) return mesh;
 
   // A connector is positioned by its central point.  normal and upVector only
   // define the local frame.  connectorLength moves the connector end along
@@ -514,27 +609,31 @@ function buildConnectorSleeveMesh(
   return mesh;
 }
 
-
 function buildRectToEllipseTransitionMesh(
-  context: MeshBuildContext, rectCorners: FdPoint3d[],
+  context: MeshBuildContext,
+  rectCorners: FdPoint3d[],
   rectCenter: FdPoint3d,
   normal: FdVector3d,
   upVector: FdVector3d,
   tubeStart: FdPoint3d,
-  diamA: number, diamB: number, complexity: number): PreviewMesh {
+  diamA: number,
+  diamB: number,
+  complexity: number,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   const n = normalized(toVec(normal));
-  if (length(n) <= kEps || diamA <= 0.0 || diamB <= 0.0 || complexity < 1
-    || rectCorners.length < 4)
-    return mesh;
+  if (length(n) <= kEps || diamA <= 0.0 || diamB <= 0.0 || complexity < 1 || rectCorners.length < 4) return mesh;
 
   const [up, side] = basisFromUp(n, toVec(upVector));
   const ringSegments = circularFaceCount(complexity);
   const tubeC = toVec(tubeStart);
   const rectC = toVec(rectCenter);
 
-  interface P2 { x: number; y: number }
+  interface P2 {
+    x: number;
+    y: number;
+  }
   const polygon: P2[] = [];
   for (let i = 0; i < 4; ++i) {
     const delta = toVec(rectCorners[i]).sub(rectC);
@@ -553,13 +652,12 @@ function buildRectToEllipseTransitionMesh(
       const a = polygon[e];
       const b = polygon[(e + 1) % polygon.length];
       const edge: P2 = { x: b.x - a.x, y: b.y - a.y };
-      const det = d.x * (-edge.y) - d.y * (-edge.x);
+      const det = d.x * -edge.y - d.y * -edge.x;
       if (Math.abs(det) <= 1e-12) continue;
       // Solve t*d = a + u*edge.
-      const t = (a.x * (-edge.y) - a.y * (-edge.x)) / det;
+      const t = (a.x * -edge.y - a.y * -edge.x) / det;
       const u = (d.x * a.y - d.y * a.x) / det;
-      if (t >= -1e-9 && u >= -1e-9 && u <= 1.0 + 1e-9)
-        bestT = stdMin(bestT, stdMax(0.0, t));
+      if (t >= -1e-9 && u >= -1e-9 && u <= 1.0 + 1e-9) bestT = stdMin(bestT, stdMax(0.0, t));
     }
     if (!Number.isFinite(bestT) || bestT >= 1e99) return rectC;
     return rectC.add(up.mul(d.x * bestT)).add(side.mul(d.y * bestT));
@@ -569,7 +667,7 @@ function buildRectToEllipseTransitionMesh(
   const rB = 0.5 * Math.abs(diamB);
 
   for (let i = 0; i < ringSegments; ++i) {
-    const angle = 2.0 * kPi * i / ringSegments;
+    const angle = (2.0 * kPi * i) / ringSegments;
     const rectanglePoint = rayToRectangle(angle);
     const ellipseOffset = up.mul(rA * Math.cos(angle)).add(side.mul(rB * Math.sin(angle)));
     const ellipsePoint = tubeC.add(ellipseOffset);
@@ -594,8 +692,12 @@ function buildRectToEllipseTransitionMesh(
 }
 
 function rectangleCorners(
-  center: FdPoint3d, normal: FdVector3d,
-  upVector: FdVector3d, height: number, width: number): FdPoint3d[] {
+  center: FdPoint3d,
+  normal: FdVector3d,
+  upVector: FdVector3d,
+  height: number,
+  width: number,
+): FdPoint3d[] {
   const n = normalized(toVec(normal));
   const [up, side] = basisFromUp(n, toVec(upVector));
   const c = toVec(center);
@@ -610,21 +712,30 @@ function rectangleCorners(
   ];
 }
 
-
 /** Returns the C++ std::pair<PreviewMesh, PreviewMesh>{tube, duct}. */
 function buildRectTubeIntersectionMeshes(
-  context: MeshBuildContext, start: FdPoint3d,
-  normal: FdVector3d, upVector: FdVector3d,
-  diamA: number, diamB: number, tubeLength: number,
-  offsetLR: number, offsetUD: number,
-  ductWidth: number, ductHeight: number, ductLength: number, complexity: number): [PreviewMesh, PreviewMesh] {
+  context: MeshBuildContext,
+  start: FdPoint3d,
+  normal: FdVector3d,
+  upVector: FdVector3d,
+  diamA: number,
+  diamB: number,
+  tubeLength: number,
+  offsetLR: number,
+  offsetUD: number,
+  ductWidth: number,
+  ductHeight: number,
+  ductLength: number,
+  complexity: number,
+): [PreviewMesh, PreviewMesh] {
   const meshes: [PreviewMesh, PreviewMesh] = [context.createMesh('.main'), context.createMesh('.duct')];
   const [tube, duct] = meshes;
 
   const axis = normalized(toVec(normal));
   const [up, side] = basisFromUp(axis, toVec(upVector));
   const p0 = toVec(start);
-  const a = diamA * 0.5, b = diamB * 0.5;
+  const a = diamA * 0.5,
+    b = diamB * 0.5;
   const sign = ductLength < 0.0 ? -1.0 : 1.0;
   const outer = Math.abs(ductLength);
   const hole0 = stdClamp(offsetLR - ductWidth * 0.5, 0.0, tubeLength);
@@ -633,13 +744,17 @@ function buildRectTubeIntersectionMeshes(
   const upMax = stdClamp(offsetUD + ductHeight * 0.5, -a, a);
   const segs = circularFaceCount(complexity);
 
-  interface Profile { u: number; s: number }
+  interface Profile {
+    u: number;
+    s: number;
+  }
   const ring: Profile[] = [];
   // Intersect the actual faceted ellipse with both rectangular sides. Split
   // the existing facets rather than rounding the hole to nearby angular cells
   // or changing a low-complexity polygon into a different curved surface.
   for (let i = 0; i < segs; ++i) {
-    const angle = 2.0 * kPi * i / segs, nextAngle = 2.0 * kPi * (i + 1) / segs;
+    const angle = (2.0 * kPi * i) / segs,
+      nextAngle = (2.0 * kPi * (i + 1)) / segs;
     const current: Profile = { u: a * Math.cos(angle), s: b * Math.sin(angle) };
     const next: Profile = { u: a * Math.cos(nextAngle), s: b * Math.sin(nextAngle) };
     ring.push(current);
@@ -656,22 +771,29 @@ function buildRectTubeIntersectionMeshes(
     for (let i = 0; i < ring.length; ++i) {
       if (ring[i].s < -kEps) continue;
       const delta = Math.abs(ring[i].u - u);
-      if (delta < distance) { closest = i; distance = delta; }
+      if (delta < distance) {
+        closest = i;
+        distance = delta;
+      }
     }
     return closest;
   };
-  const first = boundaryIndex(upMax), last = boundaryIndex(upMin);
+  const first = boundaryIndex(upMax),
+    last = boundaryIndex(upMin);
   // Both meshes use these exact positions, including the curved seam at
   // either axial side of the duct. A flat start section cannot meet the tube.
   const point = (x: number, i: number, atOuter = false): DVec3 =>
-    p0.add(axis.mul(x)).add(up.mul(ring[i].u)).add(side.mul(sign * (atOuter ? outer : ring[i].s)));
+    p0
+      .add(axis.mul(x))
+      .add(up.mul(ring[i].u))
+      .add(side.mul(sign * (atOuter ? outer : ring[i].s)));
   const stations = [0.0, hole0, hole1, tubeLength];
   stdSort4Doubles(stations);
   eraseUnique(stations);
   for (const x of stations) {
     for (let i = 0; i < ring.length; ++i) {
       const r = ring[i];
-      const radialNormal = normalized(up.mul(r.u / (a * a)).add(side.mul(sign * r.s / (b * b))));
+      const radialNormal = normalized(up.mul(r.u / (a * a)).add(side.mul((sign * r.s) / (b * b))));
       tube.vertices.push(vertex(point(x, i), radialNormal));
     }
   }
@@ -684,17 +806,24 @@ function buildRectTubeIntersectionMeshes(
       const b0 = r * ring.length + j;
       const c0 = (r + 1) * ring.length + j;
       const d0 = (r + 1) * ring.length + i;
-      if (sign > 0) { addTriangle(tube, a0, b0, c0); addTriangle(tube, a0, c0, d0); }
-      else { addTriangle(tube, a0, c0, b0); addTriangle(tube, a0, d0, c0); }
+      if (sign > 0) {
+        addTriangle(tube, a0, b0, c0);
+        addTriangle(tube, a0, c0, d0);
+      } else {
+        addTriangle(tube, a0, c0, b0);
+        addTriangle(tube, a0, d0, c0);
+      }
     }
   }
   const wall = (a0: DVec3, b0: DVec3, c0: DVec3, d0: DVec3, n: DVec3) => {
     const index = duct.vertices.length;
     for (const p of [a0, b0, c0, d0]) duct.vertices.push(vertex(p, n));
     if (dot(cross(b0.sub(a0), c0.sub(a0)), n) > 0) {
-      addTriangle(duct, index, index + 1, index + 2); addTriangle(duct, index, index + 2, index + 3);
+      addTriangle(duct, index, index + 1, index + 2);
+      addTriangle(duct, index, index + 2, index + 3);
     } else {
-      addTriangle(duct, index, index + 2, index + 1); addTriangle(duct, index, index + 3, index + 2);
+      addTriangle(duct, index, index + 2, index + 1);
+      addTriangle(duct, index, index + 3, index + 2);
     }
   };
   for (let i = first; i < last; ++i) {
@@ -710,28 +839,27 @@ function validDirection(v: FdVector3d): boolean {
   return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) > kEps;
 }
 
-
 function parseDefaultValue(parameter: ApiParameterMetadata): RuntimeValue {
   const text = parameter.defaultValue;
   if (text === '') return runtimeDefaultValueForType(parameter.type);
   if (text === 'true') return true;
   if (text === 'false') return false;
   try {
-    if (parameter.type.includes('int') || parameter.type.includes('short')
-      || parameter.type.includes('long')) {
+    if (parameter.type.includes('int') || parameter.type.includes('short') || parameter.type.includes('long')) {
       const { value: v, used } = stoll(text);
       if (used === text.length) return v; // static_cast<std::int64_t>(v)
     }
     const { value: v, used } = stod(text);
     if (used === text.length) return v;
-  } catch { /* catch (...) {} */ }
+  } catch {
+    /* catch (...) {} */
+  }
   return runtimeDefaultValueForType(parameter.type);
 }
 
 function parameterIndex(sig: ApiSignatureMetadata | null, name: string): number {
   if (!sig) return -1;
-  for (let i = 0; i < sig.parameters.length; ++i)
-    if (sig.parameters[i].name === name) return i;
+  for (let i = 0; i < sig.parameters.length; ++i) if (sig.parameters[i].name === name) return i;
   return -1;
 }
 
@@ -740,8 +868,7 @@ function effectiveArguments(call: RuntimeApiCall): RuntimeValue[] {
   for (const arg of call.arguments) args.push(runtimeDeepCopy(arg));
   const sig = apiSignatureMetadataForCall(call);
   if (sig) {
-    for (let i = args.length; i < sig.parameters.length; ++i)
-      args.push(parseDefaultValue(sig.parameters[i]));
+    for (let i = args.length; i < sig.parameters.length; ++i) args.push(parseDefaultValue(sig.parameters[i]));
   }
   return args;
 }
@@ -752,8 +879,13 @@ function startsWith(s: string, prefix: string): boolean {
 
 // Mesh construction: geometry only, with API ownership supplied by the context.
 function buildTaperedTubeMesh(
-  context: MeshBuildContext, start: FdPoint3d, end: FdPoint3d,
-  diameter1: number, diameter2: number, segments: number): PreviewMesh {
+  context: MeshBuildContext,
+  start: FdPoint3d,
+  end: FdPoint3d,
+  diameter1: number,
+  diameter2: number,
+  segments: number,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   segments = circularFaceCount(segments);
@@ -768,7 +900,7 @@ function buildTaperedTubeMesh(
     const center = ring === 0 ? p0 : p1;
     const radius = ring === 0 ? r0 : r1;
     for (let i = 0; i < segments; ++i) {
-      const angle = 2.0 * kPi * i / segments;
+      const angle = (2.0 * kPi * i) / segments;
       const radial = u.mul(Math.cos(angle)).add(v.mul(Math.sin(angle)));
       mesh.vertices.push(vertex(center.add(radial.mul(radius)), radial));
     }
@@ -787,8 +919,12 @@ function buildTaperedTubeMesh(
 }
 
 function buildDiscMesh(
-  context: MeshBuildContext, center: FdPoint3d, normal: FdVector3d,
-  diameter: number, segments: number): PreviewMesh {
+  context: MeshBuildContext,
+  center: FdPoint3d,
+  normal: FdVector3d,
+  diameter: number,
+  segments: number,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   segments = circularFaceCount(segments);
@@ -799,21 +935,36 @@ function buildDiscMesh(
 
   mesh.vertices.push(vertex(c, n));
   for (let i = 0; i < segments; ++i) {
-    const angle = 2.0 * kPi * i / segments;
-    mesh.vertices.push(vertex(c.add(u.mul(Math.cos(angle)).add(v.mul(Math.sin(angle))).mul(radius)), n));
+    const angle = (2.0 * kPi * i) / segments;
+    mesh.vertices.push(
+      vertex(
+        c.add(
+          u
+            .mul(Math.cos(angle))
+            .add(v.mul(Math.sin(angle)))
+            .mul(radius),
+        ),
+        n,
+      ),
+    );
   }
   for (let i = 0; i < segments; ++i) {
     const a = 0;
     const b = 1 + i;
-    const cidx = 1 + (i + 1) % segments;
+    const cidx = 1 + ((i + 1) % segments);
     addTriangle(mesh, a, b, cidx);
   }
   return mesh;
 }
 
 function buildRingMesh(
-  context: MeshBuildContext, center: FdPoint3d, normal: FdVector3d,
-  innerDiameter: number, outerDiameter: number, segments: number): PreviewMesh {
+  context: MeshBuildContext,
+  center: FdPoint3d,
+  normal: FdVector3d,
+  innerDiameter: number,
+  outerDiameter: number,
+  segments: number,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   segments = circularFaceCount(segments);
@@ -824,7 +975,7 @@ function buildRingMesh(
   const ro = stdMax(Math.abs(innerDiameter), Math.abs(outerDiameter)) * 0.5;
 
   for (let i = 0; i < segments; ++i) {
-    const angle = 2.0 * kPi * i / segments;
+    const angle = (2.0 * kPi * i) / segments;
     const radial = u.mul(Math.cos(angle)).add(v.mul(Math.sin(angle)));
     mesh.vertices.push(vertex(c.add(radial.mul(ri)), n));
     mesh.vertices.push(vertex(c.add(radial.mul(ro)), n));
@@ -842,9 +993,17 @@ function buildRingMesh(
 }
 
 function buildFacettedCylinderMesh(
-  context: MeshBuildContext, start: FdPoint3d, end: FdPoint3d,
-  upVector: FdVector3d, diameter: number, startAngleDeg: number,
-  endAngleDeg: number, complexity: number, front: boolean, back: boolean): PreviewMesh {
+  context: MeshBuildContext,
+  start: FdPoint3d,
+  end: FdPoint3d,
+  upVector: FdVector3d,
+  diameter: number,
+  startAngleDeg: number,
+  endAngleDeg: number,
+  complexity: number,
+  front: boolean,
+  back: boolean,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   const p0 = toVec(start);
@@ -865,10 +1024,8 @@ function buildFacettedCylinderMesh(
   for (let ring = 0; ring < 2; ++ring) {
     const center = ring === 0 ? p0 : p1;
     for (let i = 0; i < ringCount; ++i) {
-      const t = closedSweep
-        ? i / facetCount
-        : i / facetCount;
-      const angle = (startAngleDeg + sweepDeg * t) * kPi / 180.0;
+      const t = closedSweep ? i / facetCount : i / facetCount;
+      const angle = ((startAngleDeg + sweepDeg * t) * kPi) / 180.0;
       const radial = u.mul(Math.cos(angle)).add(v.mul(Math.sin(angle)));
       mesh.vertices.push(vertex(center.add(radial.mul(radius)), radial));
     }
@@ -906,10 +1063,16 @@ function buildFacettedCylinderMesh(
 }
 
 function buildSectionTubeMesh(
-  context: MeshBuildContext, centers: FdPoint3d[],
-  normals: FdVector3d[], upVectors: FdVector3d[],
-  diameters: number[][], complexity: number, numOfSegs: number,
-  half: boolean, segment: boolean): PreviewMesh {
+  context: MeshBuildContext,
+  centers: FdPoint3d[],
+  normals: FdVector3d[],
+  upVectors: FdVector3d[],
+  diameters: number[][],
+  complexity: number,
+  numOfSegs: number,
+  half: boolean,
+  segment: boolean,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   const sections = numOfSegs + 1;
@@ -928,9 +1091,7 @@ function buildSectionTubeMesh(
     const rSide = Math.abs(diameters[section][1]) * 0.5;
     const c = toVec(centers[section]);
     for (let i = 0; i < ringPoints; ++i) {
-      const t = half
-        ? i / ringSegments
-        : i / ringSegments;
+      const t = half ? i / ringSegments : i / ringSegments;
       const angle = sweep * t;
       const radial = up.mul(Math.cos(angle) * rUp).add(side.mul(Math.sin(angle) * rSide));
       mesh.vertices.push(vertex(c.add(radial), normalized(radial)));
@@ -957,9 +1118,16 @@ function buildSectionTubeMesh(
 }
 
 function buildTorusSectionMesh(
-  context: MeshBuildContext, center: FdPoint3d, normal: FdVector3d,
-  radVec: FdVector3d, radius: number, diameter: number, sweepAngleDeg: number,
-  complexity: number, segmentation: number): PreviewMesh {
+  context: MeshBuildContext,
+  center: FdPoint3d,
+  normal: FdVector3d,
+  radVec: FdVector3d,
+  radius: number,
+  diameter: number,
+  sweepAngleDeg: number,
+  complexity: number,
+  segmentation: number,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   const axis = normalized(toVec(normal));
@@ -973,19 +1141,17 @@ function buildTorusSectionMesh(
   const sweepSegments = stdClamp(stdMax(1, segmentation), 1, 1024);
   const closed = Math.abs(sweepAngleDeg) >= 359.999;
   const sweepPoints = closed ? sweepSegments : sweepSegments + 1;
-  const sweep = sweepAngleDeg * kPi / 180.0;
+  const sweep = (sweepAngleDeg * kPi) / 180.0;
   const tubeRadius = Math.abs(diameter) * 0.5;
   const c0 = toVec(center);
 
   for (let s = 0; s < sweepPoints; ++s) {
-    const t = closed
-      ? s / sweepSegments
-      : s / sweepSegments;
+    const t = closed ? s / sweepSegments : s / sweepSegments;
     const angle = sweep * t;
     const radial = normalized(rotateAroundAxis(radial0, axis, angle));
     const ringCenter = c0.add(radial.mul(radius));
     for (let j = 0; j < crossSegments; ++j) {
-      const phi = 2.0 * kPi * j / crossSegments;
+      const phi = (2.0 * kPi * j) / crossSegments;
       const offsetDir = normalized(radial.mul(Math.cos(phi)).add(axis.mul(Math.sin(phi))));
       mesh.vertices.push(vertex(ringCenter.add(offsetDir.mul(tubeRadius)), offsetDir));
     }
@@ -1008,10 +1174,15 @@ function buildTorusSectionMesh(
 }
 
 function buildSpheroidSectionMesh(
-  context: MeshBuildContext, center: FdPoint3d, normal: FdVector3d,
-  bVector: FdVector3d, latAngles: number[],
-  longAngles: number[], diameters: number[],
-  complexity: number[]): PreviewMesh {
+  context: MeshBuildContext,
+  center: FdPoint3d,
+  normal: FdVector3d,
+  bVector: FdVector3d,
+  latAngles: number[],
+  longAngles: number[],
+  diameters: number[],
+  complexity: number[],
+): PreviewMesh {
   const mesh = context.createMesh();
 
   // SDK axes:
@@ -1037,10 +1208,10 @@ function buildSpheroidSectionMesh(
   const rC = Math.abs(diameters[2]) * 0.5;
   const latSteps = stdClamp(stdMax(1, complexity[0]), 1, 512);
   const lonSteps = stdClamp(stdMax(1, complexity[1]), 1, 1024);
-  const lat0 = latAngles[0] * kPi / 180.0;
-  const lat1 = latAngles[1] * kPi / 180.0;
-  const lon0 = longAngles[0] * kPi / 180.0;
-  const lon1 = longAngles[1] * kPi / 180.0;
+  const lat0 = (latAngles[0] * kPi) / 180.0;
+  const lat1 = (latAngles[1] * kPi) / 180.0;
+  const lon0 = (longAngles[0] * kPi) / 180.0;
+  const lon1 = (longAngles[1] * kPi) / 180.0;
 
   // Latitude in the SDK is 0 at the bottom of A, 90 at the equator and
   // 180 at the top. Longitude starts on +B and rotates around +A by the
@@ -1056,12 +1227,14 @@ function buildSpheroidSectionMesh(
       const co = Math.cos(lon);
       const so = Math.sin(lon);
 
-      const local = aAxis.mul(-rA * cl)
+      const local = aAxis
+        .mul(-rA * cl)
         .add(bAxis.mul(rB * sl * co))
         .add(cAxis.mul(rC * sl * so));
-      const surfaceNormal = aAxis.mul(rA > kEps ? -cl / rA : 0.0)
-        .add(bAxis.mul(rB > kEps ? sl * co / rB : 0.0))
-        .add(cAxis.mul(rC > kEps ? sl * so / rC : 0.0));
+      const surfaceNormal = aAxis
+        .mul(rA > kEps ? -cl / rA : 0.0)
+        .add(bAxis.mul(rB > kEps ? (sl * co) / rB : 0.0))
+        .add(cAxis.mul(rC > kEps ? (sl * so) / rC : 0.0));
       mesh.vertices.push(vertex(centroid.add(local), normalized(surfaceNormal)));
     }
   }
@@ -1081,8 +1254,13 @@ function buildSpheroidSectionMesh(
 }
 
 function buildRectFaceMesh(
-  context: MeshBuildContext, center: FdPoint3d, normal: FdVector3d,
-  upVector: FdVector3d, height: number, width: number): PreviewMesh {
+  context: MeshBuildContext,
+  center: FdPoint3d,
+  normal: FdVector3d,
+  upVector: FdVector3d,
+  height: number,
+  width: number,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   const n = normalized(toVec(normal));
@@ -1099,28 +1277,37 @@ function buildRectFaceMesh(
     vertex(c.add(right.mul(hw)).add(up.mul(hh)), n),
     vertex(c.sub(right.mul(hw)).add(up.mul(hh)), n),
     vertex(c.sub(right.mul(hw)).sub(up.mul(hh)), n),
-    vertex(c.add(right.mul(hw)).sub(up.mul(hh)), n)];
+    vertex(c.add(right.mul(hw)).sub(up.mul(hh)), n),
+  ];
   addTriangle(mesh, 0, 1, 2);
   addTriangle(mesh, 0, 2, 3);
   return mesh;
 }
 
 function buildCircleOutlineMesh(
-  context: MeshBuildContext, center: FdPoint3d, normal: FdVector3d,
-  diameter: number): PreviewMesh {
+  context: MeshBuildContext,
+  center: FdPoint3d,
+  normal: FdVector3d,
+  diameter: number,
+): PreviewMesh {
   const outer = Math.abs(diameter);
   const lineWidth = stdMax(outer * 0.025, 0.05);
-  const mesh = buildRingMesh(
-    context, center, normal,
-    stdMax(0.0, outer - lineWidth * 2.0), outer, 12);
+  const mesh = buildRingMesh(context, center, normal, stdMax(0.0, outer - lineWidth * 2.0), outer, 12);
   return mesh;
 }
 
 function buildBoxMesh(
-  context: MeshBuildContext, count: number, centers: FdPoint3d[],
-  normals: FdVector3d[], upVectors: FdVector3d[],
-  widths: number[], heights: number[],
-  sides: boolean[], beginning: boolean, endCap: boolean): PreviewMesh {
+  context: MeshBuildContext,
+  count: number,
+  centers: FdPoint3d[],
+  normals: FdVector3d[],
+  upVectors: FdVector3d[],
+  widths: number[],
+  heights: number[],
+  sides: boolean[],
+  beginning: boolean,
+  endCap: boolean,
+): PreviewMesh {
   const mesh = context.createMesh();
 
   const sections = count + 1;
@@ -1129,8 +1316,7 @@ function buildBoxMesh(
   for (let s = 0; s < sections; ++s) {
     let normal = normalized(toVec(normals[s]));
     let up = normalized(toVec(upVectors[s]));
-    if (length(normal) <= kEps && s + 1 < sections)
-      normal = normalized(toVec(centers[s + 1]).sub(toVec(centers[s])));
+    if (length(normal) <= kEps && s + 1 < sections) normal = normalized(toVec(centers[s + 1]).sub(toVec(centers[s])));
     if (length(up) <= kEps) up = new DVec3(0, 0, 1);
     // Re-orthogonalize the supplied up vector against the section normal.
     up = up.sub(normal.mul(dot(up, normal)));
@@ -1158,8 +1344,7 @@ function buildBoxMesh(
   // derives shading normals from their faces to preserve these sharp edges.
   for (let s = 0; s < sections; ++s) {
     const n = normalized(toVec(normals[s]));
-    for (let k = 0; k < 4; ++k)
-      mesh.vertices.push(vertex(corners[s * 4 + k], n));
+    for (let k = 0; k < 4; ++k) mesh.vertices.push(vertex(corners[s * 4 + k], n));
   }
 
   for (let s = 0; s < count; ++s) {
@@ -1188,71 +1373,87 @@ function buildBoxMesh(
   return mesh;
 }
 
-function buildPolygonFaceMesh(
-  context: MeshBuildContext, points: FdPoint3d[]): PreviewMesh {
+function buildPolygonFaceMesh(context: MeshBuildContext, points: FdPoint3d[]): PreviewMesh {
   const mesh = context.createMesh();
   if (points.length < 3) return mesh;
 
   let n = new DVec3(0, 0, 1);
   for (let i = 2; i < points.length; ++i) {
     const candidate = cross(toVec(points[i - 1]).sub(toVec(points[0])), toVec(points[i]).sub(toVec(points[0])));
-    if (length(candidate) > kEps) { n = normalized(candidate); break; }
+    if (length(candidate) > kEps) {
+      n = normalized(candidate);
+      break;
+    }
   }
   for (const p of points) mesh.vertices.push(vertex(toVec(p), n));
-  for (let i = 1; i + 1 < points.length; ++i)
-    addTriangle(mesh, 0, i, i + 1);
+  for (let i = 1; i + 1 < points.length; ++i) addTriangle(mesh, 0, i, i + 1);
   return mesh;
 }
 
 // API adapters: decode SDK arguments before invoking mesh builders.
 // Return true for a recognized API, including a call rejected with a diagnostic.
 function appendPrimitiveApiMeshes(
-  scene: PreviewGeometryScene, context: MeshBuildContext,
-  args: RuntimeValue[]): boolean {
+  scene: PreviewGeometryScene,
+  context: MeshBuildContext,
+  args: RuntimeValue[],
+): boolean {
   const call = context.call;
   if (call.name === 'makeVerySimpleTube') {
-    const start = ref(new FdPoint3d()), end = ref(new FdPoint3d());
+    const start = ref(new FdPoint3d()),
+      end = ref(new FdPoint3d());
     const diameter = ref(0.0);
     const segments = ref(0);
     let ok = false;
     if (args.length === 4) {
-      ok = asPoint(args[0], start)
-        && asPoint(args[1], end)
-        && asNumber(args[2], diameter)
-        && asInt(args[3], segments);
+      ok = asPoint(args[0], start) && asPoint(args[1], end) && asNumber(args[2], diameter) && asInt(args[3], segments);
     } else if (args.length === 3) {
-      ok = twoPointsFromArray(args[0], start, end)
-        && asNumber(args[1], diameter)
-        && asInt(args[2], segments);
+      ok = twoPointsFromArray(args[0], start, end) && asNumber(args[1], diameter) && asInt(args[2], segments);
     }
-    if (!ok) { scene.warnings.push(warningFor(call, 'unsupported or invalid arguments')); return true; }
+    if (!ok) {
+      scene.warnings.push(warningFor(call, 'unsupported or invalid arguments'));
+      return true;
+    }
     if (diameter.v <= 0.0 || segments.v < 1 || length(toVec(end.v).sub(toVec(start.v))) <= kEps) {
-      scene.warnings.push(warningFor(call, 'invalid tube dimensions')); return true;
+      scene.warnings.push(warningFor(call, 'invalid tube dimensions'));
+      return true;
     }
     scene.meshes.push(buildTaperedTubeMesh(context, start.v, end.v, diameter.v, diameter.v, segments.v));
     return true;
   }
 
   if (call.name === 'makeSimpleTube') {
-    const start = ref(new FdPoint3d()), end = ref(new FdPoint3d());
-    const diameter1 = ref(0.0), diameter2 = ref(0.0);
+    const start = ref(new FdPoint3d()),
+      end = ref(new FdPoint3d());
+    const diameter1 = ref(0.0),
+      diameter2 = ref(0.0);
     const segments = ref(0);
     let ok = false;
     if (args.length === 5) {
-      ok = asPoint(args[0], start)
-        && asPoint(args[1], end)
-        && asNumber(args[2], diameter1)
-        && asNumber(args[3], diameter2)
-        && asInt(args[4], segments);
+      ok =
+        asPoint(args[0], start) &&
+        asPoint(args[1], end) &&
+        asNumber(args[2], diameter1) &&
+        asNumber(args[3], diameter2) &&
+        asInt(args[4], segments);
     } else if (args.length === 4) {
-      ok = twoPointsFromArray(args[0], start, end)
-        && asNumber(args[1], diameter1)
-        && asNumber(args[2], diameter2)
-        && asInt(args[3], segments);
+      ok =
+        twoPointsFromArray(args[0], start, end) &&
+        asNumber(args[1], diameter1) &&
+        asNumber(args[2], diameter2) &&
+        asInt(args[3], segments);
     }
-    if (!ok) { scene.warnings.push(warningFor(call, 'unsupported or invalid arguments')); return true; }
-    if (diameter1.v <= 0.0 || diameter2.v <= 0.0 || segments.v < 1 || length(toVec(end.v).sub(toVec(start.v))) <= kEps) {
-      scene.warnings.push(warningFor(call, 'invalid simple-tube dimensions')); return true;
+    if (!ok) {
+      scene.warnings.push(warningFor(call, 'unsupported or invalid arguments'));
+      return true;
+    }
+    if (
+      diameter1.v <= 0.0 ||
+      diameter2.v <= 0.0 ||
+      segments.v < 1 ||
+      length(toVec(end.v).sub(toVec(start.v))) <= kEps
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid simple-tube dimensions'));
+      return true;
     }
     scene.meshes.push(buildTaperedTubeMesh(context, start.v, end.v, diameter1.v, diameter2.v, segments.v));
     return true;
@@ -1263,12 +1464,18 @@ function appendPrimitiveApiMeshes(
     const normal = ref(new FdVector3d());
     const diameter = ref(0.0);
     const segments = ref(0);
-    if (!asPoint(args[0], center) || !asVector(args[1], normal)
-      || !asNumber(args[2], diameter) || !asInt(args[3], segments)) {
-      scene.warnings.push(warningFor(call, 'invalid disc arguments')); return true;
+    if (
+      !asPoint(args[0], center) ||
+      !asVector(args[1], normal) ||
+      !asNumber(args[2], diameter) ||
+      !asInt(args[3], segments)
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid disc arguments'));
+      return true;
     }
     if (!validDirection(normal.v) || diameter.v <= 0.0 || segments.v < 1) {
-      scene.warnings.push(warningFor(call, 'invalid disc dimensions/normal')); return true;
+      scene.warnings.push(warningFor(call, 'invalid disc dimensions/normal'));
+      return true;
     }
     scene.meshes.push(buildDiscMesh(context, center.v, normal.v, diameter.v, segments.v));
     return true;
@@ -1277,101 +1484,188 @@ function appendPrimitiveApiMeshes(
   if (call.name === 'makeFlatRing' && args.length === 5) {
     const center = ref(new FdPoint3d());
     const normal = ref(new FdVector3d());
-    const innerDiameter = ref(0.0), outerDiameter = ref(0.0);
+    const innerDiameter = ref(0.0),
+      outerDiameter = ref(0.0);
     const segments = ref(0);
-    if (!asPoint(args[0], center) || !asVector(args[1], normal)
-      || !asNumber(args[2], innerDiameter) || !asNumber(args[3], outerDiameter)
-      || !asInt(args[4], segments)) {
-      scene.warnings.push(warningFor(call, 'invalid ring arguments')); return true;
+    if (
+      !asPoint(args[0], center) ||
+      !asVector(args[1], normal) ||
+      !asNumber(args[2], innerDiameter) ||
+      !asNumber(args[3], outerDiameter) ||
+      !asInt(args[4], segments)
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid ring arguments'));
+      return true;
     }
     // Legacy project code is not consistent about which diameter is
     // passed first. The public signature names them inner/outer, but
     // several real calls reverse the numeric order. Preview therefore
     // accepts either order and normalizes it in buildRingMesh().
-    if (!validDirection(normal.v) || innerDiameter.v < 0.0 || outerDiameter.v < 0.0
-      || Math.abs(innerDiameter.v - outerDiameter.v) <= kEps || segments.v < 1) {
-      scene.warnings.push(warningFor(call, 'invalid ring dimensions/normal')); return true;
+    if (
+      !validDirection(normal.v) ||
+      innerDiameter.v < 0.0 ||
+      outerDiameter.v < 0.0 ||
+      Math.abs(innerDiameter.v - outerDiameter.v) <= kEps ||
+      segments.v < 1
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid ring dimensions/normal'));
+      return true;
     }
     scene.meshes.push(buildRingMesh(context, center.v, normal.v, innerDiameter.v, outerDiameter.v, segments.v));
     return true;
   }
 
   if (call.name === 'makeFacettedCylinder' && args.length === 9) {
-    const start = ref(new FdPoint3d()), end = ref(new FdPoint3d());
+    const start = ref(new FdPoint3d()),
+      end = ref(new FdPoint3d());
     const up = ref(new FdVector3d());
-    const diameter = ref(0.0), startAngle = ref(0.0), endAngle = ref(0.0), complexityD = ref(0.0);
-    const front = ref(false), back = ref(false);
-    if (!asPoint(args[0], start) || !asPoint(args[1], end)
-      || !asVector(args[2], up) || !asNumber(args[3], diameter)
-      || !asNumber(args[4], startAngle) || !asNumber(args[5], endAngle)
-      || !asNumber(args[6], complexityD) || !asBool(args[7], front)
-      || !asBool(args[8], back)) {
-      scene.warnings.push(warningFor(call, 'invalid facetted-cylinder arguments')); return true;
+    const diameter = ref(0.0),
+      startAngle = ref(0.0),
+      endAngle = ref(0.0),
+      complexityD = ref(0.0);
+    const front = ref(false),
+      back = ref(false);
+    if (
+      !asPoint(args[0], start) ||
+      !asPoint(args[1], end) ||
+      !asVector(args[2], up) ||
+      !asNumber(args[3], diameter) ||
+      !asNumber(args[4], startAngle) ||
+      !asNumber(args[5], endAngle) ||
+      !asNumber(args[6], complexityD) ||
+      !asBool(args[7], front) ||
+      !asBool(args[8], back)
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid facetted-cylinder arguments'));
+      return true;
     }
     const complexity = llroundToInt(complexityD.v);
     if (diameter.v <= 0.0 || complexity < 1 || length(toVec(end.v).sub(toVec(start.v))) <= kEps) {
-      scene.warnings.push(warningFor(call, 'invalid facetted-cylinder dimensions')); return true;
+      scene.warnings.push(warningFor(call, 'invalid facetted-cylinder dimensions'));
+      return true;
     }
-    scene.meshes.push(buildFacettedCylinderMesh(
-      context, start.v, end.v, up.v, diameter.v, startAngle.v, endAngle.v,
-      complexity, front.v, back.v));
+    scene.meshes.push(
+      buildFacettedCylinderMesh(
+        context,
+        start.v,
+        end.v,
+        up.v,
+        diameter.v,
+        startAngle.v,
+        endAngle.v,
+        complexity,
+        front.v,
+        back.v,
+      ),
+    );
     return true;
   }
 
   if (call.name === 'makeDisc' && args.length === 6) {
     const center = ref(new FdPoint3d());
     const normal = ref(new FdVector3d());
-    const diameter = ref(0.0), thickness = ref(0.0);
+    const diameter = ref(0.0),
+      thickness = ref(0.0);
     const segments = ref(0);
     const segment = ref(false);
-    if (!asPoint(args[0], center) || !asVector(args[1], normal)
-      || !asNumber(args[2], diameter) || !asNumber(args[3], thickness)
-      || !asInt(args[4], segments) || !asBool(args[5], segment)) {
-      scene.warnings.push(warningFor(call, 'invalid disc arguments')); return true;
+    if (
+      !asPoint(args[0], center) ||
+      !asVector(args[1], normal) ||
+      !asNumber(args[2], diameter) ||
+      !asNumber(args[3], thickness) ||
+      !asInt(args[4], segments) ||
+      !asBool(args[5], segment)
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid disc arguments'));
+      return true;
     }
     if (!validDirection(normal.v) || diameter.v <= 0.0 || thickness.v < 0.0 || segments.v < 1) {
-      scene.warnings.push(warningFor(call, 'invalid disc dimensions/normal')); return true;
+      scene.warnings.push(warningFor(call, 'invalid disc dimensions/normal'));
+      return true;
     }
     const n = normalized(toVec(normal.v));
     const c = toVec(center.v);
     const [up] = stableBasis(n); // C++: stableBasis(n, up, side); side is unused.
     const start = toPoint(c.sub(n.mul(thickness.v * 0.5)));
     const end = toPoint(c.add(n.mul(thickness.v * 0.5)));
-    scene.meshes.push(buildFacettedCylinderMesh(
-      context, start, end, toFdVector(up), diameter.v, 0.0, 360.0,
-      circularFaceCount(segments.v), true, true));
+    scene.meshes.push(
+      buildFacettedCylinderMesh(
+        context,
+        start,
+        end,
+        toFdVector(up),
+        diameter.v,
+        0.0,
+        360.0,
+        circularFaceCount(segments.v),
+        true,
+        true,
+      ),
+    );
     return true;
   }
 
   if (call.name === 'makeDonutSection' && args.length === 8) {
     const center = ref(new FdPoint3d());
-    const normal = ref(new FdVector3d()), radVec = ref(new FdVector3d());
-    const radius = ref(0.0), diameter = ref(0.0), sweep = ref(0.0);
-    const complexity = ref(0), segmentation = ref(0);
-    if (!asPoint(args[0], center) || !asVector(args[1], normal)
-      || !asVector(args[2], radVec) || !asNumber(args[3], radius)
-      || !asNumber(args[4], diameter) || !asNumber(args[5], sweep)
-      || !asInt(args[6], complexity) || !asInt(args[7], segmentation)) {
-      scene.warnings.push(warningFor(call, 'invalid donut arguments')); return true;
+    const normal = ref(new FdVector3d()),
+      radVec = ref(new FdVector3d());
+    const radius = ref(0.0),
+      diameter = ref(0.0),
+      sweep = ref(0.0);
+    const complexity = ref(0),
+      segmentation = ref(0);
+    if (
+      !asPoint(args[0], center) ||
+      !asVector(args[1], normal) ||
+      !asVector(args[2], radVec) ||
+      !asNumber(args[3], radius) ||
+      !asNumber(args[4], diameter) ||
+      !asNumber(args[5], sweep) ||
+      !asInt(args[6], complexity) ||
+      !asInt(args[7], segmentation)
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid donut arguments'));
+      return true;
     }
-    if (!validDirection(normal.v) || !validDirection(radVec.v) || radius.v < 0.0 || diameter.v <= 0.0
-      || complexity.v < 1 || segmentation.v < 1 || Math.abs(sweep.v) <= kEps) {
-      scene.warnings.push(warningFor(call, 'invalid donut dimensions/vectors')); return true;
+    if (
+      !validDirection(normal.v) ||
+      !validDirection(radVec.v) ||
+      radius.v < 0.0 ||
+      diameter.v <= 0.0 ||
+      complexity.v < 1 ||
+      segmentation.v < 1 ||
+      Math.abs(sweep.v) <= kEps
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid donut dimensions/vectors'));
+      return true;
     }
-    scene.meshes.push(buildTorusSectionMesh(
-      context, center.v, normal.v, radVec.v, radius.v, diameter.v, sweep.v,
-      complexity.v, segmentation.v));
+    scene.meshes.push(
+      buildTorusSectionMesh(
+        context,
+        center.v,
+        normal.v,
+        radVec.v,
+        radius.v,
+        diameter.v,
+        sweep.v,
+        complexity.v,
+        segmentation.v,
+      ),
+    );
     return true;
   }
 
   if (call.name === 'makeTube' && (args.length === 8 || args.length === 7)) {
     const centers: FdPoint3d[] = [];
-    const normals: FdVector3d[] = [], upVectors: FdVector3d[] = [];
+    const normals: FdVector3d[] = [],
+      upVectors: FdVector3d[] = [];
     const diameters: number[][] = [];
-    const complexity = ref(0), numOfSegs = ref(0);
-    const half = ref(false), segment = ref(false);
+    const complexity = ref(0),
+      numOfSegs = ref(0);
+    const half = ref(false),
+      segment = ref(false);
     let ok = pointArray(args[0], centers) && vectorArray(args[1], normals);
-    let complexityIndex = 0;
+    let complexityIndex: number;
     if (args.length === 8) {
       ok = ok && vectorArray(args[2], upVectors) && numberMatrix(args[3], diameters);
       complexityIndex = 4; // diamIndex = 3
@@ -1379,15 +1673,26 @@ function appendPrimitiveApiMeshes(
       ok = ok && numberMatrix(args[2], diameters);
       complexityIndex = 3; // diamIndex = 2
     }
-    ok = ok && asInt(args[complexityIndex], complexity)
-      && asInt(args[complexityIndex + 1], numOfSegs)
-      && asBool(args[complexityIndex + 2], half)
-      && asBool(args[complexityIndex + 3], segment);
-    if (!ok) { scene.warnings.push(warningFor(call, 'invalid makeTube arguments')); return true; }
+    ok =
+      ok &&
+      asInt(args[complexityIndex], complexity) &&
+      asInt(args[complexityIndex + 1], numOfSegs) &&
+      asBool(args[complexityIndex + 2], half) &&
+      asBool(args[complexityIndex + 3], segment);
+    if (!ok) {
+      scene.warnings.push(warningFor(call, 'invalid makeTube arguments'));
+      return true;
+    }
     const sections = stdMax(0, numOfSegs.v) + 1;
-    if (numOfSegs.v < 1 || complexity.v < 1 || centers.length < sections || normals.length < sections
-      || diameters.length < sections) {
-      scene.warnings.push(warningFor(call, 'makeTube arrays must contain numOfSegs+1 sections')); return true;
+    if (
+      numOfSegs.v < 1 ||
+      complexity.v < 1 ||
+      centers.length < sections ||
+      normals.length < sections ||
+      diameters.length < sections
+    ) {
+      scene.warnings.push(warningFor(call, 'makeTube arrays must contain numOfSegs+1 sections'));
+      return true;
     }
     if (upVectors.length === 0) {
       for (let section = 0; section < sections; ++section) {
@@ -1395,25 +1700,42 @@ function appendPrimitiveApiMeshes(
       }
     }
     if (upVectors.length < sections) {
-      scene.warnings.push(warningFor(call, 'makeTube up-vector array is too small')); return true;
+      scene.warnings.push(warningFor(call, 'makeTube up-vector array is too small'));
+      return true;
     }
     let validDiameters = true;
     for (let section = 0; section < sections; ++section)
       validDiameters = validDiameters && diameters[section].length >= 2;
-    if (!validDiameters) { scene.warnings.push(warningFor(call, 'makeTube diameters require [][2]')); return true; }
-    scene.meshes.push(buildSectionTubeMesh(
-      context, centers, normals, upVectors, diameters,
-      complexity.v, numOfSegs.v, half.v, segment.v));
+    if (!validDiameters) {
+      scene.warnings.push(warningFor(call, 'makeTube diameters require [][2]'));
+      return true;
+    }
+    scene.meshes.push(
+      buildSectionTubeMesh(
+        context,
+        centers,
+        normals,
+        upVectors,
+        diameters,
+        complexity.v,
+        numOfSegs.v,
+        half.v,
+        segment.v,
+      ),
+    );
     return true;
   }
 
   if (call.name === 'makeSpheroidSection' && (args.length === 7 || args.length === 6)) {
     const center = ref(new FdPoint3d());
-    const normal = ref(new FdVector3d()), bVector = ref(new FdVector3d());
-    const latAngles: number[] = [], longAngles: number[] = [], diameters: number[] = [];
+    const normal = ref(new FdVector3d()),
+      bVector = ref(new FdVector3d());
+    const latAngles: number[] = [],
+      longAngles: number[] = [],
+      diameters: number[] = [];
     const complexity: number[] = [];
     let ok = asPoint(args[0], center) && asVector(args[1], normal);
-    let latIndex = 0;
+    let latIndex: number;
     if (args.length === 7) {
       ok = ok && asVector(args[2], bVector);
       latIndex = 3;
@@ -1421,31 +1743,49 @@ function appendPrimitiveApiMeshes(
       bVector.v = sdkPerpVector(normal.v);
       latIndex = 2;
     }
-    ok = ok && numberArray(args[latIndex], latAngles)
-      && numberArray(args[latIndex + 1], longAngles)
-      && numberArray(args[latIndex + 2], diameters)
-      && intArray(args[latIndex + 3], complexity);
-    if (!ok || latAngles.length < 2 || longAngles.length < 2 || diameters.length < 3 || complexity.length < 2
-      || !validDirection(normal.v) || !validDirection(bVector.v)) {
-      scene.warnings.push(warningFor(call, 'invalid spheroid arguments')); return true;
+    ok =
+      ok &&
+      numberArray(args[latIndex], latAngles) &&
+      numberArray(args[latIndex + 1], longAngles) &&
+      numberArray(args[latIndex + 2], diameters) &&
+      intArray(args[latIndex + 3], complexity);
+    if (
+      !ok ||
+      latAngles.length < 2 ||
+      longAngles.length < 2 ||
+      diameters.length < 3 ||
+      complexity.length < 2 ||
+      !validDirection(normal.v) ||
+      !validDirection(bVector.v)
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid spheroid arguments'));
+      return true;
     }
-    scene.meshes.push(buildSpheroidSectionMesh(
-      context, center.v, normal.v, bVector.v,
-      latAngles, longAngles, diameters, complexity));
+    scene.meshes.push(
+      buildSpheroidSectionMesh(context, center.v, normal.v, bVector.v, latAngles, longAngles, diameters, complexity),
+    );
     return true;
   }
 
   if (call.name === 'makeRectFace' && args.length === 5) {
     const center = ref(new FdPoint3d());
-    const normal = ref(new FdVector3d()), up = ref(new FdVector3d());
-    const height = ref(0.0), width = ref(0.0);
-    if (!asPoint(args[0], center) || !asVector(args[1], normal)
-      || !asVector(args[2], up) || !asNumber(args[3], height)
-      || !asNumber(args[4], width)) {
-      scene.warnings.push(warningFor(call, 'invalid rect-face arguments')); return true;
+    const normal = ref(new FdVector3d()),
+      up = ref(new FdVector3d());
+    const height = ref(0.0),
+      width = ref(0.0);
+    if (
+      !asPoint(args[0], center) ||
+      !asVector(args[1], normal) ||
+      !asVector(args[2], up) ||
+      !asNumber(args[3], height) ||
+      !asNumber(args[4], width)
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid rect-face arguments'));
+      return true;
     }
     if (!validDirection(normal.v) || !validDirection(up.v) || height.v <= 0.0 || width.v <= 0.0) {
-      scene.warnings.push(warningFor(call, 'invalid rect-face dimensions/vectors')); return true;
+      scene.warnings.push(warningFor(call, 'invalid rect-face dimensions/vectors'));
+      return true;
     }
     scene.meshes.push(buildRectFaceMesh(context, center.v, normal.v, up.v, height.v, width.v));
     return true;
@@ -1453,22 +1793,33 @@ function appendPrimitiveApiMeshes(
 
   if (call.name === 'makeScrew' && (args.length === 6 || args.length === 7)) {
     const start = ref(new FdPoint3d());
-    const direction = ref(new FdVector3d()), up = ref(new FdVector3d());
-    const diameter = ref(0.0), screwLength = ref(0.0);
-    const back = ref(false), front = ref(true);
-    if (!asPoint(args[0], start) || !asVector(args[1], direction)
-      || !asVector(args[2], up) || !asNumber(args[3], diameter)
-      || !asNumber(args[4], screwLength) || !asBool(args[5], back)
-      || (args.length === 7 && !asBool(args[6], front))) {
-      scene.warnings.push(warningFor(call, 'invalid screw arguments')); return true;
+    const direction = ref(new FdVector3d()),
+      up = ref(new FdVector3d());
+    const diameter = ref(0.0),
+      screwLength = ref(0.0);
+    const back = ref(false),
+      front = ref(true);
+    if (
+      !asPoint(args[0], start) ||
+      !asVector(args[1], direction) ||
+      !asVector(args[2], up) ||
+      !asNumber(args[3], diameter) ||
+      !asNumber(args[4], screwLength) ||
+      !asBool(args[5], back) ||
+      (args.length === 7 && !asBool(args[6], front))
+    ) {
+      scene.warnings.push(warningFor(call, 'invalid screw arguments'));
+      return true;
     }
     if (!validDirection(direction.v) || diameter.v <= 0.0 || Math.abs(screwLength.v) <= kEps) {
-      scene.warnings.push(warningFor(call, 'invalid screw dimensions/vector')); return true;
+      scene.warnings.push(warningFor(call, 'invalid screw dimensions/vector'));
+      return true;
     }
     const dir = normalized(toVec(direction.v));
     const end = toPoint(toVec(start.v).add(dir.mul(screwLength.v)));
-    scene.meshes.push(buildFacettedCylinderMesh(
-      context, start.v, end, up.v, diameter.v, 0.0, 360.0, 6, front.v, back.v));
+    scene.meshes.push(
+      buildFacettedCylinderMesh(context, start.v, end, up.v, diameter.v, 0.0, 360.0, 6, front.v, back.v),
+    );
     return true;
   }
 
@@ -1480,12 +1831,13 @@ function appendPrimitiveApiMeshes(
     const center = ref(new FdPoint3d());
     const normal = ref(new FdVector3d());
     const diameter = ref(0.0);
-    if (!asPoint(args[0], center) || !asVector(args[1], normal)
-      || !asNumber(args[2], diameter)) {
-      scene.warnings.push(warningFor(call, 'invalid symbolic-circle arguments')); return true;
+    if (!asPoint(args[0], center) || !asVector(args[1], normal) || !asNumber(args[2], diameter)) {
+      scene.warnings.push(warningFor(call, 'invalid symbolic-circle arguments'));
+      return true;
     }
     if (!validDirection(normal.v) || diameter.v <= 0.0) {
-      scene.warnings.push(warningFor(call, 'invalid symbolic-circle dimensions/normal')); return true;
+      scene.warnings.push(warningFor(call, 'invalid symbolic-circle dimensions/normal'));
+      return true;
     }
     scene.meshes.push(buildCircleOutlineMesh(context, center.v, normal.v, diameter.v));
     return true;
@@ -1508,8 +1860,7 @@ function appendPrimitiveApiMeshes(
     const vectorsIndex = parameterIndex(sig, 'vectors');
     if (vectorsIndex >= 0 && vectorsIndex < args.length) {
       const supplied: FdVector3d[] = [];
-      if (!vectorArray(args[vectorsIndex], supplied)
-        || supplied.length < count.v + 1) {
+      if (!vectorArray(args[vectorsIndex], supplied) || supplied.length < count.v + 1) {
         scene.warnings.push(warningFor(call, 'makeBox vectors must contain count+1 entries'));
         return true;
       }
@@ -1535,8 +1886,7 @@ function appendPrimitiveApiMeshes(
       const upIndex = parameterIndex(sig, 'upVectors');
       if (upIndex >= 0 && upIndex < args.length) {
         const supplied: FdVector3d[] = [];
-        if (!vectorArray(args[upIndex], supplied)
-          || supplied.length < count.v + 1) {
+        if (!vectorArray(args[upIndex], supplied) || supplied.length < count.v + 1) {
           scene.warnings.push(warningFor(call, 'makeBox upVectors must contain count+1 entries'));
           return true;
         }
@@ -1547,8 +1897,7 @@ function appendPrimitiveApiMeshes(
           // produced by vector.perpVector(). Keep the renderer in
           // sync with GeometryRuntime::FdVector3d::perpVector rather
           // than choosing the second axis of an arbitrary basis.
-          upVectors[i] =
-            sdkPerpVector(normals[i]);
+          upVectors[i] = sdkPerpVector(normals[i]);
         }
       }
 
@@ -1556,8 +1905,7 @@ function appendPrimitiveApiMeshes(
         let idx = parameterIndex(sig, arrayName);
         if (idx < 0) idx = parameterIndex(sig, scalarName);
         if (idx < 0 || idx >= args.length) return false;
-        if (numberArray(args[idx], out))
-          return out.length >= count.v + 1;
+        if (numberArray(args[idx], out)) return out.length >= count.v + 1;
         const scalar = ref(0.0);
         if (!asNumber(args[idx], scalar)) return false;
         out.length = 0; // out.assign(count + 1, scalar)
@@ -1565,7 +1913,8 @@ function appendPrimitiveApiMeshes(
         return true;
       };
 
-      const widths: number[] = [], heights: number[] = [];
+      const widths: number[] = [],
+        heights: number[] = [];
       if (!dimensionsFor('tabWidth', 'width', widths) || !dimensionsFor('tabHeight', 'height', heights)) {
         scene.warnings.push(warningFor(call, 'makeBox width/height arguments are invalid'));
         return true;
@@ -1582,21 +1931,25 @@ function appendPrimitiveApiMeshes(
         for (let i = 0; i < sides.length && i < supplied.length; ++i) sides[i] = supplied[i];
       }
 
-      const beginning = ref(false), endCap = ref(false);
-      const beginIndex = parameterIndex(sig, 'begining') >= 0 ? parameterIndex(sig, 'begining') : parameterIndex(sig, 'begin');
+      const beginning = ref(false),
+        endCap = ref(false);
+      const beginIndex =
+        parameterIndex(sig, 'begining') >= 0 ? parameterIndex(sig, 'begining') : parameterIndex(sig, 'begin');
       const endIndex = parameterIndex(sig, 'end');
       if (beginIndex >= 0 && beginIndex < args.length) asBool(args[beginIndex], beginning);
       if (endIndex >= 0 && endIndex < args.length) asBool(args[endIndex], endCap);
 
-      scene.meshes.push(buildBoxMesh(
-        context, count.v, centers, normals, upVectors, widths, heights,
-        sides, beginning.v, endCap.v));
+      scene.meshes.push(
+        buildBoxMesh(context, count.v, centers, normals, upVectors, widths, heights, sides, beginning.v, endCap.v),
+      );
 
-      const connector1Side = ref(5), connector2Side = ref(5);
+      const connector1Side = ref(5),
+        connector2Side = ref(5);
       let connectorWidth = 30.0;
       const connectorsIndex = parameterIndex(sig, 'connectors');
       if (connectorsIndex >= 0 && connectorsIndex < args.length) {
-        const enabled = ref(false); if (asBool(args[connectorsIndex], enabled) && enabled.v) connector1Side.v = connector2Side.v = 0;
+        const enabled = ref(false);
+        if (asBool(args[connectorsIndex], enabled) && enabled.v) connector1Side.v = connector2Side.v = 0;
       }
       const connectorIndex = parameterIndex(sig, 'connector');
       if (connectorIndex >= 0 && connectorIndex < args.length) {
@@ -1604,7 +1957,10 @@ function appendPrimitiveApiMeshes(
         if (boolArray(args[connectorIndex], c)) {
           if (c.length !== 0 && c[0]) connector1Side.v = 0;
           if (c.length > 1 && c[1]) connector2Side.v = 0;
-        } else { const enabled = ref(false); if (asBool(args[connectorIndex], enabled) && enabled.v) connector1Side.v = connector2Side.v = 0; }
+        } else {
+          const enabled = ref(false);
+          if (asBool(args[connectorIndex], enabled) && enabled.v) connector1Side.v = connector2Side.v = 0;
+        }
       }
       const c1Index = parameterIndex(sig, 'connector1Side');
       const c2Index = parameterIndex(sig, 'connector2Side');
@@ -1613,17 +1969,36 @@ function appendPrimitiveApiMeshes(
       if (c2Index >= 0 && c2Index < args.length) asInt(args[c2Index], connector2Side);
       if (cwIndex >= 0 && cwIndex < args.length) {
         const w = ref(0.0);
-        if (asNumber(args[cwIndex], w))
-          connectorWidth = stdMax(0.0, w.v);
+        if (asNumber(args[cwIndex], w)) connectorWidth = stdMax(0.0, w.v);
       }
 
       if (connector1Side.v !== 5) {
-        const connector = buildConnectorSleeveMesh(context, centers[0], normals[0], upVectors[0], widths[0], heights[0], connectorWidth, connector1Side.v, -1.0);
+        const connector = buildConnectorSleeveMesh(
+          context,
+          centers[0],
+          normals[0],
+          upVectors[0],
+          widths[0],
+          heights[0],
+          connectorWidth,
+          connector1Side.v,
+          -1.0,
+        );
         connector.apiName += '.connector';
         if (connector.indices.length !== 0) scene.meshes.push(connector);
       }
       if (connector2Side.v !== 5) {
-        const connector = buildConnectorSleeveMesh(context, centers[count.v], normals[count.v], upVectors[count.v], widths[count.v], heights[count.v], connectorWidth, connector2Side.v, 1.0);
+        const connector = buildConnectorSleeveMesh(
+          context,
+          centers[count.v],
+          normals[count.v],
+          upVectors[count.v],
+          widths[count.v],
+          heights[count.v],
+          connectorWidth,
+          connector2Side.v,
+          1.0,
+        );
         connector.apiName += '.connector';
         if (connector.indices.length !== 0) scene.meshes.push(connector);
       }
@@ -1634,17 +2009,24 @@ function appendPrimitiveApiMeshes(
 }
 
 function appendCompositeApiMeshes(
-  scene: PreviewGeometryScene, context: MeshBuildContext,
-  args: RuntimeValue[]): boolean { // C++ parameter name: `arguments`
+  scene: PreviewGeometryScene,
+  context: MeshBuildContext,
+  args: RuntimeValue[],
+): boolean {
+  // C++ parameter name: `arguments`
   const call = context.call;
   if (call.userFunctionCall) return false;
 
   const sig = apiSignatureMetadataForCall(call);
   const header = sig ? sig.sourceHeader : '';
-  const geometryHeader = header === 'SymbolsInt.h' || header === 'GrillsInt.h'
-    || header === 'TubularPrimitivesInt.h' || header === 'RectangularPrimitivesInt.h'
-    || header === 'VascoPrimitivesInt.h' || header === 'BowlPrimitivesInt.h'
-    || header === 'GeoCache3dInt.h';
+  const geometryHeader =
+    header === 'SymbolsInt.h' ||
+    header === 'GrillsInt.h' ||
+    header === 'TubularPrimitivesInt.h' ||
+    header === 'RectangularPrimitivesInt.h' ||
+    header === 'VascoPrimitivesInt.h' ||
+    header === 'BowlPrimitivesInt.h' ||
+    header === 'GeoCache3dInt.h';
   const geometryName = startsWith(call.name, 'make') || startsWith(call.name, 'add') || startsWith(call.name, 'draw');
   if (!geometryHeader && !geometryName) return false;
   if (startsWith(call.name, 'append') || startsWith(call.name, 'calc') || call.name === 'SidePoints') return false;
@@ -1665,9 +2047,11 @@ function appendCompositeApiMeshes(
     }
     // p1,p2,p3,p4 overload.
     if (args.length >= 4) {
-      const p1 = ref(new FdPoint3d()), p2 = ref(new FdPoint3d()), p3 = ref(new FdPoint3d()), p4 = ref(new FdPoint3d());
-      if (asPoint(args[0], p1) && asPoint(args[1], p2)
-        && asPoint(args[2], p3) && asPoint(args[3], p4)) {
+      const p1 = ref(new FdPoint3d()),
+        p2 = ref(new FdPoint3d()),
+        p3 = ref(new FdPoint3d()),
+        p4 = ref(new FdPoint3d());
+      if (asPoint(args[0], p1) && asPoint(args[1], p2) && asPoint(args[2], p3) && asPoint(args[3], p4)) {
         push(buildPolygonFaceMesh(context, [p1.v, p2.v, p3.v, p4.v]));
         return true;
       }
@@ -1675,11 +2059,22 @@ function appendCompositeApiMeshes(
     // cp is the position. normal/upVector form the local frame; H/L are
     // measured along upVector and normal x upVector respectively.
     if (args.length >= 5) {
-      const cp = ref(new FdPoint3d()); const normal = ref(new FdVector3d()), up = ref(new FdVector3d()); const h = ref(0.0), l = ref(0.0);
-      if (asPoint(args[0], cp) && asVector(args[1], normal)
-        && asVector(args[2], up) && asNumber(args[3], h)
-        && asNumber(args[4], l) && validDirection(normal.v)
-        && validDirection(up.v) && h.v > 0.0 && l.v > 0.0) {
+      const cp = ref(new FdPoint3d());
+      const normal = ref(new FdVector3d()),
+        up = ref(new FdVector3d());
+      const h = ref(0.0),
+        l = ref(0.0);
+      if (
+        asPoint(args[0], cp) &&
+        asVector(args[1], normal) &&
+        asVector(args[2], up) &&
+        asNumber(args[3], h) &&
+        asNumber(args[4], l) &&
+        validDirection(normal.v) &&
+        validDirection(up.v) &&
+        h.v > 0.0 &&
+        l.v > 0.0
+      ) {
         push(buildRectFaceMesh(context, cp.v, normal.v, up.v, h.v, l.v));
         return true;
       }
@@ -1700,21 +2095,27 @@ function appendCompositeApiMeshes(
     // generic "Rect"/"Transition" proxy because that produces a shape
     // unrelated to the SDK primitive.
     if (args.length !== 7) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeTransition expects 7 evaluated arguments'));
+      scene.warnings.push(warningFor(call, 'makeRectToTubeTransition expects 7 evaluated arguments'));
       return true;
     }
 
-    const start = ref(new FdPoint3d()), tubeStart = ref(new FdPoint3d());
-    const normal = ref(new FdVector3d()), upVector = ref(new FdVector3d());
+    const start = ref(new FdPoint3d()),
+      tubeStart = ref(new FdPoint3d());
+    const normal = ref(new FdVector3d()),
+      upVector = ref(new FdVector3d());
     const tubeDiams: number[] = [];
     const complexity = ref(0);
     const hasComplexity = asInt(args[6], complexity);
-    if (!asPoint(args[0], start) || !asVector(args[1], normal)
-      || !asVector(args[2], upVector) || !asPoint(args[4], tubeStart)
-      || !numberArray(args[5], tubeDiams)) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeTransition position/orientation/dimension arguments could not be evaluated'));
+    if (
+      !asPoint(args[0], start) ||
+      !asVector(args[1], normal) ||
+      !asVector(args[2], upVector) ||
+      !asPoint(args[4], tubeStart) ||
+      !numberArray(args[5], tubeDiams)
+    ) {
+      scene.warnings.push(
+        warningFor(call, 'makeRectToTubeTransition position/orientation/dimension arguments could not be evaluated'),
+      );
       return true;
     }
     // Complexity only controls tessellation. If a standalone snippet refers
@@ -1725,14 +2126,22 @@ function appendCompositeApiMeshes(
     // is invented here.
     if (!hasComplexity) {
       complexity.v = 10;
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeTransition complexity is unresolved; using preview tessellation n=10'));
+      scene.warnings.push(
+        warningFor(call, 'makeRectToTubeTransition complexity is unresolved; using preview tessellation n=10'),
+      );
     }
-    if (!validDirection(normal.v) || !validDirection(upVector.v) || tubeDiams.length < 3
-      || tubeDiams[0] <= 0.0 || tubeDiams[1] <= 0.0
-      || Math.abs(tubeDiams[2]) <= kEps || complexity.v < 1) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeTransition has invalid normal/upVector, tube diameters or tube length'));
+    if (
+      !validDirection(normal.v) ||
+      !validDirection(upVector.v) ||
+      tubeDiams.length < 3 ||
+      tubeDiams[0] <= 0.0 ||
+      tubeDiams[1] <= 0.0 ||
+      Math.abs(tubeDiams[2]) <= kEps ||
+      complexity.v < 1
+    ) {
+      scene.warnings.push(
+        warningFor(call, 'makeRectToTubeTransition has invalid normal/upVector, tube diameters or tube length'),
+      );
       return true;
     }
 
@@ -1740,32 +2149,42 @@ function appendCompositeApiMeshes(
     let corners: FdPoint3d[] = [];
     if (!pointArray(args[3], corners)) {
       const heightWidth: number[] = [];
-      if (!numberArray(args[3], heightWidth) || heightWidth.length < 2
-        || heightWidth[0] <= 0.0 || heightWidth[1] <= 0.0) {
-        scene.warnings.push(warningFor(call,
-          'makeRectToTubeTransition requires corners[4] or positive heightWidth[2]'));
+      if (
+        !numberArray(args[3], heightWidth) ||
+        heightWidth.length < 2 ||
+        heightWidth[0] <= 0.0 ||
+        heightWidth[1] <= 0.0
+      ) {
+        scene.warnings.push(
+          warningFor(call, 'makeRectToTubeTransition requires corners[4] or positive heightWidth[2]'),
+        );
         return true;
       }
       // start is the rectangle position. normal/upVector only define
       // its local orientation. height follows upVector and width follows
       // normal x upVector, matching the SDK documentation.
-      corners = rectangleCorners(start.v, normal.v, upVector.v,
-        heightWidth[0], heightWidth[1]);
+      corners = rectangleCorners(start.v, normal.v, upVector.v, heightWidth[0], heightWidth[1]);
     }
     if (corners.length < 4) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeTransition corners array must contain four points'));
+      scene.warnings.push(warningFor(call, 'makeRectToTubeTransition corners array must contain four points'));
       return true;
     }
     corners.length = 4; // corners.resize(4)
 
     const transition = buildRectToEllipseTransitionMesh(
-      context, corners, start.v, normal.v, upVector.v, tubeStart.v,
-      tubeDiams[0], tubeDiams[1], complexity.v);
+      context,
+      corners,
+      start.v,
+      normal.v,
+      upVector.v,
+      tubeStart.v,
+      tubeDiams[0],
+      tubeDiams[1],
+      complexity.v,
+    );
     transition.apiName += '.transition';
     if (transition.vertices.length === 0 || transition.indices.length === 0) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeTransition could not build the rectangle-to-ellipse loft'));
+      scene.warnings.push(warningFor(call, 'makeRectToTubeTransition could not build the rectangle-to-ellipse loft'));
       return true;
     }
     push(transition);
@@ -1778,14 +2197,13 @@ function appendCompositeApiMeshes(
     const normals = [normal.v, normal.v];
     const ups = [upVector.v, upVector.v];
     const diameters = [
-      [tubeDiams[0], tubeDiams[1]], [tubeDiams[0], tubeDiams[1]]];
-    const tube = buildSectionTubeMesh(
-      context, centers, normals, ups, diameters,
-      complexity.v, 1, false, false);
+      [tubeDiams[0], tubeDiams[1]],
+      [tubeDiams[0], tubeDiams[1]],
+    ];
+    const tube = buildSectionTubeMesh(context, centers, normals, ups, diameters, complexity.v, 1, false, false);
     tube.apiName += '.tube';
     if (tube.vertices.length === 0 || tube.indices.length === 0) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeTransition could not build the elliptical tube'));
+      scene.warnings.push(warningFor(call, 'makeRectToTubeTransition could not build the elliptical tube'));
       return true;
     }
     push(tube);
@@ -1794,25 +2212,25 @@ function appendCompositeApiMeshes(
 
   if (call.name === 'makeRectToTubeIntersection') {
     if (args.length !== 6 && args.length !== 7) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeIntersection expects 6 or 7 evaluated arguments'));
+      scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection expects 6 or 7 evaluated arguments'));
       return true;
     }
     const start = ref(new FdPoint3d());
-    const normal = ref(new FdVector3d()), upVector = ref(new FdVector3d());
-    const tubeParams: number[] = [], ductPosition: number[] = [], ductParams: number[] = [];
+    const normal = ref(new FdVector3d()),
+      upVector = ref(new FdVector3d());
+    const tubeParams: number[] = [],
+      ductPosition: number[] = [],
+      ductParams: number[] = [];
     const complexity = ref(0);
 
-    let tubeIndex = 0;
+    let tubeIndex: number;
     if (!asPoint(args[0], start) || !asVector(args[1], normal)) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeIntersection start/normal could not be evaluated'));
+      scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection start/normal could not be evaluated'));
       return true;
     }
     if (args.length === 7) {
       if (!asVector(args[2], upVector)) {
-        scene.warnings.push(warningFor(call,
-          'makeRectToTubeIntersection upVector could not be evaluated'));
+        scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection upVector could not be evaluated'));
         return true;
       }
       tubeIndex = 3;
@@ -1820,39 +2238,67 @@ function appendCompositeApiMeshes(
       upVector.v = sdkPerpVector(normal.v);
       tubeIndex = 2;
     }
-    if (!numberArray(args[tubeIndex], tubeParams)
-      || !numberArray(args[tubeIndex + 1], ductPosition)
-      || !numberArray(args[tubeIndex + 2], ductParams)
-      || !asInt(args[tubeIndex + 3], complexity)) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeIntersection array arguments could not be evaluated'));
+    if (
+      !numberArray(args[tubeIndex], tubeParams) ||
+      !numberArray(args[tubeIndex + 1], ductPosition) ||
+      !numberArray(args[tubeIndex + 2], ductParams) ||
+      !asInt(args[tubeIndex + 3], complexity)
+    ) {
+      scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection array arguments could not be evaluated'));
       return true;
     }
-    if (!validDirection(normal.v) || !validDirection(upVector.v)
-      || tubeParams.length < 3 || ductPosition.length < 2 || ductParams.length < 3
-      || tubeParams[0] <= 0.0 || tubeParams[1] <= 0.0
-      || Math.abs(tubeParams[2]) <= kEps || ductParams[0] <= 0.0
-      || ductParams[1] <= 0.0 || Math.abs(ductParams[2]) <= kEps || complexity.v < 1) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeIntersection has invalid dimensions, vectors or complexity'));
+    if (
+      !validDirection(normal.v) ||
+      !validDirection(upVector.v) ||
+      tubeParams.length < 3 ||
+      ductPosition.length < 2 ||
+      ductParams.length < 3 ||
+      tubeParams[0] <= 0.0 ||
+      tubeParams[1] <= 0.0 ||
+      Math.abs(tubeParams[2]) <= kEps ||
+      ductParams[0] <= 0.0 ||
+      ductParams[1] <= 0.0 ||
+      Math.abs(ductParams[2]) <= kEps ||
+      complexity.v < 1
+    ) {
+      scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection has invalid dimensions, vectors or complexity'));
       return true;
     }
 
-    const halfWidth = ductParams[0] * 0.5, halfHeight = ductParams[1] * 0.5;
+    const halfWidth = ductParams[0] * 0.5,
+      halfHeight = ductParams[1] * 0.5;
     // Only cut the tube after confirming that the complete rectangular
     // opening lies on it and its outer end is beyond the B radius (SDK rule).
-    if (tubeParams[2] <= kEps || ductPosition[0] - halfWidth < -kEps
-      || ductPosition[0] + halfWidth > tubeParams[2] + kEps
-      || Math.abs(ductPosition[1]) + halfHeight > tubeParams[0] * 0.5 + kEps
-      || Math.abs(ductParams[2]) <= tubeParams[1] * 0.5 + kEps) {
-      scene.warnings.push(warningFor(call,
-        'makeRectToTubeIntersection opening must lie within the main tube and ductLength must extend beyond diamB/2'));
+    if (
+      tubeParams[2] <= kEps ||
+      ductPosition[0] - halfWidth < -kEps ||
+      ductPosition[0] + halfWidth > tubeParams[2] + kEps ||
+      Math.abs(ductPosition[1]) + halfHeight > tubeParams[0] * 0.5 + kEps ||
+      Math.abs(ductParams[2]) <= tubeParams[1] * 0.5 + kEps
+    ) {
+      scene.warnings.push(
+        warningFor(
+          call,
+          'makeRectToTubeIntersection opening must lie within the main tube and ductLength must extend beyond diamB/2',
+        ),
+      );
       return true;
     }
     const [mainTube, duct] = buildRectTubeIntersectionMeshes(
-      context, start.v, normal.v, upVector.v,
-      tubeParams[0], tubeParams[1], tubeParams[2],
-      ductPosition[0], ductPosition[1], ductParams[0], ductParams[1], ductParams[2], complexity.v);
+      context,
+      start.v,
+      normal.v,
+      upVector.v,
+      tubeParams[0],
+      tubeParams[1],
+      tubeParams[2],
+      ductPosition[0],
+      ductPosition[1],
+      ductParams[0],
+      ductParams[1],
+      ductParams[2],
+      complexity.v,
+    );
     push(mainTube);
     push(duct);
     return true;
@@ -1864,11 +2310,17 @@ function appendCompositeApiMeshes(
   if (call.name === 'makeStraightTube' && args.length >= 4) {
     const centers: FdPoint3d[] = [];
     const diams: number[] = [];
-    const n = ref(0), numOfSegs = ref(0);
+    const n = ref(0),
+      numOfSegs = ref(0);
     const segment = ref(true);
-    if (!pointArray(args[0], centers) || !numberArray(args[1], diams)
-      || !asInt(args[2], n) || !asInt(args[3], numOfSegs)
-      || (args.length > 4 && !asBool(args[4], segment))) return false;
+    if (
+      !pointArray(args[0], centers) ||
+      !numberArray(args[1], diams) ||
+      !asInt(args[2], n) ||
+      !asInt(args[3], numOfSegs) ||
+      (args.length > 4 && !asBool(args[4], segment))
+    )
+      return false;
     const sections = stdMax(0, numOfSegs.v) + 1;
     if (numOfSegs.v < 1 || n.v < 1 || centers.length < sections || diams.length < sections) return false;
 
@@ -1876,7 +2328,8 @@ function appendCompositeApiMeshes(
     if (length(axis) <= kEps) axis = new DVec3(1, 0, 0);
     const normal = toFdVector(normalized(axis));
     const up = sdkPerpVector(normal);
-    const normals = new Array<FdVector3d>(sections).fill(normal), ups = new Array<FdVector3d>(sections).fill(up);
+    const normals = new Array<FdVector3d>(sections).fill(normal),
+      ups = new Array<FdVector3d>(sections).fill(up);
     const diameters: number[][] = [];
     for (let i = 0; i < sections; ++i) diameters[i] = [diams[i], diams[i]];
     push(buildSectionTubeMesh(context, centers, normals, ups, diameters, n.v, numOfSegs.v, false, segment.v));
@@ -1887,17 +2340,24 @@ function appendCompositeApiMeshes(
     const centers: FdPoint3d[] = [];
     const normal = ref(new FdVector3d());
     const diams: number[] = [];
-    const n = ref(0), numOfSegs = ref(0);
+    const n = ref(0),
+      numOfSegs = ref(0);
     const segment = ref(true);
-    if (!pointArray(args[0], centers) || !asVector(args[1], normal)
-      || !numberArray(args[2], diams) || !asInt(args[3], n)
-      || !asInt(args[4], numOfSegs)
-      || (args.length > 5 && !asBool(args[5], segment))) return false;
+    if (
+      !pointArray(args[0], centers) ||
+      !asVector(args[1], normal) ||
+      !numberArray(args[2], diams) ||
+      !asInt(args[3], n) ||
+      !asInt(args[4], numOfSegs) ||
+      (args.length > 5 && !asBool(args[5], segment))
+    )
+      return false;
     const sections = stdMax(0, numOfSegs.v) + 1;
-    if (numOfSegs.v < 1 || n.v < 1 || !validDirection(normal.v)
-      || centers.length < sections || diams.length < sections) return false;
+    if (numOfSegs.v < 1 || n.v < 1 || !validDirection(normal.v) || centers.length < sections || diams.length < sections)
+      return false;
     const up = sdkPerpVector(normal.v);
-    const normals = new Array<FdVector3d>(sections).fill(normal.v), ups = new Array<FdVector3d>(sections).fill(up);
+    const normals = new Array<FdVector3d>(sections).fill(normal.v),
+      ups = new Array<FdVector3d>(sections).fill(up);
     const diameters: number[][] = [];
     for (let i = 0; i < sections; ++i) diameters[i] = [diams[i], diams[i]];
     push(buildSectionTubeMesh(context, centers, normals, ups, diameters, n.v, numOfSegs.v, false, segment.v));
@@ -1905,30 +2365,65 @@ function appendCompositeApiMeshes(
   }
 
   if (call.name === 'makeTubularBend' && args.length >= 8) {
-    const center = ref(new FdPoint3d()); const normal = ref(new FdVector3d()), radiusVector = ref(new FdVector3d());
-    const radius = ref(0.0), diameter = ref(0.0), sweep = ref(0.0);
-    const n = ref(0), segmentation = ref(0); const segment = ref(true), half = ref(false);
-    if (!asPoint(args[0], center) || !asVector(args[1], normal)
-      || !asVector(args[2], radiusVector) || !asNumber(args[3], radius)
-      || !asNumber(args[4], diameter) || !asNumber(args[5], sweep)
-      || !asInt(args[6], n) || !asInt(args[7], segmentation)
-      || (args.length > 8 && !asBool(args[8], segment))
-      || (args.length > 9 && !asBool(args[9], half))) return false;
+    const center = ref(new FdPoint3d());
+    const normal = ref(new FdVector3d()),
+      radiusVector = ref(new FdVector3d());
+    const radius = ref(0.0),
+      diameter = ref(0.0),
+      sweep = ref(0.0);
+    const n = ref(0),
+      segmentation = ref(0);
+    const segment = ref(true),
+      half = ref(false);
+    if (
+      !asPoint(args[0], center) ||
+      !asVector(args[1], normal) ||
+      !asVector(args[2], radiusVector) ||
+      !asNumber(args[3], radius) ||
+      !asNumber(args[4], diameter) ||
+      !asNumber(args[5], sweep) ||
+      !asInt(args[6], n) ||
+      !asInt(args[7], segmentation) ||
+      (args.length > 8 && !asBool(args[8], segment)) ||
+      (args.length > 9 && !asBool(args[9], half))
+    )
+      return false;
     if (half.v) return false; // half cross-section needs its own documented topology.
-    if (!validDirection(normal.v) || !validDirection(radiusVector.v) || radius.v < 0.0
-      || diameter.v <= 0.0 || n.v < 1 || segmentation.v < 1 || Math.abs(sweep.v) <= kEps) return false;
+    if (
+      !validDirection(normal.v) ||
+      !validDirection(radiusVector.v) ||
+      radius.v < 0.0 ||
+      diameter.v <= 0.0 ||
+      n.v < 1 ||
+      segmentation.v < 1 ||
+      Math.abs(sweep.v) <= kEps
+    )
+      return false;
     void segment; // mesh partitioning does not change the geometric surface.
-    push(buildTorusSectionMesh(context, center.v, normal.v, radiusVector.v, radius.v, diameter.v, sweep.v, n.v, segmentation.v));
+    push(
+      buildTorusSectionMesh(
+        context,
+        center.v,
+        normal.v,
+        radiusVector.v,
+        radius.v,
+        diameter.v,
+        sweep.v,
+        n.v,
+        segmentation.v,
+      ),
+    );
     return true;
   }
   if (call.name === 'makeConnector') {
     const center = ref(new FdPoint3d());
     const normal = ref(new FdVector3d());
-    if (args.length < 4 || !asPoint(args[0], center) || !asVector(args[1], normal))
-      return false;
+    if (args.length < 4 || !asPoint(args[0], center) || !asVector(args[1], normal)) return false;
 
     const up = ref(new FdVector3d());
-    const width = ref(0.0), height = ref(0.0); let frameWidth = 30.0;
+    const width = ref(0.0),
+      height = ref(0.0);
+    let frameWidth = 30.0;
     if (args.length >= 5 && asVector(args[2], up)) {
       if (!asNumber(args[3], width) || !asNumber(args[4], height)) return false;
       if (args.length >= 6) {
@@ -1945,7 +2440,16 @@ function appendCompositeApiMeshes(
     if (!validDirection(normal.v) || !validDirection(up.v) || width.v <= 0.0 || height.v <= 0.0) return false;
 
     const connector = buildConnectorSleeveMesh(
-      context, center.v, normal.v, up.v, width.v, height.v, frameWidth, 0, 1.0);
+      context,
+      center.v,
+      normal.v,
+      up.v,
+      width.v,
+      height.v,
+      frameWidth,
+      0,
+      1.0,
+    );
     push(connector);
     return true;
   }
@@ -1975,11 +2479,16 @@ export class PreviewGeometryEngine {
         let ok = false;
         if (args.length === 1) {
           const translation = ref(new FdVector3d());
-          if (asVector(args[0], translation)) { delta = translationMatrix(translation.v); ok = true; }
+          if (asVector(args[0], translation)) {
+            delta = translationMatrix(translation.v);
+            ok = true;
+          }
         } else if (args.length === 2) {
-          const angle = ref(0.0); const axis = ref(new FdVector3d());
+          const angle = ref(0.0);
+          const axis = ref(new FdVector3d());
           if (asNumber(args[0], angle) && asVector(args[1], axis) && validDirection(axis.v)) {
-            delta = rotationMatrix(angle.v, axis.v); ok = true;
+            delta = rotationMatrix(angle.v, axis.v);
+            ok = true;
           }
         }
         if (!ok) scene.warnings.push(warningFor(call, 'invalid mesh transform arguments'));
@@ -1993,11 +2502,12 @@ export class PreviewGeometryEngine {
 
       if (call.name === 'setMeshColor') {
         if (args.length === 3) {
-          const r = ref(0.0), g = ref(0.0), b = ref(0.0);
+          const r = ref(0.0),
+            g = ref(0.0),
+            b = ref(0.0);
           if (asNumber(args[0], r) && asNumber(args[1], g) && asNumber(args[2], b))
             currentColor = { r: colorComponent(r.v), g: colorComponent(g.v), b: colorComponent(b.v) };
-          else
-            scene.warnings.push(warningFor(call, 'RGB arguments are not numeric'));
+          else scene.warnings.push(warningFor(call, 'RGB arguments are not numeric'));
         } else if (args.length === 1) {
           const index = ref(0);
           if (asInt(args[0], index)) currentColor = acadIndexColor(index.v);
@@ -2010,18 +2520,25 @@ export class PreviewGeometryEngine {
 
       const context = new MeshBuildContext(call, apiIndex, currentColor);
 
-      if (appendPrimitiveApiMeshes(scene, context, args)
-        || appendCompositeApiMeshes(scene, context, args))
-        continue;
+      if (appendPrimitiveApiMeshes(scene, context, args) || appendCompositeApiMeshes(scene, context, args)) continue;
 
       if (!call.userFunctionCall) {
         const sig = apiSignatureMetadataForCall(call);
         if (sig) {
           const h = sig.sourceHeader;
-          const geometryApi = h === 'PnGeometry3d.h' || h === 'GeoCache3dInt.h'
-            || h === 'SymbolsInt.h' || h === 'GrillsInt.h' || h === 'TubularPrimitivesInt.h'
-            || h === 'RectangularPrimitivesInt.h' || h === 'VascoPrimitivesInt.h' || h === 'BowlPrimitivesInt.h';
-          if (geometryApi && (startsWith(call.name, 'make') || startsWith(call.name, 'add') || startsWith(call.name, 'draw')))
+          const geometryApi =
+            h === 'PnGeometry3d.h' ||
+            h === 'GeoCache3dInt.h' ||
+            h === 'SymbolsInt.h' ||
+            h === 'GrillsInt.h' ||
+            h === 'TubularPrimitivesInt.h' ||
+            h === 'RectangularPrimitivesInt.h' ||
+            h === 'VascoPrimitivesInt.h' ||
+            h === 'BowlPrimitivesInt.h';
+          if (
+            geometryApi &&
+            (startsWith(call.name, 'make') || startsWith(call.name, 'add') || startsWith(call.name, 'draw'))
+          )
             scene.warnings.push(warningFor(call, 'preview adapter not implemented; no substitute mesh was generated'));
         }
       }

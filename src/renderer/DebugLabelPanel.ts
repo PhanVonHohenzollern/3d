@@ -13,8 +13,14 @@ import type { QColor } from './OverlayPainter';
 import { QRect } from './Rect';
 import { LeftButton, RightButton, type KeyboardModifiers } from './QtEvents';
 import {
-  approximateTextMeasurer, elidedText, fontHeight, fontWithPointSize, horizontalAdvance, kDefaultFontFamily,
-  type FontSpec, type TextMeasurer,
+  approximateTextMeasurer,
+  elidedText,
+  fontHeight,
+  fontWithPointSize,
+  horizontalAdvance,
+  kDefaultFontFamily,
+  type FontSpec,
+  type TextMeasurer,
 } from './TextMetrics';
 
 export interface DebugLabelEntry {
@@ -176,7 +182,9 @@ export class DebugLabelPanel {
     for (const row of this.effectiveSelection()) {
       if (this.m_entries[row]?.id !== id) continue;
       const rect = this.visualItemRect(row).intersected(new QRect(0, 0, this.viewportWidth(), this.viewportHeight()));
-      return rect.isEmpty() ? new QRect() : rect.translated(this.m_geometry.x, this.m_geometry.y + kDebugLabelHeaderHeight);
+      return rect.isEmpty()
+        ? new QRect()
+        : rect.translated(this.m_geometry.x, this.m_geometry.y + kDebugLabelHeaderHeight);
     }
     return new QRect();
   }
@@ -185,8 +193,13 @@ export class DebugLabelPanel {
 
   setGeometry(x: number, y: number, width: number, height: number): void {
     const geometry = new QRect(x, y, Math.max(0, width), Math.max(0, height));
-    if (geometry.x === this.m_geometry.x && geometry.y === this.m_geometry.y
-      && geometry.width === this.m_geometry.width && geometry.height === this.m_geometry.height) return;
+    if (
+      geometry.x === this.m_geometry.x &&
+      geometry.y === this.m_geometry.y &&
+      geometry.width === this.m_geometry.width &&
+      geometry.height === this.m_geometry.height
+    )
+      return;
     this.m_geometry = geometry;
     // The scroll bar range follows the new viewport height.
     this.setScrollValue(this.m_scroll);
@@ -232,7 +245,9 @@ export class DebugLabelPanel {
 
   subscribe = (listener: () => void): (() => void) => {
     this.m_listeners.add(listener);
-    return () => { this.m_listeners.delete(listener); };
+    return () => {
+      this.m_listeners.delete(listener);
+    };
   };
 
   getVersion = (): number => this.m_version;
@@ -242,10 +257,18 @@ export class DebugLabelPanel {
     for (const listener of [...this.m_listeners]) listener();
   }
 
-  title(): string { return this.m_title; }
-  headerText(): string { return this.m_headerText; }
-  entries(): readonly DebugLabelEntry[] { return this.m_entries; }
-  font(): FontSpec { return this.m_font; }
+  title(): string {
+    return this.m_title;
+  }
+  headerText(): string {
+    return this.m_headerText;
+  }
+  entries(): readonly DebugLabelEntry[] {
+    return this.m_entries;
+  }
+  font(): FontSpec {
+    return this.m_font;
+  }
 
   /** max(24, fontMetrics().height() + 8) */
   rowHeight(): number {
@@ -316,7 +339,10 @@ export class DebugLabelPanel {
     const contentLeft = 17;
     const contentWidth = width - 24;
     const value = entry?.value ?? '';
-    const valueWidth = Math.min(horizontalAdvance(this.m_measurer, value, font) + 3, Math.trunc(contentWidth * 45 / 100));
+    const valueWidth = Math.min(
+      horizontalAdvance(this.m_measurer, value, font) + 3,
+      Math.trunc((contentWidth * 45) / 100),
+    );
     const nameWidth = Math.max(0, contentWidth - valueWidth - 8);
     return {
       selected,
@@ -444,8 +470,13 @@ export class DebugLabelPanel {
     } else {
       // ClearAndSelect on MouseButtonRelease if MouseButtonPress on selected item or empty area
       const rightButtonPressed = event.button === RightButton;
-      if (((row === this.m_pressedRow && row >= 0 && this.isRowSelected(row)) || row < 0)
-        && !this.m_dragSelecting && !shift && !control && (!rightButtonPressed || row < 0))
+      if (
+        ((row === this.m_pressedRow && row >= 0 && this.isRowSelected(row)) || row < 0) &&
+        !this.m_dragSelecting &&
+        !shift &&
+        !control &&
+        (!rightButtonPressed || row < 0)
+      )
         return ClearAndSelect;
       return NoUpdate;
     }
@@ -506,7 +537,10 @@ export class DebugLabelPanel {
       if (!command.current) {
         this.setSelection(contentY, contentY, command);
       } else {
-        const start = this.m_currentSelectionStartRow >= 0 ? this.rowCenterContentY(this.m_currentSelectionStartRow) : this.m_scroll;
+        const start =
+          this.m_currentSelectionStartRow >= 0
+            ? this.rowCenterContentY(this.m_currentSelectionStartRow)
+            : this.m_scroll;
         this.setSelection(start, contentY, command);
       }
       if (this.m_delayedAutoScroll !== null) clearTimeout(this.m_delayedAutoScroll);
@@ -543,7 +577,10 @@ export class DebugLabelPanel {
     const index = this.indexAt(x, y);
     if (this.m_noSelectionOnMousePress) {
       this.m_noSelectionOnMousePress = false;
-      this.select(index >= 0 ? [index] : [], this.extendedSelectionCommand(index, { type: 'release', button, modifiers }));
+      this.select(
+        index >= 0 ? [index] : [],
+        this.extendedSelectionCommand(index, { type: 'release', button, modifiers }),
+      );
     }
     this.m_dragSelecting = false;
     this.m_basePressActive = false;
@@ -577,13 +614,20 @@ export class DebugLabelPanel {
     if (current < 0) return 0;
     const page = Math.max(1, Math.floor(this.viewportHeight() / this.rowHeight()));
     switch (key) {
-    case 'ArrowUp': return Math.max(0, current - 1);
-    case 'ArrowDown': return Math.min(count - 1, current + 1);
-    case 'Home': return 0;
-    case 'End': return count - 1;
-    case 'PageUp': return Math.max(0, current - page);
-    case 'PageDown': return Math.min(count - 1, current + page);
-    default: return current;
+      case 'ArrowUp':
+        return Math.max(0, current - 1);
+      case 'ArrowDown':
+        return Math.min(count - 1, current + 1);
+      case 'Home':
+        return 0;
+      case 'End':
+        return count - 1;
+      case 'PageUp':
+        return Math.max(0, current - page);
+      case 'PageDown':
+        return Math.min(count - 1, current + page);
+      default:
+        return current;
     }
   }
 
@@ -591,7 +635,10 @@ export class DebugLabelPanel {
   private baseKeyPressEvent(key: string, modifiers: KeyboardModifiers): void {
     if ((key === 'a' || key === 'A') && modifiers.control) {
       // QKeySequence::SelectAll
-      this.select(this.m_entries.map((_, row) => row), ClearAndSelect);
+      this.select(
+        this.m_entries.map((_, row) => row),
+        ClearAndSelect,
+      );
       return;
     }
     if (key === ' ') {
@@ -603,12 +650,16 @@ export class DebugLabelPanel {
     const oldCurrent = this.m_currentRow;
     if (newCurrent === oldCurrent || newCurrent < 0) return;
     // Ctrl moves the current row without updating the selection.
-    const command: SelectionCommand = modifiers.control ? NoUpdate
-      : modifiers.shift ? { current: true, op: 'Select' } : ClearAndSelect;
+    const command: SelectionCommand = modifiers.control
+      ? NoUpdate
+      : modifiers.shift
+        ? { current: true, op: 'Select' }
+        : ClearAndSelect;
     if (command.current) {
       this.setCurrentIndex(newCurrent);
       if (this.m_currentSelectionStartRow < 0) this.m_currentSelectionStartRow = oldCurrent;
-      const start = this.m_currentSelectionStartRow >= 0 ? this.rowCenterContentY(this.m_currentSelectionStartRow) : this.m_scroll;
+      const start =
+        this.m_currentSelectionStartRow >= 0 ? this.rowCenterContentY(this.m_currentSelectionStartRow) : this.m_scroll;
       this.setSelection(start, this.rowCenterContentY(newCurrent), command);
     } else {
       this.setCurrentIndex(newCurrent, command);

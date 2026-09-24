@@ -7,14 +7,23 @@
 // be ported line by line. LinkPanel.tsx renders it.
 
 import {
-  buildConnectorPreview, connectorOrientations, defaultConnectorDefinition,
-  type ConnectorDefinition, type ConnectorExpressionEvaluator, type ConnectorPreview, type ConnectorType,
+  buildConnectorPreview,
+  connectorOrientations,
+  defaultConnectorDefinition,
+  type ConnectorDefinition,
+  type ConnectorExpressionEvaluator,
+  type ConnectorPreview,
+  type ConnectorType,
 } from '../geometry/ConnectorPreview';
 import { formatGeneral, what } from '../runtime/CppCompat';
 import type { RuntimeResult } from '../runtime/RuntimeTypes';
 import { Observable, trimmed } from './Observable';
 
-export type PreviewChangedCallback = (previews: readonly ConnectorPreview[], selectedId: number, tested: boolean) => void;
+export type PreviewChangedCallback = (
+  previews: readonly ConnectorPreview[],
+  selectedId: number,
+  tested: boolean,
+) => void;
 
 interface Entry {
   definition: ConnectorDefinition;
@@ -44,7 +53,8 @@ function copyDefinition(d: ConnectorDefinition): ConnectorDefinition {
   return { ...d, position: [...d.position], angles: [...d.angles] };
 }
 
-const sameArray = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
+const sameArray = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((v, i) => v === b[i]);
 
 /** The LinkPanel public interface MainWindow uses. */
 export interface LinkPanelHandle {
@@ -93,11 +103,17 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     this.updateSizeFields();
   }
 
-  setExpressionEvaluator(evaluate: ConnectorExpressionEvaluator | null): void { this.#evaluate = evaluate; }
-  setPreviewChangedCallback(callback: PreviewChangedCallback | null): void { this.#previewChanged = callback; }
+  setExpressionEvaluator(evaluate: ConnectorExpressionEvaluator | null): void {
+    this.#evaluate = evaluate;
+  }
+  setPreviewChangedCallback(callback: PreviewChangedCallback | null): void {
+    this.#previewChanged = callback;
+  }
 
   /** Read-only view of the connector definitions (tests and diagnostics). */
-  definitions(): ConnectorDefinition[] { return this.#entries.map((entry) => copyDefinition(entry.definition)); }
+  definitions(): ConnectorDefinition[] {
+    return this.#entries.map((entry) => copyDefinition(entry.definition));
+  }
 
   // --- m_table helpers ---------------------------------------------------------
   /** QTableWidget::setCurrentCell(): emits currentCellChanged -> loadSelection(). */
@@ -121,11 +137,20 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     const row = this.currentRow;
     const column = Math.max(this.currentColumn, 0);
     switch (key) {
-      case 'ArrowUp': this.#setCurrentCell(row < 0 ? 0 : Math.max(row - 1, 0), column); break;
-      case 'ArrowDown': this.#setCurrentCell(row < 0 ? 0 : Math.min(row + 1, last), column); break;
-      case 'Home': this.#setCurrentCell(0, column); break;
-      case 'End': this.#setCurrentCell(last, column); break;
-      default: return false;
+      case 'ArrowUp':
+        this.#setCurrentCell(row < 0 ? 0 : Math.max(row - 1, 0), column);
+        break;
+      case 'ArrowDown':
+        this.#setCurrentCell(row < 0 ? 0 : Math.min(row + 1, last), column);
+        break;
+      case 'Home':
+        this.#setCurrentCell(0, column);
+        break;
+      case 'End':
+        this.#setCurrentCell(last, column);
+        break;
+      default:
+        return false;
     }
     this.scrollRequest = { row: this.currentRow, serial: ++this.#scrollSerial };
     this.changed();
@@ -159,7 +184,10 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       this.#entries.splice(row, 1);
       this.tableRows.splice(row, 1);
       if (this.#entries.length) this.#setCurrentCell(Math.min(row, this.#entries.length - 1), 1);
-      else { this.currentRow = -1; this.currentColumn = -1; }
+      else {
+        this.currentRow = -1;
+        this.currentColumn = -1;
+      }
       this.#tableSignalsBlocked = blocked;
     }
     this.changed();
@@ -174,7 +202,8 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     if (valid) {
       this.#loading = true;
       const d = this.#entries[row].definition;
-      this.nameText = d.name; this.#setPointText(d.pointName);
+      this.nameText = d.name;
+      this.#setPointText(d.pointName);
       this.typeIndex = kConnectorTypes.indexOf(d.type);
       this.sizeTexts = { diameter: d.diameter, aSize: d.aSize, bSize: d.bSize };
       this.orientationId = connectorOrientations.indexOf(d.orientation);
@@ -183,7 +212,9 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       this.#loading = false;
     }
     this.changed();
-    this.updateSizeFields(); this.showStatus(); this.publish();
+    this.updateSizeFields();
+    this.showStatus();
+    this.publish();
   }
 
   saveSelection(): void {
@@ -202,13 +233,22 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       d.position[i] = trimmed(this.positionTexts[i]);
       d.angles[i] = trimmed(this.angleTexts[i]);
     }
-    const geometryChanged = d.type !== previous.type || d.orientation !== previous.orientation
-      || d.diameter !== previous.diameter || d.aSize !== previous.aSize || d.bSize !== previous.bSize
-      || !sameArray(d.position, previous.position) || !sameArray(d.angles, previous.angles);
-    if (geometryChanged) { entry.preview = null; entry.shown = false; }
-    else if (entry.preview) entry.preview = { ...entry.preview, name: d.name };
+    const geometryChanged =
+      d.type !== previous.type ||
+      d.orientation !== previous.orientation ||
+      d.diameter !== previous.diameter ||
+      d.aSize !== previous.aSize ||
+      d.bSize !== previous.bSize ||
+      !sameArray(d.position, previous.position) ||
+      !sameArray(d.angles, previous.angles);
+    if (geometryChanged) {
+      entry.preview = null;
+      entry.shown = false;
+    } else if (entry.preview) entry.preview = { ...entry.preview, name: d.name };
     entry.error = '';
-    this.refreshRow(row); this.showStatus(); this.publish();
+    this.refreshRow(row);
+    this.showStatus();
+    this.publish();
   }
 
   testSelection(): void {
@@ -220,9 +260,13 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       entry.shown = true;
       entry.error = '';
     } catch (e) {
-      entry.preview = null; entry.shown = false; entry.error = what(e);
+      entry.preview = null;
+      entry.shown = false;
+      entry.error = what(e);
     }
-    this.refreshRow(row); this.showStatus(); this.publish(entry.preview !== null);
+    this.refreshRow(row);
+    this.showStatus();
+    this.publish(entry.preview !== null);
   }
 
   togglePreview(id: number): void {
@@ -230,9 +274,14 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     const row = this.currentRow;
     if (row < 0 || this.#entries[row].definition.id !== id) return;
     const entry = this.#entries[row];
-    if (!entry.shown) { this.testSelection(); return; }
+    if (!entry.shown) {
+      this.testSelection();
+      return;
+    }
     entry.shown = false;
-    this.refreshRow(row); this.showStatus(); this.publish();
+    this.refreshRow(row);
+    this.showStatus();
+    this.publish();
   }
 
   exitPreview(): void {
@@ -250,8 +299,9 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     const entry = this.#entries[row];
     const name = trimmed(this.pointText);
     if (name === entry.definition.pointName) return;
-    const duplicate = this.#entries.some((other) =>
-      other.definition.id !== entry.definition.id && other.definition.pointName === name);
+    const duplicate = this.#entries.some(
+      (other) => other.definition.id !== entry.definition.id && other.definition.pointName === name,
+    );
     if (name === '' || duplicate) {
       this.#setPointText(entry.definition.pointName);
       entry.error = name === '' ? 'Point name cannot be empty' : 'Point name is already used';
@@ -262,7 +312,9 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     if (entry.preview) entry.preview = { ...entry.preview, pointName: name };
     this.#setPointText(name);
     entry.error = '';
-    this.refreshRow(row); this.showStatus(); this.publish();
+    this.refreshRow(row);
+    this.showStatus();
+    this.publish();
   }
 
   updateRuntimeResult(result: RuntimeResult): void {
@@ -287,11 +339,14 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
         entry.preview = buildConnectorPreview(entry.definition, this.#evaluate);
         entry.error = '';
       } catch (e) {
-        entry.preview = null; entry.shown = false; entry.error = what(e);
+        entry.preview = null;
+        entry.shown = false;
+        entry.error = what(e);
       }
       this.refreshRow(row);
     }
-    this.showStatus(); this.publish();
+    this.showStatus();
+    this.publish();
   }
 
   updateSizeFields(): void {
@@ -302,7 +357,8 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   refreshRow(row: number): void {
     const entry = this.#entries[row];
     const d = entry.definition;
-    const position = entry.preview ? coordinates(entry.preview.point)
+    const position = entry.preview
+      ? coordinates(entry.preview.point)
       : `(${d.position[0]}, ${d.position[1]}, ${d.position[2]})`;
     this.tableRows[row] = {
       id: this.tableRows[row]?.id ?? d.id, // the cell button keeps the id it was connected with
@@ -333,8 +389,9 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     if (entry.error !== '') this.statusText = entry.error;
     else if (entry.preview) {
       const p = entry.preview;
-      this.statusText = `${p.pointName} = ${coordinates(p.point)}\n`
-        + `Direction = ${coordinates(p.direction)}; test length = ${formatGeneral(p.length, 8)}`;
+      this.statusText =
+        `${p.pointName} = ${coordinates(p.point)}\n` +
+        `Direction = ${coordinates(p.direction)}; test length = ${formatGeneral(p.length, 8)}`;
     } else this.statusText = '';
     this.changed();
   }
@@ -351,7 +408,11 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
 
   // --- form widget signals ---------------------------------------------------------
   /** m_name textEdited */
-  nameEdited(text: string): void { this.nameText = text; this.changed(); this.saveSelection(); }
+  nameEdited(text: string): void {
+    this.nameText = text;
+    this.changed();
+    this.saveSelection();
+  }
 
   /** m_point text edited (no slot; renamed on editingFinished). */
   pointEdited(text: string): void {
@@ -377,7 +438,8 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   typeChanged(index: number): void {
     if (index === this.typeIndex) return;
     this.typeIndex = index;
-    this.updateSizeFields(); this.saveSelection();
+    this.updateSizeFields();
+    this.saveSelection();
   }
 
   /** m_diameter / m_aSize / m_bSize currentTextChanged */

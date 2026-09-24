@@ -7,10 +7,24 @@
 // It forwards resize, mouse and wheel events, and exposes the engine through
 // the Viewport3DHandle ref; the C++ set...Callback() setters are props.
 
-import { useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type PointerEvent, type Ref } from 'react';
+import {
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type MouseEvent,
+  type PointerEvent,
+  type Ref,
+} from 'react';
 import { DebugLabelPanelView } from './DebugLabelPanelView';
 import {
-  NoButton, modifiersFromEvent, mouseButtonFromDom, mouseButtonsFromDom, wheelAngleDeltaY, type MouseEventData,
+  NoButton,
+  modifiersFromEvent,
+  mouseButtonFromDom,
+  mouseButtonsFromDom,
+  wheelAngleDeltaY,
+  type MouseEventData,
 } from './QtEvents';
 import { pointSizeToPixels } from './TextMetrics';
 import { ViewportEngine, kSelectionButtonFontSize } from './ViewportEngine';

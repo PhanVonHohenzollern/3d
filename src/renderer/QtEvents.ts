@@ -16,7 +16,12 @@ export interface KeyboardModifiers {
 
 export const NoModifier: KeyboardModifiers = { control: false, shift: false, alt: false };
 
-export function modifiersFromEvent(e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }): KeyboardModifiers {
+export function modifiersFromEvent(e: {
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}): KeyboardModifiers {
   return { control: e.ctrlKey || e.metaKey, shift: e.shiftKey, alt: e.altKey };
 }
 

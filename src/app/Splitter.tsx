@@ -31,6 +31,7 @@ export function Splitter({ orientation, initialSizes, stretchFactors = [0, 0], c
   const sizesRef = useRef(sizes);
   sizesRef.current = sizes;
   const horizontal = orientation === 'horizontal';
+  const [firstStretch, secondStretch] = stretchFactors;
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -38,7 +39,7 @@ export function Splitter({ orientation, initialSizes, stretchFactors = [0, 0], c
     const measure = () => {
       const total = (horizontal ? container.clientWidth : container.clientHeight) - kHandleSize;
       if (total <= 0) return;
-      const next = distribute(sizesRef.current, total, stretchFactors);
+      const next = distribute(sizesRef.current, total, [firstStretch, secondStretch]);
       if (next[0] !== sizesRef.current[0] || next[1] !== sizesRef.current[1]) {
         sizesRef.current = next;
         setSizes(next);
@@ -48,8 +49,7 @@ export function Splitter({ orientation, initialSizes, stretchFactors = [0, 0], c
     const observer = new ResizeObserver(measure);
     observer.observe(container);
     return () => observer.disconnect();
-    // stretchFactors is a constant per splitter instance (as in QSplitter setup).
-  }, [horizontal]);
+  }, [horizontal, firstStretch, secondStretch]);
 
   const onHandlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
@@ -79,9 +79,13 @@ export function Splitter({ orientation, initialSizes, stretchFactors = [0, 0], c
   const dimension = horizontal ? 'width' : 'height';
   return (
     <div ref={containerRef} className={`splitter splitter-${orientation}${className ? ` ${className}` : ''}`}>
-      <div className="splitter-pane" style={{ [dimension]: sizes[0] }}>{children[0]}</div>
+      <div className="splitter-pane" style={{ [dimension]: sizes[0] }}>
+        {children[0]}
+      </div>
       <div className="splitter-handle" onPointerDown={onHandlePointerDown} />
-      <div className="splitter-pane" style={{ [dimension]: sizes[1] }}>{children[1]}</div>
+      <div className="splitter-pane" style={{ [dimension]: sizes[1] }}>
+        {children[1]}
+      </div>
     </div>
   );
 }

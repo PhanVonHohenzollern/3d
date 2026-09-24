@@ -27,11 +27,16 @@ const dialogKeys = new WeakMap<ApiHistoryDialogModel, number>();
 let nextDialogKey = 1;
 function dialogKey(dialog: ApiHistoryDialogModel): number {
   let key = dialogKeys.get(dialog);
-  if (key === undefined) dialogKeys.set(dialog, key = nextDialogKey++);
+  if (key === undefined) dialogKeys.set(dialog, (key = nextDialogKey++));
   return key;
 }
 
-export function ApiTracePanel({ onSelectionChanged, onSourceActivated, onHistorySourceActivated, ref }: ApiTracePanelProps) {
+export function ApiTracePanel({
+  onSelectionChanged,
+  onSourceActivated,
+  onHistorySourceActivated,
+  ref,
+}: ApiTracePanelProps) {
   const [model] = useState(() => new ApiTracePanelModel());
   useObservable(model);
 
@@ -47,8 +52,14 @@ export function ApiTracePanel({ onSelectionChanged, onSourceActivated, onHistory
   return (
     <div className="api-trace-panel">
       <div className="api-trace-buttons">
-        <button type="button" className="tool-button" onMouseDown={(e) => e.preventDefault()}
-          onClick={() => model.clearFocusClicked()}>Clear API Focus</button>
+        <button
+          type="button"
+          className="tool-button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => model.clearFocusClicked()}
+        >
+          Clear API Focus
+        </button>
       </div>
       <TreeView tree={model.m_tree} className="api-trace-tree" />
       {dialog && <ApiHistoryDialog key={dialogKey(dialog)} dialog={dialog} />}

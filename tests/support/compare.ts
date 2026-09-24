@@ -13,10 +13,13 @@ import { expect } from 'vitest';
 const LIBRARY_MESSAGES: [RegExp, string][] = [
   [/\b(stod|stof|stold|stoi|stol|stoll|stoul|stoull): (no conversion|out of range)/g, '$1'],
   [/vector::_M_range_check: __n \(which is \d+\) >= this->size\(\) \(which is \d+\)/g, 'vector'],
-  [/_Map_base::at|unordered_map::at: key not found|map::at:  key not found|map::at/g, 'map::at'],
+  [/_Map_base::at|unordered_map::at: key not found|map::at: {2}key not found|map::at/g, 'map::at'],
   [/array::at: __n \(which is \d+\) >= _Nm \(which is \d+\)/g, 'array::at'],
   [/std::get: wrong index for variant|bad_variant_access|std::bad_variant_access/g, 'bad_variant_access'],
-  [/basic_string::(substr|at|erase|insert|replace|compare): __pos \(which is \d+\) > this->size\(\) \(which is \d+\)/g, 'basic_string'],
+  [
+    /basic_string::(substr|at|erase|insert|replace|compare): __pos \(which is \d+\) > this->size\(\) \(which is \d+\)/g,
+    'basic_string',
+  ],
   [/basic_string::at: __n \(which is \d+\) >= this->size\(\) \(which is \d+\)/g, 'basic_string'],
 ];
 
@@ -49,8 +52,7 @@ export function diffJson(expected: any, actual: any, options: CompareOptions = {
     if (diffs.length >= maxDiffs) return;
     if (typeof e === 'number' && typeof a === 'number') {
       const tol = loosePaths.test(path) ? looseTolerance : tolerance;
-      if (Math.abs(e - a) > tol * Math.max(1, Math.abs(e), Math.abs(a)))
-        diffs.push(`${path}: expected ${e}, got ${a}`);
+      if (Math.abs(e - a) > tol * Math.max(1, Math.abs(e), Math.abs(a))) diffs.push(`${path}: expected ${e}, got ${a}`);
       return;
     }
     if (typeof e === 'string' && typeof a === 'string') {

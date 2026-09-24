@@ -85,7 +85,15 @@ export function emptyRuntimeResult(): RuntimeResult {
 
 export function emptyApiCall(): RuntimeApiCall {
   return {
-    line: 0, parentApiIndex: -1, userFunctionCall: false, name: '', arguments: [],
-    argumentExpressions: [], formalParameterNames: [], formalParameterTypes: [], display: '', argumentTraces: [],
+    line: 0,
+    parentApiIndex: -1,
+    userFunctionCall: false,
+    name: '',
+    arguments: [],
+    argumentExpressions: [],
+    formalParameterNames: [],
+    formalParameterTypes: [],
+    display: '',
+    argumentTraces: [],
   };
 }

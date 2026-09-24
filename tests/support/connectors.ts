@@ -3,8 +3,16 @@ import type { ConnectorDirective } from './fixtures';
 
 export function connectorDefinition(d: ConnectorDirective): ConnectorDefinition {
   return {
-    id: d.id, name: d.name, pointName: d.pointName, type: d.type, orientation: d.orientation,
-    diameter: d.diameter, aSize: d.aSize, bSize: d.bSize, position: [...d.position], angles: [...d.angles],
+    id: d.id,
+    name: d.name,
+    pointName: d.pointName,
+    type: d.type,
+    orientation: d.orientation,
+    diameter: d.diameter,
+    aSize: d.aSize,
+    bSize: d.bSize,
+    position: [...d.position],
+    angles: [...d.angles],
   };
 }
 
