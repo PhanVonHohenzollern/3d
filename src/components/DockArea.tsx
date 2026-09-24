@@ -31,7 +31,7 @@ export function DockArea({ height, title, tabs, panels }: DockAreaProps) {
       value={active?.name}
       onValueChange={(name) => tabs.find((tab) => tab.name === name)?.raise()}
       aria-label={`${title} inspector`}
-      className="flex min-h-0 shrink-0 flex-col gap-0 overflow-hidden rounded-lg border border-line bg-base shadow-xs"
+      className="@container flex min-h-0 shrink-0 flex-col gap-0 overflow-hidden rounded-lg border border-line bg-base shadow-xs"
       style={{ height }}
     >
       <div className="flex min-h-11 shrink-0 items-center gap-4 border-b border-line px-2 sm:px-4">
@@ -55,7 +55,7 @@ export function DockArea({ height, title, tabs, panels }: DockAreaProps) {
             );
           })}
         </TabsList>
-        <span className="ml-auto hidden text-[11px] text-muted-foreground lg:inline">
+        <span className="ml-auto hidden text-[11px] text-muted-foreground @3xl:inline">
           {active && hints[active.name]}
         </span>
       </div>

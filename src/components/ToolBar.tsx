@@ -81,7 +81,7 @@ export function ToolBar({ items }: { items: readonly ActionListItem[] }) {
       <div
         role="toolbar"
         aria-label="Preview display"
-        className="flex shrink-0 items-end gap-4 overflow-x-auto px-2 pt-1 pb-3 sm:px-5"
+        className="flex shrink-0 flex-wrap items-end gap-x-4 gap-y-2 overflow-x-auto pt-1 pb-3"
       >
         {groups.map((actions, index) => (
           <div key={index} role="group" aria-label={groupNames[index]} className="flex shrink-0 flex-col gap-1.5">
