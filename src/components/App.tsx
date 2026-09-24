@@ -11,7 +11,6 @@ import { WorkspaceHeader } from './WorkspaceHeader';
 import { ParameterPanel } from './ParameterPanel';
 import { ResizeHandle } from './ResizeHandle';
 import { Splitter } from './Splitter';
-import { StatusBar } from './StatusBar';
 import { ToolBar } from './ToolBar';
 import { VariablePanel } from './VariablePanel';
 import { Viewport3D } from './Viewport3D';
@@ -83,7 +82,6 @@ export function App() {
           </Splitter>
         </div>
       </main>
-      <StatusBar model={mainWindow.statusBar} />
     </div>
   );
 }
