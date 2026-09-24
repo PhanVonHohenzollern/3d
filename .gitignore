@@ -3,3 +3,7 @@ dist/
 *.log
 .DS_Store
 CLAUDE.md
+
+# Keep project notes local; README files remain tracked.
+*.[mM][dD]
+![rR][eE][aA][dD][mM][eE].[mM][dD]
