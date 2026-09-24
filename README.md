@@ -60,10 +60,12 @@ Each template exposes `workflow_call`; triggers and stage dependencies stay in
 1. **Validate** installs dependencies with `npm ci` and runs ESLint (zero warnings),
    Prettier, TypeScript, and the standalone UI/renderer tests.
 2. **Build** installs dependencies in a fresh runner, produces the production
-   build, and uploads the Pages artifact for `main`.
+   build, and uploads the Pages artifact for every successful build.
 3. **Deploy** publishes that artifact to <https://kienmai160598.github.io/3d/>.
 
 Pull requests run Validate and Build; Deploy runs only for `main` outside pull requests.
+The deployment condition lives only in `ci.yml`; reusable templates do not decide
+which branches can deploy. Uploading an artifact does not publish it to Pages.
 
 GitHub Pages must be enabled under **Settings → Pages → Source → GitHub Actions**.
 Deployment uses the built-in `GITHUB_TOKEN`; no personal token or deploy secret is
