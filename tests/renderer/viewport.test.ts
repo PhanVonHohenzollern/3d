@@ -145,7 +145,7 @@ describe('debug points and clicks', () => {
     const engine = createEngine();
     engine.setRuntimeResult(resultWithP0(1.5, -2, 1e-7));
     const points = engine.pointLabelPanel();
-    expect(points.entries()).toEqual([{ id: 'p0', name: 'p0', value: '(1.5, -2, 1e-07)' }]);
+    expect(points.entries()).toEqual([{ id: 'p0', name: 'p0', value: '(1.5, -2, 0)' }]);
     expect(points.isVisible()).toBe(true);
     expect(points.headerText()).toBe('Points  (1)');
     expect(engine.vectorLabelPanel().isVisible()).toBe(false);
