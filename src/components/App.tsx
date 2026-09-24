@@ -36,18 +36,16 @@ export function App() {
               className="flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-line bg-base shadow-xs"
             >
               <PanelHeader icon={CodeXml} title="Code Editor">
-                <span className="rounded border border-line px-1.5 py-0.5 font-code text-[10px] text-muted-foreground">
-                  C++
-                </span>
+                <span className="font-code text-xs text-muted-foreground">C++</span>
               </PanelHeader>
               <div className="min-h-0 flex-1">
                 <CodeEditor {...mainWindow.editor} />
               </div>
-              <div className="flex h-7 shrink-0 items-center gap-1.5 border-t border-line px-4 text-[10px] text-muted-foreground">
-                <kbd className="rounded border border-line px-1 font-ui">
+              <div className="flex h-7 shrink-0 items-center justify-end gap-2 border-t border-line/60 px-3 text-[11px] text-muted-foreground">
+                <span>Suggestions</span>
+                <kbd className="rounded bg-secondary px-1.5 py-0.5 font-ui text-[10px]">
                   {isMacPlatform ? '⌘⇧Space' : 'Ctrl Space'}
-                </kbd>{' '}
-                for suggestions
+                </kbd>
               </div>
             </section>
             <section

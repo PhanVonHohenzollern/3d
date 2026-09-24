@@ -29,6 +29,7 @@
   --destructive: #b91c1c;
   --warning: #a16207;
   --editor: #ffffff;
+  --editor-gutter: #fafafa;
   --editor-line: #f4f4f5;
   --editor-selection: #dbeafe;
   --syntax-keyword: #7c3aed;
@@ -59,6 +60,7 @@
   --destructive: #f87171;
   --warning: #fbbf24;
   --editor: #18181b;
+  --editor-gutter: #151518;
   --editor-line: #222225;
   --editor-selection: #334155;
   --syntax-keyword: #c4b5fd;
@@ -76,7 +78,7 @@
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   --text-ui: 13px;
-  --text-code: 13px;
+  --text-code: 14px;
   --color-window: var(--background);
   --color-background: var(--background);
   --color-base: var(--card);
