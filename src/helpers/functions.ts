@@ -1,9 +1,10 @@
 import { cppLanguage } from '@codemirror/lang-cpp';
 import { Lexer } from '../core/runtime/interpreter/Lexer';
 import { ProgramParser } from '../core/runtime/interpreter/ProgramParser';
-import { StatementKind } from '../core/runtime/interpreter/Statement';
+import { Statement, StatementKind } from '../core/runtime/interpreter/Statement';
 import {
   functionParameters,
+  functionSignature,
   parameterDefaultExpression,
   parameterName,
   parameterType,
@@ -20,6 +21,7 @@ export interface FunctionInput {
 
 export interface SourceFunction {
   name: string;
+  signature: string;
   code: string;
   from: number;
   to: number;
@@ -46,9 +48,9 @@ export function mainFunctionName(source: string): string | null {
   return sourceFunctions(source)[0]?.name ?? null;
 }
 
-export function removeFunctionSource(source: string, name: string): string {
+export function removeFunctionSource(source: string, name: string, signature?: string): string {
   const ranges = sourceFunctions(source)
-    .filter((fn) => fn.name === name)
+    .filter((fn) => fn.name === name && (!signature || fn.signature === signature))
     .map(({ from, to }) => ({ from, to }));
   // Remove matching forward declarations, preserving other declarations in the same statement.
   for (let node = cppLanguage.parser.parse(source).topNode.firstChild; node; node = node.nextSibling) {
@@ -56,6 +58,12 @@ export function removeFunctionSource(source: string, name: string): string {
     for (const declaration of node.getChildren('FunctionDeclarator')) {
       const identifier = declaration.getChild('Identifier');
       if (!identifier || source.slice(identifier.from, identifier.to) !== name) continue;
+      if (signature) {
+        const fn = new Statement(StatementKind.Function);
+        fn.functionName = name;
+        fn.signature = Lexer.scanExpression(source.slice(declaration.from, declaration.to));
+        if (functionSignature(fn) !== signature) continue;
+      }
       const next = declaration.nextSibling,
         previous = declaration.prevSibling;
       ranges.push(
@@ -126,7 +134,14 @@ export function sourceFunctions(source: string): SourceFunction[] {
                   ],
           };
         });
-        functions.push({ name: fn.functionName, code, from: node.from, to: node.to, inputs });
+        functions.push({
+          name: fn.functionName,
+          signature: functionSignature(fn),
+          code,
+          from: node.from,
+          to: node.to,
+          inputs,
+        });
       } catch {
         // Keep the editor usable while a definition is incomplete.
       }
@@ -138,7 +153,7 @@ export function sourceFunctions(source: string): SourceFunction[] {
   return functions;
 }
 
-export function validFunctionCode(code: string, name: string): string | null {
+export function validFunctionCode(code: string, name?: string): string | null {
   let malformed = false;
   cppLanguage.parser.parse(code).iterate({
     enter(node) {
@@ -146,8 +161,8 @@ export function validFunctionCode(code: string, name: string): string | null {
     },
   });
   const functions = sourceFunctions(code);
-  if (malformed || functions.length !== 1 || functions[0].name !== name)
-    return `Enter one complete function named ${name}.`;
+  if (malformed || functions.length !== 1 || (name !== undefined && functions[0].name !== name))
+    return name ? `Enter one complete function named ${name}.` : 'Enter one complete C++ function.';
   const remaining = code.slice(0, functions[0].from) + code.slice(functions[0].to);
   if (new Lexer(remaining).scan().length > 1) return 'Keep only this function in its editor.';
 

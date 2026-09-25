@@ -276,41 +276,7 @@ export class MainWindow extends Observable {
     this.runPreview();
   };
 
-  readonly applyParameters = (): void => {
-    this.m_parameters.commitEditor();
-    this.importedObj = null;
-    if (this.previewMode === 'build' && this.#builtSource !== null) {
-      // Parameter changes rerun the built code without applying pending source edits.
-      let program = this.#builtProgram;
-      try {
-        if (program)
-          program = {
-            ...program,
-            options: { ...program.options, arguments: this.functions.program(this.#builtSource).options.arguments },
-          };
-      } catch (error) {
-        this.functions.error = what(error);
-        this.changed();
-
-        return;
-      }
-      this.updatePreview(this.#builtSource.split('\n').length, this.#builtSource, program);
-      this.#builtProgram = program;
-      this.#builtParameters = this.m_parameters.overrides();
-      if (program)
-        this.#tabBuilds.set(this.functions.active, {
-          source: this.#builtSource,
-          program,
-          number: this.buildNumber,
-          parameters: this.#builtParameters,
-        });
-      this.previewDirty = this.#codeDirty;
-    } else {
-      this.runPreview();
-      this.previewDirty = false;
-    }
-    this.changed();
-  };
+  readonly applyParameters = this.buildPreview;
 
   readonly addFunction = (name: string): boolean => {
     this.m_parameters.commitEditor();
@@ -436,7 +402,10 @@ export class MainWindow extends Observable {
           JSON.stringify([...(built.program.options.arguments ?? [])]);
       } else this.buildPreview();
     } else this.runPreview();
-    this.m_parameters.selectTab?.(this.functions.active || this.functions.inline[0]?.name || '');
+    const main = this.functions.inline[0];
+    this.m_parameters.selectTab?.(
+      this.functions.active || (main && currentProgram.options.functionScopes?.get(main.signature)) || main?.name || '',
+    );
     if (!this.canEditSubParameters && this.#raisedDock === 'SubParametersDock') this.#raisedDock = 'ParametersDock';
     this.changed();
   }
@@ -734,7 +703,7 @@ export class MainWindow extends Observable {
     this.functions.error = '';
     this.#previewProgram = program;
     const parameterDefinitions = this.m_runtime
-      .discoverParameters(program.source)
+      .discoverParameters(program.source, program.options)
       .filter((definition) => !definition.functionName || !this.functions.deleted.has(definition.functionName));
     this.m_parameters.setDefinitions(parameterDefinitions, program.source, program.options);
 

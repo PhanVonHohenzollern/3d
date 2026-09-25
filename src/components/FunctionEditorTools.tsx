@@ -55,8 +55,14 @@ export function FunctionEditorFooter(props: FunctionEditorToolsProps) {
   const [error, setError] = useState('');
   if (props.active)
     return (
-      <div className="ml-auto flex gap-1">
-        <Button size="xs" variant="outline" className="text-error" onClick={props.remove}>
+      <div className="flex basis-full items-center gap-1">
+        <Button
+          size="xs"
+          variant="outline"
+          className="mr-auto text-error"
+          title="Delete this function, its tab and its definition in Main"
+          onClick={props.remove}
+        >
           Delete
         </Button>
         <Button size="xs" variant="outline" onClick={props.attach}>
@@ -93,17 +99,17 @@ export function FunctionEditorFooter(props: FunctionEditorToolsProps) {
         >
           <Dialog.Title className="text-sm font-semibold">Add Function</Dialog.Title>
           <Dialog.Description className="mt-1 text-xs text-muted-foreground">
-            Enter a unique C++ function name.
+            Enter a unique tab name. The C++ function name is defined in its code.
           </Dialog.Description>
           <form
             onSubmit={(event) => {
               event.preventDefault();
               if (props.add(name)) setOpen(false);
-              else setError('Enter a valid, unique function name.');
+              else setError('Enter a unique tab name.');
             }}
           >
             <label className="mt-3 block text-xs">
-              Function name
+              Tab name
               <Input
                 className="mt-1"
                 value={name}

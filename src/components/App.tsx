@@ -25,7 +25,7 @@ export function App() {
     useDockArea(
       mainWindow.raisedDock,
       mainWindow.raiseDock,
-      mainWindow.subParameters.functions.length > 0,
+      mainWindow.subParameters.enabled,
       mainWindow.subParameters.enabled,
     );
 

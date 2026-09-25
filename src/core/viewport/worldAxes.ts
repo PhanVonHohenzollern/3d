@@ -21,13 +21,13 @@ export interface WorldAxisLabelInput {
 
 const kAxisColors = [new QVector3D(0.95, 0.2, 0.2), new QVector3D(0.2, 0.9, 0.3), new QVector3D(0.25, 0.45, 1.0)];
 const kLabelColors = [qColor(255, 125, 125), qColor(110, 235, 140), qColor(140, 180, 255)];
+const kAxisDirections = [new QVector3D(1, 0, 0), new QVector3D(0, 1, 0), new QVector3D(0, 0, 1)];
 
 export function axesVertices(sceneScale: number, target: QVector3D, distance: number): VertexArray {
   const vertices = new VertexArray();
   const extent = Math.max(10, sceneScale * 1.45, target.length() + distance * 2);
   for (let axis = 0; axis < 3; ++axis) {
-    const positive = previewOrientationDirection(connectorOrientations[axis * 2]);
-    const end = new QVector3D(positive.x * extent, positive.y * extent, positive.z * extent);
+    const end = kAxisDirections[axis].mul(extent);
     const color = kAxisColors[axis];
     vertices.appendLine(end.neg(), end, color.x, color.y, color.z);
   }
@@ -58,8 +58,11 @@ export function placeWorldAxisLabels(input: WorldAxisLabelInput): AxisLabel[] {
     Math.min(Math.abs(p.x), Math.abs(p.x - width), Math.abs(p.y), Math.abs(p.y - height)) < 2;
 
   for (let axis = 0; axis < 3; ++axis) {
-    const a = transform.map(QVector4D.fromVector3D(axes.position(axis * 2), 1));
-    const b = transform.map(QVector4D.fromVector3D(axes.position(axis * 2 + 1), 1));
+    // Labels keep Link's outward-facing signs independently of the world axes.
+    const link = previewOrientationDirection(connectorOrientations[axis * 2]);
+    const positiveEnd = QVector3D.dotProduct(new QVector3D(link.x, link.y, link.z), kAxisDirections[axis]) > 0 ? 1 : 0;
+    const a = transform.map(QVector4D.fromVector3D(axes.position(axis * 2 + 1 - positiveEnd), 1));
+    const b = transform.map(QVector4D.fromVector3D(axes.position(axis * 2 + positiveEnd), 1));
     range.lo = 0;
     range.hi = 1;
     let visible = true;

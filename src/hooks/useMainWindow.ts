@@ -29,11 +29,7 @@ export function useMainWindow() {
       active: workspace.active,
       names: workspace.names,
       error: workspace.error,
-      unsaved: [...workspace.drafts.keys()].filter(
-        (name) =>
-          workspace.source(name) !==
-          (workspace.inline.find((fn) => fn.name === name)?.code ?? workspace.saved.get(name)),
-      ),
+      unsaved: [...workspace.drafts.keys()].filter((name) => workspace.source(name) !== workspace.savedSource(name)),
       add: mainWindow.addFunction,
       select: mainWindow.selectFunction,
       save: mainWindow.saveFunction,

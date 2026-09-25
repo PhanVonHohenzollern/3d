@@ -3,7 +3,7 @@ import { DVec3, normalized } from '../../../utils/DVec3';
 import { apiSignatureMetadataForCall, type ApiSignatureMetadata } from '../../runtime/ApiMetadata';
 import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
 import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildBoxMesh, buildConnectorSleeveMesh } from '../builders/rectangularMeshes';
+import { buildBoxMesh, buildConnectorFlangeMesh } from '../builders/rectangularMeshes';
 import { parameterIndex, warningFor } from '../helpers/apiCall';
 import { sdkPerpVector, toFdVector, toVec, validDirection } from '../helpers/geometryMath';
 import {
@@ -182,7 +182,7 @@ export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext
 
   const appendConnector = (section: number, side: number, directionSign: number) => {
     if (side === noConnector) return;
-    const connector = buildConnectorSleeveMesh(
+    const connector = buildConnectorFlangeMesh(
       context,
       centers[section],
       normals[section],

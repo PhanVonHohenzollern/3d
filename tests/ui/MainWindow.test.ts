@@ -10,7 +10,7 @@ import type { Viewport3DHandle } from '../../src/types/viewport';
 import { createViewport3DHandle } from '../../src/helpers/viewportHandle';
 import { QVector3D } from '../../src/utils/Vector3D';
 import { boxMesh, click, createEngine, project, scene } from '../renderer/helpers';
-import { declaredFunctionNames, removeFunctionSource } from '../../src/helpers/functions';
+import { declaredFunctionNames, removeFunctionSource, sourceFunctions } from '../../src/helpers/functions';
 
 class FakeEditor implements CodeEditorHandle {
   text = '';
@@ -309,6 +309,77 @@ describe('MainWindow', () => {
     mw.dispose();
   });
 
+  it('keeps a function tab and its latest code when the definition is removed manually from Main', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    const main = 'void element() { helper(); }';
+    const helper = 'void helper(double A=1) { double D=20; get_val("D", D); double value=A+D; }';
+    mw.start();
+    editor.type(main + '\n' + helper, 1);
+    mw.buildPreview();
+    parameters.selectTab('helper');
+    parameters.importTable('D\n30\n40');
+    mw.applyParameters();
+    const latest = helper.replace('value=A+D', 'value=A+D+5');
+    editor.type(main + '\n' + latest, 1);
+    editor.type(main, 1);
+    expect(mw.functions.names).toEqual(['helper']);
+    expect(mw.functions.source('helper')).toBe(latest);
+    mw.applyParameters();
+    expect(editor.text).toBe(main);
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    mw.selectFunction('helper');
+    expect(editor.text).toBe(latest);
+    expect(parameters.values().get('helper::D')).toBe('30');
+    expect(parameters.dataSets).toHaveLength(2);
+    expect(mw.m_runtime.evaluateNumericExpression('value')).toBe(36);
+    mw.deleteFunction();
+    expect(mw.functions.names).toEqual([]);
+    expect(mw.functions.saved.has('helper')).toBe(false);
+    expect(editor.text).toBe(main);
+    mw.dispose();
+  });
+
+  it('Sub-Parameter OK rebuilds the current function code and applies its arguments and get_val values together', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    mw.start();
+    editor.type(
+      `void element() {}
+void helper(FdPoint3d cP, double L=50) {
+double D=20; get_val("D", D);
+makeVerySimpleTube(cP, cP + vz * L, D, 8);
+}`,
+      1,
+    );
+    mw.buildPreview();
+    mw.selectFunction('helper');
+    const built = mw.buildNumber;
+    editor.type(editor.text.replace('D, 8', 'D*2, 8'), 1);
+    mw.setFunctionInput('helper', 'cP', ['0', '0', '0'], 2, '10');
+    mw.setFunctionInput('helper', 'L', ['50'], 0, '80');
+    parameters.edit(
+      parameters.rows.findIndex((row) => row.key === 'helper::D'),
+      3,
+    );
+    parameters.editorTextEdited('30');
+    expect(mw.debugBlocked).toBe(true);
+    mw.applyFunctionInputs('helper');
+    expect(mw.functions.active).toBe('helper');
+    expect(mw.buildNumber).toBe(built + 1);
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.m_lastResult.apiCalls).toHaveLength(1);
+    expect(mw.m_lastResult.apiCalls[0].arguments.slice(0, 3)).toMatchObject([
+      { x: 0, y: 0, z: 10 },
+      { x: 0, y: 0, z: 90 },
+      60,
+    ]);
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    expect(mw.executionFeedback.source).toBe(editor.text);
+    expect(mw.debugBlocked).toBe(false);
+    expect(mw.previewDirty).toBe(false);
+    expect(parameters.editor).toBeNull();
+    mw.dispose();
+  });
+
   it.each(['double gone(double), keep(double);', 'double keep(double), gone(double);'])(
     'keeps the other prototype when deleting from %s',
     (source) => {
@@ -325,9 +396,9 @@ describe('MainWindow', () => {
     const main = 'void element() { makeVerySimpleTube(FdPoint3d(), FdPoint3d(0,0,100), 100, 8); }';
     editor.type(main, 1);
     mw.buildPreview();
-    expect(mw.addFunction('element')).toBe(false);
+    expect(mw.addFunction('Main')).toBe(false);
     expect(mw.functions.error).toContain('already exists');
-    expect(mw.addFunction('bad name')).toBe(false);
+    expect(mw.addFunction('   ')).toBe(false);
     expect(mw.addFunction('piece')).toBe(true);
     expect(editor.text).toContain('void piece()');
     const sub = 'void piece(FdPoint3d cP, FdVector3d vP, double A) { makeVerySimpleTube(cP, cP + vP * A, 20, 8); }';
@@ -363,24 +434,164 @@ describe('MainWindow', () => {
     mw.dispose();
   });
 
-  it('Cancel discards a new function, and Save rejects malformed or renamed definitions', () => {
+  it('Cancel discards a new function, and Save rejects malformed definitions', () => {
     const { mw, editor } = createMainWindow();
     mw.start();
     editor.type(kSource, 6);
     mw.buildPreview();
     mw.addFunction('draft');
-    editor.type('void other() {}', 1);
-    mw.saveFunction();
-    expect(mw.functions.error).toContain('named draft');
-    expect(mw.functions.active).toBe('draft');
     editor.type('void draft() {', 1);
     mw.saveFunction();
-    expect(mw.functions.error).toContain('complete function');
+    expect(mw.functions.error).toContain('complete C++ function');
+    expect(mw.functions.active).toBe('draft');
     mw.cancelFunction();
     expect(mw.functions.names).toEqual([]);
     expect(editor.text).toBe(kSource);
     expect(mw.functions.parameterFunctions).toEqual([]);
     mw.dispose();
+  });
+
+  it('uses independent tab labels for overloads through preview, parameters, Save, Attach and Delete', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    const main = `double makePart(double);
+double makePart(FdPoint3d);
+void element() {
+double first=makePart(2.0);
+double second=makePart(FdPoint3d(0,0,3));
+}`;
+    const numeric =
+      'double makePart(double A) { double D=20; get_val("D", D); makeVerySimpleTube(FdPoint3d(), FdPoint3d(0,0,A), D, 8); return A+D; }';
+    const point =
+      'double makePart(FdPoint3d cP) { double D=40; get_val("D", D); makeVerySimpleTube(cP, cP+vz*10, D, 8); return cP.z+D; }';
+    const first = 'Đế quạt / 1',
+      second = 'Part (point)';
+    mw.start();
+    editor.type(main, 1);
+    expect(mw.addFunction(first)).toBe(true);
+    expect(editor.text).toContain('void subFunction()');
+    editor.type(numeric, 1);
+    mw.saveFunction();
+    expect(mw.functions.error).toBe('');
+    expect(mw.functions.names).toEqual([first]);
+    expect(mw.addFunction(` ${first} `)).toBe(false);
+    expect(mw.functions.error).toContain('unique tab name');
+    expect(mw.addFunction(second)).toBe(true);
+    editor.type(point, 1);
+    mw.saveFunction();
+    expect(mw.functions.error).toBe('');
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.m_runtime.evaluateNumericExpression('first')).toBe(22);
+    expect(mw.m_runtime.evaluateNumericExpression('second')).toBe(43);
+    expect(parameters.tabs.map((tab) => tab.id)).toEqual([first, second]);
+    parameters.selectTab(first);
+    parameters.importTable('D\n30');
+    mw.applyParameters();
+    expect(mw.m_runtime.evaluateNumericExpression('first')).toBe(32);
+    expect(mw.m_runtime.evaluateNumericExpression('second')).toBe(43);
+
+    mw.selectFunction(second);
+    mw.setFunctionInput(second, 'cP', ['0', '0', '0'], 2, '100');
+    parameters.importTable('D\n50');
+    mw.applyFunctionInputs(second);
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    expect(mw.m_lastResult.apiCalls[0].arguments.slice(0, 3)).toMatchObject([
+      { x: 0, y: 0, z: 100 },
+      { x: 0, y: 0, z: 110 },
+      50,
+    ]);
+    expect(mw.functions.parameterFunctions.map((fn) => fn.name)).toEqual([first, second]);
+    mw.attachFunction();
+    expect(mw.functions.error).toBe('');
+    mw.attachFunction();
+    expect(mw.functions.error).toBe('Function already exists.');
+    mw.selectFunction(first);
+    mw.setFunctionInput(first, 'A', ['0'], 0, '70');
+    mw.applyFunctionInputs(first);
+    expect(mw.m_lastResult.apiCalls[0].arguments.slice(1, 3)).toMatchObject([{ x: 0, y: 0, z: 70 }, 30]);
+    mw.attachFunction();
+    expect(mw.functions.error).toBe('');
+
+    // A return type or parameter-name change alone is not a new overload.
+    mw.selectFunction('');
+    expect(mw.addFunction('Duplicate')).toBe(true);
+    editor.type('int makePart(const double another=1) { return 0; }', 1);
+    mw.saveFunction();
+    expect(mw.functions.error).toContain('Function already exists: makePart(double)');
+    mw.cancelFunction();
+    mw.selectFunction(second);
+    mw.deleteFunction();
+    expect(mw.functions.names).toEqual([first]);
+    expect(editor.text).not.toContain(point);
+    expect(editor.text).not.toContain('double makePart(FdPoint3d);');
+    expect(editor.text).toContain(numeric);
+    expect(editor.text).toContain('double makePart(double);');
+    expect(parameters.values().get(`${first}::D`)).toBe('30');
+    expect(parameters.values().has(`${second}::D`)).toBe(false);
+    mw.dispose();
+  });
+
+  it('separates inline overload tabs and preserves saved scopes when another tab has an unsaved signature', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    mw.start();
+    editor.type(
+      `void element() { double a=part(2); double b=part(2.0); }
+double part(int n) { double D=10; get_val("D", D); return D+n; }
+double part(double n) { double D=20; get_val("D", D); return D+n; }`,
+      1,
+    );
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.functions.names).toEqual(['part(int)', 'part(double)']);
+    expect(mw.m_runtime.evaluateNumericExpression('a')).toBe(12);
+    expect(mw.m_runtime.evaluateNumericExpression('b')).toBe(22);
+    mw.selectFunction('part(int)');
+    parameters.importTable('D\n35');
+    mw.applyParameters();
+    editor.type(editor.text.replace('part(int n)', 'renamed(int n)'), 1);
+    mw.selectFunction('');
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.m_runtime.evaluateNumericExpression('a')).toBe(37);
+    expect(mw.m_runtime.evaluateNumericExpression('b')).toBe(22);
+    expect(parameters.tabs.map((tab) => tab.id)).toEqual(['part(int)', 'part(double)']);
+    mw.selectFunction('part(int)');
+    mw.deleteFunction();
+    expect(mw.functions.names).toEqual(['part(double)']);
+    expect(editor.text).not.toContain('double part(int n)');
+    expect(editor.text).toContain('double part(double n)');
+    mw.dispose();
+  });
+
+  it('allows a tab label to match the Main C++ name without merging their parameters', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    mw.start();
+    editor.type('void element() { double D=10; get_val("D", D); helper(); }', 1);
+    expect(mw.addFunction('element')).toBe(true);
+    editor.type('void helper() { double D=20; get_val("D", D); }', 1);
+    mw.saveFunction();
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(parameters.tabs.map((tab) => tab.id)).toEqual(['Main', 'element']);
+    expect(mw.m_runtime.evaluateNumericExpression('D')).toBe(10);
+    mw.selectFunction('element');
+    expect(mw.m_runtime.evaluateNumericExpression('D')).toBe(20);
+    mw.selectFunction('');
+    expect(parameters.activeTab).toBe('Main');
+    mw.dispose();
+  });
+
+  it.each([
+    ['const FdPoint3d &p', 'FdPoint3d const &q', 'makePart(const FdPoint3d&)'],
+    ['double values[3]', 'double* other', 'makePart(double*)'],
+    ['const double value=1', 'ads_real other', 'makePart(double)'],
+    ['char* const text', 'char* other', 'makePart(char*)'],
+  ])('recognizes equivalent overload signatures %s and %s', (first, second, signature) => {
+    expect(sourceFunctions(`void makePart(${first}) {}`)[0].signature).toBe(signature);
+    expect(sourceFunctions(`void makePart(${second}) {}`)[0].signature).toBe(signature);
+    const code = `void makePart(${second});\nvoid makePart(${first}) {}\nvoid makePart(int n) {}`;
+    expect(removeFunctionSource(code, 'makePart', signature).trim()).toBe('void makePart(int n) {}');
   });
 
   it('previews inline helpers independently and isolates their same-name get_val values', () => {
@@ -520,7 +731,97 @@ describe('MainWindow', () => {
     expect(mw.m_runtime.evaluateNumericExpression('result')).toBe(24);
     expect(mw.functions.names).toEqual(['helper']);
     expect(mw.addFunction('helper')).toBe(false);
-    expect(mw.addFunction('switch')).toBe(false);
+    expect(mw.addFunction('switch')).toBe(true);
+    expect(editor.text).toContain('void subFunction()');
+    mw.cancelFunction();
+    mw.dispose();
+  });
+
+  it.each(['inline', 'saved', 'attached'])('receives makeFS return values in Main (%s function)', (mode) => {
+    const { mw, editor, parameters } = createMainWindow();
+    const main = `void element() {
+FdPoint3d cP(1,2,7);
+double H=5;
+double height=makeFS(cP);
+double assigned=0;
+assigned=makeFS(cP);
+cP.z += makeFS(cP);
+double mainH=H;
+makeVerySimpleTube(cP, cP + vz * height, 10, 8);
+}`;
+    const helper = `double makeFS(FdPoint3d cP) {
+double A, B, C, H, t1;
+get_val("RB_A", A);
+get_val("RB_B", B);
+get_val("RB_C", C);
+get_val("RB_H", H);
+get_val("RB_t1", t1);
+FdPoint3d fullPoints[2] = { cP, cP };
+fullPoints[1].z += H;
+FdVector3d normalVectors[2] = { vz, vz };
+FdVector3d upVectors[2] = { vx, vx };
+double tabHeight[2] = { B, B }, tabWidth[2] = { B, B };
+bool sides[4] = { true, true, true, true };
+makeBox(1, fullPoints, normalVectors, upVectors, tabHeight, tabWidth, sides, false, false, 0, 0, 0);
+tabHeight[0] = tabHeight[1] = C;
+tabWidth[0] = tabWidth[1] = C;
+makeBox(1, fullPoints, normalVectors, upVectors, tabWidth, tabHeight, sides, false, false, 0, 0, (B-C)*0.5);
+fullPoints[1].z = fullPoints[0].z + 2;
+makeBox(1, fullPoints, normalVectors, upVectors, tabWidth, tabHeight, sides, false, false, 0, 0, (A-C)*0.5);
+tabHeight[0] = tabHeight[1] = A;
+tabWidth[0] = tabWidth[1] = A;
+makeBox(1, fullPoints, normalVectors, upVectors, tabWidth, tabHeight, sides, false, false, 0, 0, 0);
+return H;
+}`;
+    mw.start();
+    editor.type(mode === 'inline' ? main + '\n' + helper : main, 1);
+    if (mode !== 'inline') {
+      expect(mw.addFunction('makeFS')).toBe(true);
+      editor.type(helper, 1);
+      mw.saveFunction();
+      if (mode === 'attached') {
+        mw.selectFunction('makeFS');
+        mw.attachFunction();
+        mw.selectFunction('');
+      }
+    }
+    mw.buildPreview();
+    parameters.selectTab('makeFS');
+    parameters.importTable('RB_A\tRB_B\tRB_C\tRB_H\tRB_t1\n300\t200\t160\t80\t1');
+    mw.applyParameters();
+
+    const checkMain = (height: number) => {
+      expect(mw.m_lastResult.diagnostics).toEqual([]);
+      expect(mw.m_geometryScene.warnings).toEqual([]);
+      expect(mw.m_runtime.evaluateNumericExpression('height')).toBe(height);
+      expect(mw.m_runtime.evaluateNumericExpression('assigned')).toBe(height);
+      expect(mw.m_runtime.evaluateNumericExpression('cP.z')).toBe(7 + height);
+      expect(mw.m_runtime.evaluateNumericExpression('mainH')).toBe(5);
+      const tube = mw.m_lastResult.apiCalls.find((call) => call.name === 'makeVerySimpleTube');
+      expect(tube?.arguments.slice(0, 2)).toMatchObject([
+        { x: 1, y: 2, z: 7 + height },
+        { x: 1, y: 2, z: 7 + 2 * height },
+      ]);
+    };
+
+    checkMain(80);
+    // Changing get_val and pressing OK must also update the returned height.
+    parameters.edit(
+      parameters.rows.findIndex((row) => row.key === 'makeFS::RB_H'),
+      3,
+    );
+    parameters.editorTextEdited('120');
+    parameters.commitEditor();
+    mw.applyParameters();
+    checkMain(120);
+    // Standalone preview arguments must not override the actual call from Main.
+    mw.selectFunction('makeFS');
+    mw.setFunctionInput('makeFS', 'cP', ['0', '0', '0'], 2, '500');
+    mw.applyFunctionInputs('makeFS');
+    expect(mw.m_runtime.evaluateNumericExpression('cP.z')).toBe(500);
+    mw.selectFunction('');
+    mw.buildPreview();
+    checkMain(120);
     mw.dispose();
   });
 
@@ -726,13 +1027,13 @@ describe('MainWindow', () => {
     expect(mw.m_runtime.evaluateNumericExpression('n')).toBe(6);
     expect(mw.m_runtime.evaluateNumericExpression('d')).toBe(8);
     expect(mw.m_geometryScene.meshes).toHaveLength(1);
-    expect(mw.buildNumber).toBe(1);
+    expect(mw.buildNumber).toBe(2);
     expect(mw.previewMode).toBe('build');
     expect(mw.previewDirty).toBe(false);
     mw.dispose();
   });
 
-  it('OK applies selected table rows to the built source while keeping edited code pending', () => {
+  it('OK builds the current code with the selected parameter row and unlocks Debug', () => {
     const { mw, editor, parameters } = createMainWindow();
     mw.start();
     editor.type(kSource, 1);
@@ -745,22 +1046,19 @@ describe('MainWindow', () => {
     editor.type(kSource.replace('double after = 1', 'double after = 9'), 2);
     mw.applyParameters();
     expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(12);
-    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(1);
-    expect(mw.exportObj()).not.toBe(previousObj);
-    expect(mw.executionFeedback.source).toBe(kSource);
-    expect(mw.buildNumber).toBe(1);
-    expect(mw.debugBlocked).toBe(true);
-    expect(mw.previewDirty).toBe(true);
-    mw.debugPreview();
-    expect(mw.previewMode).toBe('build');
-    mw.buildPreview();
     expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(9);
-    expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(12);
+    expect(mw.exportObj()).not.toBe(previousObj);
+    expect(mw.executionFeedback.source).toBe(editor.text);
+    expect(mw.buildNumber).toBe(2);
     expect(mw.debugBlocked).toBe(false);
+    expect(mw.previewDirty).toBe(false);
+    expect(mw.previewMode).toBe('build');
+    mw.debugPreview();
+    expect(mw.previewMode).toBe('debug');
     mw.dispose();
   });
 
-  it('OK keeps Debug at its current preview line and commits a pending edit', () => {
+  it('OK builds the full code from Debug and commits a pending parameter edit', () => {
     const { mw, editor, parameters } = createMainWindow();
     mw.start();
     editor.type(kSource, 5);
@@ -770,8 +1068,10 @@ describe('MainWindow', () => {
     mw.applyParameters();
     expect(parameters.editor).toBeNull();
     expect(mw.m_runtime.evaluateNumericExpression('w')).toBe(10);
-    expect(mw.m_currentPreviewLine).toBe(5);
-    expect(mw.previewMode).toBe('debug');
+    expect(mw.m_currentPreviewLine).toBe(6);
+    expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(1);
+    expect(mw.previewMode).toBe('build');
+    expect(mw.buildNumber).toBe(1);
     expect(mw.m_geometryScene.meshes).toHaveLength(1);
     mw.dispose();
   });

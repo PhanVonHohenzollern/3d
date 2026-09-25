@@ -93,6 +93,8 @@ export function emptyApiCall(): RuntimeApiCall {
 
 export interface RuntimeExecutionOptions {
   entryFunction?: string | null;
+  entrySignature?: string;
+  functionScopes?: ReadonlyMap<string, string>;
   arguments?: ReadonlyMap<string, string>;
   isolated?: boolean;
 }

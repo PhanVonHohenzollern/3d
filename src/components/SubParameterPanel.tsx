@@ -32,7 +32,12 @@ export function SubParameterPanel(props: SubParameterPanelProps) {
             </Button>
           ))}
         </div>
-        <Button size="xs" disabled={!props.enabled || !fn} onClick={() => fn && props.apply(fn.name)}>
+        <Button
+          size="xs"
+          title="Build this function with these argument values"
+          disabled={!props.enabled || !fn}
+          onClick={() => fn && props.apply(fn.name)}
+        >
           OK
         </Button>
       </div>

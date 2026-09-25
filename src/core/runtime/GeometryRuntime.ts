@@ -49,8 +49,8 @@ export class GeometryRuntime {
     };
   }
 
-  discoverParameters(code: string): RuntimeParameterRequest[] {
-    return scanGetValParameters(code);
+  discoverParameters(code: string, options?: RuntimeExecutionOptions): RuntimeParameterRequest[] {
+    return scanGetValParameters(code, options);
   }
 
   setParameters(parameters: ReadonlyMap<string, string>): void {

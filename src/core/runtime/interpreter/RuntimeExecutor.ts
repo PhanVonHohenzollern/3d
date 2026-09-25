@@ -7,6 +7,9 @@ import { createApiCall } from '../helpers/apiCalls';
 import { braceListItems, createArray, inferArrayDimensions, isBraceList } from '../helpers/arrays';
 import {
   functionParameters,
+  functionSignature,
+  functionScope,
+  functionArgumentRanks,
   parameterDefaultExpression,
   parameterDefaultPos,
   parameterName,
@@ -129,7 +132,11 @@ export class RuntimeExecutor {
           : this.selectFunction(root)
         : explicit === null
           ? null
-          : this.m_functions.get(explicit)?.[0];
+          : this.m_functions
+              .get(explicit)
+              ?.find(
+                (fn) => !this.m_options?.entrySignature || functionSignature(fn) === this.m_options.entrySignature,
+              );
     if (explicit && !selectedFunction) throw runtimeError(`Function not found: ${explicit}`);
     if (!selectedFunction) {
       this.executeGlobals(root);
@@ -142,7 +149,11 @@ export class RuntimeExecutor {
 
     this.m_state.globalValues = new Map(this.m_state.m_values);
     this.m_state.globalIds = new Map(this.m_state.m_variableIds);
-    this.m_state.functionName = selectedFunction.functionName;
+    this.m_state.functionName = functionScope(
+      selectedFunction,
+      this.m_functions.get(selectedFunction.functionName)!,
+      this.m_options,
+    );
     this.initializeFunctionParameters(selectedFunction);
     if (selectedFunction.body) this.executeBody(selectedFunction.body);
   }
@@ -800,7 +811,7 @@ export class RuntimeExecutor {
     });
     const call = createApiCall(name, line, this.parentApiIndex(), [...args], argGroups.map(tokensToExpression));
 
-    const fn = this.resolveUserFunction(name, args.length);
+    const fn = this.resolveUserFunction(name, args);
     if (fn) {
       call.userFunctionCall = true;
       populateFormalParameterMetadata(call, fn);
@@ -889,18 +900,31 @@ export class RuntimeExecutor {
     this.m_state.recordApiCall(call);
   }
 
-  private resolveUserFunction(name: string, argumentCount: number): Statement | null {
+  private resolveUserFunction(name: string, args: readonly RuntimeValue[]): Statement | null {
     const candidates = this.m_functions.get(name);
     if (candidates === undefined) return null;
-    let fallback: Statement | null = null;
-    for (const fn of candidates) {
-      const total = functionParameters(fn).length;
-      if (argumentCount < requiredParameterCount(fn) || argumentCount > total) continue;
-      if (argumentCount === total) return fn;
-      if (!fallback) fallback = fn;
-    }
+    if (candidates.length === 1) {
+      const fn = candidates[0];
 
-    return fallback;
+      return args.length >= requiredParameterCount(fn) && args.length <= functionParameters(fn).length ? fn : null;
+    }
+    const matches = candidates.flatMap((fn) => {
+      const ranks = functionArgumentRanks(fn, args);
+
+      return ranks ? [{ fn, ranks }] : [];
+    });
+    const best = matches.filter(
+      (match) =>
+        !matches.some(
+          (other) =>
+            other !== match &&
+            other.ranks.every((rank, i) => rank <= match.ranks[i]) &&
+            other.ranks.some((rank, i) => rank < match.ranks[i]),
+        ),
+    );
+    if (best.length !== 1) throw runtimeError(`${best.length ? 'ambiguous' : 'no matching'} overload: ${name}`);
+
+    return best[0].fn;
   }
 
   private bindFunctionArguments(
@@ -938,7 +962,9 @@ export class RuntimeExecutor {
     if (this.m_functionCallDepth >= kMaxFunctionCallDepth) throw runtimeError('C++ function call depth exceeded 64');
 
     const state = this.m_state;
-    const savedValues = new Map(state.m_values);
+    // Assignment/member targets may already refer to this map while evaluating
+    // a call on the RHS. Restore the same storage so the returned value is not lost.
+    const savedValues = state.m_values;
     const savedVariableIds = new Map(state.m_variableIds);
     const savedOrder = [...state.m_userVariableOrder];
     const savedLines = new Map(state.m_lastChangedLine);
@@ -956,7 +982,7 @@ export class RuntimeExecutor {
     state.m_values = new Map(state.globalValues);
     state.m_variableIds = new Map(state.globalIds);
     state.m_userVariableOrder = savedOrder.filter((name) => state.globalIds.has(name));
-    state.functionName = fn.functionName;
+    state.functionName = functionScope(fn, this.m_functions.get(fn.functionName)!, this.m_options);
     state.pushScope();
     this.m_returned = false;
     this.m_returnValue = undefined;

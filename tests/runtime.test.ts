@@ -9,6 +9,45 @@ import { expectedOutput } from './support/expected';
 import { fixturesRoot, listFixtures, parseFixture } from './support/fixtures';
 
 describe('C++ function and block scopes', () => {
+  it('resolves overloads by argument count and type, including default arguments and nested return values', () => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      `void element() {
+int a=pick(2); double b=pick(2.0); double c=pick(FdPoint3d(1,2,3));
+double d=pick(FdVector3d(1,2,3)); double e=pick(true); double f=pick("hello");
+double g=pick(2.0,3.0); double nested=pick(pick(2));
+}
+double pick(double value) { return 20; }
+int pick(int value) { return 10; }
+double pick(FdPoint3d p) { return p.z; }
+double pick(FdVector3d v) { return v.x; }
+double pick(bool flag) { return 5; }
+double pick(const char* text) { return 6; }
+double pick(double x,double y,double z=4) { return x+y+z; }`,
+      999,
+      true,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(
+      ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'nested'].map((name) => runtime.evaluateNumericExpression(name)),
+    ).toEqual([10, 20, 3, 1, 5, 6, 9, 10]);
+  });
+
+  it.each([
+    ['pick();', 'ambiguous overload: pick'],
+    ['pick(FdPoint3d());', 'no matching overload: pick'],
+  ])('reports invalid overload selection for %s', (call, error) => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      `void element() { ${call} }
+double pick(double value=1) { return 1; }
+double pick(int value=1) { return 2; }`,
+      999,
+      true,
+    );
+    expect(result.diagnostics).toEqual([{ line: 1, message: error }]);
+  });
+
   it('preserves a nested helper global write even when the caller shadows that global', () => {
     const source = [
       'double D=1;',

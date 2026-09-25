@@ -3,7 +3,7 @@ import { length, normalized } from '../../../utils/DVec3';
 import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
 import type { RuntimeValue } from '../../runtime/RuntimeValue';
 import { buildFacettedCylinderMesh } from '../builders/circularMeshes';
-import { buildConnectorSleeveMesh, buildPolygonFaceMesh, buildRectFaceMesh } from '../builders/rectangularMeshes';
+import { buildConnectorFlangeMesh, buildPolygonFaceMesh, buildRectFaceMesh } from '../builders/rectangularMeshes';
 import { warningFor } from '../helpers/apiCall';
 import { kEps, sdkPerpVector, toPoint, toVec, validDirection } from '../helpers/geometryMath';
 import { pushNonEmptyMesh } from '../helpers/meshData';
@@ -196,7 +196,7 @@ export function appendConnector(scene: PreviewGeometryScene, context: MeshBuildC
   }
   if (!validDirection(normal.v) || !validDirection(up.v) || width.v <= 0.0 || height.v <= 0.0) return false;
 
-  const connector = buildConnectorSleeveMesh(context, center.v, normal.v, up.v, width.v, height.v, frameWidth, 0, 1.0);
+  const connector = buildConnectorFlangeMesh(context, center.v, normal.v, up.v, width.v, height.v, frameWidth, 0, 1.0);
   pushNonEmptyMesh(scene, connector);
 
   return true;

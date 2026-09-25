@@ -35,7 +35,7 @@ makeBox(2, pts3, w3, h3);
 makeBox(1, pts2, w2, h2, false);
 makeBox(0, pts2, w2, h2, true);
 // Connector side codes: 5 = none, 1..4 single sides, 13/24 pairs, other codes
-// draw no sleeve; connectorWidth <= 0 draws no sleeve.
+// draw no flange; connectorWidth <= 0 draws no flange.
 makeBox(1, pts2, vecs2, ups2, w2, h2, sides4, false, false, 5, 7, 30);
 makeBox(1, pts2, vecs2, ups2, w2, h2, sides4, false, false, 2, 13, -5);
 makeBox(1, pts2, vecs2, ups2, w2, h2, sides4, false, false, 0, 0, 12.5);

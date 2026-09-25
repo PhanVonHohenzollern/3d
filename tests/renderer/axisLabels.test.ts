@@ -54,6 +54,18 @@ const axisDirection = (axis: number) => {
 };
 
 describe('world axis labels', () => {
+  it('keeps world axes in SDK negative-to-positive order independently of Link orientation', () => {
+    const axes = axesVertices(10, new QVector3D(), 18);
+    const positive = [new QVector3D(1, 0, 0), new QVector3D(0, 1, 0), new QVector3D(0, 0, 1)];
+    for (const [axis, direction] of positive.entries()) {
+      expect(axes.position(axis * 2).normalized()).toEqual(direction.neg());
+      expect(axes.position(axis * 2 + 1).normalized()).toEqual(direction);
+      // Link labels deliberately use the outward connector convention.
+      const link = previewOrientationDirection(connectorOrientations[axis * 2]);
+      expect([link.x, link.y, link.z]).toEqual([-direction.x, -direction.y, -direction.z].map((v) => v || 0));
+    }
+  });
+
   it('places labels on the projected axes, inside the viewport', () => {
     const engine = createEngine(800, 600);
     const labels = labelsOf(engine);

@@ -5,37 +5,39 @@ import { addTriangle, vertex } from '../helpers/meshData';
 import type { MeshBuildContext } from '../MeshBuildContext';
 import type { PreviewMesh } from '../previewScene';
 
-export function buildConnectorSleeveMesh(
+export function buildConnectorFlangeMesh(
   context: MeshBuildContext,
   center: FdPoint3d,
   normal: FdVector3d,
   upVector: FdVector3d,
   width: number,
   height: number,
-  connectorLength: number,
+  connectorWidth: number,
   sideCode: number,
   directionSign: number,
 ): PreviewMesh {
   const mesh = context.createMesh();
-  if (sideCode === 5 || width <= 0.0 || height <= 0.0 || connectorLength <= 0.0) return mesh;
+  if (sideCode === 5 || width <= 0.0 || height <= 0.0 || connectorWidth <= 0.0) return mesh;
 
   const n = normalized(toVec(normal));
   if (length(n) <= kEps) return mesh;
   const [up, right] = basisFromUp(n, toVec(upVector));
-  const c0 = toVec(center);
-  const c1 = c0.add(n.mul(Math.abs(connectorLength) * (directionSign < 0.0 ? -1.0 : 1.0)));
+  const c = toVec(center);
+  const faceNormal = directionSign < 0.0 ? n.mul(-1.0) : n;
   const hw = Math.abs(width) * 0.5;
   const hh = Math.abs(height) * 0.5;
 
-  const appendSection = (c: DVec3) => {
-    mesh.vertices.push(vertex(c.add(right.mul(hw)).add(up.mul(hh)), n));
-    mesh.vertices.push(vertex(c.sub(right.mul(hw)).add(up.mul(hh)), n));
-    mesh.vertices.push(vertex(c.sub(right.mul(hw)).sub(up.mul(hh)), n));
-    mesh.vertices.push(vertex(c.add(right.mul(hw)).sub(up.mul(hh)), n));
+  const appendPerimeter = (halfWidth: number, halfHeight: number) => {
+    mesh.vertices.push(vertex(c.add(right.mul(halfWidth)).add(up.mul(halfHeight)), faceNormal));
+    mesh.vertices.push(vertex(c.sub(right.mul(halfWidth)).add(up.mul(halfHeight)), faceNormal));
+    mesh.vertices.push(vertex(c.sub(right.mul(halfWidth)).sub(up.mul(halfHeight)), faceNormal));
+    mesh.vertices.push(vertex(c.add(right.mul(halfWidth)).sub(up.mul(halfHeight)), faceNormal));
   };
 
-  appendSection(c0);
-  appendSection(c1);
+  // connectorWidth expands the rim in the section plane; it does not extend
+  // the box along its normal. Keep the inner opening and join it to the rim.
+  appendPerimeter(hw, hh);
+  appendPerimeter(hw + connectorWidth, hh + connectorWidth);
 
   const visible = (side: number): boolean => {
     if (sideCode === 0) return true;
@@ -53,8 +55,13 @@ export function buildConnectorSleeveMesh(
     const b = next;
     const c = 4 + next;
     const d = 4 + side;
-    addTriangle(mesh, a, b, c);
-    addTriangle(mesh, a, c, d);
+    if (directionSign < 0.0) {
+      addTriangle(mesh, a, c, b);
+      addTriangle(mesh, a, d, c);
+    } else {
+      addTriangle(mesh, a, b, c);
+      addTriangle(mesh, a, c, d);
+    }
   }
 
   return mesh;

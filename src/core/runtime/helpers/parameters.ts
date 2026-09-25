@@ -12,9 +12,9 @@ import { stdException, stod, stoll, trim } from '../../../utils/cpp';
 import { Lexer } from '../interpreter/Lexer';
 import { ProgramParser } from '../interpreter/ProgramParser';
 import { StatementKind, type Statement } from '../interpreter/Statement';
-import type { RuntimeParameterRequest } from '../RuntimeTypes';
+import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '../RuntimeTypes';
 import { isScalarTypeToken, normalizedScalarType } from './typeNames';
-import { functionParameters } from './functionSignatures';
+import { functionParameters, functionScope } from './functionSignatures';
 import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, tokensToExpression, type Token } from './tokens';
 
 function neutralParameterValue(type: string): string {
@@ -133,7 +133,7 @@ function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticPar
   return declarations;
 }
 
-export function scanGetValParameters(code: string): RuntimeParameterRequest[] {
+export function scanGetValParameters(code: string, options?: RuntimeExecutionOptions): RuntimeParameterRequest[] {
   const tokens = new Lexer(code).scan();
   let root: Statement;
   try {
@@ -150,7 +150,16 @@ export function scanGetValParameters(code: string): RuntimeParameterRequest[] {
       for (const parameter of functionParameters(s))
         for (const [name, declaration] of scanScalarDeclarations(parameter))
           local.set(name, { ...declaration, requests: [] });
-      if (s.body) walk(s.body, local, s.functionName);
+      if (s.body)
+        walk(
+          s.body,
+          local,
+          functionScope(
+            s,
+            root.children.filter((fn) => fn.kind === StatementKind.Function && fn.functionName === s.functionName),
+            options,
+          ),
+        );
 
       return;
     }
