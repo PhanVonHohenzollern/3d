@@ -3,7 +3,12 @@ import { clampDockHeight, kDocks } from '../helpers/layout';
 import type { DockName } from '../types/mainWindow';
 import { usePointerDrag } from './usePointerDrag';
 
-export function useDockArea(raised: DockName, raise: (name: DockName) => void, showSubParameters = false) {
+export function useDockArea(
+  raised: DockName,
+  raise: (name: DockName) => void,
+  showSubParameters = false,
+  enableSubParameters = false,
+) {
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(() => Math.min(360, Math.round(window.innerHeight * 0.36)));
   const startDrag = usePointerDrag();
@@ -52,8 +57,16 @@ export function useDockArea(raised: DockName, raise: (name: DockName) => void, s
   const docks = showSubParameters
     ? [...kDocks, { name: 'SubParametersDock' as const, title: 'Sub-Parameter' }]
     : kDocks;
-  const active = !showSubParameters && raised === 'SubParametersDock' ? 'ParametersDock' : raised;
-  const tabs = docks.map((dock) => ({ ...dock, selected: dock.name === active, raise: () => raise(dock.name) }));
+  const active =
+    (!showSubParameters || !enableSubParameters) && raised === 'SubParametersDock' ? 'ParametersDock' : raised;
+  const tabs = docks.map((dock) => ({
+    ...dock,
+    disabled: dock.name === 'SubParametersDock' && !enableSubParameters,
+    selected: dock.name === active,
+    raise: () => {
+      if (dock.name !== 'SubParametersDock' || enableSubParameters) raise(dock.name);
+    },
+  }));
   const title = tabs.find((tab) => tab.selected)?.title ?? '';
 
   return {

@@ -22,7 +22,12 @@ export function App() {
   const mainWindow = useMainWindow();
   const compact = useCompactLayout();
   const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum, title, tabs } =
-    useDockArea(mainWindow.raisedDock, mainWindow.raiseDock, mainWindow.subParameters.functions.length > 0);
+    useDockArea(
+      mainWindow.raisedDock,
+      mainWindow.raiseDock,
+      mainWindow.subParameters.functions.length > 0,
+      mainWindow.subParameters.enabled,
+    );
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">

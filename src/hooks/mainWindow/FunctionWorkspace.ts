@@ -1,4 +1,10 @@
-import { declaredFunctionNames, mainFunctionName, sourceFunctions, validFunctionCode } from '../../helpers/functions';
+import {
+  declaredFunctionNames,
+  mainFunctionName,
+  removeFunctionSource,
+  sourceFunctions,
+  validFunctionCode,
+} from '../../helpers/functions';
 import type { RuntimeExecutionOptions } from '../../core/runtime/GeometryRuntime';
 
 export interface FunctionProgram {
@@ -14,6 +20,7 @@ export class FunctionWorkspace {
   readonly saved = new Map<string, string>();
   readonly drafts = new Map<string, string>();
   readonly inputs = new Map<string, Map<string, string[]>>();
+  readonly deleted = new Set<string>();
   inputTab = '';
 
   get inline() {
@@ -43,7 +50,10 @@ export class FunctionWorkspace {
       const saved = this.inline.find((fn) => fn.name === this.active)?.code ?? this.saved.get(this.active);
       if (source === saved) this.drafts.delete(this.active);
       else this.drafts.set(this.active, source);
-    } else this.mainSource = source;
+    } else {
+      this.mainSource = source;
+      for (const fn of this.inline) this.deleted.delete(fn.name);
+    }
   }
 
   add(raw: string): boolean {
@@ -59,6 +69,7 @@ export class FunctionWorkspace {
       return false;
     }
     this.drafts.set(name, `void ${name}()\n{\n\n}\n`);
+    this.deleted.delete(name);
     this.active = name;
     this.error = '';
 
@@ -82,6 +93,21 @@ export class FunctionWorkspace {
     this.drafts.delete(this.active);
     this.active = '';
     this.error = '';
+  }
+
+  removeActive(): string | null {
+    const name = this.active;
+    if (!name || !this.names.includes(name)) return null;
+    this.mainSource = removeFunctionSource(this.mainSource, name);
+    this.saved.delete(name);
+    this.drafts.delete(name);
+    this.inputs.delete(name);
+    this.deleted.add(name);
+    this.active = '';
+    this.inputTab = '';
+    this.error = '';
+
+    return name;
   }
 
   attach(): boolean {

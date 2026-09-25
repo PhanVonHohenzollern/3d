@@ -39,8 +39,10 @@ export function useMainWindow() {
       save: mainWindow.saveFunction,
       cancel: mainWindow.cancelFunction,
       attach: mainWindow.attachFunction,
+      remove: mainWindow.deleteFunction,
     },
     subParameters: {
+      enabled: mainWindow.canEditSubParameters,
       functions: parameterFunctions.map((fn) => ({
         ...fn,
         inputs: fn.inputs.map((input) => ({
@@ -53,10 +55,7 @@ export function useMainWindow() {
         : (parameterFunctions[0]?.name ?? ''),
       select: mainWindow.selectFunctionInputs,
       change: mainWindow.setFunctionInput,
-      apply: (name: string) => {
-        mainWindow.selectFunction(name);
-        mainWindow.applyParameters();
-      },
+      apply: mainWindow.applyFunctionInputs,
     },
     files,
     importedObj: mainWindow.importedObj,

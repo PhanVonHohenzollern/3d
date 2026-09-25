@@ -13,6 +13,7 @@ export interface FunctionEditorToolsProps {
   save: () => void;
   cancel: () => void;
   attach: () => void;
+  remove: () => void;
 }
 
 export function FunctionEditorTabs(props: FunctionEditorToolsProps) {
@@ -55,6 +56,9 @@ export function FunctionEditorFooter(props: FunctionEditorToolsProps) {
   if (props.active)
     return (
       <div className="ml-auto flex gap-1">
+        <Button size="xs" variant="outline" className="text-error" onClick={props.remove}>
+          Delete
+        </Button>
         <Button size="xs" variant="outline" onClick={props.attach}>
           Attach
         </Button>

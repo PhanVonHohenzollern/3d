@@ -32,6 +32,7 @@ export interface ParameterPanelHandle {
   overrides(): Map<string, string>;
   commitEditor(): void;
   selectTab?(id: string): void;
+  forgetFunction?(name: string): void;
 }
 
 export interface ParameterRow {

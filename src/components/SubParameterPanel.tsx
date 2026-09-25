@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 
 interface SubParameterPanelProps {
+  enabled: boolean;
   functions: (Omit<SourceFunction, 'inputs'> & { inputs: (FunctionInput & { values: string[] })[] })[];
   active: string;
   select: (name: string) => void;
@@ -21,6 +22,7 @@ export function SubParameterPanel(props: SubParameterPanelProps) {
             <Button
               key={fn.name}
               role="tab"
+              disabled={!props.enabled}
               size="xs"
               aria-selected={fn.name === props.active}
               variant={fn.name === props.active ? 'secondary' : 'ghost'}
@@ -30,13 +32,17 @@ export function SubParameterPanel(props: SubParameterPanelProps) {
             </Button>
           ))}
         </div>
-        <Button size="xs" disabled={!fn} onClick={() => fn && props.apply(fn.name)}>
+        <Button size="xs" disabled={!props.enabled || !fn} onClick={() => fn && props.apply(fn.name)}>
           OK
         </Button>
       </div>
       <div className="grid min-h-0 flex-1 content-start gap-2 overflow-auto p-2 sm:grid-cols-2 xl:grid-cols-3">
         {fn?.inputs.map((input) => (
-          <fieldset key={input.name} className="min-w-0 rounded border border-line p-2">
+          <fieldset
+            key={input.name}
+            disabled={!props.enabled}
+            className="min-w-0 rounded border border-line p-2 disabled:opacity-50"
+          >
             <legend className="px-1 text-xs font-medium">
               {input.name} <span className="font-normal text-muted-foreground">{input.type}</span>
             </legend>

@@ -40,6 +40,8 @@ export function DockArea({ height, title, tabs, counts, panels }: DockAreaProps)
               <TabsTrigger
                 key={tab.name}
                 value={tab.name}
+                disabled={tab.disabled}
+                title={tab.disabled ? 'Open a sub-function tab to edit its arguments.' : undefined}
                 className="h-[26px] min-w-0 flex-auto gap-1 rounded-[4px] px-1 py-0 text-[11px] data-[state=active]:bg-base data-[state=active]:font-medium @min-[480px]:gap-1.5 @min-[480px]:px-2.5 @min-[480px]:text-xs dark:data-[state=active]:bg-base"
               >
                 <Icon className="hidden size-3.5 @min-[480px]:block" aria-hidden />

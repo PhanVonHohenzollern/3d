@@ -46,6 +46,38 @@ export function mainFunctionName(source: string): string | null {
   return sourceFunctions(source)[0]?.name ?? null;
 }
 
+export function removeFunctionSource(source: string, name: string): string {
+  const ranges = sourceFunctions(source)
+    .filter((fn) => fn.name === name)
+    .map(({ from, to }) => ({ from, to }));
+  // Remove matching forward declarations, preserving other declarations in the same statement.
+  for (let node = cppLanguage.parser.parse(source).topNode.firstChild; node; node = node.nextSibling) {
+    if (node.name !== 'Declaration') continue;
+    for (const declaration of node.getChildren('FunctionDeclarator')) {
+      const identifier = declaration.getChild('Identifier');
+      if (!identifier || source.slice(identifier.from, identifier.to) !== name) continue;
+      const next = declaration.nextSibling,
+        previous = declaration.prevSibling;
+      ranges.push(
+        next?.name === ','
+          ? { from: declaration.from, to: next.to }
+          : previous?.name === ','
+            ? { from: previous.from, to: declaration.to }
+            : { from: node.from, to: node.to },
+      );
+    }
+  }
+  const merged: { from: number; to: number }[] = [];
+  for (const range of ranges.sort((a, b) => a.from - b.from)) {
+    const last = merged.at(-1);
+    if (last && range.from <= last.to) last.to = Math.max(last.to, range.to);
+    else merged.push({ ...range });
+  }
+  for (const { from, to } of merged.reverse()) source = source.slice(0, from) + source.slice(to);
+
+  return source;
+}
+
 export function sourceFunctions(source: string): SourceFunction[] {
   const functions: SourceFunction[] = [];
   cppLanguage.parser.parse(source).iterate({

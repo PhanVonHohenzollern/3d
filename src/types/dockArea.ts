@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Dock, DockName } from './mainWindow';
 
 export interface DockTab extends Dock {
+  disabled?: boolean;
   selected: boolean;
   raise: () => void;
 }

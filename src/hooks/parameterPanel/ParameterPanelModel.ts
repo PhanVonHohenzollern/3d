@@ -104,8 +104,12 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       }
     }
 
-    if (!this.#definitions.some((definition) => (definition.functionName ?? '') === this.activeTab))
+    if (!this.#definitions.some((definition) => (definition.functionName ?? '') === this.activeTab)) {
+      this.#tableTabs.set(this.activeTab, { dataSets: this.dataSets, index: this.dataSetIndex });
       this.activeTab = this.#definitions[0]?.functionName ?? '';
+      this.dataSets = this.#tableTabs.get(this.activeTab)?.dataSets ?? [];
+      this.dataSetIndex = this.#tableTabs.get(this.activeTab)?.index ?? -1;
+    }
     this.#refreshAvailability();
     this.#rebuildTable();
   }
@@ -193,6 +197,29 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   values(): Map<string, string> {
     return new Map(this.#values);
+  }
+
+  forgetFunction(name: string): void {
+    const prefix = `${name}::`;
+    for (const key of this.#values.keys()) {
+      if (!key.startsWith(prefix)) continue;
+      this.#values.delete(key);
+      this.#userEditedKeys.delete(key);
+      this.#activeKeys?.delete(key);
+    }
+    this.#tableTabs.delete(name);
+    if (this.activeTab === name) {
+      this.dataSets = [];
+      this.dataSetIndex = -1;
+      this.pasteMessage = '';
+    }
+    this.#definitions = this.#definitions.filter((definition) => definition.functionName !== name);
+    if (this.activeTab === name) {
+      this.activeTab = this.#definitions[0]?.functionName ?? '';
+      this.dataSets = this.#tableTabs.get(this.activeTab)?.dataSets ?? [];
+      this.dataSetIndex = this.#tableTabs.get(this.activeTab)?.index ?? -1;
+    }
+    this.#rebuildTable();
   }
 
   overrides(): Map<string, string> {

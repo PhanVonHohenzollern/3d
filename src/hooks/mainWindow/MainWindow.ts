@@ -353,6 +353,24 @@ export class MainWindow extends Observable {
     this.changed();
   };
 
+  readonly deleteFunction = (): void => {
+    if (!this.functions.active) return;
+    this.m_parameters.commitEditor();
+    const name = this.functions.removeActive();
+    if (!name) return;
+    this.m_previewTimer.stop();
+    this.#tabBuilds.delete(name);
+    for (const built of this.#tabBuilds.values())
+      built.parameters = new Map([...built.parameters].filter(([key]) => !key.startsWith(`${name}::`)));
+    this.m_parameters.forgetFunction?.(name);
+    this.showFunctionEditor();
+    this.statusBar().showMessage(`Function ${name} deleted.`, 2600);
+  };
+
+  get canEditSubParameters(): boolean {
+    return !!this.functions.active && this.functions.parameterFunctions.length > 0;
+  }
+
   readonly setFunctionInput = (
     name: string,
     parameter: string,
@@ -360,13 +378,21 @@ export class MainWindow extends Observable {
     index: number,
     value: string,
   ): void => {
+    if (!this.canEditSubParameters) return;
     this.functions.setInput(name, parameter, initial, index, value);
     this.onParametersChanged();
   };
 
   readonly selectFunctionInputs = (name: string): void => {
+    if (!this.canEditSubParameters) return;
     this.functions.inputTab = name;
     this.changed();
+  };
+
+  readonly applyFunctionInputs = (name: string): void => {
+    if (!this.canEditSubParameters || !this.functions.parameterFunctions.some((fn) => fn.name === name)) return;
+    this.selectFunction(name);
+    this.applyParameters();
   };
 
   private showFunctionEditor(): void {
@@ -411,8 +437,7 @@ export class MainWindow extends Observable {
       } else this.buildPreview();
     } else this.runPreview();
     this.m_parameters.selectTab?.(this.functions.active || this.functions.inline[0]?.name || '');
-    if (!this.functions.parameterFunctions.length && this.#raisedDock === 'SubParametersDock')
-      this.#raisedDock = 'ParametersDock';
+    if (!this.canEditSubParameters && this.#raisedDock === 'SubParametersDock') this.#raisedDock = 'ParametersDock';
     this.changed();
   }
 
@@ -533,6 +558,7 @@ export class MainWindow extends Observable {
   }
 
   readonly raiseDock = (name: DockName): void => {
+    if (name === 'SubParametersDock' && !this.canEditSubParameters) return;
     if (this.#raisedDock === name) return;
     this.#raisedDock = name;
     this.changed();
@@ -707,7 +733,9 @@ export class MainWindow extends Observable {
     }
     this.functions.error = '';
     this.#previewProgram = program;
-    const parameterDefinitions = this.m_runtime.discoverParameters(program.source);
+    const parameterDefinitions = this.m_runtime
+      .discoverParameters(program.source)
+      .filter((definition) => !definition.functionName || !this.functions.deleted.has(definition.functionName));
     this.m_parameters.setDefinitions(parameterDefinitions, program.source, program.options);
 
     this.m_runtime.setParameters(parameters ?? this.m_parameters.overrides());

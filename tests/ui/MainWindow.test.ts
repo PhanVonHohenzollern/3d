@@ -10,6 +10,7 @@ import type { Viewport3DHandle } from '../../src/types/viewport';
 import { createViewport3DHandle } from '../../src/helpers/viewportHandle';
 import { QVector3D } from '../../src/utils/Vector3D';
 import { boxMesh, click, createEngine, project, scene } from '../renderer/helpers';
+import { declaredFunctionNames, removeFunctionSource } from '../../src/helpers/functions';
 
 class FakeEditor implements CodeEditorHandle {
   text = '';
@@ -207,6 +208,116 @@ describe('MainWindow', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+
+  it('enables Sub-Parameter only in a function editor and blocks its actions from Main', () => {
+    const { mw, editor } = createMainWindow();
+    mw.start();
+    const source = 'void element() {}\nvoid helper(double A=1) { double result=A; }';
+    editor.type(source, 1);
+    mw.buildPreview();
+    expect(mw.canEditSubParameters).toBe(false);
+    mw.raiseDock('SubParametersDock');
+    expect(mw.raisedDock()).toBe('ParametersDock');
+    mw.setFunctionInput('helper', 'A', ['1'], 0, '99');
+    mw.applyFunctionInputs('helper');
+    expect(mw.functions.inputs.has('helper')).toBe(false);
+    expect(mw.functions.active).toBe('');
+    mw.selectFunction('helper');
+    expect(mw.canEditSubParameters).toBe(true);
+    mw.raiseDock('SubParametersDock');
+    expect(mw.raisedDock()).toBe('SubParametersDock');
+    mw.setFunctionInput('helper', 'A', ['1'], 0, '12');
+    mw.applyFunctionInputs('helper');
+    expect(mw.m_runtime.evaluateNumericExpression('result')).toBe(12);
+    mw.selectFunction('');
+    expect(mw.canEditSubParameters).toBe(false);
+    expect(mw.raisedDock()).toBe('ParametersDock');
+    mw.applyFunctionInputs('helper');
+    expect(editor.text).toBe(source);
+    expect(mw.functions.active).toBe('');
+    mw.dispose();
+  });
+
+  it('deletes an attached function, its draft, arguments, parameter values and tab without restoring them from Build', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    const main = 'void element() { double D=100; get_val("D", D); }';
+    mw.start();
+    editor.type(main, 1);
+    mw.buildPreview();
+    parameters.importTable('D\n100\n130');
+    mw.addFunction('helper');
+    const sub = 'void helper(double A) { double D=20; get_val("D", D); }';
+    editor.type(sub, 1);
+    mw.buildPreview();
+    mw.setFunctionInput('helper', 'A', ['0'], 0, '12');
+    parameters.selectTab('helper');
+    parameters.importTable('D\n35\n45');
+    mw.applyParameters();
+    mw.saveFunction();
+    mw.selectFunction('helper');
+    mw.attachFunction();
+    mw.selectFunction('');
+    mw.buildPreview();
+    mw.selectFunction('helper');
+    editor.type(sub.replace('D=20', 'D=90'), 1);
+    mw.raiseDock('SubParametersDock');
+    mw.deleteFunction();
+    expect(mw.functions.active).toBe('');
+    expect(editor.text.trim()).toBe(main);
+    expect(mw.functions.names).toEqual([]);
+    expect(mw.functions.saved.has('helper')).toBe(false);
+    expect(mw.functions.drafts.has('helper')).toBe(false);
+    expect(mw.functions.inputs.has('helper')).toBe(false);
+    expect(parameters.values().has('helper::D')).toBe(false);
+    expect(parameters.tabs.map((tab) => tab.id)).toEqual(['element']);
+    expect(parameters.values().get('element::D')).toBe('100');
+    expect(parameters.dataSets.map((row) => row.get('element::D'))).toEqual(['100', '130']);
+    expect(mw.raisedDock()).toBe('ParametersDock');
+    expect(mw.debugBlocked).toBe(true);
+    mw.applyParameters();
+    expect(parameters.tabs.map((tab) => tab.id)).toEqual(['element']);
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.addFunction('helper')).toBe(true);
+    editor.type(sub, 1);
+    mw.buildPreview();
+    parameters.selectTab('helper');
+    expect(parameters.values().get('helper::D')).toBe('20');
+    expect(parameters.dataSets).toEqual([]);
+    expect(mw.functions.inputs.has('helper')).toBe(false);
+    mw.dispose();
+  });
+
+  it('deletes inline definitions and forward declarations while preserving other code and Main', () => {
+    const { mw, editor } = createMainWindow();
+    const source =
+      'void helper();\nvoid element() { helper(); }\nvoid helper() {}\nvoid helper2() { const char* name="helper"; }';
+    mw.start();
+    editor.type(source, 1);
+    mw.buildPreview();
+    mw.deleteFunction();
+    expect(editor.text).toBe(source);
+    mw.selectFunction('helper');
+    mw.deleteFunction();
+    expect(declaredFunctionNames(editor.text).has('helper')).toBe(false);
+    expect(editor.text).toContain('void element() { helper(); }');
+    expect(editor.text).toContain('void helper2() { const char* name="helper"; }');
+    expect(mw.functions.names).toEqual(['helper2']);
+    expect(mw.addFunction('helper')).toBe(true);
+    mw.deleteFunction();
+    expect(mw.functions.names).toEqual(['helper2']);
+    mw.dispose();
+  });
+
+  it.each(['double gone(double), keep(double);', 'double keep(double), gone(double);'])(
+    'keeps the other prototype when deleting from %s',
+    (source) => {
+      const next = removeFunctionSource(source + '\ndouble gone(double A) { return A; }', 'gone');
+      expect(declaredFunctionNames(next)).toEqual(new Set(['keep']));
+      expect(next).toContain('double');
+      expect(next).not.toContain('gone');
+    },
+  );
 
   it('creates, previews, saves, reopens and attaches a function without duplicating its definition', () => {
     const { mw, editor } = createMainWindow();
