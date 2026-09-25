@@ -50,6 +50,7 @@ import {
   type RuntimeValue,
 } from '../RuntimeValue';
 import { sdkTypeDefinition } from '../SdkDefinitions';
+import { rootName } from '../helpers/variablePaths';
 import { ExprParser } from './ExprParser';
 import type { RuntimeState } from './RuntimeState';
 import { StatementKind, type Statement } from './Statement';
@@ -84,6 +85,7 @@ export class RuntimeExecutor {
   constructor(
     private readonly m_state: RuntimeState,
     private readonly m_maxLine: number,
+    private readonly m_fullProgram = false,
   ) {}
 
   executeProgram(root: Statement): void {
@@ -112,18 +114,80 @@ export class RuntimeExecutor {
       this.m_functions.set(child.functionName, overloads);
     }
 
-    const selectedFunction = this.selectFunction(root);
+    const selectedFunction = this.m_fullProgram ? this.entryFunction(root) : this.selectFunction(root);
     if (!selectedFunction) {
-      this.executeNode(root, false);
+      this.executeGlobals(root);
 
       return;
     }
     ++this.m_functionCallDepth;
-    for (const child of root.children) if (child.kind !== StatementKind.Function) this.executeNode(child, false);
+    this.executeGlobals(root);
     --this.m_functionCallDepth;
 
+    this.m_state.globalValues = new Map(this.m_state.m_values);
+    this.m_state.globalIds = new Map(this.m_state.m_variableIds);
+    this.m_state.functionName = selectedFunction.functionName;
     this.initializeFunctionParameters(selectedFunction);
-    if (selectedFunction.body) this.executeNode(selectedFunction.body);
+    if (selectedFunction.body) this.executeBody(selectedFunction.body);
+  }
+
+  private executeGlobals(root: Statement): void {
+    for (const child of root.children) {
+      if (this.m_returned || this.m_break || this.m_continue) break;
+      if (child.kind === StatementKind.Function) continue;
+      this.m_state.globalValues = new Map(this.m_state.m_values);
+      this.m_state.globalIds = new Map(this.m_state.m_variableIds);
+      this.executeNode(child, false);
+    }
+  }
+
+  private entryFunction(root: Statement): Statement | null {
+    const functions = root.children.filter((child) => child.kind === StatementKind.Function);
+
+    const callsIn = (statement: Statement): string[] => {
+      const names: string[] = [];
+      for (const tokens of [
+        statement.tokens,
+        statement.condition,
+        statement.forInit,
+        statement.forCondition,
+        statement.forIncrement,
+      ])
+        tokens.forEach((token, index) => {
+          if (tokens[index + 1]?.text === '(') names.push(token.text);
+        });
+      for (const child of [...statement.children, statement.body, statement.thenBranch, statement.elseBranch])
+        if (child) names.push(...callsIn(child));
+
+      return names;
+    };
+
+    const called = new Set(functions.flatMap((fn) => callsIn(fn).filter((name) => name !== fn.functionName)));
+    // A script can call its own entry point after the definitions.
+    if (
+      root.children.some(
+        (child) =>
+          child.kind !== StatementKind.Function &&
+          callsIn(child).some((name) => functions.some((fn) => fn.functionName === name)),
+      )
+    )
+      return null;
+
+    return (
+      functions.find((fn) => fn.functionName === 'main') ??
+      functions.find((fn) => requiredParameterCount(fn) === 0 && !called.has(fn.functionName)) ??
+      functions.find((fn) => requiredParameterCount(fn) === 0) ??
+      functions[0] ??
+      null
+    );
+  }
+
+  private executeBody(s: Statement, skipFunctions = true): void {
+    for (const child of s.children) {
+      if (this.m_returned || this.m_break || this.m_continue) break;
+      if (skipFunctions && child.kind === StatementKind.Function) continue;
+      this.executeNode(child, skipFunctions);
+    }
   }
 
   private selectFunction(root: Statement): Statement | null {
@@ -161,10 +225,12 @@ export class RuntimeExecutor {
     if (this.m_functionCallDepth === 0 && s.startLine > this.m_maxLine) return;
     switch (s.kind) {
       case StatementKind.Block:
-        for (const c of s.children) {
-          if (this.m_returned || this.m_break || this.m_continue) break;
-          if (skipFunctions && c.kind === StatementKind.Function) continue;
-          this.executeNode(c, skipFunctions);
+        this.m_state.pushScope();
+        try {
+          this.executeBody(s, skipFunctions);
+        } finally {
+          // Keep the active block's locals visible when debugging inside it.
+          if (this.m_functionCallDepth > 0 || this.m_maxLine >= s.endLine) this.m_state.popScope();
         }
         break;
       case StatementKind.Simple:
@@ -178,7 +244,12 @@ export class RuntimeExecutor {
         });
         break;
       case StatementKind.For:
-        this.safeExecute(s, () => this.executeFor(s));
+        this.m_state.pushScope();
+        try {
+          this.safeExecute(s, () => this.executeFor(s));
+        } finally {
+          if (this.m_functionCallDepth > 0 || this.m_maxLine >= s.endLine) this.m_state.popScope();
+        }
         break;
       case StatementKind.While:
       case StatementKind.Do:
@@ -604,7 +675,8 @@ export class RuntimeExecutor {
     const dest = this.resolveLValue(argGroups[1]);
     const before = readLValue(dest);
 
-    const configured = this.m_state.m_parameters.get(name);
+    const configured =
+      this.m_state.m_parameters.get(`${this.m_state.functionName}::${name}`) ?? this.m_state.m_parameters.get(name);
     if (configured !== undefined) {
       writeLValue(dest, parameterTextToValue(configured, before));
       const after = readLValue(dest);
@@ -613,6 +685,7 @@ export class RuntimeExecutor {
     }
 
     this.m_state.recordParameterRequest({
+      ...(this.m_state.functionName ? { functionName: this.m_state.functionName } : {}),
       name,
       type: runtimeTypeName(before),
       defaultValue: parameterDisplayText(before),
@@ -835,6 +908,8 @@ export class RuntimeExecutor {
     const savedValues = new Map(state.m_values);
     const savedVariableIds = new Map(state.m_variableIds);
     const savedOrder = [...state.m_userVariableOrder];
+    const savedLines = new Map(state.m_lastChangedLine);
+    const savedFunctionName = state.functionName;
     const savedReturned = this.m_returned;
     const savedReturnValue = this.m_returnValue;
     const savedBreak = this.m_break,
@@ -842,7 +917,14 @@ export class RuntimeExecutor {
     const savedLoopDepth = this.m_loopDepth,
       savedSwitchDepth = this.m_switchDepth;
 
-    this.bindFunctionArguments(fn, args, state.m_apiCalls[parentApiIndex].argumentTraces);
+    // Callees see globals and their own locals, never the caller's local variables.
+    for (const [name, id] of state.globalIds)
+      if (savedVariableIds.get(name) === id) state.globalValues.set(name, savedValues.get(name));
+    state.m_values = new Map(state.globalValues);
+    state.m_variableIds = new Map(state.globalIds);
+    state.m_userVariableOrder = savedOrder.filter((name) => state.globalIds.has(name));
+    state.functionName = fn.functionName;
+    state.pushScope();
     this.m_returned = false;
     this.m_returnValue = undefined;
     this.m_break = this.m_continue = false;
@@ -852,7 +934,8 @@ export class RuntimeExecutor {
     let outputs: ReferenceOutput[];
     let returned: RuntimeValue;
     try {
-      if (fn.body) this.executeNode(fn.body);
+      this.bindFunctionArguments(fn, args, state.m_apiCalls[parentApiIndex].argumentTraces);
+      if (fn.body) this.executeBody(fn.body);
       outputs = this.referenceOutputs(fn, argumentTokens.length);
       const returnType = parseRuntimeType(fn.signature, 0);
       returned = runtimeDeepCopy(
@@ -863,9 +946,18 @@ export class RuntimeExecutor {
     } finally {
       this.m_parentApiStack.pop();
       --this.m_functionCallDepth;
+      state.popScope();
+      for (const [name, id] of state.globalIds) {
+        if (savedVariableIds.get(name) === id) {
+          savedValues.set(name, state.m_values.get(name));
+          for (const [path, line] of state.m_lastChangedLine) if (rootName(path) === name) savedLines.set(path, line);
+        }
+      }
       state.m_values = savedValues;
       state.m_variableIds = savedVariableIds;
       state.m_userVariableOrder = savedOrder;
+      state.m_lastChangedLine = savedLines;
+      state.functionName = savedFunctionName;
       this.m_returned = savedReturned;
       this.m_returnValue = savedReturnValue;
       this.m_break = savedBreak;

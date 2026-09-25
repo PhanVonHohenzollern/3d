@@ -19,7 +19,7 @@ export function neutralValueForType(type: string): string {
 }
 
 export function definitionId(request: RuntimeParameterRequest): string {
-  return `${request.name}\n${request.variableName}`;
+  return `${request.functionName ?? ''}\n${request.name}\n${request.variableName}`;
 }
 
 export function parameterSeed(definition: RuntimeParameterRequest): string {

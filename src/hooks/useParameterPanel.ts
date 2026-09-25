@@ -47,55 +47,58 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
   }, [model, onChanged]);
   useImperativeHandle(ref, () => model, [model]);
 
-  const fields = model.rows.map((row, index) => {
-    const value = model.editor?.row === index ? model.editor.text : row.texts[kParameterValueColumn];
+  const fields = model.rows
+    .map((row, index) => {
+      const value = model.editor?.row === index ? model.editor.text : row.texts[kParameterValueColumn];
 
-    const beginEdit = () => {
-      if (model.editor?.row !== index) model.edit(index, kParameterValueColumn);
-    };
+      const beginEdit = () => {
+        if (model.editor?.row !== index) model.edit(index, kParameterValueColumn);
+      };
 
-    const commit = () => {
-      if (model.editor?.row === index) model.commitEditor();
-    };
+      const commit = () => {
+        if (model.editor?.row === index) model.commitEditor();
+      };
 
-    const change = (text: string) => {
-      beginEdit();
-      model.editorTextEdited(text);
-    };
+      const change = (text: string) => {
+        beginEdit();
+        model.editorTextEdited(text);
+      };
 
-    const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        commit();
-        event.currentTarget.blur();
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        model.revertEditor();
-        event.currentTarget.blur();
-      }
-    };
+      const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commit();
+          event.currentTarget.blur();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          model.revertEditor();
+          event.currentTarget.blur();
+        }
+      };
 
-    return {
-      key: `${row.key}:${row.line}:${row.texts[2]}`,
-      label: row.texts[0],
-      value,
-      checkbox: !!row.checkbox,
-      disabled: !!row.disabled,
-      setChecked: (checked: boolean) => model.setExtInsulationEnabled(checked),
-      options: model.dataSets.flatMap((data, rowIndex) => {
-        const option = data.get(row.key);
+      return {
+        key: `${row.key}:${row.line}:${row.texts[2]}`,
+        label: row.texts[0],
+        functionName: row.functionName ?? '',
+        value,
+        checkbox: !!row.checkbox,
+        disabled: !!row.disabled,
+        setChecked: (checked: boolean) => model.setCheckbox(row.key, checked),
+        options: model.dataSets.flatMap((data, rowIndex) => {
+          const option = data.get(row.key);
 
-        return option === undefined ? [] : [{ row: rowIndex, value: option }];
-      }),
-      selectedDataSet: model.dataSetIndex,
-      selectDataSet: (dataSet: number) => model.selectDataSet(dataSet),
-      beginEdit,
-      change,
-      commit,
-      onKeyDown,
-    };
-  });
+          return option === undefined ? [] : [{ row: rowIndex, value: option }];
+        }),
+        selectedDataSet: model.dataSetIndex,
+        selectDataSet: (dataSet: number) => model.selectDataSet(dataSet),
+        beginEdit,
+        change,
+        commit,
+        onKeyDown,
+      };
+    })
+    .filter((field) => field.functionName === model.activeTab);
   const grid = parameterGridLayout(fields.length, gridSize.width, gridSize.height);
   const groups = Array.from({ length: grid.columns }, (_, column) =>
     fields.slice(column * grid.rows, (column + 1) * grid.rows),
@@ -124,6 +127,12 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
 
   return {
     fields,
+    tabs: model.tabs,
+    activeTab: model.activeTab,
+    selectTab: (id: string) => {
+      setDraft(null);
+      model.selectTab(id);
+    },
     gridRef,
     groups,
     onPaste,
@@ -137,7 +146,13 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
       text: draft.text,
       cells: draft.cells,
       columnCount: Math.max(0, ...draft.cells.map((row) => row.length)),
-      parameterNames: [...new Set(model.rows.filter((row) => !row.checkbox).map((row) => row.key))],
+      parameterNames: [
+        ...new Set(
+          model.rows
+            .filter((row) => (row.functionName ?? '') === model.activeTab && row.key !== 'getExtInsSize.enabled')
+            .map((row) => row.texts[0]),
+        ),
+      ],
       error: draftError,
       summary: draftSummary,
       canApply: !!draftSummary && !draftError,

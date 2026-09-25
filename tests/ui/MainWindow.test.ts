@@ -204,6 +204,32 @@ describe('MainWindow', () => {
     vi.useRealTimers();
   });
 
+  it('Build runs the main element before its helpers and locks inactive helper parameters immediately', () => {
+    const { mw, editor, parameters } = createMainWindow();
+    const source = [
+      'short makeDV() {',
+      ' double D=100, BG=1; get_val("D", D); get_val("BG", BG);',
+      ' makeVerySimpleTube(FdPoint3d(), FdPoint3d(0,0,100), D, 8);',
+      ' if(BG) makeBG();',
+      '}',
+      'double makeBG() { double D=20; get_val("D", D); makeVerySimpleTube(FdPoint3d(), FdPoint3d(0,0,30), D, 8); return 30; }',
+    ].join('\n');
+    mw.start();
+    editor.type(source, 1);
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    expect(mw.m_geometryScene.meshes).toHaveLength(2);
+    expect(mw.m_lastResult.parameterRequests.map((p) => p.functionName)).toEqual(['makeDV', 'makeDV', 'makeBG']);
+    const built = mw.m_geometryScene;
+    parameters.setCheckbox('makeDV::BG', false);
+    expect(parameters.rows.find((row) => row.key === 'makeBG::D')?.disabled).toBe(true);
+    expect(mw.m_geometryScene).toBe(built);
+    mw.buildPreview();
+    expect(mw.m_geometryScene.meshes).toHaveLength(1);
+    expect(mw.m_lastResult.apiCalls.some((call) => call.name === 'makeBG')).toBe(false);
+    mw.dispose();
+  });
+
   it('builds the outer insulation mesh only when enabled and applies thickness on the next Build', () => {
     const { mw, editor, parameters } = createMainWindow();
     const source = [

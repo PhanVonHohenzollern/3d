@@ -497,12 +497,12 @@ export class MainWindow extends Observable {
     this.m_previewTimer.stop();
 
     const parameterDefinitions = this.m_runtime.discoverParameters(source);
-    this.m_parameters.setDefinitions(parameterDefinitions);
+    this.m_parameters.setDefinitions(parameterDefinitions, source);
 
     this.m_runtime.setParameters(this.m_parameters.overrides());
     let result: RuntimeResult;
     try {
-      result = this.m_runtime.executeUpToLine(source, line);
+      result = this.m_runtime.executeUpToLine(source, line, this.previewMode === 'build');
     } catch (e) {
       this.executionFeedback = { source, diagnostics: [{ line, message: what(e) }] };
       this.changed();

@@ -352,7 +352,7 @@ export class ExprParser {
     if (token.kind === TokKind.String) {
       ++this.m_pos;
 
-      return token.text;
+      return token.character ? BigInt(token.text.charCodeAt(0)) : token.text;
     }
     if (this.match('(')) {
       let v = this.parseConditional();

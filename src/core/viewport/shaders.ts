@@ -25,6 +25,7 @@ in vec3 vNormal;
 uniform bool uUseOverrideColor;
 uniform vec3 uOverrideColor;
 uniform bool uLightingEnabled;
+uniform float uOpacity;
 
 out vec4 fragColor;
 
@@ -41,7 +42,7 @@ void main()
         float brightness = 0.50 + 0.40 * key + 0.10 * fill;
         base *= brightness;
     }
-    fragColor = vec4(base, 1.0);
+    fragColor = vec4(base, uOpacity);
 }
 `;
 

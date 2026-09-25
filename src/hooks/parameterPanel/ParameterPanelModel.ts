@@ -1,4 +1,5 @@
-import type { RuntimeParameterRequest, RuntimeResult } from '../../core/runtime/RuntimeTypes';
+import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '../../core/runtime/RuntimeTypes';
+import { GeometryRuntime } from '../../core/runtime/GeometryRuntime';
 import {
   definitionId,
   neutralValueForType,
@@ -29,6 +30,38 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   pasteMessage = '';
   pasteIsError = false;
   extInsulationEnabled = false;
+  activeTab = '';
+  #source = '';
+  #activeKeys: Set<string> | null = null;
+  readonly #tableTabs = new Map<string, { dataSets: ReadonlyMap<string, string>[]; index: number }>();
+
+  get tabs() {
+    return [...new Set(this.#definitions.map((definition) => definition.functionName ?? ''))].map((id) => ({
+      id,
+      label: id || 'Element',
+      enabled: this.rows.some((row) => (row.functionName ?? '') === id && !row.disabled),
+    }));
+  }
+
+  selectTab(id: string): void {
+    if (!this.tabs.some((tab) => tab.id === id) || id === this.activeTab) return;
+    this.commitEditor();
+    this.#tableTabs.set(this.activeTab, { dataSets: this.dataSets, index: this.dataSetIndex });
+    this.activeTab = id;
+    this.dataSets = this.#tableTabs.get(id)?.dataSets ?? [];
+    this.dataSetIndex = this.#tableTabs.get(id)?.index ?? -1;
+    this.pasteMessage = '';
+    this.changed();
+  }
+
+  #refreshAvailability(): void {
+    this.#activeKeys = null;
+    if (!this.#source) return;
+    const runtime = new GeometryRuntime();
+    runtime.setParameters(this.overrides());
+    const result = runtime.executeUpToLine(this.#source, this.#source.split('\n').length, true);
+    this.#activeKeys = new Set(result.parameterRequests.map(parameterKey));
+  }
 
   #definitions: RuntimeParameterRequest[] = [];
   readonly #values = new Map<string, string>();
@@ -41,25 +74,33 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   setPlaceholderData(): void {
     this.#definitions = [];
+    this.#source = '';
+    this.#activeKeys = null;
+    this.activeTab = '';
     this.extInsulationEnabled = false;
     this.#setRowCount0();
     this.changed();
   }
 
-  setDefinitions(definitions: readonly RuntimeParameterRequest[]): void {
+  setDefinitions(definitions: readonly RuntimeParameterRequest[], source = ''): void {
+    this.#source = source;
     this.#definitions = definitions.map((definition) => ({ ...definition }));
     if (!this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize'))
       this.extInsulationEnabled = false;
 
     for (const definition of this.#definitions) {
+      const key = parameterKey(definition);
       const seed = parameterSeed(definition);
-      if (!this.#values.has(definition.name)) {
-        this.#values.set(definition.name, seed);
-      } else if (!this.#userEditedKeys.has(definition.name)) {
-        this.#values.set(definition.name, seed);
+      if (!this.#values.has(key)) {
+        this.#values.set(key, seed);
+      } else if (!this.#userEditedKeys.has(key)) {
+        this.#values.set(key, seed);
       }
     }
 
+    if (!this.#definitions.some((definition) => (definition.functionName ?? '') === this.activeTab))
+      this.activeTab = this.#definitions[0]?.functionName ?? '';
+    this.#refreshAvailability();
     this.#rebuildTable();
   }
 
@@ -76,12 +117,13 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
         changed = true;
       }
 
-      if (!this.#userEditedKeys.has(request.name)) {
-        const value = this.#values.get(request.name);
+      const key = parameterKey(request);
+      if (!this.#userEditedKeys.has(key)) {
+        const value = this.#values.get(key);
         if (value !== undefined) {
           const refined = refinedParameterValue(request);
           if (refined !== null && value !== refined) {
-            this.#values.set(request.name, refined);
+            this.#values.set(key, refined);
             changed = true;
           }
         }
@@ -100,25 +142,29 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
     let selectedRow = -1;
     for (const definition of this.#definitions) {
+      const key = parameterKey(definition);
       const insulation = definition.sourceFunction === 'getExtInsSize';
       if (insulation)
         this.rows.push({
           key: 'getExtInsSize.enabled',
           line: definition.line,
           checkbox: true,
+          functionName: definition.functionName,
           texts: ['getExtInsSize', 'bool', '', String(this.extInsulationEnabled), String(definition.line)],
         });
       const row = this.rows.length;
-      const value = this.#values.get(definition.name) ?? neutralValueForType(definition.type);
+      const value = this.#values.get(key) ?? neutralValueForType(definition.type);
       const texts = parameterRowTexts(definition, value);
       if (insulation) texts[0] = 'size';
       this.rows.push({
-        key: definition.name,
+        key,
+        functionName: definition.functionName,
         line: definition.line,
         texts,
-        ...(insulation ? { disabled: !this.extInsulationEnabled } : {}),
+        checkbox: !!definition.checkbox,
+        disabled: insulation ? !this.extInsulationEnabled : !!this.#activeKeys && !this.#activeKeys.has(key),
       });
-      if (selectedKey !== '' && selectedKey === definition.name) selectedRow = row;
+      if (selectedKey !== '' && selectedKey === key) selectedRow = row;
     }
 
     if (selectedRow >= 0) {
@@ -146,12 +192,19 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   overrides(): Map<string, string> {
     const insulation = this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize');
     const values = new Map(
-      [...this.#values].filter(([key]) => (!insulation || key !== 'getExtInsSize') && this.#userEditedKeys.has(key)),
+      this.#definitions
+        .filter((definition) => definition.sourceFunction !== 'getExtInsSize')
+        .map((definition) => parameterKey(definition))
+        .filter((key) => this.#userEditedKeys.has(key))
+        .map((key) => [key, this.#values.get(key)!]),
     );
     // A removed query must not leave an enabled thickness in the runtime configuration.
     if (!insulation && !this.#definitions.some((definition) => definition.name === 'getExtInsSize'))
       values.delete('getExtInsSize');
-    if (insulation && this.extInsulationEnabled) values.set('getExtInsSize', this.#values.get('getExtInsSize') ?? '0');
+    if (insulation && this.extInsulationEnabled) {
+      const definition = this.#definitions.find((item) => item.sourceFunction === 'getExtInsSize')!;
+      values.set('getExtInsSize', this.#values.get(parameterKey(definition)) ?? '0');
+    }
 
     return values;
   }
@@ -163,12 +216,32 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     )
       return;
     this.extInsulationEnabled = enabled;
+    this.#refreshAvailability();
     this.#rebuildTable();
     this.#changedCallback?.();
   }
 
   previewTable(text: string) {
-    return parseParameterTable(text, this.#definitions);
+    return parseParameterTable(
+      text,
+      this.#definitions.filter((definition) => (definition.functionName ?? '') === this.activeTab),
+    );
+  }
+
+  setCheckbox(key: string, checked: boolean): void {
+    if (key === 'getExtInsSize.enabled') {
+      this.setExtInsulationEnabled(checked);
+
+      return;
+    }
+    const row = this.rows.find((item) => item.key === key);
+    if (!row || row.disabled || !row.checkbox) return;
+    this.#values.set(key, row.texts[1] === 'bool' ? String(checked) : checked ? '1' : '0');
+    this.#userEditedKeys.add(key);
+    this.dataSetIndex = -1;
+    this.#refreshAvailability();
+    this.#rebuildTable();
+    this.#changedCallback?.();
   }
 
   importTable(text: string): boolean {
@@ -197,9 +270,25 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.dataSetIndex = index;
     this.editor = null;
     for (const [key, value] of data) {
+      const row = this.rows.find((item) => item.key === key);
+      if (!row?.checkbox || row.disabled) continue;
       this.#values.set(key, value);
       this.#userEditedKeys.add(key);
     }
+    this.#refreshAvailability();
+    for (const [key, value] of data) {
+      const definition = this.#definitions.find((item) => parameterKey(item) === key);
+      if (
+        !definition ||
+        (definition.sourceFunction === 'getExtInsSize'
+          ? !this.extInsulationEnabled
+          : this.#activeKeys && !this.#activeKeys.has(key))
+      )
+        continue;
+      this.#values.set(key, value);
+      this.#userEditedKeys.add(key);
+    }
+    this.#refreshAvailability();
     this.#rebuildTable();
     this.#changedCallback?.();
   }
@@ -209,7 +298,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.dataSetIndex = -1;
     this.#userEditedKeys.clear();
     this.#values.clear();
-    for (const definition of this.#definitions) this.#values.set(definition.name, parameterSeed(definition));
+    for (const definition of this.#definitions) this.#values.set(parameterKey(definition), parameterSeed(definition));
+    this.#refreshAvailability();
     this.#rebuildTable();
     this.#changedCallback?.();
   }
@@ -234,6 +324,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
     this.#values.set(key, value);
     this.#userEditedKeys.add(key);
+    this.#refreshAvailability();
+    this.#rebuildTable();
     if (this.#changedCallback) this.#changedCallback();
   }
 

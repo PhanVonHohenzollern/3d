@@ -49,6 +49,8 @@ export interface RuntimeApiCall {
 }
 
 export interface RuntimeParameterRequest {
+  functionName?: string;
+  checkbox?: boolean;
   name: string;
   type: string;
   defaultValue: string;
@@ -56,6 +58,10 @@ export interface RuntimeParameterRequest {
   sourceFunction: string;
   variableName: string;
   line: number;
+}
+
+export function parameterKey(request: Pick<RuntimeParameterRequest, 'name' | 'functionName'>): string {
+  return request.functionName ? `${request.functionName}::${request.name}` : request.name;
 }
 
 export interface RuntimeResult {

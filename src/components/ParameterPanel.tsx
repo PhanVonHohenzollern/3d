@@ -54,6 +54,28 @@ export function ParameterPanel(props: ParameterPanelProps) {
           <RotateCcw className="size-3" aria-hidden /> Reset
         </Button>
       </div>
+      {panel.tabs.length > 1 && (
+        <div
+          role="tablist"
+          aria-label="Function parameters"
+          className="flex shrink-0 flex-wrap gap-1 border-b border-line px-2 py-1"
+        >
+          {panel.tabs.map((tab) => (
+            <Button
+              key={tab.id}
+              role="tab"
+              aria-selected={panel.activeTab === tab.id}
+              variant={panel.activeTab === tab.id ? 'secondary' : 'ghost'}
+              size="sm"
+              className={`h-7 px-2 text-xs ${tab.enabled ? '' : 'opacity-50'}`}
+              title={tab.enabled ? tab.label : `${tab.label}: inactive branch`}
+              onClick={() => panel.selectTab(tab.id)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+      )}
       {dialog && (
         <FloatingWindow title="Parameter table" raiseSerial={0} onClose={dialog.close}>
           <label className="flex shrink-0 flex-col gap-1 text-xs">
@@ -179,7 +201,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
                 </thead>
                 <tbody>
                   {group.map((field) => (
-                    <tr key={field.key} className="h-7 border-b border-line/50">
+                    <tr key={field.key} className={`h-7 border-b border-line/50 ${field.disabled ? 'opacity-50' : ''}`}>
                       <th title={field.label} scope="row" className="truncate px-1 font-medium">
                         {field.label}
                       </th>
@@ -189,7 +211,11 @@ export function ParameterPanel(props: ParameterPanelProps) {
                             type="checkbox"
                             aria-label={field.label}
                             className="block w-4 cursor-pointer accent-primary"
-                            checked={field.value === 'true'}
+                            checked={
+                              field.value === 'true' ||
+                              (Number.isFinite(Number(field.value)) && Number(field.value) !== 0)
+                            }
+                            disabled={field.disabled}
                             onChange={(event) => field.setChecked(event.target.checked)}
                           />
                         ) : (

@@ -92,6 +92,19 @@ const kMathFunctions: ReadonlyMap<string, BuiltinFunction> = new Map([
 ]);
 
 export function builtinFunction(name: string): BuiltinFunction | undefined {
+  if (name === 'strlen')
+    return (args) => {
+      if (args.length !== 1 || (!isString(args[0]) && !isArray(args[0])))
+        throw runtimeError('strlen requires one string');
+      const value = args[0];
+      const text = isString(value)
+        ? value
+        : value.elements
+            .map((item) => (typeof item === 'string' ? item : String.fromCharCode(runtimeNumber(item))))
+            .join('');
+
+      return BigInt(text.split('\0')[0].length);
+    };
   if (name === 'wcsstr' || name === 'strstr')
     return (args) => {
       if (args.length !== 2) throw runtimeError(name + ' requires two strings');

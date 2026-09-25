@@ -36,7 +36,7 @@ import { drawDebugItems, drawPreselection, type DebugOverlayScene } from './debu
 import { buildGeometryVertices, buildGeometryWireVertices } from './geometryVertices';
 import { OverlayPainter } from './OverlayPainter';
 import { debugLabelPanelsLayout } from './panelLayout';
-import { pickConnectorAt, pickDebugItemAt, pickMeshAlongRay } from './picking';
+import { pickConnectorAt, pickDebugItemsAt, pickMeshesAlongRay } from './picking';
 import { VertexArray } from './VertexArray';
 import { ViewportCamera } from './ViewportCamera';
 import { ViewportRenderer } from './ViewportRenderer';
@@ -75,6 +75,20 @@ export class ViewportEngine {
   private readonly m_vectorLabels = new DebugLabelPanel('Vectors', qColor(51, 199, 255));
   private m_selectionModeButton: SelectionModeButtonState = { text: '', geometry: new QRect() };
   private m_selectionMode: SelectionMode = 'Point';
+  private m_selectionPresentation: 'Separate' | 'Unite' = 'Separate';
+  private m_lastPick: { screen: QPointF; candidates: string; index: number } | null = null;
+
+  selectionPresentation = (): 'Separate' | 'Unite' => this.m_selectionPresentation;
+
+  toggleSelectionPresentation(): void {
+    this.m_selectionPresentation = this.m_selectionPresentation === 'Separate' ? 'Unite' : 'Separate';
+    this.m_lastPick = null;
+    this.clearHover();
+    this.rebuildGpuVertices();
+    for (const listener of this.m_widgetListeners) listener();
+    this.update();
+  }
+
   private m_hoveredDebugItem = '';
   private m_hoveredMeshIndex = -1;
   private m_geometryScene: PreviewGeometryScene = { meshes: [], warnings: [] };
@@ -155,6 +169,7 @@ export class ViewportEngine {
   }
 
   selectionModeButtonClicked(): void {
+    this.m_lastPick = null;
     this.m_selectionMode = kNextSelectionMode[this.m_selectionMode];
     this.clearHover();
     this.updateSelectionModeButton();
@@ -188,6 +203,7 @@ export class ViewportEngine {
   }
 
   setGeometryScene(scene: PreviewGeometryScene): void {
+    this.m_lastPick = null;
     this.m_selectedMeshIndex = -1;
     this.m_meshFocusActive = false;
     this.m_geometryScene = { meshes: [...scene.meshes], warnings: [...scene.warnings] };
@@ -505,6 +521,7 @@ export class ViewportEngine {
     this.clearHover();
     this.m_dragDistance += delta.manhattanLength();
     if (this.m_dragDistance < kClickDragThreshold) return;
+    this.m_lastPick = null;
 
     const creatingPoint = this.m_selectionMode === 'Point' && this.m_pressModifiers.control;
     if (event.buttons & LeftButton && !creatingPoint) {
@@ -528,6 +545,7 @@ export class ViewportEngine {
   }
 
   wheelEvent(event: WheelEventData): void {
+    this.m_lastPick = null;
     this.m_camera.zoom(event.angleDeltaY);
     this.buildAxesVertices();
     this.rebuildGpuVertices();
@@ -553,7 +571,7 @@ export class ViewportEngine {
       const point = this.m_camera.screenToGroundPlane(position);
       if (point && this.m_pointCreationCallback) this.m_pointCreationCallback({ x: point.x, y: point.y, z: point.z });
     } else if (this.m_selectionMode !== 'Mesh') {
-      const name = this.pickDebugItem(position, this.m_selectionMode === 'Point' ? 'Point' : 'Vector');
+      const name = this.pickDebugItem(position, this.m_selectionMode === 'Point' ? 'Point' : 'Vector', true);
       if (name === '') return;
       const selected = this.m_pressModifiers.shift ? new Set(this.m_selectedVariables) : new Set<string>();
       if (selected.has(name)) selected.delete(name);
@@ -561,7 +579,7 @@ export class ViewportEngine {
       this.setSelectedVariables(selected);
       if (this.m_selectionChangedCallback) this.m_selectionChangedCallback(new Set(this.m_selectedVariables));
     } else {
-      const meshIndex = this.pickMesh(position);
+      const meshIndex = this.pickMesh(position, true);
       if (meshIndex < 0) return;
       this.m_selectedMeshIndex = meshIndex;
       this.setSelectedVariables(new Set());
@@ -642,6 +660,7 @@ export class ViewportEngine {
 
   private childAt(p: QPoint): boolean {
     if (this.m_selectionModeButton.geometry.contains(p)) return true;
+    if (this.presentationButtonRect().contains(p)) return true;
     for (const panel of [this.m_pointLabels, this.m_vectorLabels]) {
       if (panel.isVisible() && panel.geometry().contains(p)) return true;
     }
@@ -747,11 +766,17 @@ export class ViewportEngine {
 
   private drawGeometrySolid(): void {
     const renderer = this.m_renderer;
+    const unite = this.m_selectionPresentation === 'Unite';
+    if (unite) {
+      renderer.setDepthTest(false);
+      renderer.setDepthMask(false);
+    }
     renderer.setUniformValue('uLightingEnabled', true);
     for (const range of this.m_geometryRanges) {
       if (!this.isGeometryApiVisible(range.apiIndex)) continue;
       const selected = this.isMeshSelected(range.meshIndex);
       const hovered = this.isMeshInGroup(range.meshIndex, this.m_hoveredMeshIndex);
+      if (unite) renderer.setOpacity(selected || hovered ? 0.55 : 0.12);
       renderer.setUniformValue('uUseOverrideColor', selected || hovered);
       if (selected) renderer.setUniformValue('uOverrideColor', new QVector3D(0.2, 0.78, 0.95));
       else if (hovered) {
@@ -763,6 +788,7 @@ export class ViewportEngine {
       }
       renderer.glDrawArrays('GL_TRIANGLES', range.start, range.count);
     }
+    if (unite) renderer.setOpacity(1);
     renderer.setUniformValue('uLightingEnabled', false);
     renderer.setUniformValue('uUseOverrideColor', false);
   }
@@ -857,6 +883,7 @@ export class ViewportEngine {
       if (panel.isVisible()) occupied.push(QRectF.fromRect(panel.geometry()).adjusted(-4, -4, 4, 4));
     }
     occupied.push(QRectF.fromRect(this.m_selectionModeButton.geometry).adjusted(-4, -4, 4, 4));
+    occupied.push(QRectF.fromRect(this.presentationButtonRect()).adjusted(-4, -4, 4, 4));
 
     return placeWorldAxisLabels({
       axes: this.m_axesVertices,
@@ -897,12 +924,13 @@ export class ViewportEngine {
 
   private layoutDebugLabelPanels(): void {
     const layout = debugLabelPanelsLayout({
+      extraControlHeight: 38,
       width: this.width(),
       height: this.height(),
       pointContentHeight: this.m_pointLabels.contentHeight(),
       vectorContentHeight: this.m_vectorLabels.contentHeight(),
       showLabels: this.m_showLabels,
-      apiFocusActive: this.m_apiFocusActive,
+      apiFocusActive: this.m_apiFocusActive || this.m_selectionPresentation === 'Unite',
     });
     this.setSelectionModeButton({ geometry: layout.button });
     this.m_pointLabels.setGeometry(layout.point.x, layout.point.y, layout.point.width, layout.point.height);
@@ -1049,26 +1077,61 @@ export class ViewportEngine {
   private projectToScreen = (world: QVector3D): QPointF | null => this.m_camera.projectToScreen(world);
 
   private isGeometryApiVisible(apiIndex: number): boolean {
-    return !this.m_apiFocusActive || this.m_apiFocusIndices.size === 0 || this.m_apiFocusIndices.has(apiIndex);
+    return (
+      this.m_selectionPresentation === 'Unite' ||
+      !this.m_apiFocusActive ||
+      this.m_apiFocusIndices.size === 0 ||
+      this.m_apiFocusIndices.has(apiIndex)
+    );
   }
 
-  private pickMesh(screen: QPointF): number {
+  private cyclePick<T extends string | number>(candidates: T[], screen: QPointF, advance: boolean): T | undefined {
+    if (this.m_selectionPresentation !== 'Unite') return candidates[0];
+    const signature = `${this.m_selectionMode}:${candidates.join(',')}`;
+    const previous = this.m_lastPick;
+    const same =
+      previous && previous.candidates === signature && screen.sub(previous.screen).toPoint().manhattanLength() < 5;
+    const index = same ? (previous.index + (advance ? 1 : 0)) % candidates.length : 0;
+    if (advance && candidates.length) this.m_lastPick = { screen, candidates: signature, index };
+
+    return candidates[index];
+  }
+
+  presentationButtonRect(): QRect {
+    const rect = this.m_selectionModeButton.geometry;
+
+    return new QRect(rect.x, Math.max(0, rect.y - rect.height - 6), rect.width, rect.height);
+  }
+
+  private pickMesh(screen: QPointF, advance = false): number {
     if (!this.m_showGeometry) return -1;
     const ray = this.m_camera.screenRay(screen);
     if (!ray) return -1;
 
-    return pickMeshAlongRay(this.m_geometryScene.meshes, ray, (apiIndex) => this.isGeometryApiVisible(apiIndex));
+    return (
+      this.cyclePick(
+        pickMeshesAlongRay(this.m_geometryScene.meshes, ray, (apiIndex) => this.isGeometryApiVisible(apiIndex)),
+        screen,
+        advance,
+      ) ?? -1
+    );
   }
 
-  private pickDebugItem(screen: QPointF, kind: DebugKind): string {
-    return pickDebugItemAt(
-      this.m_debugItems,
-      kind,
-      screen,
-      this.m_camera.cameraPosition(),
-      (item) => this.isDebugItemVisible(item),
-      this.projectToScreen,
-      (item) => this.vectorArrow(item),
+  private pickDebugItem(screen: QPointF, kind: DebugKind, advance = false): string {
+    return (
+      this.cyclePick(
+        pickDebugItemsAt(
+          this.m_debugItems,
+          kind,
+          screen,
+          this.m_camera.cameraPosition(),
+          (item) => this.isDebugItemVisible(item),
+          this.projectToScreen,
+          (item) => this.vectorArrow(item),
+        ),
+        screen,
+        advance,
+      ) ?? ''
     );
   }
 
@@ -1079,7 +1142,9 @@ export class ViewportEngine {
   }
 
   private isDebugItemVisible(item: DebugItem): boolean {
-    if (this.m_apiFocusActive) {
+    if (this.m_selectionPresentation === 'Unite') {
+      if (!item.apiSnapshot && item.name !== kOverviewPointName) return false;
+    } else if (this.m_apiFocusActive) {
       if (!item.apiSnapshot) return false;
       if (item.apiIndex < 0 || !this.m_apiFocusIndices.has(item.apiIndex)) return false;
     } else {

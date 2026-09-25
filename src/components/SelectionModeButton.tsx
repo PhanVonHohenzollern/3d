@@ -20,6 +20,28 @@ export function SelectionModeButton({ engine }: SelectionModeButtonProps) {
             type="button"
             variant="outline"
             size="sm"
+            className="absolute z-3 border-viewport-button-line bg-viewport-button px-2 text-xs text-viewport-button-fg shadow-md hover:bg-viewport-button-hover"
+            style={button.presentationStyle}
+            onClick={button.togglePresentation}
+            aria-label={`Selection display: ${button.presentation}`}
+            onPointerEnter={button.onPointerEnter}
+            onFocus={button.onFocus}
+          >
+            {button.presentation}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {button.presentation === 'Separate'
+            ? 'Separate: focus the selected part. Click for Unite.'
+            : 'Unite: transparent meshes and all points/vectors. Click again at the same position to select objects behind it.'}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             className="absolute z-3 gap-2 overflow-hidden border-viewport-button-line bg-viewport-button px-2 text-xs text-viewport-button-fg shadow-md hover:border-viewport-button-line-focus hover:bg-viewport-button-hover hover:text-viewport-button-fg focus-visible:ring-viewport-button-line-focus active:bg-viewport-button-pressed dark:border-viewport-button-line dark:bg-viewport-button dark:hover:bg-viewport-button-hover"
             data-object-name="previewSelectionModeButton"
             aria-label={`Selection mode: ${button.text}. Click to change mode.`}

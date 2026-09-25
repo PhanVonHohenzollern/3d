@@ -30,6 +30,52 @@ function editValue(model: ParameterPanelModel, row: number, text: string): void 
 }
 
 describe('ParameterPanel', () => {
+  it('groups function parameters, gates nested branches, and keeps same-name overrides independent', () => {
+    const source = [
+      'short makeDV() {',
+      ' double D=100, BG=1, roof_base=1; get_val("D", D); get_val("BG", BG); get_val("roof_base", roof_base);',
+      ' if(BG) makeBG(); if(roof_base == 1) makeFS(); else makeSDK();',
+      '}',
+      'void makeBG() { double D=20, VS=0; get_val("D", D); get_val("VS", VS); if(VS) { double Di=4; get_val("Di", Di); } }',
+      'void makeFS() { double H=40; get_val("H", H); }',
+      'void makeSDK() { double H=50; get_val("H", H); }',
+    ].join('\n');
+    const model = new ParameterPanelModel();
+    model.setDefinitions(new GeometryRuntime().discoverParameters(source), source);
+
+    const row = (key: string) => model.rows.find((item) => item.key === key)!;
+
+    const edit = (key: string, value: string) => editValue(model, model.rows.indexOf(row(key)), value);
+
+    expect(model.tabs.map((tab) => tab.id)).toEqual(['makeDV', 'makeBG', 'makeFS', 'makeSDK']);
+    expect(row('makeDV::BG').checkbox).toBe(true);
+    expect(row('makeDV::roof_base').checkbox).toBe(false);
+    expect(row('makeDV::D').texts[3]).toBe('100');
+    expect(row('makeBG::D').texts[3]).toBe('20');
+    expect(row('makeBG::Di').disabled).toBe(true);
+    expect(row('makeSDK::H').disabled).toBe(true);
+    model.setCheckbox('makeBG::VS', true);
+    expect(row('makeBG::Di').disabled).toBe(false);
+    edit('makeDV::D', '120');
+    model.selectTab('makeBG');
+    expect(model.importTable('D\n30\n35')).toBe(true);
+    expect(model.overrides().get('makeBG::D')).toBe('30');
+    expect(model.overrides().get('makeDV::D')).toBe('120');
+    model.setCheckbox('makeDV::BG', false);
+    expect(model.tabs.find((tab) => tab.id === 'makeBG')?.enabled).toBe(false);
+    expect(row('makeBG::D').disabled).toBe(true);
+    expect(model.edit(model.rows.indexOf(row('makeBG::D')), 3)).toBe(false);
+    model.setCheckbox('makeDV::BG', true);
+    expect(row('makeBG::D').disabled).toBe(false);
+    expect(row('makeBG::D').texts[3]).toBe('30');
+    edit('makeDV::roof_base', '2');
+    expect(row('makeFS::H').disabled).toBe(true);
+    expect(row('makeSDK::H').disabled).toBe(false);
+    model.selectTab('makeDV');
+    expect(model.dataSets).toHaveLength(0);
+    model.selectTab('makeBG');
+    expect(model.dataSets).toHaveLength(2);
+  });
   it('shows an insulation checkbox and gated size only for an actual query in the source', () => {
     const runtime = new GeometryRuntime();
     const model = new ParameterPanelModel();

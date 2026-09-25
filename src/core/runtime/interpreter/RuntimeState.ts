@@ -24,6 +24,39 @@ const isPureIndexToken = (t: Token): boolean =>
     (t.text === '+' || t.text === '-' || t.text === '*' || t.text === '/' || t.text === '%'));
 
 export class RuntimeState {
+  functionName = '';
+  globalValues = new Map<string, RuntimeValue>();
+  globalIds = new Map<string, number>();
+  private scopes: Map<string, { exists: boolean; value: RuntimeValue; id?: number; lines: Map<string, number> }>[] = [];
+
+  pushScope(): void {
+    this.scopes.push(new Map());
+  }
+
+  popScope(): void {
+    const scope = this.scopes.pop();
+    if (!scope) return;
+    for (const [name, saved] of scope) {
+      if (saved.exists)
+        this.m_values.set(
+          name,
+          saved.id !== undefined && this.globalIds.get(name) === saved.id ? this.globalValues.get(name) : saved.value,
+        );
+      else {
+        this.m_values.delete(name);
+        this.m_userVariableOrder = this.m_userVariableOrder.filter((item) => item !== name);
+      }
+      if (saved.id === undefined) this.m_variableIds.delete(name);
+      else this.m_variableIds.set(name, saved.id);
+      for (const path of this.m_lastChangedLine.keys())
+        if (rootName(path) === name) this.m_lastChangedLine.delete(path);
+      for (const [path, line] of saved.lines) this.m_lastChangedLine.set(path, line);
+      if (saved.id !== undefined && this.globalIds.get(name) === saved.id)
+        for (const change of this.m_variableChanges)
+          if (change.variableId === saved.id) this.m_lastChangedLine.set(change.name, change.line);
+    }
+  }
+
   callFunction?: (name: string, args: readonly Token[][], line: number) => RuntimeValue;
   mutateValue?: (target: readonly Token[], method: string, args: readonly RuntimeValue[], line: number) => RuntimeValue;
   m_values = new Map<string, RuntimeValue>();
@@ -39,6 +72,10 @@ export class RuntimeState {
   m_functionMacros = new Map<string, RuntimeFunctionMacro>();
 
   reset(): void {
+    this.functionName = '';
+    this.globalValues = new Map();
+    this.globalIds = new Map();
+    this.scopes = [];
     this.callFunction = undefined;
     this.mutateValue = undefined;
     this.m_values = new Map();
@@ -164,6 +201,14 @@ export class RuntimeState {
     inputTrace: RuntimeArgumentTrace | null = null,
   ): void {
     const existed = this.m_values.has(name);
+    const scope = this.scopes.at(-1);
+    if (scope && (operation === 'declare' || operation === 'bind') && !scope.has(name))
+      scope.set(name, {
+        exists: existed,
+        value: this.m_values.get(name),
+        id: this.m_variableIds.get(name),
+        lines: new Map([...this.m_lastChangedLine].filter(([path]) => rootName(path) === name)),
+      });
     const newLifetime = !existed || operation === 'declare' || operation === 'bind';
     const before: RuntimeValue = existed && !newLifetime ? runtimeDeepCopy(this.m_values.get(name)) : undefined;
     let trace = inputTrace ?? emptyTrace();
@@ -172,6 +217,8 @@ export class RuntimeState {
     if (userVariable && !existed) this.m_userVariableOrder.push(name);
     const stored = runtimeDeepCopy(value);
     this.m_values.set(name, stored);
+    if (this.globalIds.has(name) && this.globalIds.get(name) === this.m_variableIds.get(name))
+      this.globalValues.set(name, stored);
     if (line <= 0) return;
     this.recordVariableChange(
       line,
@@ -233,6 +280,9 @@ export class RuntimeState {
     sources: RuntimeValueSource[] = [],
   ): void {
     if (line <= 0 || name === '') return;
+    const root = rootName(name);
+    if (this.globalIds.has(root) && this.globalIds.get(root) === this.m_variableIds.get(root))
+      this.globalValues.set(root, this.m_values.get(root));
     this.m_variableChanges.push({
       line,
       name,
@@ -251,6 +301,7 @@ export class RuntimeState {
     const index = this.m_parameterRequests.findIndex(
       (r) =>
         r.name === request.name &&
+        r.functionName === request.functionName &&
         r.sourceFunction === request.sourceFunction &&
         r.variableName === request.variableName,
     );

@@ -22,7 +22,7 @@ export interface VariablePanelProps {
 
 export interface ParameterPanelHandle {
   setPlaceholderData(): void;
-  setDefinitions(definitions: readonly RuntimeParameterRequest[]): void;
+  setDefinitions(definitions: readonly RuntimeParameterRequest[], source?: string): void;
   updateRuntimeResult(result: RuntimeResult): void;
   values(): Map<string, string>;
   overrides(): Map<string, string>;
@@ -30,6 +30,7 @@ export interface ParameterPanelHandle {
 }
 
 export interface ParameterRow {
+  functionName?: string;
   key: string;
   line: number;
   texts: string[];

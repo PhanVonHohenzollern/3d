@@ -1,4 +1,4 @@
-import type { RuntimeParameterRequest } from '../core/runtime/RuntimeTypes';
+import { parameterKey, type RuntimeParameterRequest } from '../core/runtime/RuntimeTypes';
 
 // Excel's text clipboard uses tabs, CRLF, and CSV-style quotes for multiline cells.
 export function parameterTableCells(text: string): string[][] {
@@ -73,7 +73,8 @@ export function parseParameterTable(text: string, definitions: readonly RuntimeP
         if (value === '') return;
         const type = definitions.find((d) => d.name === key)?.type;
         if (type !== 'string' && /^[+-]?\d+,\d+(?:e[+-]?\d+)?$/i.test(value)) value = value.replace(',', '.');
-        values.set(key, value);
+        const definition = definitions.find((d) => d.name === key)!;
+        values.set(parameterKey(definition), value);
       });
 
       return values;

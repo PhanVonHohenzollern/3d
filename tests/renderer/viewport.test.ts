@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LeftButton, RightButton } from '../../src/helpers/qtInput';
 import { QVector3D } from '../../src/utils/Vector3D';
 import { boxMesh, click, createEngine, mouse, project, resultWithP0, scene } from './helpers';
+import { GeometryRuntime } from '../../src/core/runtime/GeometryRuntime';
 
 function meshModeEngine() {
   const engine = createEngine();
@@ -14,6 +15,25 @@ function meshModeEngine() {
 }
 
 describe('Mesh mode', () => {
+  it('Unite cycles through occluded meshes without clearing API focus', () => {
+    const { engine, onMesh } = meshModeEngine();
+    engine.setGeometryScene(scene(boxMesh([-2, -2, -2], [2, 2, 2], 0), boxMesh([-1, -1, -1], [1, 1, 1], 1)));
+    engine.setApiFocusIndices(new Set([0]));
+    engine.toggleSelectionPresentation();
+    expect(engine.selectionPresentation()).toBe('Unite');
+    click(engine, 400, 300);
+    expect(onMesh).toHaveBeenLastCalledWith(0, 1);
+    engine.setApiFocusIndices(new Set([0]));
+    click(engine, 400, 300);
+    expect(onMesh).toHaveBeenLastCalledWith(1, 2);
+    engine.setApiFocusIndices(new Set([1]));
+    click(engine, 400, 300);
+    expect(onMesh).toHaveBeenLastCalledWith(0, 1);
+    engine.toggleSelectionPresentation();
+    expect(engine.selectionPresentation()).toBe('Separate');
+    click(engine, 400, 300);
+    expect(onMesh).toHaveBeenLastCalledWith(1, 2);
+  });
   it('selects the whole API invocation from a click', () => {
     const { engine, onMesh } = meshModeEngine();
     engine.setGeometryScene(
@@ -56,6 +76,23 @@ describe('Mesh mode', () => {
 });
 
 describe('debug points and clicks', () => {
+  it.each(['Point', 'Vector'] as const)('Unite selects overlapping %s snapshots across API calls', (kind) => {
+    const engine = createEngine();
+    const source = 'makeFlatDisc(FdPoint3d(0,0,0), vz, 2, 8);\nmakeFlatDisc(FdPoint3d(0,0,0), vz, 3, 8);';
+    engine.setRuntimeResult(new GeometryRuntime().executeUpToLine(source, 999));
+    engine.setGeometryScene(scene(boxMesh([-2, -2, -2], [2, 2, 2], 8)));
+    engine.setApiFocusIndices(new Set([0]));
+    engine.toggleSelectionPresentation();
+    if (kind === 'Vector') engine.selectionModeButtonClicked();
+    const selected = vi.fn();
+    engine.setSelectionChangedCallback(selected);
+    click(engine, 400, 300);
+    expect([...engine.selectedDebugItems()][0]).toContain(`@api0:${kind.toLowerCase()}:`);
+    engine.setApiFocusIndices(new Set([0]));
+    click(engine, 400, 300);
+    expect([...engine.selectedDebugItems()][0]).toContain(`@api1:${kind.toLowerCase()}:`);
+    expect(selected).toHaveBeenCalledTimes(2);
+  });
   it('click selects p0; Shift-click toggles it', () => {
     const engine = createEngine();
     engine.setRuntimeResult(resultWithP0(0, 0, 0));

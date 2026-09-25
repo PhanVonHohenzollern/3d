@@ -93,6 +93,11 @@ export function callMethod(value: RuntimeValue, method: string, args: readonly R
 }
 
 export function indexValue(value: RuntimeValue, index: bigint): RuntimeValue {
+  if (typeof value === 'string') {
+    if (index < 0n || index > BigInt(value.length)) throw runtimeError('string index out of range');
+
+    return BigInt(value.charCodeAt(Number(index)) || 0);
+  }
   if (isPoint(value) || isVector(value)) {
     if (index < 0n || index > 2n) throw runtimeError(`${runtimeTypeName(value)} index out of range`);
 

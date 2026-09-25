@@ -15,6 +15,7 @@ interface MainProgram {
   uUseOverrideColor: WebGLUniformLocation | null;
   uOverrideColor: WebGLUniformLocation | null;
   uLightingEnabled: WebGLUniformLocation | null;
+  uOpacity: WebGLUniformLocation | null;
 }
 
 interface LineProgram {
@@ -62,6 +63,17 @@ export class ViewportRenderer {
   private m_uniformOverrideColor = new QVector3D();
   private m_uniformLightingEnabled = false;
   private m_lineWidth = 1;
+  private m_opacity = 1;
+
+  setOpacity(opacity: number): void {
+    this.m_opacity = opacity;
+    const gl = this.m_gl;
+    if (!gl) return;
+    if (opacity < 1) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    } else gl.disable(gl.BLEND);
+  }
 
   initialize(gl: WebGL2RenderingContext): boolean {
     this.release(false);
@@ -80,6 +92,7 @@ export class ViewportRenderer {
       uUseOverrideColor: gl.getUniformLocation(program, 'uUseOverrideColor'),
       uOverrideColor: gl.getUniformLocation(program, 'uOverrideColor'),
       uLightingEnabled: gl.getUniformLocation(program, 'uLightingEnabled'),
+      uOpacity: gl.getUniformLocation(program, 'uOpacity'),
     };
     if (lineProgram) {
       this.m_lineProgram = {
@@ -263,6 +276,7 @@ export class ViewportRenderer {
     const c = this.m_uniformOverrideColor;
     gl.uniform3f(program.uOverrideColor, c.x, c.y, c.z);
     gl.uniform1i(program.uLightingEnabled, this.m_uniformLightingEnabled ? 1 : 0);
+    gl.uniform1f(program.uOpacity, this.m_opacity);
     gl.drawArrays(mode === 'GL_LINES' ? gl.LINES : gl.TRIANGLES, first, count);
   }
 

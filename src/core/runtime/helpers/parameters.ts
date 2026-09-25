@@ -10,8 +10,11 @@ import {
 } from '../RuntimeValue';
 import { stdException, stod, stoll, trim } from '../../../utils/cpp';
 import { Lexer } from '../interpreter/Lexer';
+import { ProgramParser } from '../interpreter/ProgramParser';
+import { StatementKind, type Statement } from '../interpreter/Statement';
 import type { RuntimeParameterRequest } from '../RuntimeTypes';
 import { isScalarTypeToken, normalizedScalarType } from './typeNames';
+import { functionParameters } from './functionSignatures';
 import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, tokensToExpression, type Token } from './tokens';
 
 function neutralParameterValue(type: string): string {
@@ -132,7 +135,85 @@ function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticPar
 
 export function scanGetValParameters(code: string): RuntimeParameterRequest[] {
   const tokens = new Lexer(code).scan();
-  const declarations = scanScalarDeclarations(tokens);
+  let root: Statement;
+  try {
+    root = new ProgramParser(tokens).parse();
+  } catch {
+    return scanParameterTokens(tokens, scanScalarDeclarations(tokens));
+  }
+  const out: RuntimeParameterRequest[] = [];
+  type Binding = StaticParameterDecl & { requests: RuntimeParameterRequest[] };
+
+  const walk = (s: Statement, bindings: Map<string, Binding>, functionName = ''): void => {
+    if (s.kind === StatementKind.Function) {
+      const local = new Map(bindings);
+      for (const parameter of functionParameters(s))
+        for (const [name, declaration] of scanScalarDeclarations(parameter))
+          local.set(name, { ...declaration, requests: [] });
+      if (s.body) walk(s.body, local, s.functionName);
+
+      return;
+    }
+    if (s.kind === StatementKind.Block) {
+      const local = new Map(bindings);
+      for (const child of s.children)
+        for (const [name, declaration] of scanScalarDeclarations(child.tokens))
+          local.set(name, { ...declaration, requests: [] });
+      for (const child of s.children) walk(child, local, functionName);
+
+      return;
+    }
+    for (const [name, declaration] of scanScalarDeclarations(s.tokens))
+      bindings.set(name, { ...declaration, requests: [] });
+    for (const request of scanParameterTokens(s.tokens, bindings)) {
+      if (functionName) request.functionName = functionName;
+      const existing = out.find(
+        (item) =>
+          item.name === request.name &&
+          (request.sourceFunction === 'getExtInsSize' || item.variableName === request.variableName) &&
+          item.functionName === request.functionName,
+      );
+      if (existing) continue;
+      out.push(request);
+      bindings.get(request.variableName)?.requests.push(request);
+      if (request.type === 'bool') request.checkbox = true;
+    }
+    // Only boolean use is a checkbox; selectors such as roof_base == 2 remain numeric.
+    if (
+      s.kind === StatementKind.If &&
+      s.condition.every(
+        (token) => token.kind === TokKind.Identifier || ['!', '&&', '||', '(', ')'].includes(token.text),
+      )
+    ) {
+      for (const token of s.condition)
+        for (const request of bindings.get(token.text)?.requests ?? [])
+          if (request.type !== 'string') request.checkbox = true;
+    }
+    // Queries may also be called directly inside an if condition.
+    for (const request of scanParameterTokens(s.condition, bindings)) {
+      if (functionName) request.functionName = functionName;
+      if (
+        !out.some(
+          (item) =>
+            item.name === request.name &&
+            item.functionName === request.functionName &&
+            (request.sourceFunction === 'getExtInsSize' || item.variableName === request.variableName),
+        )
+      )
+        out.push(request);
+    }
+    for (const child of [s.thenBranch, s.elseBranch, s.body]) if (child) walk(child, new Map(bindings), functionName);
+  };
+
+  walk(root, new Map());
+
+  return out;
+}
+
+function scanParameterTokens(
+  tokens: readonly Token[],
+  declarations: ReadonlyMap<string, StaticParameterDecl>,
+): RuntimeParameterRequest[] {
   const out: RuntimeParameterRequest[] = [];
 
   for (let i = 0; i + 1 < tokens.length; ++i) {

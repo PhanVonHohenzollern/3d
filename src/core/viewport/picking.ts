@@ -19,13 +19,22 @@ export function pickMeshAlongRay(
   ray: ScreenRay,
   isApiVisible: (apiIndex: number) => boolean,
 ): number {
+  return pickMeshesAlongRay(meshes, ray, isApiVisible)[0] ?? -1;
+}
+
+export function pickMeshesAlongRay(
+  meshes: readonly PreviewMesh[],
+  ray: ScreenRay,
+  isApiVisible: (apiIndex: number) => boolean,
+): number[] {
   const nearPoint = ray.nearPoint;
   const direction = ray.farPoint.sub(nearPoint).normalized();
-  let closest = ray.farPoint.sub(nearPoint).length();
-  let picked = -1;
+  const hits: { index: number; distance: number }[] = [];
   for (let meshIndex = 0; meshIndex < meshes.length; ++meshIndex) {
     const mesh = meshes[meshIndex];
     if (!isApiVisible(mesh.apiIndex)) continue;
+    let closest = ray.farPoint.sub(nearPoint).length();
+    let hit = false;
     const vertexCount = mesh.vertices.length;
     for (let i = 0; i + 2 < mesh.indices.length; i += 3) {
       const ia = mesh.indices[i];
@@ -41,12 +50,13 @@ export function pickMeshAlongRay(
       );
       if (Number.isFinite(distance) && distance >= 0 && distance < closest) {
         closest = distance;
-        picked = meshIndex;
+        hit = true;
       }
     }
+    if (hit) hits.push({ index: meshIndex, distance: closest });
   }
 
-  return picked;
+  return hits.sort((a, b) => a.distance - b.distance).map((hit) => hit.index);
 }
 
 export function pickDebugItemAt(
@@ -58,10 +68,20 @@ export function pickDebugItemAt(
   project: Projection,
   vectorArrow: (item: DebugItem) => VertexArray,
 ): string {
-  let bestName = '';
+  return pickDebugItemsAt(items, kind, screen, eye, isVisible, project, vectorArrow)[0] ?? '';
+}
+
+export function pickDebugItemsAt(
+  items: readonly DebugItem[],
+  kind: DebugKind,
+  screen: QPointF,
+  eye: QVector3D,
+  isVisible: (item: DebugItem) => boolean,
+  project: Projection,
+  vectorArrow: (item: DebugItem) => VertexArray,
+): string[] {
+  const hits: { name: string; distance: number; depth: number }[] = [];
   const radius = kind === 'Point' ? kPointPickRadius : kVectorPickRadius;
-  let bestDistance = radius;
-  let bestDepth = Number.MAX_VALUE;
 
   for (const item of items) {
     if (item.kind !== kind || !isVisible(item)) continue;
@@ -82,18 +102,12 @@ export function pickDebugItemAt(
     }
     if (distance >= radius) continue;
     const depth = item.end.sub(eye).lengthSquared();
-    if (
-      bestName === '' ||
-      distance < bestDistance - 0.01 ||
-      (Math.abs(distance - bestDistance) <= 0.01 && depth < bestDepth)
-    ) {
-      bestDistance = distance;
-      bestDepth = depth;
-      bestName = item.name;
-    }
+    hits.push({ name: item.name, distance, depth });
   }
 
-  return bestName;
+  return hits
+    .sort((a, b) => (Math.abs(a.distance - b.distance) <= 0.01 ? a.depth - b.depth : a.distance - b.distance))
+    .map((hit) => hit.name);
 }
 
 export function pickConnectorAt(connectors: readonly ConnectorPreview[], screen: QPointF, project: Projection): number {

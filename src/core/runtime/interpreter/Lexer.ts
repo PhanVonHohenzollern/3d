@@ -158,7 +158,10 @@ export class Lexer {
     }
     if (this.m_pos < src.length) ++this.m_pos;
 
-    return makeToken(TokKind.String, value, 0.0, line);
+    return {
+      ...makeToken(TokKind.String, value, 0.0, line),
+      ...(quote === "'" && value.length === 1 ? { character: true } : {}),
+    };
   }
 
   private scanNumber(): Token {

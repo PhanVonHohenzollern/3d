@@ -20,7 +20,7 @@ export { runtimeSourceHistory } from './helpers/runtimeResult';
 export class GeometryRuntime {
   private readonly m_state = new RuntimeState();
 
-  executeUpToLine(code: string, maxLine: number): RuntimeResult {
+  executeUpToLine(code: string, maxLine: number, fullProgram = false): RuntimeResult {
     const state = this.m_state;
     state.reset();
     this.seedBuiltinValues();
@@ -30,7 +30,7 @@ export class GeometryRuntime {
       this.importSourceMacros(processed.definitions.join('\n'));
       const program = new ProgramParser(new Lexer(processed.code).scan()).parse();
       const effectiveMaxLine = Math.min(Math.max(0, maxLine), code.split('\n').length);
-      new RuntimeExecutor(state, effectiveMaxLine).executeProgram(program);
+      new RuntimeExecutor(state, effectiveMaxLine, fullProgram).executeProgram(program);
     } catch (e) {
       state.addDiagnostic(Math.max(1, maxLine), 'parser: ' + stdException(e).message);
     }

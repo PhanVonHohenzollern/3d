@@ -9,6 +9,7 @@ const kMaximumColumnWidth = 340;
 const kHeaderOnlyHeight = 25;
 
 export interface DebugLabelPanelsLayoutInput {
+  extraControlHeight?: number;
   width: number;
   height: number;
   pointContentHeight: number;
@@ -28,7 +29,10 @@ export function debugLabelPanelsLayout(input: DebugLabelPanelsLayoutInput): Debu
     buttonHeight,
   );
   const columnWidth = Math.max(0, Math.min(kMaximumColumnWidth, Math.trunc(((width - 24) * 27) / 100)));
-  const availableHeight = Math.max(0, height - buttonHeight - 3 * kSelectionButtonMargin);
+  const availableHeight = Math.max(
+    0,
+    height - buttonHeight - 3 * kSelectionButtonMargin - (input.extraControlHeight ?? 0),
+  );
   const vectorHeight = availableHeight;
   const show = input.showLabels && availableHeight >= 50 && columnWidth >= 60;
 

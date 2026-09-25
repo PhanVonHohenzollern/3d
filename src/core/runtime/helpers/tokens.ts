@@ -2,6 +2,7 @@ export const TokKind = { Identifier: 0, Number: 1, String: 2, Symbol: 3, End: 4 
 export type TokKind = (typeof TokKind)[keyof typeof TokKind];
 
 export interface Token {
+  character?: boolean;
   kind: TokKind;
   text: string;
   number: number;
@@ -30,7 +31,7 @@ export function tokensToExpression(tokens: readonly Token[]): string {
   let out = '';
   let previousKind: TokKind = TokKind.End;
   for (const token of tokens) {
-    const text = token.kind === TokKind.String ? `"${token.text}"` : token.text;
+    const text = token.kind === TokKind.String ? (token.character ? `'${token.text}'` : `"${token.text}"`) : token.text;
     if (out !== '' && isWord(token.kind) && isWord(previousKind)) out += ' ';
     out += text;
     previousKind = token.kind;
