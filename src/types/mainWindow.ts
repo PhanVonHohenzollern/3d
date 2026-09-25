@@ -1,6 +1,6 @@
 import type { Action } from '../hooks/mainWindow/Action';
 
-export type DockName = 'VariablesDock' | 'ParametersDock' | 'ApiTraceDock' | 'LinkDock';
+export type DockName = 'VariablesDock' | 'ParametersDock' | 'ApiTraceDock' | 'LinkDock' | 'SubParametersDock';
 
 export type PreviewMode = 'build' | 'debug';
 

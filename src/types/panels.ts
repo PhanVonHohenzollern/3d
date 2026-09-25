@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
 import type { ConnectorExpressionEvaluator, ConnectorPreview } from '../core/geometry/ConnectorPreview';
-import type { RuntimeParameterRequest, RuntimeResult } from '../core/runtime/RuntimeTypes';
+import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '../core/runtime/RuntimeTypes';
 
 export interface VariablePanelHandle {
   setRuntimeResult(result: RuntimeResult, currentLine: number): void;
@@ -22,11 +22,16 @@ export interface VariablePanelProps {
 
 export interface ParameterPanelHandle {
   setPlaceholderData(): void;
-  setDefinitions(definitions: readonly RuntimeParameterRequest[], source?: string): void;
+  setDefinitions(
+    definitions: readonly RuntimeParameterRequest[],
+    source?: string,
+    options?: RuntimeExecutionOptions,
+  ): void;
   updateRuntimeResult(result: RuntimeResult): void;
   values(): Map<string, string>;
   overrides(): Map<string, string>;
   commitEditor(): void;
+  selectTab?(id: string): void;
 }
 
 export interface ParameterRow {
@@ -46,6 +51,7 @@ export interface ParameterEditor {
 
 export interface ParameterPanelProps {
   onChanged?: () => void;
+  onApply?: () => void;
   ref?: Ref<ParameterPanelHandle>;
 }
 

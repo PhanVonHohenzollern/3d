@@ -1,5 +1,5 @@
 import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '../../core/runtime/RuntimeTypes';
-import { GeometryRuntime } from '../../core/runtime/GeometryRuntime';
+import { GeometryRuntime, type RuntimeExecutionOptions } from '../../core/runtime/GeometryRuntime';
 import {
   definitionId,
   neutralValueForType,
@@ -32,6 +32,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   extInsulationEnabled = false;
   activeTab = '';
   #source = '';
+  #executionOptions?: RuntimeExecutionOptions;
   #activeKeys: Set<string> | null = null;
   readonly #tableTabs = new Map<string, { dataSets: ReadonlyMap<string, string>[]; index: number }>();
 
@@ -59,7 +60,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     if (!this.#source) return;
     const runtime = new GeometryRuntime();
     runtime.setParameters(this.overrides());
-    const result = runtime.executeUpToLine(this.#source, this.#source.split('\n').length, true);
+    const result = runtime.executeUpToLine(this.#source, this.#source.split('\n').length, true, this.#executionOptions);
     this.#activeKeys = new Set(result.parameterRequests.map(parameterKey));
   }
 
@@ -82,8 +83,13 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.changed();
   }
 
-  setDefinitions(definitions: readonly RuntimeParameterRequest[], source = ''): void {
+  setDefinitions(
+    definitions: readonly RuntimeParameterRequest[],
+    source = '',
+    options?: RuntimeExecutionOptions,
+  ): void {
     this.#source = source;
+    this.#executionOptions = options;
     this.#definitions = definitions.map((definition) => ({ ...definition }));
     if (!this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize'))
       this.extInsulationEnabled = false;

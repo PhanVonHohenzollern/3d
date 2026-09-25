@@ -15,12 +15,14 @@ import { Splitter } from './Splitter';
 import { ToolBar } from './ToolBar';
 import { VariablePanel } from './VariablePanel';
 import { Viewport3D } from './Viewport3D';
+import { FunctionEditorFooter, FunctionEditorTabs } from './FunctionEditorTools';
+import { SubParameterPanel } from './SubParameterPanel';
 
 export function App() {
   const mainWindow = useMainWindow();
   const compact = useCompactLayout();
   const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum, title, tabs } =
-    useDockArea(mainWindow.raisedDock, mainWindow.raiseDock);
+    useDockArea(mainWindow.raisedDock, mainWindow.raiseDock, mainWindow.subParameters.functions.length > 0);
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
@@ -82,8 +84,9 @@ export function App() {
                   </Button>
                 </div>
               </PanelHeader>
+              <FunctionEditorTabs {...mainWindow.functions} />
               <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
-                <CodeEditor {...mainWindow.editor} />
+                <CodeEditor {...mainWindow.editor} footer={<FunctionEditorFooter {...mainWindow.functions} />} />
               </div>
             </section>
             <div className="flex h-full min-w-0 flex-col">
@@ -142,6 +145,7 @@ export function App() {
                       ParametersDock: <ParameterPanel {...mainWindow.parameters} />,
                       ApiTraceDock: <ApiTracePanel {...mainWindow.apiTrace} />,
                       LinkDock: <LinkPanel {...mainWindow.links} />,
+                      SubParametersDock: <SubParameterPanel {...mainWindow.subParameters} />,
                     }}
                   />
                 </div>

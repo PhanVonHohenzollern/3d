@@ -28,6 +28,7 @@ import { Observable } from '../observable/Observable';
 import { Action } from './Action';
 import { SingleShotTimer } from './SingleShotTimer';
 import { StatusBarModel } from './StatusBarModel';
+import { FunctionWorkspace } from './FunctionWorkspace';
 
 export class MainWindow extends Observable {
   #editor: CodeEditorHandle | null = null;
@@ -86,8 +87,23 @@ export class MainWindow extends Observable {
   m_geometryScene: PreviewGeometryScene = { meshes: [], warnings: [] };
   previewMode: PreviewMode = 'debug';
   buildNumber = 0;
+  #buildSequence = 0;
   previewDirty = false;
   #builtSource: string | null = null;
+  #builtProgram: ReturnType<FunctionWorkspace['program']> | undefined;
+  #builtParameters: ReadonlyMap<string, string> | undefined;
+  #previewProgram: ReturnType<FunctionWorkspace['program']> | undefined;
+  #switchingEditor = false;
+  readonly functions = new FunctionWorkspace();
+  readonly #tabBuilds = new Map<
+    string,
+    {
+      source: string;
+      program: ReturnType<FunctionWorkspace['program']>;
+      number: number;
+      parameters: ReadonlyMap<string, string>;
+    }
+  >();
   #codeDirty = false;
   executionFeedback: EditorExecutionFeedback = { source: '', diagnostics: [] };
 
@@ -97,9 +113,13 @@ export class MainWindow extends Observable {
 
   get previewStatus(): string {
     if (this.previewMode === 'debug') return 'Debug · live preview';
-    const errors = this.executionFeedback.diagnostics.length;
+    const errors =
+      this.executionFeedback.diagnostics.length + (this.executionFeedback.externalDiagnostics?.length ?? 0);
+    const pending = this.#codeDirty
+      ? 'code changes pending — press Build'
+      : 'parameter changes pending — press OK in Parameters';
 
-    return `Build #${this.buildNumber} · ${this.previewDirty ? 'changes pending — press Build' : errors ? `${errors} error(s)` : `${this.m_geometryScene.meshes.length} mesh(es)`}`;
+    return `Build #${this.buildNumber} · ${this.previewDirty ? pending : errors ? `${errors} error(s)` : `${this.m_geometryScene.meshes.length} mesh(es)`}`;
   }
 
   importedObj: { name: string; scene: PreviewGeometryScene } | null = null;
@@ -188,9 +208,26 @@ export class MainWindow extends Observable {
     this.activatePreviewMode('build');
     this.m_parameters.commitEditor();
     const source = this.m_editor.toPlainText();
-    ++this.buildNumber;
-    this.updatePreview(source.split('\n').length, source);
+    let program: ReturnType<FunctionWorkspace['program']>;
+    try {
+      program = this.functions.program(source);
+    } catch (error) {
+      this.functions.error = what(error);
+      this.changed();
+
+      return;
+    }
+    this.buildNumber = ++this.#buildSequence;
+    this.updatePreview(source.split('\n').length, source, program);
     this.#builtSource = source;
+    this.#builtProgram = program;
+    this.#builtParameters = this.m_parameters.overrides();
+    this.#tabBuilds.set(this.functions.active, {
+      source,
+      program,
+      number: this.buildNumber,
+      parameters: this.#builtParameters,
+    });
     this.#codeDirty = false;
     this.previewDirty = false;
     this.changed();
@@ -213,14 +250,20 @@ export class MainWindow extends Observable {
   }
 
   readonly onEditorTextChanged = (): void => {
+    if (this.#switchingEditor) return;
+    this.functions.edit(this.m_editor.toPlainText());
     this.m_editor.setTraceSourceLines(new Set());
-    this.#codeDirty = this.m_editor.toPlainText() !== this.#builtSource;
+    this.#codeDirty =
+      this.m_editor.toPlainText() !== this.#builtSource ||
+      (!!this.#builtProgram &&
+        this.functions.program(this.m_editor.toPlainText(), false).source !== this.#builtProgram.source);
     this.previewDirty = true;
     this.changed();
     this.schedulePreview();
   };
 
   readonly onEditorCursorPositionChanged = (): void => {
+    if (this.#switchingEditor) return;
     if (this.m_navigatingToTrace) return;
     this.m_editor.setTraceSourceLines(new Set());
     this.m_browsingTrace = false;
@@ -232,6 +275,146 @@ export class MainWindow extends Observable {
     this.changed();
     this.runPreview();
   };
+
+  readonly applyParameters = (): void => {
+    this.m_parameters.commitEditor();
+    this.importedObj = null;
+    if (this.previewMode === 'build' && this.#builtSource !== null) {
+      // Parameter changes rerun the built code without applying pending source edits.
+      let program = this.#builtProgram;
+      try {
+        if (program)
+          program = {
+            ...program,
+            options: { ...program.options, arguments: this.functions.program(this.#builtSource).options.arguments },
+          };
+      } catch (error) {
+        this.functions.error = what(error);
+        this.changed();
+
+        return;
+      }
+      this.updatePreview(this.#builtSource.split('\n').length, this.#builtSource, program);
+      this.#builtProgram = program;
+      this.#builtParameters = this.m_parameters.overrides();
+      if (program)
+        this.#tabBuilds.set(this.functions.active, {
+          source: this.#builtSource,
+          program,
+          number: this.buildNumber,
+          parameters: this.#builtParameters,
+        });
+      this.previewDirty = this.#codeDirty;
+    } else {
+      this.runPreview();
+      this.previewDirty = false;
+    }
+    this.changed();
+  };
+
+  readonly addFunction = (name: string): boolean => {
+    this.m_parameters.commitEditor();
+    this.functions.edit(this.m_editor.toPlainText());
+    if (!this.functions.add(name)) {
+      this.changed();
+
+      return false;
+    }
+    this.showFunctionEditor();
+
+    return true;
+  };
+
+  readonly selectFunction = (name: string): void => {
+    if (name === this.functions.active || (name && !this.functions.names.includes(name))) return;
+    this.m_parameters.commitEditor();
+    this.functions.edit(this.m_editor.toPlainText());
+    this.functions.active = name;
+    this.functions.error = '';
+    this.showFunctionEditor();
+  };
+
+  readonly saveFunction = (): void => {
+    this.functions.edit(this.m_editor.toPlainText());
+    if (this.functions.save()) this.showFunctionEditor();
+    this.changed();
+  };
+
+  readonly cancelFunction = (): void => {
+    const name = this.functions.active;
+    this.functions.cancel();
+    this.#tabBuilds.delete(name);
+    this.showFunctionEditor();
+  };
+
+  readonly attachFunction = (): void => {
+    this.functions.edit(this.m_editor.toPlainText());
+    if (this.functions.attach()) this.statusBar().showMessage('Function attached to the main code.', 2600);
+    this.changed();
+  };
+
+  readonly setFunctionInput = (
+    name: string,
+    parameter: string,
+    initial: string[],
+    index: number,
+    value: string,
+  ): void => {
+    this.functions.setInput(name, parameter, initial, index, value);
+    this.onParametersChanged();
+  };
+
+  readonly selectFunctionInputs = (name: string): void => {
+    this.functions.inputTab = name;
+    this.changed();
+  };
+
+  private showFunctionEditor(): void {
+    this.m_previewTimer.stop();
+    this.#switchingEditor = true;
+    try {
+      this.m_editor.setSource(this.functions.source());
+      this.m_editor.setTextCursorToLine(this.m_editor.blockCount());
+    } finally {
+      this.#switchingEditor = false;
+    }
+    this.importedObj = null;
+    this.m_browsingTrace = false;
+    this.m_apiTrace.clearApiFocus();
+    this.m_editor.setTraceSourceLines(new Set());
+    this.functions.inputTab = this.functions.active;
+    this.m_lastResult = emptyRuntimeResult();
+    this.m_geometryScene = { meshes: [], warnings: [] };
+    this.executionFeedback = { source: this.functions.source(), diagnostics: [] };
+    this.m_viewport.setGeometryScene(this.m_geometryScene);
+    this.m_viewport.setRuntimeResult(this.m_lastResult);
+    this.m_variables.setRuntimeResult(this.m_lastResult, 1);
+    this.m_apiTrace.setRuntimeResult(this.m_lastResult);
+    const built = this.#tabBuilds.get(this.functions.active);
+    this.#builtSource = built?.source ?? null;
+    this.#builtProgram = built?.program;
+    this.#builtParameters = built?.parameters;
+    const currentProgram = this.functions.program(this.functions.source(), false);
+    this.#codeDirty =
+      !!built && (this.functions.source() !== built.source || currentProgram.source !== built.program.source);
+    this.previewDirty = this.#codeDirty;
+    if (this.previewMode === 'build') {
+      if (built) {
+        this.buildNumber = built.number;
+        this.updatePreview(built.source.split('\n').length, built.source, built.program, built.parameters);
+        const current = [...this.m_parameters.overrides()].sort(([a], [b]) => a.localeCompare(b));
+        const previous = [...built.parameters].sort(([a], [b]) => a.localeCompare(b));
+        this.previewDirty ||= JSON.stringify(current) !== JSON.stringify(previous);
+        this.previewDirty ||=
+          JSON.stringify([...(currentProgram.options.arguments ?? [])]) !==
+          JSON.stringify([...(built.program.options.arguments ?? [])]);
+      } else this.buildPreview();
+    } else this.runPreview();
+    this.m_parameters.selectTab?.(this.functions.active || this.functions.inline[0]?.name || '');
+    if (!this.functions.parameterFunctions.length && this.#raisedDock === 'SubParametersDock')
+      this.#raisedDock = 'ParametersDock';
+    this.changed();
+  }
 
   readonly linkExpressionEvaluator = (expression: string): number =>
     this.m_runtime.evaluateNumericExpression(expression);
@@ -292,6 +475,20 @@ export class MainWindow extends Observable {
   };
 
   navigateToSource(line: number, lines: ReadonlySet<number>): void {
+    if (line > this.executionFeedback.source.split('\n').length && this.#previewProgram) {
+      const location = this.#previewProgram.locations.findLast((entry) => line >= entry.start && line <= entry.end);
+      if (location) {
+        const localLine = line - location.start + location.localStart;
+        const localLines = new Set(
+          [...lines]
+            .filter((value) => value >= location.start && value <= location.end)
+            .map((value) => value - location.start + location.localStart),
+        );
+        if (location.name !== this.functions.active) this.selectFunction(location.name);
+        line = localLine;
+        lines = localLines;
+      }
+    }
     if (line < 1 || line > this.m_editor.blockCount()) return;
     const navigation = this.m_navigatingToTrace;
     this.m_navigatingToTrace = true;
@@ -493,16 +690,30 @@ export class MainWindow extends Observable {
     this.updatePreview(line);
   }
 
-  private updatePreview(line: number, source = this.m_editor.toPlainText()): void {
+  private updatePreview(
+    line: number,
+    source = this.m_editor.toPlainText(),
+    program?: ReturnType<FunctionWorkspace['program']>,
+    parameters?: ReadonlyMap<string, string>,
+  ): void {
     this.m_previewTimer.stop();
+    try {
+      program ??= this.functions.program(source);
+    } catch (error) {
+      this.functions.error = what(error);
+      this.changed();
 
-    const parameterDefinitions = this.m_runtime.discoverParameters(source);
-    this.m_parameters.setDefinitions(parameterDefinitions, source);
+      return;
+    }
+    this.functions.error = '';
+    this.#previewProgram = program;
+    const parameterDefinitions = this.m_runtime.discoverParameters(program.source);
+    this.m_parameters.setDefinitions(parameterDefinitions, program.source, program.options);
 
-    this.m_runtime.setParameters(this.m_parameters.overrides());
+    this.m_runtime.setParameters(parameters ?? this.m_parameters.overrides());
     let result: RuntimeResult;
     try {
-      result = this.m_runtime.executeUpToLine(source, line, this.previewMode === 'build');
+      result = this.m_runtime.executeUpToLine(program.source, line, this.previewMode === 'build', program.options);
     } catch (e) {
       this.executionFeedback = { source, diagnostics: [{ line, message: what(e) }] };
       this.changed();
@@ -510,7 +721,23 @@ export class MainWindow extends Observable {
 
       return;
     }
-    this.executionFeedback = { source, diagnostics: result.diagnostics };
+    const sourceLines = source.split('\n').length;
+    this.executionFeedback = {
+      source,
+      diagnostics: result.diagnostics.filter((d) => d.line <= sourceLines),
+      externalDiagnostics: result.diagnostics
+        .filter((d) => d.line > sourceLines)
+        .map((d) => {
+          const location = program.locations.findLast((entry) => d.line >= entry.start && d.line <= entry.end);
+
+          return {
+            name: location?.name || 'Main',
+            line: location ? d.line - location.start + location.localStart : d.line,
+            sourceLine: d.line,
+            message: d.message,
+          };
+        }),
+    };
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
       ParametersDock: parameterDefinitions.reduce(

@@ -90,3 +90,9 @@ export function emptyApiCall(): RuntimeApiCall {
     argumentTraces: [],
   };
 }
+
+export interface RuntimeExecutionOptions {
+  entryFunction?: string | null;
+  arguments?: ReadonlyMap<string, string>;
+  isolated?: boolean;
+}

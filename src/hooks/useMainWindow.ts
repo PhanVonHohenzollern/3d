@@ -7,6 +7,8 @@ export function useMainWindow() {
   const [mainWindow] = useState(() => new MainWindow());
   useObservable(mainWindow);
   const files = useModelFiles(mainWindow);
+  const workspace = mainWindow.functions;
+  const parameterFunctions = workspace.parameterFunctions;
 
   useEffect(() => {
     document.title = 'Geometry Preview';
@@ -23,6 +25,39 @@ export function useMainWindow() {
   }, [mainWindow]);
 
   return {
+    functions: {
+      active: workspace.active,
+      names: workspace.names,
+      error: workspace.error,
+      unsaved: [...workspace.drafts.keys()].filter(
+        (name) =>
+          workspace.source(name) !==
+          (workspace.inline.find((fn) => fn.name === name)?.code ?? workspace.saved.get(name)),
+      ),
+      add: mainWindow.addFunction,
+      select: mainWindow.selectFunction,
+      save: mainWindow.saveFunction,
+      cancel: mainWindow.cancelFunction,
+      attach: mainWindow.attachFunction,
+    },
+    subParameters: {
+      functions: parameterFunctions.map((fn) => ({
+        ...fn,
+        inputs: fn.inputs.map((input) => ({
+          ...input,
+          values: workspace.inputValues(fn.name, input.name, input.initial),
+        })),
+      })),
+      active: parameterFunctions.some((fn) => fn.name === workspace.inputTab)
+        ? workspace.inputTab
+        : (parameterFunctions[0]?.name ?? ''),
+      select: mainWindow.selectFunctionInputs,
+      change: mainWindow.setFunctionInput,
+      apply: (name: string) => {
+        mainWindow.selectFunction(name);
+        mainWindow.applyParameters();
+      },
+    },
     files,
     importedObj: mainWindow.importedObj,
     returnToCodePreview: mainWindow.returnToCodePreview,
@@ -41,6 +76,7 @@ export function useMainWindow() {
       previewStatus: mainWindow.previewStatus,
       onTextChanged: mainWindow.onEditorTextChanged,
       onCursorPositionChanged: mainWindow.onEditorCursorPositionChanged,
+      onSourceActivated: mainWindow.onApiTraceSourceActivated,
     },
     viewport: {
       ref: mainWindow.bindViewport,
@@ -50,7 +86,11 @@ export function useMainWindow() {
       onConnectorSelection: mainWindow.onViewportConnectorSelection,
     },
     variables: { ref: mainWindow.bindVariables, onSelectionChanged: mainWindow.onVariableSelectionChanged },
-    parameters: { ref: mainWindow.bindParameters, onChanged: mainWindow.onParametersChanged },
+    parameters: {
+      ref: mainWindow.bindParameters,
+      onChanged: mainWindow.onParametersChanged,
+      onApply: mainWindow.applyParameters,
+    },
     apiTrace: {
       ref: mainWindow.bindApiTrace,
       onSelectionChanged: mainWindow.onApiTraceSelectionChanged,

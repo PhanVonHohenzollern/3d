@@ -2,12 +2,19 @@ import { Braces, Info, Link2, ListTree, SlidersHorizontal } from 'lucide-react';
 import type { DockAreaProps } from '../types/dockArea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 
-const icons = { VariablesDock: Braces, ParametersDock: SlidersHorizontal, ApiTraceDock: ListTree, LinkDock: Link2 };
+const icons = {
+  VariablesDock: Braces,
+  ParametersDock: SlidersHorizontal,
+  ApiTraceDock: ListTree,
+  LinkDock: Link2,
+  SubParametersDock: SlidersHorizontal,
+};
 const hints = {
   VariablesDock: 'Inspect values at the cursor',
   ParametersDock: 'Edit a value to update the preview',
   ApiTraceDock: 'Select a call to highlight its geometry',
   LinkDock: 'Create a connector, then Make to preview',
+  SubParametersDock: 'Enter arguments for a standalone function preview',
 };
 
 export function DockArea({ height, title, tabs, counts, panels }: DockAreaProps) {
@@ -37,7 +44,7 @@ export function DockArea({ height, title, tabs, counts, panels }: DockAreaProps)
               >
                 <Icon className="hidden size-3.5 @min-[480px]:block" aria-hidden />
                 <span className="truncate">{tab.title}</span>
-                {tab.name !== 'LinkDock' && (
+                {tab.name !== 'LinkDock' && tab.name !== 'SubParametersDock' && (
                   <span className="shrink-0 rounded-sm bg-line px-1 font-code text-[10px] tabular-nums">
                     {counts[tab.name]}
                   </span>

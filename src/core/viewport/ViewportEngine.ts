@@ -776,7 +776,7 @@ export class ViewportEngine {
       if (!this.isGeometryApiVisible(range.apiIndex)) continue;
       const selected = this.isMeshSelected(range.meshIndex);
       const hovered = this.isMeshInGroup(range.meshIndex, this.m_hoveredMeshIndex);
-      if (unite) renderer.setOpacity(selected || hovered ? 0.55 : 0.12);
+      if (unite) renderer.setOpacity(selected || hovered ? 0.7 : 0.27);
       renderer.setUniformValue('uUseOverrideColor', selected || hovered);
       if (selected) renderer.setUniformValue('uOverrideColor', new QVector3D(0.2, 0.78, 0.95));
       else if (hovered) {
@@ -846,7 +846,7 @@ export class ViewportEngine {
 
     const scene = this.debugOverlayScene();
     drawDebugItems(painter, scene);
-    drawPreselection(painter, scene);
+    drawPreselection(painter, { ...scene, isVisible: (item) => this.isDebugItemPickable(item) });
     if (!this.m_apiFocusActive)
       drawConnectorPoints(
         painter,
@@ -930,7 +930,7 @@ export class ViewportEngine {
       pointContentHeight: this.m_pointLabels.contentHeight(),
       vectorContentHeight: this.m_vectorLabels.contentHeight(),
       showLabels: this.m_showLabels,
-      apiFocusActive: this.m_apiFocusActive || this.m_selectionPresentation === 'Unite',
+      apiFocusActive: this.m_apiFocusActive,
     });
     this.setSelectionModeButton({ geometry: layout.button });
     this.m_pointLabels.setGeometry(layout.point.x, layout.point.y, layout.point.width, layout.point.height);
@@ -1125,7 +1125,7 @@ export class ViewportEngine {
           kind,
           screen,
           this.m_camera.cameraPosition(),
-          (item) => this.isDebugItemVisible(item),
+          (item) => this.isDebugItemPickable(item),
           this.projectToScreen,
           (item) => this.vectorArrow(item),
         ),
@@ -1142,9 +1142,7 @@ export class ViewportEngine {
   }
 
   private isDebugItemVisible(item: DebugItem): boolean {
-    if (this.m_selectionPresentation === 'Unite') {
-      if (!item.apiSnapshot && item.name !== kOverviewPointName) return false;
-    } else if (this.m_apiFocusActive) {
+    if (this.m_apiFocusActive) {
       if (!item.apiSnapshot) return false;
       if (item.apiIndex < 0 || !this.m_apiFocusIndices.has(item.apiIndex)) return false;
     } else {
@@ -1156,5 +1154,15 @@ export class ViewportEngine {
     if (item.kind === 'Point') return this.m_showPoints;
 
     return this.m_showVectors;
+  }
+
+  private isDebugItemPickable(item: DebugItem): boolean {
+    if (this.m_selectionPresentation !== 'Unite') return this.isDebugItemVisible(item);
+
+    // Unite can pick other API calls without displaying all their points and vectors.
+    if (!item.apiSnapshot && item.name !== kOverviewPointName) return false;
+    if (this.m_hiddenDebugItems.has(item.name)) return false;
+
+    return item.kind === 'Point' ? this.m_showPoints : this.m_showVectors;
   }
 }

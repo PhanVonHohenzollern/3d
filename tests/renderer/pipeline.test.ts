@@ -76,6 +76,38 @@ describe('Viewport3D with the real pipeline', () => {
     ).toEqual(['p0']);
   });
 
+  it('Unite keeps the same focused point/vector lists as Separate', () => {
+    const { result, engine } = run();
+
+    const panels = () => ({
+      points: engine.pointLabelPanel().entries(),
+      vectors: engine.vectorLabelPanel().entries(),
+      pointsVisible: engine.pointLabelPanel().isVisible(),
+      vectorsVisible: engine.vectorLabelPanel().isVisible(),
+    });
+
+    const overview = panels();
+    engine.toggleSelectionPresentation();
+    expect(panels()).toEqual(overview);
+
+    for (const name of ['makeBox', 'makeSimpleTube']) {
+      const apiIndex = result.apiCalls.findIndex((call) => call.name === name);
+      engine.setApiFocusIndices(new Set([apiIndex]));
+      const focused = panels();
+      expect(focused.points.length).toBeGreaterThan(0);
+      for (const entry of [...focused.points, ...focused.vectors]) {
+        expect(entry.id.startsWith(`@api${apiIndex}:`)).toBe(true);
+      }
+      engine.toggleSelectionPresentation();
+      expect(panels()).toEqual(focused);
+      engine.toggleSelectionPresentation();
+      expect(panels()).toEqual(focused);
+    }
+
+    engine.clearApiFocus();
+    expect(panels()).toEqual(overview);
+  });
+
   it('table and viewport share one selection; Ctrl in a list keeps the other list', () => {
     const { result, engine } = run();
     const boxIndex = result.apiCalls.findIndex((call) => call.name === 'makeBox');

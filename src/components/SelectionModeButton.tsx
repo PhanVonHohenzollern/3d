@@ -33,7 +33,7 @@ export function SelectionModeButton({ engine }: SelectionModeButtonProps) {
         <TooltipContent side="top">
           {button.presentation === 'Separate'
             ? 'Separate: focus the selected part. Click for Unite.'
-            : 'Unite: transparent meshes and all points/vectors. Click again at the same position to select objects behind it.'}
+            : 'Unite: transparent meshes with points/vectors for the selected part. Click again at the same position to select objects behind it.'}
         </TooltipContent>
       </Tooltip>
       <Tooltip>

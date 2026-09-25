@@ -6,7 +6,7 @@ export interface DockTab extends Dock {
   raise: () => void;
 }
 
-export type InspectorCounts = Record<Exclude<DockName, 'LinkDock'>, number>;
+export type InspectorCounts = Record<Exclude<DockName, 'LinkDock' | 'SubParametersDock'>, number>;
 
 export interface DockAreaProps {
   height: number;

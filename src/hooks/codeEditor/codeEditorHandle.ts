@@ -28,6 +28,11 @@ export function createCodeEditorHandle(
       signals().onTextChanged?.();
       signals().onCursorPositionChanged?.();
     },
+    setSource(source) {
+      view().setState(EditorState.create({ doc: source, extensions: extensions() }));
+      signals().onTextChanged?.();
+      signals().onCursorPositionChanged?.();
+    },
     currentLine() {
       const state = view().state;
 

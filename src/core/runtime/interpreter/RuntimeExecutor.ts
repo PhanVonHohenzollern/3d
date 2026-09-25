@@ -34,7 +34,12 @@ import {
 } from '../helpers/tokens';
 import { isKnownSdkTypedef, parseRuntimeType } from '../helpers/typeNames';
 import { addValues, compoundOperation } from '../helpers/valueOperations';
-import type { RuntimeArgumentTrace, RuntimeParameterRequest, RuntimeValueSource } from '../RuntimeTypes';
+import type {
+  RuntimeArgumentTrace,
+  RuntimeExecutionOptions,
+  RuntimeParameterRequest,
+  RuntimeValueSource,
+} from '../RuntimeTypes';
 import {
   isArray,
   isPoint,
@@ -52,6 +57,7 @@ import {
 import { sdkTypeDefinition } from '../SdkDefinitions';
 import { rootName } from '../helpers/variablePaths';
 import { ExprParser } from './ExprParser';
+import { Lexer } from './Lexer';
 import type { RuntimeState } from './RuntimeState';
 import { StatementKind, type Statement } from './Statement';
 
@@ -86,6 +92,7 @@ export class RuntimeExecutor {
     private readonly m_state: RuntimeState,
     private readonly m_maxLine: number,
     private readonly m_fullProgram = false,
+    private readonly m_options?: RuntimeExecutionOptions,
   ) {}
 
   executeProgram(root: Statement): void {
@@ -114,7 +121,16 @@ export class RuntimeExecutor {
       this.m_functions.set(child.functionName, overloads);
     }
 
-    const selectedFunction = this.m_fullProgram ? this.entryFunction(root) : this.selectFunction(root);
+    const explicit = this.m_options?.entryFunction;
+    const selectedFunction =
+      explicit === undefined
+        ? this.m_fullProgram
+          ? this.entryFunction(root)
+          : this.selectFunction(root)
+        : explicit === null
+          ? null
+          : this.m_functions.get(explicit)?.[0];
+    if (explicit && !selectedFunction) throw runtimeError(`Function not found: ${explicit}`);
     if (!selectedFunction) {
       this.executeGlobals(root);
 
@@ -135,6 +151,12 @@ export class RuntimeExecutor {
     for (const child of root.children) {
       if (this.m_returned || this.m_break || this.m_continue) break;
       if (child.kind === StatementKind.Function) continue;
+      if (
+        this.m_options?.isolated &&
+        (child.kind !== StatementKind.Simple ||
+          (!parseRuntimeType(child.tokens, 0) && child.tokens[0]?.text !== 'get_val'))
+      )
+        continue;
       this.m_state.globalValues = new Map(this.m_state.m_values);
       this.m_state.globalIds = new Map(this.m_state.m_variableIds);
       this.executeNode(child, false);
@@ -378,7 +400,18 @@ export class RuntimeExecutor {
       if (isKnownSdkTypedef(tokens)) return;
       throw runtimeError('unsupported typedef (only known SDK type definitions are available)');
     }
-    if (parseRuntimeType(tokens, 0)) {
+    const declaredType = parseRuntimeType(tokens, 0);
+    const namePosition = declaredType?.end ?? -1;
+    if (
+      namePosition >= 0 &&
+      this.m_functions.has(tokens[namePosition]?.text) &&
+      tokens[namePosition + 1]?.text === '(' &&
+      tokens.at(-1)?.text === ')'
+    ) {
+      const parameters = splitTopLevel(tokens.slice(namePosition + 2, -1), ',');
+      if (parameters.every((p) => !p.length || p[0].text === 'void' || parseRuntimeType(p, 0))) return;
+    }
+    if (declaredType) {
       this.executeDeclaration(tokens, line);
 
       return;
@@ -1023,8 +1056,24 @@ export class RuntimeExecutor {
       if (param.length === 0 || (param.length === 1 && isIdentifier(param[0], 'void'))) continue;
       try {
         this.executeDeclaration(param, fn.startLine, true);
+        const name = parameterName(param);
+        const configured = this.m_options?.arguments?.get(name);
+        if (configured !== undefined) {
+          const parsed = parseRuntimeType(param, 0);
+          const value = this.evaluate(Lexer.scanExpression(configured));
+          this.m_state.setVariable(
+            name,
+            parsed ? runtimeCoerceToType(value, parsed.type) : value,
+            true,
+            fn.startLine,
+            'input',
+            configured,
+          );
+        }
       } catch (e) {
-        stdException(e);
+        if (this.m_options?.arguments?.has(parameterName(param)))
+          this.m_state.addDiagnostic(fn.startLine, `${parameterName(param)}: ${stdException(e).message}`);
+        else stdException(e);
       }
     }
   }
