@@ -6,6 +6,7 @@ const kSelectionButtonHeight = 32;
 const kSelectionButtonMargin = 8;
 const kPanelMargin = 8;
 const kMaximumColumnWidth = 340;
+const kMaximumPointColumnWidth = 440;
 const kHeaderOnlyHeight = 25;
 
 export interface DebugLabelPanelsLayoutInput {
@@ -35,10 +36,15 @@ export function debugLabelPanelsLayout(input: DebugLabelPanelsLayoutInput): Debu
   );
   const vectorHeight = availableHeight;
   const show = input.showLabels && availableHeight >= 50 && columnWidth >= 60;
+  const vectorVisible = show && input.apiFocusActive && vectorHeight >= 50 && vectorContentHeight > kHeaderOnlyHeight;
+  const pointWidth = Math.max(
+    0,
+    Math.min(kMaximumPointColumnWidth, width - 2 * kPanelMargin - (vectorVisible ? columnWidth + kPanelMargin : 0)),
+  );
 
   return {
     button,
-    point: new QRect(kPanelMargin, kPanelMargin, columnWidth, Math.min(availableHeight, pointContentHeight)),
+    point: new QRect(kPanelMargin, kPanelMargin, pointWidth, Math.min(availableHeight, pointContentHeight)),
     vector: new QRect(
       width - kPanelMargin - columnWidth,
       kPanelMargin,
@@ -46,6 +52,6 @@ export function debugLabelPanelsLayout(input: DebugLabelPanelsLayoutInput): Debu
       Math.min(vectorHeight, vectorContentHeight),
     ),
     pointVisible: show && pointContentHeight > kHeaderOnlyHeight,
-    vectorVisible: show && input.apiFocusActive && vectorHeight >= 50 && vectorContentHeight > kHeaderOnlyHeight,
+    vectorVisible,
   };
 }

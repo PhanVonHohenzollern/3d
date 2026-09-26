@@ -4,6 +4,8 @@ import type { DebugLabelEntry } from '../../src/types/viewportEngine';
 import { qColor } from '../../src/utils/painting';
 import { LeftButton, NoModifier, RightButton } from '../../src/helpers/qtInput';
 import { elidedText } from '../../src/utils/textMetrics';
+import { debugLabelPanelsLayout } from '../../src/core/viewport/panelLayout';
+import { debugValueText } from '../../src/helpers/debugValueText';
 import { fixedMeasurer } from './helpers';
 
 const ROW = 24;
@@ -181,7 +183,7 @@ describe('DebugLabelPanel', () => {
     expect(panel.scrollValue()).toBe(20 * ROW - 5 * ROW);
   });
 
-  it('lays out rows like LabelDelegate (value <= 45%, name elided in the middle)', () => {
+  it('prioritizes coordinates over long names when the row is narrow', () => {
     const panel = new DebugLabelPanel('Points', qColor(255, 174, 52));
     panel.setTextMeasurer(fixedMeasurer);
     panel.setEntries(
@@ -191,14 +193,38 @@ describe('DebugLabelPanel', () => {
     panel.setGeometry(0, 0, 200, 49);
     const layout = panel.rowLayout(0);
     const contentWidth = 200 - 24;
-    expect(layout.valueWidth).toBe(Math.trunc((contentWidth * 45) / 100));
+    expect(layout.valueWidth).toBe(contentWidth - 48 - 8);
     expect(layout.valueLeft).toBe(17 + contentWidth - layout.valueWidth);
     expect(layout.nameWidth).toBe(contentWidth - layout.valueWidth - 8);
     expect(layout.nameText).toContain('\u2026');
-    expect(layout.nameText.startsWith('ave')).toBe(true);
+    expect(layout.nameText.startsWith('av')).toBe(true);
     expect(layout.nameText.endsWith('2]')).toBe(true);
     expect(layout.valueText.endsWith('\u2026')).toBe(true);
     expect(fixedMeasurer.horizontalAdvance(layout.nameText, panel.font())).toBeLessThanOrEqual(layout.nameWidth);
+  });
+
+  it.each([false, true])('keeps all rotated XYZ values visible when selected=%s', (selected) => {
+    const panel = new DebugLabelPanel('Points', qColor(255, 174, 52));
+    panel.setTextMeasurer({
+      ...fixedMeasurer,
+      horizontalAdvance: (text, font) => fixedMeasurer.horizontalAdvance(text, font) * (font.bold ? 1.15 : 1),
+    });
+    const value = debugValueText({ x: 103.070838, y: -49.6363, z: 250.5 });
+    panel.setEntries([{ id: 'p', name: 'fullPoints[1]', value }], new Set(selected ? ['p'] : []));
+    const layout = debugLabelPanelsLayout({
+      width: 840,
+      height: 500,
+      pointContentHeight: 49,
+      vectorContentHeight: 49,
+      showLabels: true,
+      apiFocusActive: true,
+    });
+    panel.setGeometry(layout.point.x, layout.point.y, layout.point.width, layout.point.height);
+    const row = panel.rowLayout(0);
+    expect(row.nameText).toBe('fullPoints[1]');
+    expect(row.valueText).toBe('(103.071, -49.636, 250.5)');
+    expect(row.valueLeft + row.valueWidth).toBeLessThan(panel.viewportWidth());
+    expect(layout.point.right()).toBeLessThan(layout.vector.left());
   });
 });
 

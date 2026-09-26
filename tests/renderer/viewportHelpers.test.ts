@@ -61,13 +61,20 @@ describe('label panel layout', () => {
     apiFocusActive: true,
   };
 
-  it('uses 27% columns (at most 340 px) and reserves the button strip', () => {
+  it('widens Points to 440 px, retains the Vector column and reserves the button strip', () => {
     const layout = debugLabelPanelsLayout(input);
-    expect([layout.point.x, layout.point.width, layout.point.height]).toEqual([8, 263, 97]);
+    expect([layout.point.x, layout.point.width, layout.point.height]).toEqual([8, 440, 97]);
     expect(layout.vector.x).toBe(1000 - 8 - 263);
     expect(layout.pointVisible).toBe(true);
     expect(layout.vectorVisible).toBe(false);
-    expect(debugLabelPanelsLayout({ ...input, width: 2000 }).point.width).toBe(340);
+    expect(debugLabelPanelsLayout({ ...input, width: 2000 }).point.width).toBe(440);
+  });
+
+  it('keeps the panels inside a narrow viewport without overlap', () => {
+    const layout = debugLabelPanelsLayout({ ...input, width: 500, vectorContentHeight: 49 });
+    expect(layout.point.right()).toBeLessThan(layout.vector.left());
+    expect(layout.vector.right()).toBeLessThan(500);
+    expect(layout.point.width).toBeGreaterThan(layout.vector.width);
   });
 
   it('hides the lists when there is no room', () => {

@@ -194,7 +194,7 @@ describe('debug points and clicks', () => {
     const button = engine.selectionModeButton().geometry;
     expect([button.x, button.y, button.width, button.height]).toEqual([8, 700 - 8 - 32, 96, 32]);
     const points = engine.pointLabelPanel().geometry();
-    expect([points.x, points.y, points.width, points.height]).toEqual([8, 8, Math.trunc(((1000 - 24) * 27) / 100), 49]);
+    expect([points.x, points.y, points.width, points.height]).toEqual([8, 8, 440, 49]);
     engine.setShowLabels(false);
     expect(engine.pointLabelPanel().isVisible()).toBe(false);
   });

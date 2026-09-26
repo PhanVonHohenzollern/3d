@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { FdPoint3d, FdVector3d } from '../../src/core/runtime/FdMath';
-import { runtimeValueToCompactString } from '../../src/core/runtime/RuntimeValue';
 import { appendVectorArrow } from '../../src/core/viewport/debugItems';
 import { VertexArray } from '../../src/core/viewport/VertexArray';
 import { debugValueText } from '../../src/helpers/debugValueText';
@@ -54,16 +53,21 @@ describe('vector arrows', () => {
 });
 
 describe('debug values', () => {
-  it('uses inspector precision without scientific notation for small coordinates', () => {
+  it('displays up to three decimals without negative zero or trailing zeros', () => {
     expect(debugValueText({ x: 1.23153e-10, y: 210, z: 0 })).toBe('(0, 210, 0)');
     expect(debugValueText({ x: 1.225665e-10, y: 209, z: 0 })).toBe('(0, 209, 0)');
-    expect(debugValueText({ x: 12345678, y: 1e-5, z: 2.5 })).toBe('(12345678, 0.00001, 2.5)');
+    expect(debugValueText({ x: 12345678, y: 1e-5, z: 2.5 })).toBe('(12345678, 0, 2.5)');
+    expect(debugValueText({ x: 103.070838, y: -49.6363, z: 250.5 })).toBe('(103.071, -49.636, 250.5)');
+    expect(debugValueText({ x: -0.00049, y: -0, z: -0.00051 })).toBe('(0, 0, -0.001)');
   });
 
-  it('matches inspector formatting for points and vectors without mutating coordinates', () => {
-    for (const value of [new FdPoint3d(0.1 + 0.2, 1234567.8, -1e-10), new FdVector3d(1.23456789, -2.5, 0)]) {
+  it('rounds labels without mutating point or vector coordinates', () => {
+    for (const [value, expected] of [
+      [new FdPoint3d(0.1 + 0.2, 1234567.8, -1e-10), '(0.3, 1234567.8, 0)'],
+      [new FdVector3d(1.23456789, -2.5, 0), '(1.235, -2.5, 0)'],
+    ] as const) {
       const original = { x: value.x, y: value.y, z: value.z };
-      expect(debugValueText(value)).toBe(runtimeValueToCompactString(value));
+      expect(debugValueText(value)).toBe(expected);
       expect({ x: value.x, y: value.y, z: value.z }).toEqual(original);
     }
   });

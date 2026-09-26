@@ -6,7 +6,7 @@ const kContentLeft = 17;
 const kContentMargins = 24;
 const kNameValueGap = 8;
 const kValuePadding = 3;
-const kMaximumValuePercent = 45;
+const kMinimumNameWidth = 48;
 
 export function sameEntries(a: readonly DebugLabelEntry[], b: readonly DebugLabelEntry[]): boolean {
   if (a.length !== b.length) return false;
@@ -28,7 +28,7 @@ export function labelRowLayout(
   const value = entry?.value ?? '';
   const valueWidth = Math.min(
     horizontalAdvance(measurer, value, font) + kValuePadding,
-    Math.trunc((contentWidth * kMaximumValuePercent) / 100),
+    Math.max(0, contentWidth - kMinimumNameWidth - kNameValueGap),
   );
   const nameWidth = Math.max(0, contentWidth - valueWidth - kNameValueGap);
 
