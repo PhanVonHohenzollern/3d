@@ -1,10 +1,10 @@
-import { useContainerPagination } from './useContainerPagination';
-import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import { eventModifiers } from '../helpers/keyboard';
 import { kTreeIndentation } from '../helpers/layout';
 import { resizeToContentsWidth } from '../helpers/treeColumns';
 import type { TreeColumnView, TreeMouseEvent, TreeRowView } from '../types/treeView';
 import { textWidth } from '../utils/measureText';
+import { isOnScrollbar } from '../utils/dom';
 import type { TreeWidget } from './treeWidget/TreeWidget';
 import { usePointerDrag } from './usePointerDrag';
 import { useObservable } from './useObservable';
@@ -61,12 +61,28 @@ export function useTreeView(tree: TreeWidget) {
     row.cells[0].indent = Math.min(row.cells[0].indent, firstWidth - 12);
   }
 
-  const pagination = useContainerPagination(rows, {
-    rowHeight: 28,
-    headerHeight: 28,
-    selectedIndex: visible.findIndex(({ item }) => item === tree.scrollRequest?.item),
-    selectionKey: tree.scrollRequest?.serial,
-  });
+  const scrollRequest = tree.scrollRequest;
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || !scrollRequest) return;
+
+    const scrollToSelection = () => {
+      const row = container.querySelector<HTMLElement>(`[data-key="${scrollRequest.item.id}"]`);
+      if (!row || !container.clientHeight) return;
+      const top = row.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+      const bottom = top + row.offsetHeight;
+      // Keep the selected call below the sticky header without scrolling the whole page.
+      if (top < container.scrollTop + 28) container.scrollTop = top - 28;
+      else if (bottom > container.scrollTop + container.clientHeight)
+        container.scrollTop = bottom - container.clientHeight;
+    };
+
+    scrollToSelection();
+    const observer = new ResizeObserver(scrollToSelection);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [scrollRequest]);
 
   const hit = (event: MouseEvent): TreeMouseEvent => {
     const target = event.target as Element;
@@ -85,7 +101,7 @@ export function useTreeView(tree: TreeWidget) {
   const inHeader = (event: MouseEvent) => !!(event.target as Element).closest('[data-tree-header]');
 
   const onMouseDown = (event: MouseEvent) => {
-    if (event.button !== 0 || inHeader(event)) return;
+    if (event.button !== 0 || inHeader(event) || isOnScrollbar(event)) return;
     containerRef.current?.focus({ preventScroll: true });
     event.preventDefault();
     if (event.detail === 2) tree.mouseDoubleClickEvent(hit(event));
@@ -93,7 +109,7 @@ export function useTreeView(tree: TreeWidget) {
   };
 
   const onMouseUp = (event: MouseEvent) => {
-    if (event.button !== 0 || inHeader(event)) return;
+    if (event.button !== 0 || inHeader(event) || isOnScrollbar(event)) return;
     tree.mouseReleaseEvent(hit(event));
   };
 
@@ -111,8 +127,7 @@ export function useTreeView(tree: TreeWidget) {
   return {
     containerRef,
     columns,
-    rows: pagination.items,
-    pagination,
+    rows,
     fittedWidths,
     onMouseDown,
     onMouseUp,

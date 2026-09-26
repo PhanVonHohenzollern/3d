@@ -23,6 +23,7 @@ export function definitionId(request: RuntimeParameterRequest): string {
 }
 
 export function parameterSeed(definition: RuntimeParameterRequest): string {
+  if (definition.checkbox) return neutralValueForType(definition.type);
   let seed = definition.defaultValue;
   if (seed === '' && definition.type !== 'string') seed = definition.currentValue;
   if (seed === '' && definition.type !== 'string') seed = neutralValueForType(definition.type);

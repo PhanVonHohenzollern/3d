@@ -1,6 +1,6 @@
 import { Table, TableHead, TableCell } from './table';
 import type { CellProps, HeaderCellProps, TableViewProps } from '../../types/table';
-import { cn } from '../../utils/cn';
+import { cn } from '../../lib/utils';
 
 export function TableView({
   className,

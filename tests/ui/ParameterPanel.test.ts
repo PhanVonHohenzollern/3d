@@ -49,11 +49,14 @@ describe('ParameterPanel', () => {
 
     expect(model.tabs.map((tab) => tab.id)).toEqual(['makeDV', 'makeBG', 'makeFS', 'makeSDK']);
     expect(row('makeDV::BG').checkbox).toBe(true);
+    expect(row('makeDV::BG').texts[3]).toBe('0');
     expect(row('makeDV::roof_base').checkbox).toBe(false);
     expect(row('makeDV::D').texts[3]).toBe('100');
     expect(row('makeBG::D').texts[3]).toBe('20');
+    expect(row('makeBG::D').disabled).toBe(true);
     expect(row('makeBG::Di').disabled).toBe(true);
     expect(row('makeSDK::H').disabled).toBe(true);
+    model.setCheckbox('makeDV::BG', true);
     model.setCheckbox('makeBG::VS', true);
     expect(row('makeBG::Di').disabled).toBe(false);
     edit('makeDV::D', '120');
@@ -75,6 +78,54 @@ describe('ParameterPanel', () => {
     expect(model.dataSets).toHaveLength(0);
     model.selectTab('makeBG');
     expect(model.dataSets).toHaveLength(2);
+  });
+
+  it('starts checkboxes unchecked in the UI and runtime, preserving explicit choices until Reset', () => {
+    const source = `void element() {
+bool ASS=true; double ASF=1, count=3;
+get_val("ASS", ASS); get_val("ASF", ASF); get_val("count", count);
+if (ASS) { double D=20; get_val("D", D); }
+if (ASF) { double H=30; get_val("H", H); }
+}`;
+    const runtime = new GeometryRuntime();
+    const model = new ParameterPanelModel();
+    const definitions = runtime.discoverParameters(source);
+
+    const run = () => {
+      runtime.setParameters(model.overrides());
+      const result = runtime.executeUpToLine(source, 999, true);
+      expect(result.diagnostics).toEqual([]);
+      model.updateRuntimeResult(result);
+    };
+
+    const row = (key: string) => model.rows.find((item) => item.key === `element::${key}`)!;
+
+    model.setDefinitions(definitions, source);
+    run();
+    expect(row('ASS').texts[3]).toBe('false');
+    expect(row('ASF').texts[3]).toBe('0');
+    expect(row('count').texts[3]).toBe('3');
+    expect(row('D').disabled).toBe(true);
+    expect(row('H').disabled).toBe(true);
+    expect(runtime.evaluateNumericExpression('ASS')).toBe(0);
+    expect(runtime.evaluateNumericExpression('ASF')).toBe(0);
+    model.setCheckbox('element::ASS', true);
+    model.setDefinitions(definitions, source);
+    run();
+    expect(row('ASS').texts[3]).toBe('true');
+    expect(row('D').disabled).toBe(false);
+    expect(runtime.evaluateNumericExpression('ASS')).toBe(1);
+    expect(model.importTable('ASF\n1')).toBe(true);
+    model.setDefinitions(definitions, source);
+    run();
+    expect(row('H').disabled).toBe(false);
+    expect(runtime.evaluateNumericExpression('ASF')).toBe(1);
+    model.resetToSource();
+    run();
+    expect(row('ASS').texts[3]).toBe('false');
+    expect(row('ASF').texts[3]).toBe('0');
+    expect(row('D').disabled).toBe(true);
+    expect(row('H').disabled).toBe(true);
   });
   it('shows an insulation checkbox and gated size only for an actual query in the source', () => {
     const runtime = new GeometryRuntime();

@@ -1,20 +1,17 @@
-import { PaginationControls } from './PaginationControls';
 import { useTreeView } from '../hooks/useTreeView';
 import type { TreeViewProps } from '../types/treeView';
 import { cn } from '../utils/cn';
 
 export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
-  const { containerRef, columns, rows, pagination, fittedWidths, onMouseDown, onMouseUp, onKeyDown, onResizeStart } =
+  const { containerRef, columns, rows, fittedWidths, onMouseDown, onMouseUp, onKeyDown, onResizeStart } =
     useTreeView(tree);
 
-  const { containerRef: paginationRef, controls } = pagination;
-
   return (
-    <div ref={paginationRef} className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div
         ref={containerRef}
         tabIndex={0}
-        className="group/tree relative min-h-0 flex-1 overflow-hidden bg-base outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+        className="group/tree relative min-h-0 flex-1 overflow-auto bg-base outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
         onMouseDown={onMouseDown}
         onMouseUp={onMouseUp}
         onKeyDown={onKeyDown}
@@ -37,7 +34,7 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
               </div>
             ))}
           </div>
-          {controls.total === 0 && (
+          {rows.length === 0 && (
             <div className="flex min-h-0 flex-col items-center justify-center gap-1.5 px-3 py-2 text-center text-xs text-muted-foreground">
               <span className="font-medium text-foreground">No API calls yet</span>
               <span className="max-w-sm leading-relaxed">
@@ -95,7 +92,6 @@ export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
           ))}
         </div>
       </div>
-      <PaginationControls {...controls} />
     </div>
   );
 }

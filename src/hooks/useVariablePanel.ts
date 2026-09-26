@@ -2,6 +2,7 @@ import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEv
 import { eventModifiers } from '../helpers/keyboard';
 import { isInTableHeader, tableRowOf } from '../helpers/tableEvents';
 import type { VariablePanelProps } from '../types/panels';
+import { isOnScrollbar } from '../utils/dom';
 import { useObservable } from './useObservable';
 import { VariablePanelModel } from './variablePanel/VariablePanelModel';
 
@@ -39,14 +40,14 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
   }, [scrollRequest]);
 
   const onMouseDown = (event: MouseEvent) => {
-    if (event.button !== 0 || isInTableHeader(event)) return;
+    if (event.button !== 0 || isInTableHeader(event) || isOnScrollbar(event)) return;
     event.preventDefault();
     tableRef.current?.focus({ preventScroll: true });
     model.mousePress(tableRowOf(event), eventModifiers(event).control);
   };
 
   const onMouseUp = (event: MouseEvent) => {
-    if (event.button !== 0 || isInTableHeader(event)) return;
+    if (event.button !== 0 || isInTableHeader(event) || isOnScrollbar(event)) return;
     model.mouseRelease(tableRowOf(event));
   };
 

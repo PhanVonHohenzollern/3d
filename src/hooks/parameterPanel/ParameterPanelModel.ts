@@ -131,7 +131,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       if (!this.#userEditedKeys.has(key)) {
         const value = this.#values.get(key);
         if (value !== undefined) {
-          const refined = refinedParameterValue(request);
+          const refined = it.checkbox ? neutralValueForType(it.type) : refinedParameterValue(request);
           if (refined !== null && value !== refined) {
             this.#values.set(key, refined);
             changed = true;
@@ -226,9 +226,12 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     const insulation = this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize');
     const values = new Map(
       this.#definitions
-        .filter((definition) => definition.sourceFunction !== 'getExtInsSize')
+        .filter(
+          (definition) =>
+            definition.sourceFunction !== 'getExtInsSize' &&
+            (definition.checkbox || this.#userEditedKeys.has(parameterKey(definition))),
+        )
         .map((definition) => parameterKey(definition))
-        .filter((key) => this.#userEditedKeys.has(key))
         .map((key) => [key, this.#values.get(key)!]),
     );
     // A removed query must not leave an enabled thickness in the runtime configuration.
