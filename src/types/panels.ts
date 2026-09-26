@@ -71,6 +71,7 @@ export interface ApiTracePanelHandle {
 
 export interface ApiTracePanelProps {
   onSelectionChanged?: (apiIndex: number) => void;
+  onFunctionActivated?: (apiIndex: number) => void;
   onSourceActivated?: (line: number) => void;
   onHistorySourceActivated?: (line: number) => void;
   ref?: Ref<ApiTracePanelHandle>;

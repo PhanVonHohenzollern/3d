@@ -41,6 +41,21 @@ function toggleBranch(model: ApiTracePanelModel, item: TreeWidgetItem) {
 }
 
 describe('ApiTracePanel row model', () => {
+  it('opens a user-function row on double-click while keeping parameter history available', () => {
+    const { model, tree, events } = createPanel();
+    model.setFunctionActivatedCallback((index) => events.push(`function:${index}`));
+    model.setRuntimeResult(traceResult());
+    const api = tree.topLevelItem(0);
+    doubleClick(model, api);
+    expect(events).toContain('function:0');
+    expect(model.historyDialog()).toBeNull();
+    events.length = 0;
+    doubleClick(model, api.child(0));
+    expect(events).not.toContain('function:0');
+    expect(model.historyDialog()?.apiIndex()).toBe(0);
+    model.historyDialog()?.close();
+  });
+
   it('builds API rows with parameter rows, nested calls and captured values', () => {
     const { model, tree, events } = createPanel();
     model.setRuntimeResult(traceResult());

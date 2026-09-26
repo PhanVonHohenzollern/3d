@@ -131,6 +131,7 @@ export class ViewportEngine {
   private m_meshFocusActive = false;
   private m_apiFocusActive = false;
   private m_apiFocusIndices = new Set<number>();
+  private m_debugFocusIndices = new Set<number>();
   private m_hiddenDebugItems = new Set<string>();
 
   private m_selectionChangedCallback: ((names: Set<string>) => void) | null = null;
@@ -271,9 +272,10 @@ export class ViewportEngine {
     return this.m_meshFocusActive;
   }
 
-  setApiFocusIndices(indices: ReadonlySet<number>): void {
+  setApiFocusIndices(indices: ReadonlySet<number>, debugIndices: ReadonlySet<number> = indices): void {
     this.m_apiFocusActive = true;
     this.m_apiFocusIndices = new Set(indices);
+    this.m_debugFocusIndices = new Set(debugIndices);
     this.buildAxesVertices();
     this.rebuildGpuVertices();
     this.update();
@@ -283,6 +285,7 @@ export class ViewportEngine {
     if (!this.m_apiFocusActive && this.m_apiFocusIndices.size === 0) return;
     this.m_apiFocusActive = false;
     this.m_apiFocusIndices.clear();
+    this.m_debugFocusIndices.clear();
     this.buildAxesVertices();
     this.rebuildGpuVertices();
     this.update();
@@ -1144,7 +1147,7 @@ export class ViewportEngine {
   private isDebugItemVisible(item: DebugItem): boolean {
     if (this.m_apiFocusActive) {
       if (!item.apiSnapshot) return false;
-      if (item.apiIndex < 0 || !this.m_apiFocusIndices.has(item.apiIndex)) return false;
+      if (item.apiIndex < 0 || !this.m_debugFocusIndices.has(item.apiIndex)) return false;
     } else {
       if (item.apiSnapshot || item.name !== kOverviewPointName) return false;
     }

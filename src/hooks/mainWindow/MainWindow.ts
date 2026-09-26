@@ -442,6 +442,19 @@ export class MainWindow extends Observable {
     this.navigateToSource(line, this.m_apiTrace.selectedSourceLines());
   };
 
+  readonly onApiTraceFunctionActivated = (apiIndex: number): void => {
+    const call = this.m_lastResult.apiCalls[apiIndex];
+    if (!call?.userFunctionCall) return;
+    const name = this.functions.tabForCall(call);
+    if (!name) {
+      this.statusBar().showMessage('Function tab not found.', 2600);
+
+      return;
+    }
+    this.selectFunction(name);
+    this.m_editor.setFocus();
+  };
+
   readonly onApiTraceHistorySourceActivated = (line: number): void => {
     this.navigateToSource(line, new Set([line]));
   };
@@ -789,19 +802,21 @@ export class MainWindow extends Observable {
     const focusedApiIndices = new Set<number>();
     const selectedCalls = this.m_apiTrace.selectedApiCalls();
     for (const index of selectedCalls) focusedApiIndices.add(index);
+    const debugApiIndices = new Set(selectedCalls);
     const calls = this.m_lastResult.apiCalls;
     for (let i = 0; i < calls.length; ++i) {
       let parent = calls[i].parentApiIndex;
       while (parent >= 0) {
         if (selectedCalls.has(parent)) {
           focusedApiIndices.add(i);
-          break;
+          // Main shows a sub-function's input points, not its internal API snapshots.
+          if (this.functions.active || !calls[parent].userFunctionCall) debugApiIndices.add(i);
         }
         if (parent >= calls.length) break;
         parent = calls[parent].parentApiIndex;
       }
     }
-    this.m_viewport.setApiFocusIndices(focusedApiIndices);
+    this.m_viewport.setApiFocusIndices(focusedApiIndices, debugApiIndices);
 
     const call = calls[apiIndex];
     const snapshotDebugCount = resolveDebugPointSnapshots(call).length + resolveDebugVectorAnchors(call).length;

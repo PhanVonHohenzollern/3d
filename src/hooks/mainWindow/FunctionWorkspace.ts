@@ -6,6 +6,9 @@ import {
   type SourceFunction,
 } from '../../helpers/functions';
 import type { RuntimeExecutionOptions } from '../../core/runtime/GeometryRuntime';
+import type { RuntimeApiCall } from '../../core/runtime/RuntimeTypes';
+import { Lexer } from '../../core/runtime/interpreter/Lexer';
+import { parameterSignatureType } from '../../core/runtime/helpers/functionSignatures';
 
 export interface FunctionProgram {
   source: string;
@@ -42,6 +45,13 @@ export class FunctionWorkspace {
 
   private labelFor(fn: SourceFunction): string | undefined {
     return [...this.signatures].find(([, signature]) => signature === fn.signature)?.[0];
+  }
+
+  tabForCall(call: RuntimeApiCall): string | undefined {
+    const types = call.formalParameterTypes.map((type) => parameterSignatureType(Lexer.scanExpression(type)));
+    const signature = `${call.name}(${types.join(', ')})`;
+
+    return [...this.signatures].find(([, value]) => value === signature)?.[0];
   }
 
   source(name = this.active): string {

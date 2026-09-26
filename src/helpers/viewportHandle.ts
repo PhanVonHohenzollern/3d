@@ -22,7 +22,7 @@ export function createViewport3DHandle(engine: ViewportEngine): Viewport3DHandle
     isMeshSelected: (meshIndex) => engine.isMeshSelected(meshIndex),
     hasApiFocus: () => engine.hasApiFocus(),
     hasMeshFocus: () => engine.hasMeshFocus(),
-    setApiFocusIndices: (indices) => engine.setApiFocusIndices(indices),
+    setApiFocusIndices: (indices, debugIndices) => engine.setApiFocusIndices(indices, debugIndices),
     clearApiFocus: () => engine.clearApiFocus(),
     fitScene: () => engine.fitScene(),
     setConnectorPreviews: (connectors, selectedId) => engine.setConnectorPreviews(connectors, selectedId),

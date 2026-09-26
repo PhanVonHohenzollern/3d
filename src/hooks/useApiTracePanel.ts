@@ -5,6 +5,7 @@ import { useObservable } from './useObservable';
 
 export function useApiTracePanel({
   onSelectionChanged,
+  onFunctionActivated,
   onSourceActivated,
   onHistorySourceActivated,
   ref,
@@ -14,9 +15,10 @@ export function useApiTracePanel({
 
   useLayoutEffect(() => {
     model.setSelectionChangedCallback(onSelectionChanged ?? null);
+    model.setFunctionActivatedCallback(onFunctionActivated ?? null);
     model.setSourceActivatedCallback(onSourceActivated ?? null);
     model.setHistorySourceActivatedCallback(onHistorySourceActivated ?? null);
-  }, [model, onSelectionChanged, onSourceActivated, onHistorySourceActivated]);
+  }, [model, onSelectionChanged, onFunctionActivated, onSourceActivated, onHistorySourceActivated]);
 
   useImperativeHandle(ref, () => model, [model]);
 

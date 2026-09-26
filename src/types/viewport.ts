@@ -29,7 +29,7 @@ export interface Viewport3DHandle {
   isMeshSelected(meshIndex: number): boolean;
   hasApiFocus(): boolean;
   hasMeshFocus(): boolean;
-  setApiFocusIndices(indices: ReadonlySet<number>): void;
+  setApiFocusIndices(indices: ReadonlySet<number>, debugIndices?: ReadonlySet<number>): void;
   clearApiFocus(): void;
   fitScene(): void;
   setConnectorPreviews(connectors: readonly ConnectorPreview[], selectedId: number): void;

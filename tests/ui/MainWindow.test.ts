@@ -165,6 +165,7 @@ function createMainWindow() {
   parameters.setChangedCallback(mw.onParametersChanged);
   apiTrace.setSelectionChangedCallback(mw.onApiTraceSelectionChanged);
   apiTrace.setSourceActivatedCallback(mw.onApiTraceSourceActivated);
+  apiTrace.setFunctionActivatedCallback(mw.onApiTraceFunctionActivated);
   apiTrace.setHistorySourceActivatedCallback(mw.onApiTraceHistorySourceActivated);
   links.setExpressionEvaluator(mw.linkExpressionEvaluator);
   links.setPreviewChangedCallback(mw.onLinkPreviewChanged);
@@ -207,6 +208,119 @@ describe('MainWindow', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it.each(['Separate', 'Unite'] as const)(
+    '%s shows only input points for sub-function calls in Main and opens their editor on double-click',
+    (presentation) => {
+      const { mw, editor, apiTrace } = createMainWindow();
+      const engine = createEngine();
+      mw.bindViewport(createViewport3DHandle(engine));
+      mw.start();
+      if (presentation === 'Unite') engine.toggleSelectionPresentation();
+      editor.type(
+        `void element() {
+FdPoint3d cP(1,2,3), points[2] = {cP, FdPoint3d(4,5,6)};
+withPoint(cP, vz);
+withoutPoint();
+withPoints(points);
+}
+void withPoint(FdPoint3d center, FdVector3d axis=FdVector3d(0,0,1)) {
+FdPoint3d internal = center + axis * 10;
+leaf(internal);
+makeFlatDisc(internal, axis, 4, 8);
+}
+void leaf(FdPoint3d point) { makeFlatDisc(point, vz, 2, 8); }
+void withoutPoint() { withPoint(FdPoint3d(10,20,30), vx); }
+void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
+        1,
+      );
+      mw.buildPreview();
+      expect(mw.m_lastResult.diagnostics).toEqual([]);
+      const geometry = mw.m_geometryScene;
+      const focus = vi.spyOn(engine, 'setApiFocusIndices');
+
+      const select = (row: number) => apiTrace.m_tree.setCurrentItem(apiTrace.m_tree.topLevelItem(row));
+
+      select(0);
+      expect(engine.pointLabelPanel().entries()).toEqual([
+        { id: '@api0:point:center', name: 'cP', value: '(1, 2, 3)' },
+      ]);
+      expect(engine.vectorLabelPanel().entries()).toEqual([]);
+      expect(engine.vectorLabelPanel().isVisible()).toBe(false);
+      expect(focus).toHaveBeenLastCalledWith(new Set([0, 1, 2, 3]), new Set([0]));
+      expect(mw.m_geometryScene).toBe(geometry);
+      select(1);
+      expect(engine.pointLabelPanel().entries()).toEqual([]);
+      expect(engine.vectorLabelPanel().entries()).toEqual([]);
+      expect(engine.pointLabelPanel().isVisible()).toBe(false);
+      expect(engine.vectorLabelPanel().isVisible()).toBe(false);
+      select(2);
+      expect(
+        engine
+          .pointLabelPanel()
+          .entries()
+          .map((entry) => [entry.name, entry.value]),
+      ).toEqual([
+        ['points[0]', '(1, 2, 3)'],
+        ['points[1]', '(4, 5, 6)'],
+      ]);
+      // A native API still exposes its own input points and vectors in Main.
+      apiTrace.selectMeshApiCall(2);
+      expect(engine.pointLabelPanel().entries()).toHaveLength(1);
+      expect(engine.vectorLabelPanel().entries()).toHaveLength(1);
+      apiTrace.clearApiFocus();
+      const item = apiTrace.m_tree.topLevelItem(0);
+      const event = { item, column: 1, modifiers: { shift: false, control: false }, onDecoration: false };
+      apiTrace.m_tree.mousePressEvent(event);
+      apiTrace.m_tree.mouseReleaseEvent(event);
+      expect(mw.functions.active).toBe('');
+      apiTrace.m_tree.mouseDoubleClickEvent(event);
+      apiTrace.m_tree.mouseReleaseEvent(event);
+      expect(mw.functions.active).toBe('withPoint');
+      expect(editor.text).toContain('void withPoint(');
+      expect(editor.text).not.toContain('void element(');
+      expect(apiTrace.historyDialog()).toBeNull();
+      expect(mw.m_lastResult.diagnostics).toEqual([]);
+      expect(mw.m_geometryScene.meshes).toHaveLength(2);
+      // Inside the function tab, its nested API inputs remain available for debugging.
+      apiTrace.m_tree.setCurrentItem(apiTrace.m_tree.topLevelItem(0));
+      expect(engine.pointLabelPanel().entries().length).toBeGreaterThan(1);
+      expect(engine.vectorLabelPanel().entries().length).toBeGreaterThan(0);
+      mw.dispose();
+    },
+  );
+
+  it('opens the exact overload using its custom tab label from API Trace', () => {
+    const { mw, editor, apiTrace } = createMainWindow();
+    mw.start();
+    editor.type('void element() { part(2); part(FdPoint3d(1,2,3)); }', 1);
+    const definitions = [
+      ['Numeric part', 'void part(const int count=1) { makeFlatDisc(FdPoint3d(), vz, count, 8); }'],
+      ['Point part', 'void part(const FdPoint3d &center) { makeFlatDisc(center, vz, 3, 8); }'],
+    ];
+    for (const [label, source] of definitions) {
+      mw.addFunction(label);
+      editor.type(source, 1);
+      mw.saveFunction();
+    }
+    mw.buildPreview();
+    expect(mw.m_lastResult.diagnostics).toEqual([]);
+    for (const [index, [label, source]] of definitions.entries()) {
+      const item = apiTrace.m_tree.topLevelItem(index);
+      const event = { item, column: 1, modifiers: { shift: false, control: false }, onDecoration: false };
+      apiTrace.m_tree.mousePressEvent(event);
+      apiTrace.m_tree.mouseReleaseEvent(event);
+      apiTrace.m_tree.mouseDoubleClickEvent(event);
+      apiTrace.m_tree.mouseReleaseEvent(event);
+      expect(mw.functions.active).toBe(label);
+      expect(editor.text).toBe(source);
+      expect(mw.m_lastResult.diagnostics).toEqual([]);
+      expect(mw.m_geometryScene.meshes).toHaveLength(1);
+      expect(apiTrace.historyDialog()).toBeNull();
+      mw.selectFunction('');
+    }
+    mw.dispose();
   });
 
   it('enables Sub-Parameter only in a function editor and blocks its actions from Main', () => {

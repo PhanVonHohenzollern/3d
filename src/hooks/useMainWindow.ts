@@ -89,6 +89,7 @@ export function useMainWindow() {
     apiTrace: {
       ref: mainWindow.bindApiTrace,
       onSelectionChanged: mainWindow.onApiTraceSelectionChanged,
+      onFunctionActivated: mainWindow.onApiTraceFunctionActivated,
       onSourceActivated: mainWindow.onApiTraceSourceActivated,
       onHistorySourceActivated: mainWindow.onApiTraceHistorySourceActivated,
     },

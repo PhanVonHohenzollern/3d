@@ -44,6 +44,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
   #selectedApiIndex = -1;
   #meshApiIndex = -1;
   #selectionChangedCallback: ((apiIndex: number) => void) | null = null;
+  #functionActivatedCallback: ((apiIndex: number) => void) | null = null;
   #runtimeResult: RuntimeResult = emptyRuntimeResult();
   readonly #pendingTraceRows = new Map<TreeWidgetItem, () => void>();
   #sourceActivatedCallback: ((line: number) => void) | null = null;
@@ -75,7 +76,14 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
       if (line > 0 && this.#sourceActivatedCallback) this.#sourceActivatedCallback(line);
     });
     tree.itemDoubleClicked.connect((item) => {
-      this.#showApiHistory(item.dataInt(0, UserRole));
+      const apiIndex = item.dataInt(0, UserRole);
+      if (
+        this.#runtimeResult.apiCalls[apiIndex]?.userFunctionCall &&
+        item.dataString(0, kNodeKeyRole) === `api:${apiIndex}` &&
+        this.#functionActivatedCallback
+      )
+        this.#functionActivatedCallback(apiIndex);
+      else this.#showApiHistory(apiIndex);
     });
     tree.itemSelectionChanged.connect(() => {
       const selected = tree.selectedItems();
@@ -338,6 +346,10 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
 
   setSourceActivatedCallback(callback: ((line: number) => void) | null): void {
     this.#sourceActivatedCallback = callback;
+  }
+
+  setFunctionActivatedCallback(callback: ((apiIndex: number) => void) | null): void {
+    this.#functionActivatedCallback = callback;
   }
 
   setHistorySourceActivatedCallback(callback: ((line: number) => void) | null): void {
