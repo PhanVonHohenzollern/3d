@@ -6,7 +6,11 @@ export function historyValueText(value: RuntimeValue): string {
   return isUnset(value) ? '\u2014' : runtimeValueToCompactString(value);
 }
 
-export function earlierChanges(result: RuntimeResult, sources: readonly RuntimeValueSource[]): number[] {
+export function earlierChanges(
+  result: RuntimeResult,
+  sources: readonly RuntimeValueSource[],
+  displayedChange = -1,
+): number[] {
   const changes = new Set<number>();
   const visited = new Set<string>();
   const pending = [...sources];
@@ -16,9 +20,11 @@ export function earlierChanges(result: RuntimeResult, sources: readonly RuntimeV
     if (visited.has(key)) continue;
     visited.add(key);
     const history = runtimeSourceHistory(result, source);
-    for (let i = 0; i < history.length; ++i) {
-      if (i + 1 < history.length) changes.add(history[i]);
-      pending.push(...result.variableChanges[history[i]].sources);
+    for (const index of history) {
+      // Only the change shown in the current row is redundant. Dependencies
+      // need their latest captured change as well as their earlier history.
+      if (index !== displayedChange) changes.add(index);
+      pending.push(...result.variableChanges[index].sources);
     }
   }
 

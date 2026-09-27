@@ -37,17 +37,19 @@ function setCurrentSource(
   result: RuntimeResult,
   value: RuntimeValue,
   trace: RuntimeArgumentTrace,
-): number {
+): { line: number; displayedChange: number } {
   let expression = trace.expression;
   const direct = directSource(trace, value);
   const source = direct ?? (trace.sources.length === 1 ? trace.sources[0] : null);
   let line = 0;
+  let displayedChange = -1;
   if (source) {
     const history = runtimeSourceHistory(result, source);
     if (history.length) {
       const change = result.variableChanges[history[history.length - 1]];
       line = change.line;
       if (direct && !isArray(value)) {
+        displayedChange = history[history.length - 1];
         expression = compoundExpression(change.name, change.operation, change.expression);
         if (change.name !== direct.name) expression = `${change.name} = ${expression}`;
       }
@@ -56,7 +58,7 @@ function setCurrentSource(
   row.setText(Expression, displayExpression(expression, value));
   if (line > 0) row.setText(Line, String(line));
 
-  return line;
+  return { line, displayedChange };
 }
 
 export function updateHistoryArraySummary(row: TreeWidgetItem): void {
@@ -74,7 +76,7 @@ export function addHistoryParameter(
   const row = new TreeWidgetItem(parent);
   row.setText(Parameter, name);
   row.setText(Type, runtimeTypeName(value));
-  const sourceLine = setCurrentSource(row, result, value, trace);
+  const { line: sourceLine, displayedChange } = setCurrentSource(row, result, value, trace);
   row.setText(Value, historyValueText(value));
   row.setText(State, 'At API call');
   const variables: string[] = [];
@@ -103,7 +105,7 @@ export function addHistoryParameter(
     row.setData(0, kArraySummaryRole, historyValueText(value));
     row.setData(0, kHistorySourceLineRole, sourceLine);
   } else {
-    const changes = earlierChanges(result, trace.sources);
+    const changes = earlierChanges(result, trace.sources, displayedChange);
     for (const index of changes) {
       const change = result.variableChanges[index];
       const entry = new TreeWidgetItem(row);

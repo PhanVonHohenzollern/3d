@@ -23,8 +23,9 @@ describe('ApiHistoryDialog', () => {
       '',
       '(2, 0, 0)',
       '2',
-      'No earlier values',
+      'At API call',
     ]);
+    expect(row(center.child(0))).toEqual(['', 'a', 'double', '2', '\u2014', '2', '1', 'Initialization']);
     expect(row(normal)).toEqual([
       'normal',
       'n',
@@ -43,8 +44,9 @@ describe('ApiHistoryDialog', () => {
     expect(points.text(HistoryColumn.State)).toBe('At API call');
     const q = points.child(1);
     expect(row(q)).toEqual(['points[1]', 'pts[1]', 'FdPoint3d', 'q', '', '(1, 1, 0)', '7', 'At API call']);
-    expect(q.childCount()).toBe(1);
-    expect(row(q.child(0))).toEqual([
+    expect(q.childCount()).toBe(2);
+    expect(row(q.child(0))).toEqual(['', 'q', 'FdPoint3d', 'FdVector3d(0, 0, 0)', '(1, 1, 0)', '(1, 1, 0)', '1', '+=']);
+    expect(row(q.child(1))).toEqual([
       '',
       'q',
       'FdPoint3d',
@@ -61,10 +63,11 @@ describe('ApiHistoryDialog', () => {
     const activated = vi.fn();
     dialog.setSourceActivatedCallback(activated);
     const tree = dialog.tree;
-    tree.itemDoubleClicked.emit(tree.topLevelItem(0), 0);
+    tree.itemDoubleClicked.emit(tree.topLevelItem(0).child(0), 0);
+    tree.itemDoubleClicked.emit(tree.topLevelItem(1), 0);
     tree.itemDoubleClicked.emit(tree.topLevelItem(2), 0);
     tree.itemDoubleClicked.emit(tree.topLevelItem(3).child(1).child(0), 0);
-    expect(activated.mock.calls).toEqual([[2], [1]]);
+    expect(activated.mock.calls).toEqual([[1], [3], [1]]);
   });
 
   it('closes like a QDialog with WA_DeleteOnClose', () => {
@@ -79,8 +82,9 @@ describe('ApiHistoryDialog', () => {
 
   it('follows dependencies but stops at the captured history boundary', () => {
     const result = traceResult();
-    expect(earlierChanges(result, [{ name: 'a', value: 2, variableId: 1, historyEnd: 4 }])).toEqual([0]);
-    expect(earlierChanges(result, [{ name: 'a', value: 2, variableId: 1, historyEnd: 1 }])).toEqual([]);
+    expect(earlierChanges(result, [{ name: 'a', value: 3, variableId: 1, historyEnd: 4 }])).toEqual([3, 0]);
+    expect(earlierChanges(result, [{ name: 'a', value: 2, variableId: 1, historyEnd: 1 }])).toEqual([0]);
+    expect(earlierChanges(result, [{ name: 'a', value: 3, variableId: 1, historyEnd: 4 }], 3)).toEqual([0]);
   });
 
   it('formats expressions and matches direct sources like the C++ helpers', () => {
