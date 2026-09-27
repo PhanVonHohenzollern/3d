@@ -52,14 +52,19 @@ export function parseRuntimeType(tokens: readonly Token[], start: number): Parse
     type += '::' + tokens[pos + 1].text;
     pos += 2;
   }
-  if (
+  if (type === 'std::vector' && tokens[pos]?.text === '<') {
+    const element = parseRuntimeType(tokens, pos + 1);
+    if (!element || tokens[element.end]?.text !== '>') return null;
+    type += '<' + sdkCanonicalType(element.type) + '>';
+    pos = element.end + 1;
+  } else if (
     !['auto', 'FdPoint3d', 'FdVector3d', 'FdBowlInfo', 'FdBowlFace', 'FdBowlCorner'].includes(type) &&
     !sdkTypeDefinition(type) &&
     !isScalarTypeName(type)
   )
     return null;
   skipQualifiers();
-  if (type === 'char' && pos < tokens.length && isSymbol(tokens[pos], '*')) {
+  if (sdkCanonicalType(type) === 'char' && pos < tokens.length && isSymbol(tokens[pos], '*')) {
     type = 'char*';
     ++pos;
     skipQualifiers();

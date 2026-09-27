@@ -11,6 +11,7 @@ import {
   runtimeInteger,
   runtimeTruthy,
   runtimeTypeName,
+  stdVectorElementType,
   type RuntimeArray,
   type RuntimeValue,
 } from '../RuntimeValue';
@@ -71,7 +72,11 @@ export function readLValue(ref: LValueRef): RuntimeValue {
 export function writeLValue(ref: LValueRef, value: RuntimeValue): void {
   if (ref.member === '') {
     const type = runtimeTypeName(ref.slot.get());
-    ref.slot.set(kCoercedTypes.includes(type) ? runtimeCoerceToType(value, type) : runtimeDeepCopy(value));
+    ref.slot.set(
+      kCoercedTypes.includes(type) || stdVectorElementType(type)
+        ? runtimeCoerceToType(value, type)
+        : runtimeDeepCopy(value),
+    );
 
     return;
   }

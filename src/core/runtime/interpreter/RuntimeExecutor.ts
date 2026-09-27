@@ -55,6 +55,8 @@ import {
   runtimeTruthy,
   runtimeTypeName,
   runtimeValueToCompactString,
+  RuntimeStdVector,
+  stdVectorElementType,
   type RuntimeValue,
 } from '../RuntimeValue';
 import { sdkTypeDefinition } from '../SdkDefinitions';
@@ -494,6 +496,29 @@ export class RuntimeExecutor {
     const args = splitTopLevel(inner, ',');
     if (braces && args.at(-1)?.length === 0) args.pop();
     if (braces && inner.length === 0) return runtimeDefaultValueForType(type);
+    const elementType = stdVectorElementType(type);
+    if (elementType) {
+      if (inner.length === 0) return new RuntimeStdVector(elementType);
+      if (braces)
+        return new RuntimeStdVector(
+          elementType,
+          args.map((arg) =>
+            runtimeDeepCopy(
+              isBraceList(arg)
+                ? this.directInitializer(elementType, arg)
+                : runtimeCoerceToType(this.evaluate(arg), elementType),
+            ),
+          ),
+        );
+      const values = args.map((arg) => this.evaluate(arg));
+      if (values.length === 1 && values[0] instanceof RuntimeStdVector) return runtimeCoerceToType(values[0], type);
+      if (values.length < 1 || values.length > 2) throw runtimeError('unsupported constructor for ' + type);
+      const array = createArray(elementType, [Number(runtimeInteger(values[0]))]);
+      if (values.length === 2)
+        array.elements = array.elements.map(() => runtimeDeepCopy(runtimeCoerceToType(values[1], elementType)));
+
+      return new RuntimeStdVector(elementType, array.elements);
+    }
     if (type.startsWith('FdBowl'))
       return builtinFunction(type)?.(inner.length ? args.map((arg) => this.evaluate(arg)) : []);
     if (type === 'FdPoint3d' || type === 'FdVector3d') {
@@ -610,6 +635,16 @@ export class RuntimeExecutor {
           throw runtimeError('expected member name after .');
         const member = tokens[p++].text;
         const current = slot.get();
+        if (current instanceof RuntimeStdVector && (member === 'front' || member === 'back')) {
+          if (tokens[p]?.text !== '(' || tokens[p + 1]?.text !== ')')
+            throw runtimeError(`std::vector::${member} takes no arguments`);
+          if (current.elements.length === 0) throw runtimeError(`std::vector::${member} requires a non-empty vector`);
+          const index = member === 'front' ? 0 : current.elements.length - 1;
+          slot = arraySlot(current, index);
+          path += `[${index}]`;
+          p += 2;
+          continue;
+        }
         if (current instanceof FdBowlCorner) {
           slot = bowlCornerSlot(current, member);
           path += '.' + member;

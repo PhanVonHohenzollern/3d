@@ -72,7 +72,8 @@ export function parameterSignatureType(param: readonly Token[]): string {
   type = type
     .trim()
     .replace(/\s+/g, ' ')
-    .replace(/\s*([&*[\]()])\s*/g, '$1');
+    .replace(/\s*::\s*/g, '::')
+    .replace(/\s*([&*[\]()<>])\s*/g, '$1');
 
   return type.includes('&') ? type : type.replace(/\[[^\]]*\]/, '*');
 }

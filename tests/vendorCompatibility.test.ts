@@ -10,6 +10,7 @@ import {
   validFunctionCode,
 } from '../src/helpers/functions';
 import { FunctionWorkspace } from '../src/hooks/mainWindow/FunctionWorkspace';
+import { RuntimeStdVector } from '../src/core/runtime/RuntimeValue';
 
 describe('vendor C++ compatibility regressions', () => {
   const conditionalSource = [
@@ -141,6 +142,122 @@ describe('vendor C++ compatibility regressions', () => {
     const result = new GeometryRuntime().executeUpToLine('Other::makeVerySimpleTube();', 999, true);
     expect(result.diagnostics).toHaveLength(1);
     expect(result.apiCalls).toEqual([]);
+  });
+
+  it.each(['CHAR', 'char', 'WCHAR'])('reads %s pointer parameters initialized with NULL', (type) => {
+    const code = `void element() {
+      ${type}* direction = NULL;
+      bool initiallyEmpty = !direction;
+      get_val("a_direction", direction);
+      double angle = 0;
+      if (direction && strcmp(direction, "3h") == 0) angle = ARX_PI / 2;
+      makeSymbolicLine(FdPoint3d(), FdPoint3d(10, 0, 0).rotateBy(angle, vz));
+    }`;
+    const runtime = new GeometryRuntime();
+    expect(runtime.discoverParameters(code)).toEqual([
+      expect.objectContaining({ name: 'a_direction', type: 'string', defaultValue: '' }),
+    ]);
+    runtime.setParameters(new Map([['a_direction', '3h']]));
+    const result = runtime.executeUpToLine(code, 999, true);
+    expect(result.diagnostics).toEqual([]);
+    expect(runtime.evaluateNumericExpression('initiallyEmpty')).toBe(1);
+    expect(result.apiCalls[0].arguments[1]).toMatchObject({ y: 10, z: 0 });
+    expect(result.parameterRequests[0]).toMatchObject({ type: 'string', currentValue: '"3h"' });
+  });
+
+  it('draws a closed outline through nested helpers using copied std::vector points', () => {
+    const code = `void element() { makeHoles(FdPoint3d(10, 20, 0)); }
+      void makeHoles(const FdPoint3d& center) { makeOutline(center); }
+      void makeOutline(const FdPoint3d& center) {
+        std::vector<FdPoint3d> points;
+        FdPoint3d p = center + vx * 5;
+        for (int i = 0; i < 4; ++i) {
+          points.push_back(p);
+          p.rotateBy(ARX_PI / 2, vz, center);
+        }
+        for (int i = 0; i < points.size() - 1; ++i)
+          makeSymbolicLine(points[i], points[i + 1]);
+        makeSymbolicLine(points.front(), points.back());
+      }`;
+    const workspace = new FunctionWorkspace();
+    workspace.edit(code);
+    expect(workspace.names).toEqual(['makeHoles', 'makeOutline']);
+    const program = workspace.program();
+    const result = new GeometryRuntime().executeUpToLine(program.source, 999, true, program.options);
+    expect(result.diagnostics).toEqual([]);
+    const lines = result.apiCalls.filter((call) => call.name === 'makeSymbolicLine');
+    expect(lines).toHaveLength(4);
+    const vertices = [
+      [15, 20],
+      [10, 25],
+      [5, 20],
+      [10, 15],
+    ];
+    lines.forEach((line, i) => {
+      const endpoints = i === 3 ? [vertices[0], vertices[3]] : [vertices[i], vertices[i + 1]];
+      endpoints.forEach(([x, y], j) => {
+        const point = line.arguments[j] as { x: number; y: number; z: number };
+        expect(point.x).toBeCloseTo(x);
+        expect(point.y).toBeCloseTo(y);
+        expect(point.z).toBe(0);
+      });
+    });
+    const pushes = result.variableChanges.filter((change) => change.operation === 'push_back');
+    expect(pushes.map((change) => (change.after as RuntimeStdVector).elements.length)).toEqual([1, 2, 3, 4]);
+    expect((pushes[0].after as RuntimeStdVector).elements[0]).toMatchObject({ x: 15, y: 20 });
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(4);
+  });
+
+  it('preserves vector copy, reference, overload and element mutation semantics', () => {
+    const code = `void element() {
+      std::vector<FdPoint3d> points = {{1, 2, 3}};
+      std::vector<FdPoint3d> copy(points);
+      std::vector<FdPoint3d> assigned;
+      assigned = points;
+      append(points);
+      points.front().set(4, 5, 6);
+      points.back().z = 9;
+      makeSymbolicLine(points.front(), points.back());
+      std::vector<int> numbers(2, 7);
+      int count = pick(numbers);
+      int pointCount = pick(points);
+      bool untouched = copy.front().x == 1 && assigned.front().x == 1;
+      bool skipped = false && (numbers.push_back(100), true);
+    }
+    void append(std::vector<FdPoint3d>& out) { out.push_back(FdPoint3d(7, 8, 3)); }
+    int pick(const std::vector<int>& values) { return values.size(); }
+    int pick(const std::vector<FdPoint3d>& values) { return values.size(); }`;
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(code, 999, true);
+    expect(result.diagnostics).toEqual([]);
+    expect(runtime.evaluateNumericExpression('count')).toBe(2);
+    expect(runtime.evaluateNumericExpression('pointCount')).toBe(2);
+    expect(runtime.evaluateNumericExpression('untouched')).toBe(1);
+    expect(runtime.evaluateNumericExpression('numbers[0]')).toBe(7);
+    expect(runtime.evaluateNumericExpression('numbers.size()')).toBe(2);
+    const line = result.apiCalls.find((call) => call.name === 'makeSymbolicLine')!;
+    expect(line.arguments).toEqual([
+      expect.objectContaining({ x: 4, y: 5, z: 6 }),
+      expect.objectContaining({ x: 7, y: 8, z: 9 }),
+    ]);
+  });
+
+  it.each([
+    ['std::vector<int> points; points.front();', 'non-empty vector'],
+    ['std::vector<int> points; points.back();', 'non-empty vector'],
+    ['std::vector<int> points; points[0];', 'array index out of range'],
+    ['std::vector<int> points; points.size(1);', 'takes no arguments'],
+    ['std::vector<int> points; points.push_back();', 'requires one element'],
+    ['std::vector<FdPoint3d> points; points.push_back(1);', 'FdPoint3d value required'],
+    ['std::vector<int> points(-1);', 'array dimensions'],
+    ['std::vector<int> points(1000001);', 'at most 1000000 elements'],
+    ['std::vector<int> points; std::vector<double> other; points = other;', 'std::vector<int> value required'],
+  ])('reports invalid vector operations: %s', (code, message) => {
+    const result = new GeometryRuntime().executeUpToLine(code, 999, true);
+    expect(result.diagnostics).toHaveLength(1);
+    expect(result.diagnostics[0].message).toContain(message);
   });
 
   it('evaluates mutating methods inside geometry arguments without treating the API name as a variable', () => {

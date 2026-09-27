@@ -10,6 +10,7 @@ import {
   runtimeNumber,
   runtimeTypeName,
   RuntimeArray,
+  RuntimeStdVector,
   type RuntimeValue,
 } from '../RuntimeValue';
 
@@ -35,6 +36,14 @@ function withinTolerance(v: FdVector3d, args: readonly RuntimeValue[]): boolean 
 }
 
 export function callMethod(value: RuntimeValue, method: string, args: readonly RuntimeValue[]): RuntimeValue {
+  if (value instanceof RuntimeStdVector && ['size', 'empty', 'front', 'back'].includes(method)) {
+    if (args.length !== 0) throw runtimeError(`std::vector::${method} takes no arguments`);
+    if (method === 'size') return BigInt(value.elements.length);
+    if (method === 'empty') return value.elements.length === 0;
+    if (value.elements.length === 0) throw runtimeError(`std::vector::${method} requires a non-empty vector`);
+
+    return runtimeDeepCopy(value.elements[method === 'front' ? 0 : value.elements.length - 1]);
+  }
   if (isBowlValue(value)) return callBowlMethod(value, method, args);
   if ((isPoint(value) || isVector(value)) && method === 'set') {
     if (args.length !== 3) throw runtimeError('set requires x, y, z');

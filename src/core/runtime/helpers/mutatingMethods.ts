@@ -1,9 +1,17 @@
 import { runtimeError } from '../../../utils/cpp';
 import { FdPoint3d, FdVector3d } from '../FdMath';
-import { isPoint, isVector, runtimeNumber, type RuntimeValue } from '../RuntimeValue';
+import {
+  isPoint,
+  isVector,
+  runtimeCoerceToType,
+  runtimeDeepCopy,
+  runtimeNumber,
+  RuntimeStdVector,
+  type RuntimeValue,
+} from '../RuntimeValue';
 import { isSymbol, TokKind, type Token } from './tokens';
 
-export const kMutatingMethods: readonly string[] = ['rotateBy', 'normalize', 'mirror', 'set'];
+export const kMutatingMethods: readonly string[] = ['rotateBy', 'normalize', 'mirror', 'set', 'push_back'];
 
 export function mutatingMethodDot(tokens: readonly Token[]): number {
   let bracket = 0,
@@ -30,7 +38,17 @@ export function mutatedValue(
   method: string,
   target: RuntimeValue,
   args: readonly RuntimeValue[],
-): FdPoint3d | FdVector3d | null {
+): FdPoint3d | FdVector3d | RuntimeStdVector | null {
+  if (method === 'push_back') {
+    if (!(target instanceof RuntimeStdVector) || args.length !== 1)
+      throw runtimeError('std::vector::push_back requires one element');
+    if (target.elements.length >= 1000000) throw runtimeError('std::vector exceeds 1000000 elements');
+    const next = runtimeDeepCopy(target) as RuntimeStdVector;
+    next.elements.push(runtimeDeepCopy(runtimeCoerceToType(args[0], target.elementType)));
+    next.dimensions[0] = next.elements.length;
+
+    return next;
+  }
   if (method === 'rotateBy') {
     const axis = args[1];
     if (isPoint(target)) {

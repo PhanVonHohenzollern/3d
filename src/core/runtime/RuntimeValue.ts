@@ -11,6 +11,16 @@ export class RuntimeArray {
   ) {}
 }
 
+export class RuntimeStdVector extends RuntimeArray {
+  constructor(elementType: string, elements: RuntimeValue[] = []) {
+    super(elementType, [elements.length], elements);
+  }
+}
+
+export function stdVectorElementType(type: string): string | undefined {
+  return /^std::vector<(.+)>$/.exec(type)?.[1];
+}
+
 export type RuntimeValue =
   undefined | number | bigint | boolean | string | FdPoint3d | FdVector3d | RuntimeArray | BowlValue;
 
@@ -47,6 +57,7 @@ function arrayTypeName(a: RuntimeArray): string {
 }
 
 export function runtimeTypeName(value: RuntimeValue): string {
+  if (value instanceof RuntimeStdVector) return `std::vector<${value.elementType}>`;
   if (value instanceof FdBowlInfo) return 'FdBowlInfo';
   if (value instanceof FdBowlFace) return 'FdBowlFace';
   if (value instanceof FdBowlCorner) return 'FdBowlCorner';
@@ -93,6 +104,8 @@ export function runtimeValueToString(value: RuntimeValue): string {
 }
 
 export function runtimeDefaultValueForType(requestedType: string): RuntimeValue {
+  const elementType = stdVectorElementType(requestedType);
+  if (elementType) return new RuntimeStdVector(elementType);
   if (requestedType === 'FdBowlInfo') return new FdBowlInfo();
   if (requestedType === 'FdBowlFace') return new FdBowlFace();
   if (requestedType === 'FdBowlCorner') return new FdBowlCorner();
@@ -133,11 +146,19 @@ export function runtimeTruthy(value: RuntimeValue): boolean {
 }
 
 export function runtimeCoerceToType(value: RuntimeValue, requestedType: string): RuntimeValue {
+  const elementType = stdVectorElementType(requestedType);
+  if (elementType) {
+    if (!(value instanceof RuntimeStdVector) || value.elementType !== elementType)
+      throw new CppException('runtime_error', requestedType + ' value required');
+
+    return runtimeDeepCopy(value);
+  }
   const typeName = sdkCanonicalType(requestedType);
   if (typeName === 'double' || typeName === 'float' || typeName === 'ads_real') return runtimeNumber(value);
   if (typeName === 'int' || typeName === 'short' || typeName === 'long') return runtimeInteger(value);
   if (typeName === 'bool') return runtimeTruthy(value);
   if (typeName === 'char*' || typeName === 'const char*' || typeName === 'string') {
+    if (value === undefined) return '';
     if (isString(value)) return value;
 
     return runtimeValueToCompactString(value);
@@ -158,6 +179,8 @@ export function runtimeCoerceToType(value: RuntimeValue, requestedType: string):
 
 export function runtimeDeepCopy(value: RuntimeValue): RuntimeValue {
   if (isBowlValue(value)) return value.clone();
+  if (value instanceof RuntimeStdVector)
+    return new RuntimeStdVector(value.elementType, value.elements.map(runtimeDeepCopy));
   if (isArray(value))
     return new RuntimeArray(value.elementType, [...value.dimensions], value.elements.map(runtimeDeepCopy));
 

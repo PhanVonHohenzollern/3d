@@ -25,6 +25,7 @@ import {
   runtimeDeepCopy,
   runtimeInteger,
   runtimeTruthy,
+  RuntimeStdVector,
   type RuntimeValue,
 } from '../RuntimeValue';
 import { Lexer } from './Lexer';
@@ -323,12 +324,15 @@ export class ExprParser {
         const member = this.current().text;
         ++this.m_pos;
         if (this.currentIs('(')) {
+          const elementReference = value instanceof RuntimeStdVector && (member === 'front' || member === 'back');
           const args = this.parseArguments();
           if (!this.m_evaluate) value = 0n;
           else if (reference && kMutatingMethods.includes(member) && this.m_state.mutateValue)
             value = this.m_state.mutateValue(reference, member, args, this.m_tokens[start].line);
           else value = callMethod(value, member, args);
-          if (!kMutatingMethods.includes(member)) reference = undefined;
+          if (elementReference && reference) reference = [...reference, ...this.m_tokens.slice(start, this.m_pos)];
+          else if (!kMutatingMethods.includes(member) || member === 'push_back') reference = undefined;
+          if (member === 'push_back') value = undefined;
         } else {
           value = this.m_evaluate ? memberValue(value, member) : 0n;
           if (reference) reference = [...reference, ...this.m_tokens.slice(start, this.m_pos)];

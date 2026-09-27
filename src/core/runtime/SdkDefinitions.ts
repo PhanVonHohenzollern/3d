@@ -21,6 +21,7 @@ export const kSdkConstants: readonly SdkConstantDefinition[] = [
 export const kSdkTypes: readonly SdkTypeDefinition[] = [
   ...generatedTypes,
   { name: 'enBowlTransition', baseType: 'int', arrayExtent: 0 },
+  { name: 'CHAR', baseType: 'char', arrayExtent: 0 },
   { name: 'WCHAR', baseType: 'char', arrayExtent: 0 },
   { name: 'wchar_t', baseType: 'char', arrayExtent: 0 },
   { name: 'BOOL', baseType: 'bool', arrayExtent: 0 },
