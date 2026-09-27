@@ -11,7 +11,7 @@ interface Macro {
 }
 
 // Keep one output line per input line: diagnostics and cursor execution use source line numbers.
-export function preprocess(code: string): { code: string; definitions: string[] } {
+export function preprocess(code: string): { code: string; definitions: string[]; maskedCode: string } {
   const macros = new Map<string, Macro>();
   const stack: { parent: boolean; taken: boolean; active: boolean; sawElse: boolean }[] = [];
 
@@ -65,7 +65,7 @@ export function preprocess(code: string): { code: string; definitions: string[] 
   };
 
   const source = code
-    .replace(/^\uFEFF|^\u00EF\u00BB\u00BF/, '')
+    .replace(/^\uFEFF|^\u00EF\u00BB\u00BF/, (text) => ' '.repeat(text.length))
     .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g, (text) =>
       text.startsWith('/') ? text.replace(/[^\r\n]/g, ' ') : text,
     );
@@ -75,7 +75,9 @@ export function preprocess(code: string): { code: string; definitions: string[] 
 
   const lines = source.split('\n');
   const output: string[] = [];
+  const masked: string[] = [];
   for (let index = 0; index < lines.length; ++index) {
+    const firstLine = index;
     let line = lines[index],
       consumed = 0;
     while (/\\\s*$/.test(line) && index + 1 < lines.length) {
@@ -83,6 +85,8 @@ export function preprocess(code: string): { code: string; definitions: string[] 
       ++consumed;
     }
     const directive = /^\s*#\s*(\w+)\b([\s\S]*)$/.exec(line);
+    for (let i = firstLine; i <= index; ++i)
+      masked.push(!directive && active() ? lines[i] : lines[i].replace(/[^\r]/g, ' '));
     if (!directive) {
       if (!active()) output.push('');
       else {
@@ -131,6 +135,7 @@ export function preprocess(code: string): { code: string; definitions: string[] 
 
   return {
     code: output.join('\n'),
+    maskedCode: masked.join('\n'),
     definitions: [...macros].map(
       ([name, macro]) =>
         '#define ' +

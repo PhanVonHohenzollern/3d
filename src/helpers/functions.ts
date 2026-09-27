@@ -11,6 +11,15 @@ import {
 } from '../core/runtime/helpers/functionSignatures';
 import { TokKind, tokensToExpression } from '../core/runtime/helpers/tokens';
 import { parseRuntimeType } from '../core/runtime/helpers/typeNames';
+import { preprocess } from '../core/runtime/helpers/preprocessor';
+
+function functionParseSource(source: string): string {
+  try {
+    return preprocess(source).maskedCode;
+  } catch {
+    return source;
+  }
+}
 
 export interface FunctionInput {
   name: string;
@@ -30,7 +39,7 @@ export interface SourceFunction {
 
 export function declaredFunctionNames(source: string): Set<string> {
   const names = new Set<string>();
-  cppLanguage.parser.parse(source).iterate({
+  cppLanguage.parser.parse(functionParseSource(source)).iterate({
     enter(node) {
       if (node.name !== 'FunctionDeclarator') return;
       const name = node.node.getChild('Identifier');
@@ -42,7 +51,11 @@ export function declaredFunctionNames(source: string): Set<string> {
 }
 
 export function mainFunctionName(source: string): string | null {
-  for (let node = cppLanguage.parser.parse(source).topNode.firstChild; node; node = node.nextSibling)
+  for (
+    let node = cppLanguage.parser.parse(functionParseSource(source)).topNode.firstChild;
+    node;
+    node = node.nextSibling
+  )
     if (node.name.endsWith('Statement') && node.name !== 'EmptyStatement') return null;
 
   return sourceFunctions(source)[0]?.name ?? null;
@@ -53,7 +66,11 @@ export function removeFunctionSource(source: string, name: string, signature?: s
     .filter((fn) => fn.name === name && (!signature || fn.signature === signature))
     .map(({ from, to }) => ({ from, to }));
   // Remove matching forward declarations, preserving other declarations in the same statement.
-  for (let node = cppLanguage.parser.parse(source).topNode.firstChild; node; node = node.nextSibling) {
+  for (
+    let node = cppLanguage.parser.parse(functionParseSource(source)).topNode.firstChild;
+    node;
+    node = node.nextSibling
+  ) {
     if (node.name !== 'Declaration') continue;
     for (const declaration of node.getChildren('FunctionDeclarator')) {
       const identifier = declaration.getChild('Identifier');
@@ -88,12 +105,13 @@ export function removeFunctionSource(source: string, name: string, signature?: s
 
 export function sourceFunctions(source: string): SourceFunction[] {
   const functions: SourceFunction[] = [];
-  cppLanguage.parser.parse(source).iterate({
+  const parseSource = functionParseSource(source);
+  cppLanguage.parser.parse(parseSource).iterate({
     enter(node) {
       if (node.name !== 'FunctionDefinition') return;
       const code = source.slice(node.from, node.to);
       try {
-        const fn = new ProgramParser(new Lexer(code).scan())
+        const fn = new ProgramParser(new Lexer(parseSource.slice(node.from, node.to)).scan())
           .parse()
           .children.find((s) => s.kind === StatementKind.Function);
         if (!fn?.functionName) return false;
@@ -155,7 +173,7 @@ export function sourceFunctions(source: string): SourceFunction[] {
 
 export function validFunctionCode(code: string, name?: string): string | null {
   let malformed = false;
-  cppLanguage.parser.parse(code).iterate({
+  cppLanguage.parser.parse(functionParseSource(code)).iterate({
     enter(node) {
       if (node.type.isError) malformed = true;
     },

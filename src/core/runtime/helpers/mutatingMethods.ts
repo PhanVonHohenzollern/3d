@@ -6,12 +6,16 @@ import { isSymbol, TokKind, type Token } from './tokens';
 export const kMutatingMethods: readonly string[] = ['rotateBy', 'normalize', 'mirror', 'set'];
 
 export function mutatingMethodDot(tokens: readonly Token[]): number {
-  let bracket = 0;
+  let bracket = 0,
+    paren = 0;
   for (let i = 0; i + 2 < tokens.length; ++i) {
     if (isSymbol(tokens[i], '[')) ++bracket;
     else if (isSymbol(tokens[i], ']')) --bracket;
+    else if (isSymbol(tokens[i], '(')) ++paren;
+    else if (isSymbol(tokens[i], ')')) --paren;
     else if (
       bracket === 0 &&
+      paren === 0 &&
       isSymbol(tokens[i], '.') &&
       tokens[i + 1].kind === TokKind.Identifier &&
       isSymbol(tokens[i + 2], '(')

@@ -49,6 +49,7 @@ export class PreviewGeometryEngine {
 
     for (let apiIndex = 0; apiIndex < result.apiCalls.length; ++apiIndex) {
       const call = result.apiCalls[apiIndex];
+      if (call.userFunctionCall) continue;
       const args = effectiveArguments(call);
 
       if (call.name === 'preTransformMesh' || call.name === 'postTransformMesh') {

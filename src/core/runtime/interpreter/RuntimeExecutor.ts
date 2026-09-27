@@ -449,7 +449,10 @@ export class RuntimeExecutor {
     dims: readonly number[],
     level: number,
   ): RuntimeValue {
-    if (level >= dims.length) return runtimeCoerceToType(this.evaluate(tokens), type);
+    if (level >= dims.length)
+      return isBraceList(tokens)
+        ? this.directInitializer(type, tokens)
+        : runtimeCoerceToType(this.evaluate(tokens), type);
     const array = createArray(type, dims, level);
     if (tokens.length === 0) return array;
     if (!isBraceList(tokens)) {
@@ -471,7 +474,9 @@ export class RuntimeExecutor {
         } else {
           const part = parts[cursor++];
           if (part.length)
-            target.elements[i] = runtimeCoerceToType(this.evaluate(isBraceList(part) ? part.slice(1, -1) : part), type);
+            target.elements[i] = isBraceList(part)
+              ? this.directInitializer(type, part)
+              : runtimeCoerceToType(this.evaluate(part), type);
         }
       }
     };
@@ -482,10 +487,13 @@ export class RuntimeExecutor {
   }
 
   private directInitializer(type: string, tail: readonly Token[]): RuntimeValue {
-    if (tail.length < 2 || !isSymbol(tail[0], '(') || !isSymbol(tail[tail.length - 1], ')'))
+    const braces = isBraceList(tail);
+    if (!braces && (tail.length < 2 || !isSymbol(tail[0], '(') || !isSymbol(tail[tail.length - 1], ')')))
       throw runtimeError('invalid direct initializer');
     const inner = sliceTokens(tail, 1, tail.length - 1);
     const args = splitTopLevel(inner, ',');
+    if (braces && args.at(-1)?.length === 0) args.pop();
+    if (braces && inner.length === 0) return runtimeDefaultValueForType(type);
     if (type.startsWith('FdBowl'))
       return builtinFunction(type)?.(inner.length ? args.map((arg) => this.evaluate(arg)) : []);
     if (type === 'FdPoint3d' || type === 'FdVector3d') {
@@ -546,9 +554,13 @@ export class RuntimeExecutor {
       if (assigned) {
         if (initializer.length > 0 && isIdentifier(initializer[0], 'new')) value = this.evaluate(initializer);
         else if (dims.length !== 0) value = this.initializerValue(initializer, type, dims, 0);
-        else value = runtimeCoerceToType(this.evaluateAssignmentExpression(initializer), type);
+        else
+          value = isBraceList(initializer)
+            ? this.directInitializer(type, initializer)
+            : runtimeCoerceToType(this.evaluateAssignmentExpression(initializer), type);
       } else if (tail.length !== 0) {
-        if (!isSymbol(tail[0], '(')) throw runtimeError('unsupported declaration tail near ' + tokensToText(tail));
+        if (!isSymbol(tail[0], '(') && !isBraceList(tail))
+          throw runtimeError('unsupported declaration tail near ' + tokensToText(tail));
         if (dims.length !== 0) throw runtimeError('array direct initialization is not supported');
         value = this.directInitializer(type, tail);
       }
@@ -621,7 +633,10 @@ export class RuntimeExecutor {
     const { index, op } = assignment;
     const rhsTokens = sliceTokens(tokens, index + 1, tokens.length);
     const lhs = this.resolveLValue(sliceTokens(tokens, 0, index));
-    const rhs = this.evaluateAssignmentExpression(rhsTokens, line);
+    const rhs =
+      op === '=' && isBraceList(rhsTokens)
+        ? this.directInitializer(runtimeTypeName(readLValue(lhs)), rhsTokens)
+        : this.evaluateAssignmentExpression(rhsTokens, line);
     const before = readLValue(lhs);
     const next = op === '=' ? rhs : compoundOperation(op, before, rhs);
     const sources = this.m_state.captureValueSources(tokensToExpression(tokens));
@@ -693,6 +708,11 @@ export class RuntimeExecutor {
   }
 
   private executeFreeCall(tokens: readonly Token[], line: number): boolean {
+    const lparen = tokens.findIndex((token) => token.text === '(');
+    if (lparen < 1) return false;
+    const scopedName = tokensToText(tokens.slice(0, lparen));
+    const baseCall = /^(?:FLM3Geo::)?BlockCreator3d::\w+$/.test(scopedName);
+    if (baseCall) tokens = tokens.slice(lparen - 1);
     if (tokens.length < 2 || tokens[0].kind !== TokKind.Identifier || !isSymbol(tokens[1], '(')) return false;
     const name = tokens[0].text;
     const argGroups = parseCallArguments(tokens, 1);
@@ -706,7 +726,7 @@ export class RuntimeExecutor {
         const mode = this.evaluate(argGroups[0]);
         this.m_state.setVariable('m_primitiveMode', runtimeCoerceToType(mode, 'int'), false);
       }
-      if (name !== 'ASSERT' && name !== 'delete') this.executeCall(name, argGroups, line);
+      if (name !== 'ASSERT' && name !== 'delete') this.executeCall(name, argGroups, line, false, baseCall);
     }
 
     return true;
@@ -793,7 +813,13 @@ export class RuntimeExecutor {
     );
   }
 
-  private executeCall(name: string, argGroups: readonly Token[][], line: number, expression = false): RuntimeValue {
+  private executeCall(
+    name: string,
+    argGroups: readonly Token[][],
+    line: number,
+    expression = false,
+    baseCall = false,
+  ): RuntimeValue {
     line = line || this.m_state.m_apiCalls[this.parentApiIndex()]?.line || 1;
     const args: RuntimeValue[] = [];
     let hasUnresolvedArgument = false;
@@ -811,7 +837,7 @@ export class RuntimeExecutor {
     });
     const call = createApiCall(name, line, this.parentApiIndex(), [...args], argGroups.map(tokensToExpression));
 
-    const fn = this.resolveUserFunction(name, args);
+    const fn = baseCall ? null : this.resolveUserFunction(name, args);
     if (fn) {
       call.userFunctionCall = true;
       populateFormalParameterMetadata(call, fn);
