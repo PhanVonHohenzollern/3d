@@ -1,6 +1,11 @@
 import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '../../core/runtime/RuntimeTypes';
 import { GeometryRuntime, type RuntimeExecutionOptions } from '../../core/runtime/GeometryRuntime';
 import {
+  isInsulationQuery,
+  kInsulationQueries,
+  type InsulationQuery,
+} from '../../core/runtime/helpers/insulationQueries';
+import {
   definitionId,
   neutralValueForType,
   parameterRowTexts,
@@ -18,6 +23,19 @@ export const kParameterHeaders = ['Parameter', 'Type', 'Variable', 'Value', 'Lin
 const ValueColumn = kParameterValueColumn;
 const ColumnCount = kParameterHeaders.length;
 
+// Each insulation query gets a checkbox row with this key above its thickness row.
+export function insulationEnabledKey(query: InsulationQuery): string {
+  return `${query}.enabled`;
+}
+
+function insulationForEnabledKey(key: string): InsulationQuery | undefined {
+  return kInsulationQueries.find((query) => insulationEnabledKey(query) === key);
+}
+
+export function isInsulationEnabledKey(key: string): boolean {
+  return insulationForEnabledKey(key) !== undefined;
+}
+
 export class ParameterPanelModel extends Observable implements ParameterPanelHandle {
   rows: ParameterRow[] = [];
   selectedRow = -1;
@@ -29,12 +47,12 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   dataSetIndex = -1;
   pasteMessage = '';
   pasteIsError = false;
-  extInsulationEnabled = false;
   activeTab = '';
   #source = '';
   #executionOptions?: RuntimeExecutionOptions;
   #activeKeys: Set<string> | null = null;
   readonly #tableTabs = new Map<string, { dataSets: ReadonlyMap<string, string>[]; index: number }>();
+  readonly #enabledInsulation = new Set<InsulationQuery>();
 
   get tabs() {
     return [...new Set(this.#definitions.map((definition) => definition.functionName ?? ''))].map((id) => ({
@@ -78,7 +96,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#source = '';
     this.#activeKeys = null;
     this.activeTab = '';
-    this.extInsulationEnabled = false;
+    this.#enabledInsulation.clear();
     this.#setRowCount0();
     this.changed();
   }
@@ -91,8 +109,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#source = source;
     this.#executionOptions = options;
     this.#definitions = definitions.map((definition) => ({ ...definition }));
-    if (!this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize'))
-      this.extInsulationEnabled = false;
+    for (const query of this.#enabledInsulation)
+      if (!this.#hasInsulationQuery(query)) this.#enabledInsulation.delete(query);
 
     for (const definition of this.#definitions) {
       const key = parameterKey(definition);
@@ -153,14 +171,14 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     let selectedRow = -1;
     for (const definition of this.#definitions) {
       const key = parameterKey(definition);
-      const insulation = definition.sourceFunction === 'getExtInsSize';
+      const insulation = isInsulationQuery(definition.sourceFunction) ? definition.sourceFunction : null;
       if (insulation)
         this.rows.push({
-          key: 'getExtInsSize.enabled',
+          key: insulationEnabledKey(insulation),
           line: definition.line,
           checkbox: true,
           functionName: definition.functionName,
-          texts: ['getExtInsSize', 'bool', '', String(this.extInsulationEnabled), String(definition.line)],
+          texts: [insulation, 'bool', '', String(this.#enabledInsulation.has(insulation)), String(definition.line)],
         });
       const row = this.rows.length;
       const value = this.#values.get(key) ?? neutralValueForType(definition.type);
@@ -172,7 +190,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
         line: definition.line,
         texts,
         checkbox: !!definition.checkbox,
-        disabled: insulation ? !this.extInsulationEnabled : !!this.#activeKeys && !this.#activeKeys.has(key),
+        disabled: insulation
+          ? !this.#enabledInsulation.has(insulation)
+          : !!this.#activeKeys && !this.#activeKeys.has(key),
       });
       if (selectedKey !== '' && selectedKey === key) selectedRow = row;
     }
@@ -223,35 +243,39 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   overrides(): Map<string, string> {
-    const insulation = this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize');
     const values = new Map(
       this.#definitions
         .filter(
           (definition) =>
-            definition.sourceFunction !== 'getExtInsSize' &&
+            !isInsulationQuery(definition.sourceFunction) &&
             (definition.checkbox || this.#userEditedKeys.has(parameterKey(definition))),
         )
         .map((definition) => parameterKey(definition))
         .map((key) => [key, this.#values.get(key)!]),
     );
-    // A removed query must not leave an enabled thickness in the runtime configuration.
-    if (!insulation && !this.#definitions.some((definition) => definition.name === 'getExtInsSize'))
-      values.delete('getExtInsSize');
-    if (insulation && this.extInsulationEnabled) {
-      const definition = this.#definitions.find((item) => item.sourceFunction === 'getExtInsSize')!;
-      values.set('getExtInsSize', this.#values.get(parameterKey(definition)) ?? '0');
+    for (const query of kInsulationQueries) {
+      const definition = this.#definitions.find((item) => item.sourceFunction === query);
+      // A removed query must not leave an enabled thickness in the runtime configuration.
+      if (!definition && !this.#definitions.some((item) => item.name === query)) values.delete(query);
+      if (definition && this.#enabledInsulation.has(query))
+        values.set(query, this.#values.get(parameterKey(definition)) ?? '0');
     }
 
     return values;
   }
 
-  setExtInsulationEnabled(enabled: boolean): void {
-    if (
-      this.extInsulationEnabled === enabled ||
-      !this.#definitions.some((definition) => definition.sourceFunction === 'getExtInsSize')
-    )
-      return;
-    this.extInsulationEnabled = enabled;
+  #hasInsulationQuery(query: InsulationQuery): boolean {
+    return this.#definitions.some((definition) => definition.sourceFunction === query);
+  }
+
+  isInsulationEnabled(query: InsulationQuery): boolean {
+    return this.#enabledInsulation.has(query);
+  }
+
+  setInsulationEnabled(query: InsulationQuery, enabled: boolean): void {
+    if (this.#enabledInsulation.has(query) === enabled || !this.#hasInsulationQuery(query)) return;
+    if (enabled) this.#enabledInsulation.add(query);
+    else this.#enabledInsulation.delete(query);
     this.#refreshAvailability();
     this.#rebuildTable();
     this.#changedCallback?.();
@@ -265,8 +289,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   setCheckbox(key: string, checked: boolean): void {
-    if (key === 'getExtInsSize.enabled') {
-      this.setExtInsulationEnabled(checked);
+    const insulation = insulationForEnabledKey(key);
+    if (insulation) {
+      this.setInsulationEnabled(insulation, checked);
 
       return;
     }
@@ -316,8 +341,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       const definition = this.#definitions.find((item) => parameterKey(item) === key);
       if (
         !definition ||
-        (definition.sourceFunction === 'getExtInsSize'
-          ? !this.extInsulationEnabled
+        (isInsulationQuery(definition.sourceFunction)
+          ? !this.#enabledInsulation.has(definition.sourceFunction)
           : this.#activeKeys && !this.#activeKeys.has(key))
       )
         continue;
@@ -330,7 +355,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   resetToSource(): void {
-    this.extInsulationEnabled = false;
+    this.#enabledInsulation.clear();
     this.dataSetIndex = -1;
     this.#userEditedKeys.clear();
     this.#values.clear();

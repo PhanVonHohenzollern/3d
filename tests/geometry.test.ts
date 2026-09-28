@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { adapterMap, supportedPreviewApiNames } from '../src/core/geometry/adapters/apiAdapters';
 import { buildConnectorPreview } from '../src/core/geometry/ConnectorPreview';
 import { PreviewGeometryEngine } from '../src/core/geometry/PreviewGeometryEngine';
 import type { PreviewMesh } from '../src/core/geometry/previewScene';
@@ -9,6 +10,7 @@ import { what } from '../src/utils/cpp';
 import { cross, dot, DVec3 } from '../src/utils/DVec3';
 import { decodeResult, encodeConnector, encodeScene, type Json } from './support/codec';
 import { expectSameJson } from './support/compare';
+import { expectFiniteScene } from './support/finiteScene';
 import { connectorDefinition, isLiteral, literalEvaluator } from './support/connectors';
 import { expectedOutput } from './support/expected';
 import { listFixtures } from './support/fixtures';
@@ -210,12 +212,112 @@ it('keeps external insulation dark red across color changes and restores colors 
   });
 });
 
+describe('preview adapter registry', () => {
+  it('rejects an API name registered to two adapters', () => {
+    const draw = () => true;
+
+    const registered = new Set<string>();
+    adapterMap([['makeTube', draw]], registered);
+    expect(() => adapterMap([['makeTube', draw]], registered)).toThrow('preview adapter registered twice: makeTube');
+  });
+
+  it('draws make_line and make_thin_line with the planar adapter', () => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      'FdPoint3d a(0, 0, 0), b(100, 0, 0);\nmake_line(a, b);\nmake_thin_line(a, b);',
+      999,
+    );
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    expect(supportedPreviewApiNames().filter((name) => name === 'make_line')).toHaveLength(1);
+  });
+
+  it('keeps every API in no_adapter.cpp without an adapter, so that fixture still draws nothing', () => {
+    const [fixture] = listFixtures('geometry').filter((item) => item.name === 'geometry/no_adapter.cpp');
+    const result = new GeometryRuntime().executeUpToLine(fixture.code, 999);
+    const supported = new Set(supportedPreviewApiNames());
+    expect(result.apiCalls.map((call) => call.name).filter((name) => supported.has(name))).toEqual([]);
+    expect(new PreviewGeometryEngine().build(result).meshes).toEqual([]);
+  });
+});
+
+describe('vasco transitions', () => {
+  it('shades the rectangle-to-round walls with outward normals across the loft', () => {
+    const result = new GeometryRuntime().executeUpToLine(
+      'FdPoint3d p(0,0,0); double diam[2] = {80,80}; double len[4] = {200,0,0,0};\n' +
+        'makeVascoTransition(p, vx, vz, 120, 100, diam, 0, len, 4);',
+      999,
+    );
+    const [mesh] = new PreviewGeometryEngine().build(result).meshes;
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+    for (const v of mesh.vertices) {
+      const normal = new DVec3(v.nx, v.ny, v.nz);
+      const radial = new DVec3(0, v.y, v.z);
+      // The loft runs along +x: a wall normal points away from that axis and mostly across it.
+      expect(dot(normal, radial)).toBeGreaterThan(0);
+      expect(Math.abs(normal.x)).toBeLessThan(0.5);
+    }
+  });
+});
+
+describe('tube-to-tube intersections', () => {
+  const frame = 'FdPoint3d p(0,0,0); FdVector3d n(0,0,1), up(0,1,0);';
+
+  const build = (code: string) => new PreviewGeometryEngine().build(new GeometryRuntime().executeUpToLine(code, 999));
+
+  it.each([
+    [
+      'a short position array',
+      'double pos[1] = {100}; double ang[3] = {90,0,0};',
+      'makeTubeToTubeIntersection: interTubePosition needs 2 numbers',
+    ],
+    [
+      'a scalar angle',
+      'double pos[2] = {100,0}; double ang = 90;',
+      'makeTubeToTubeIntersection: angles needs 1 number',
+    ],
+  ])('warns instead of drawing nothing for %s', (_, declarations, warning) => {
+    const scene = build(
+      `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
+        ` bool opt[2] = {false,false}; ${declarations}` +
+        ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
+    );
+    expect(scene.meshes).toEqual([]);
+    expect(scene.warnings).toEqual([`line 1 ${warning}`]);
+  });
+
+  it('warns when makeTubeToTubeIntersection2 gets a short branch array', () => {
+    const scene = build(
+      `${frame} double td[2] = {100,300}; double it[2] = {50,200}; double an[2] = {90,0};` +
+        ' makeTubeToTubeIntersection2(p, n, up, td, it, an, 8, false);',
+    );
+    expect(scene.warnings).toEqual(['line 1 makeTubeToTubeIntersection2: interTubeData needs 4 numbers']);
+  });
+
+  it('still accepts an angle array that only sets the first angle', () => {
+    const scene = build(
+      `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
+        ' bool opt[2] = {false,false}; double pos[2] = {100,0}; double ang[1] = {90};' +
+        ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
+    );
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    expectFiniteScene(scene);
+  });
+});
+
+// These fixtures pass NaN or infinity on purpose: the preview must reproduce the desktop's
+// non-finite meshes for non-finite input. Anywhere else a non-finite vertex is an adapter bug.
+const kNonFiniteInputFixtures = new Set(['geometry/nan_inputs.cpp']);
+
 for (const fixture of listFixtures()) {
   describe(fixture.name, () => {
     it('preview geometry and literal connectors match', () => {
       expectedOutput(fixture).runs.forEach((run: Json) => {
         const scene = new PreviewGeometryEngine().build(decodeResult(run.result));
         expectSameJson({ line: run.line, scene: run.scene }, { line: run.line, scene: encodeScene(scene) });
+        if (!kNonFiniteInputFixtures.has(fixture.name)) expectFiniteScene(scene);
 
         fixture.connectors.forEach((directive, index) => {
           const fields = [

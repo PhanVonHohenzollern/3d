@@ -1,9 +1,10 @@
-import { cross, DVec3, normalized } from '../../../utils/DVec3';
+import { cross, dot, DVec3, normalized } from '../../../utils/DVec3';
 import type { RuntimeValue } from '../../runtime/RuntimeValue';
 import { buildBoxMesh } from '../builders/rectangularMeshes';
 import { buildTaperedTubeMesh } from '../builders/circularMeshes';
 import { warningFor } from '../helpers/apiCall';
 import { rotateAroundAxis, toFdVector, toPoint } from '../helpers/geometryMath';
+import { vertex } from '../helpers/meshData';
 import { NamedArguments } from '../helpers/NamedArguments';
 import type { MeshBuildContext } from '../MeshBuildContext';
 import type { PreviewGeometryScene } from '../previewScene';
@@ -158,9 +159,17 @@ export function appendVasco(scene: PreviewGeometryScene, context: MeshBuildConte
           return end.add(f.right.mul((diam[0] / 2) * Math.cos(t))).add(f.up.mul((diam[1] / 2) * Math.sin(t)));
         }),
       ];
-      for (const ring of rings)
-        for (const p of ring)
-          mesh.vertices.push({ x: p.x, y: p.y, z: p.z, nx: f.normal.x, ny: f.normal.y, nz: f.normal.z });
+      // Wall normals: across the loft (around the ring) × along it, turned away from the axis.
+      const axisPoints = [f.center, end];
+      rings.forEach((ring, r) => {
+        for (let i = 0; i < count; ++i) {
+          const around = ring[(i + 1) % count].sub(ring[(i + count - 1) % count]),
+            along = rings[1][i].sub(rings[0][i]);
+          let normal = normalized(cross(around, along));
+          if (dot(normal, ring[i].sub(axisPoints[r])) < 0) normal = normal.mul(-1);
+          mesh.vertices.push(vertex(ring[i], normal));
+        }
+      });
       for (let i = 0; i < count; ++i) {
         const j = (i + 1) % count;
         mesh.indices.push(i, j, count + j, i, count + j, count + i);

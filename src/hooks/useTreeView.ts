@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import { eventModifiers } from '../helpers/keyboard';
 import { kTreeIndentation } from '../helpers/layout';
 import { resizeToContentsWidth } from '../helpers/treeColumns';
@@ -6,8 +6,20 @@ import type { TreeColumnView, TreeMouseEvent, TreeRowView } from '../types/treeV
 import { textWidth } from '../utils/measureText';
 import { isOnScrollbar } from '../utils/dom';
 import type { TreeWidget } from './treeWidget/TreeWidget';
+import type { TreeWidgetItem } from './treeWidget/TreeWidgetItem';
 import { usePointerDrag } from './usePointerDrag';
 import { useObservable } from './useObservable';
+import { useScrollSelectionIntoView } from './useScrollSelectionIntoView';
+
+// Keep the selected call below the sticky header without scrolling the whole page.
+function scrollToSelectedItem(container: HTMLElement, request: { item: TreeWidgetItem }): void {
+  const row = container.querySelector<HTMLElement>(`[data-key="${request.item.id}"]`);
+  if (!row || !container.clientHeight) return;
+  const top = row.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+  const bottom = top + row.offsetHeight;
+  if (top < container.scrollTop + 28) container.scrollTop = top - 28;
+  else if (bottom > container.scrollTop + container.clientHeight) container.scrollTop = bottom - container.clientHeight;
+}
 
 export function useTreeView(tree: TreeWidget) {
   useObservable(tree);
@@ -61,28 +73,7 @@ export function useTreeView(tree: TreeWidget) {
     row.cells[0].indent = Math.min(row.cells[0].indent, firstWidth - 12);
   }
 
-  const scrollRequest = tree.scrollRequest;
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container || !scrollRequest) return;
-
-    const scrollToSelection = () => {
-      const row = container.querySelector<HTMLElement>(`[data-key="${scrollRequest.item.id}"]`);
-      if (!row || !container.clientHeight) return;
-      const top = row.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-      const bottom = top + row.offsetHeight;
-      // Keep the selected call below the sticky header without scrolling the whole page.
-      if (top < container.scrollTop + 28) container.scrollTop = top - 28;
-      else if (bottom > container.scrollTop + container.clientHeight)
-        container.scrollTop = bottom - container.clientHeight;
-    };
-
-    scrollToSelection();
-    const observer = new ResizeObserver(scrollToSelection);
-    observer.observe(container);
-
-    return () => observer.disconnect();
-  }, [scrollRequest]);
+  useScrollSelectionIntoView(containerRef, tree.scrollRequest, scrollToSelectedItem);
 
   const hit = (event: MouseEvent): TreeMouseEvent => {
     const target = event.target as Element;

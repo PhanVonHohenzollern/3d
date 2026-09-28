@@ -138,25 +138,25 @@ if (ASF) { double H=30; get_val("H", H); }
     expect(model.rows[1].disabled).toBe(true);
     expect(model.edit(1, 3)).toBe(false);
     expect(model.overrides().has('getExtInsSize')).toBe(false);
-    model.setExtInsulationEnabled(true);
+    model.setInsulationEnabled('getExtInsSize', true);
     expect(model.rows[1].disabled).toBe(false);
     expect(model.overrides().get('getExtInsSize')).toBe('10');
     editValue(model, 1, '25');
     expect(model.overrides().get('getExtInsSize')).toBe('25');
-    model.setExtInsulationEnabled(false);
+    model.setInsulationEnabled('getExtInsSize', false);
     expect(model.overrides().has('getExtInsSize')).toBe(false);
     expect(model.rows[1].disabled).toBe(true);
-    model.setExtInsulationEnabled(true);
+    model.setInsulationEnabled('getExtInsSize', true);
     expect(model.overrides().get('getExtInsSize')).toBe('25');
     model.resetToSource();
-    expect(model.extInsulationEnabled).toBe(false);
+    expect(model.isInsulationEnabled('getExtInsSize')).toBe(false);
     expect(model.rows[1].texts[3]).toBe('10');
-    model.setExtInsulationEnabled(true);
+    model.setInsulationEnabled('getExtInsSize', true);
     model.setDefinitions(runtime.discoverParameters('double size = 10;'));
     expect(model.rows).toEqual([]);
     expect(model.overrides().has('getExtInsSize')).toBe(false);
-    model.setExtInsulationEnabled(true);
-    expect(model.extInsulationEnabled).toBe(false);
+    model.setInsulationEnabled('getExtInsSize', true);
+    expect(model.isInsulationEnabled('getExtInsSize')).toBe(false);
     expect(changed).toHaveBeenCalledTimes(6);
   });
 
@@ -178,6 +178,27 @@ if (ASF) { double H=30; get_val("H", H); }
     );
     expect(definitions).toHaveLength(1);
     expect(definitions[0]).toMatchObject({ sourceFunction: 'getExtInsSize', variableName: 'size' });
+  });
+
+  it('gives external and internal insulation separate checkboxes and thicknesses', () => {
+    const model = new ParameterPanelModel();
+    model.setDefinitions(
+      new GeometryRuntime().discoverParameters(
+        'double ext = 10; double inner = 4; if (getExtInsSize(ext)) {} if (getIntInsSize(inner)) {}',
+      ),
+    );
+    expect(model.rows.map((row) => [row.key, row.texts[0]])).toEqual([
+      ['getExtInsSize.enabled', 'getExtInsSize'],
+      ['getExtInsSize', 'size'],
+      ['getIntInsSize.enabled', 'getIntInsSize'],
+      ['getIntInsSize', 'size'],
+    ]);
+    model.setCheckbox('getIntInsSize.enabled', true);
+    expect(model.isInsulationEnabled('getIntInsSize')).toBe(true);
+    expect(model.isInsulationEnabled('getExtInsSize')).toBe(false);
+    expect([...model.overrides()]).toEqual([['getIntInsSize', '4']]);
+    expect(model.rows[1].disabled).toBe(true);
+    expect(model.rows[3].disabled).toBe(false);
   });
 
   it.each([

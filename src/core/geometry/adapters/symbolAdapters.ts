@@ -55,8 +55,6 @@ export const symbolApiNames = [
   'addThinLine',
   'drawAsThinLine',
   'addCenterLine',
-  'make_line',
-  'make_thin_line',
   'addCenterPolyLine',
   'makeSymbolicArc',
   'makeSymbolicEllipse',
@@ -115,11 +113,7 @@ export function appendSymbol(scene: PreviewGeometryScene, context: MeshBuildCont
   const fill = (points: DVec3[]) => scene.meshes.push(buildPolygonFaceMesh(context, points.map(toPoint)));
 
   try {
-    if (
-      ['makeSymbolicLine', 'addThinLine', 'drawAsThinLine', 'addCenterLine', 'make_line', 'make_thin_line'].includes(
-        name,
-      )
-    ) {
+    if (['makeSymbolicLine', 'addThinLine', 'drawAsThinLine', 'addCenterLine'].includes(name)) {
       stroke([point(args[0]), point(args[1])]);
 
       return true;
