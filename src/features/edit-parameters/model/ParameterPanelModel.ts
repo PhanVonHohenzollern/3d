@@ -12,8 +12,9 @@ import { adjacentCell, rowForKey } from '@/shared/ui/table-view';
 import type { ParameterEditor, ParameterRow } from '@/entities/parameter';
 import type { ParameterAvailability, ParameterPanelHandle } from '@/types/panels';
 import { isMacPlatform } from '@/shared/lib/platform';
-import { Observable } from '@/shared/lib/observable';
-import { parseParameterTable } from '@/entities/parameter';
+import { Observable, Signal } from '@/shared/lib/observable';
+import { parseParameterTable, tableImportSummary } from '@/entities/parameter';
+import { what } from '@engine/runtime';
 
 export const kParameterValueColumn = 3;
 export const kParameterHeaders = ['Parameter', 'Type', 'Variable', 'Value', 'Line'];
@@ -34,6 +35,8 @@ export function isInsulationEnabledKey(key: string): boolean {
 }
 
 export class ParameterPanelModel extends Observable implements ParameterPanelHandle {
+  // Emitted when the user changes parameter values (not on every row rebuild).
+  readonly valuesChanged = new Signal<[]>();
   rows: ParameterRow[] = [];
   selectedRow = -1;
   currentRow = -1;
@@ -82,7 +85,6 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   #definitions: RuntimeParameterRequest[] = [];
   readonly #values = new Map<string, string>();
   readonly #userEditedKeys = new Set<string>();
-  #changedCallback: (() => void) | null = null;
   #updating = false;
   #pressedCell: { row: number; column: number } | null = null;
   #pressedAlreadySelected = false;
@@ -267,7 +269,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     else this.#enabledInsulation.delete(query);
     this.#refreshAvailability();
     this.#rebuildTable();
-    this.#changedCallback?.();
+    this.valuesChanged.emit();
   }
 
   previewTable(text: string) {
@@ -291,7 +293,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.dataSetIndex = -1;
     this.#refreshAvailability();
     this.#rebuildTable();
-    this.#changedCallback?.();
+    this.valuesChanged.emit();
   }
 
   importTable(text: string): boolean {
@@ -299,15 +301,13 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       const parsed = this.previewTable(text);
       this.dataSets = parsed.data;
       this.pasteIsError = false;
-      this.pasteMessage =
-        `${parsed.data.length} data row(s), ${parsed.columns} parameter(s)` +
-        (parsed.ignored.length ? ` · Ignored: ${parsed.ignored.join(', ')}` : '');
+      this.pasteMessage = tableImportSummary(parsed);
       this.selectDataSet(0);
 
       return true;
     } catch (error) {
       this.pasteIsError = true;
-      this.pasteMessage = error instanceof Error ? error.message : String(error);
+      this.pasteMessage = what(error);
       this.changed();
 
       return false;
@@ -340,7 +340,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     }
     this.#refreshAvailability();
     this.#rebuildTable();
-    this.#changedCallback?.();
+    this.valuesChanged.emit();
   }
 
   resetToSource(): void {
@@ -351,11 +351,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     for (const definition of this.#definitions) this.#values.set(parameterKey(definition), parameterSeed(definition));
     this.#refreshAvailability();
     this.#rebuildTable();
-    this.#changedCallback?.();
-  }
-
-  setChangedCallback(callback: (() => void) | null): void {
-    this.#changedCallback = callback;
+    this.valuesChanged.emit();
   }
 
   #itemChanged(row: ParameterRow, column: number): void {
@@ -376,7 +372,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#userEditedKeys.add(key);
     this.#refreshAvailability();
     this.#rebuildTable();
-    if (this.#changedCallback) this.#changedCallback();
+    this.valuesChanged.emit();
   }
 
   #setCurrentCell(row: number, column: number): void {

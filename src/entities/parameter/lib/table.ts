@@ -84,3 +84,14 @@ export function parseParameterTable(text: string, definitions: readonly RuntimeP
 
   return { data, ignored, columns: used.size };
 }
+
+export function tableImportSummary(table: {
+  data: readonly unknown[];
+  columns: number;
+  ignored: readonly string[];
+}): string {
+  return (
+    `${table.data.length} data row(s) · ${table.columns} parameter(s)` +
+    (table.ignored.length ? ` · Ignored columns: ${table.ignored.join(', ')}` : '')
+  );
+}

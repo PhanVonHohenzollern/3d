@@ -4,7 +4,7 @@ import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
 import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';
 import { GeometryRuntime } from '@engine/runtime';
-import { ParameterPanelModel } from '@/hooks/parameterPanel/ParameterPanelModel';
+import { ParameterPanelModel } from '@/features/edit-parameters';
 import { VariablePanelModel } from '@/hooks/variablePanel/VariablePanelModel';
 import type { CodeEditorHandle } from '@/types/editor';
 import type { Viewport3DHandle } from '@/types/viewport';
@@ -163,7 +163,7 @@ function createMainWindow() {
   editor.onTextChanged = mw.onEditorTextChanged;
   editor.onCursorPositionChanged = mw.onEditorCursorPositionChanged;
   variables.setSelectionChangedCallback(mw.onVariableSelectionChanged);
-  parameters.setChangedCallback(mw.onParametersChanged);
+  parameters.valuesChanged.connect(mw.onParametersChanged);
   apiTrace.setSelectionChangedCallback(mw.onApiTraceSelectionChanged);
   apiTrace.setSourceActivatedCallback(mw.onApiTraceSourceActivated);
   apiTrace.setFunctionActivatedCallback(mw.onApiTraceFunctionActivated);

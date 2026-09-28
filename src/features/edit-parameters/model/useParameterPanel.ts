@@ -4,9 +4,11 @@ import {
   isInsulationEnabledKey,
   kParameterValueColumn,
   ParameterPanelModel,
-} from '@/hooks/parameterPanel/ParameterPanelModel';
+} from '@/features/edit-parameters/model/ParameterPanelModel';
 import { useObservable } from '@/shared/lib/observable';
-import { parameterTableCells, parameterTableText } from '@/entities/parameter';
+import { parameterTableCells, parameterTableText, tableImportSummary } from '@/entities/parameter';
+import { what } from '@engine/runtime';
+import type { ParameterTableDialogState } from '@/features/edit-parameters/model/types';
 import { parameterGridLayout } from '@/entities/parameter';
 
 interface TableDraft {
@@ -19,7 +21,7 @@ function tableDraftFromText(text: string): TableDraft {
   try {
     return { text, cells: parameterTableCells(text), error: '' };
   } catch (error) {
-    return { text, cells: [], error: error instanceof Error ? error.message : String(error) };
+    return { text, cells: [], error: what(error) };
   }
 }
 
@@ -46,9 +48,7 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
     return () => observer.disconnect();
   }, []);
 
-  useLayoutEffect(() => {
-    model.setChangedCallback(onChanged ?? null);
-  }, [model, onChanged]);
+  useLayoutEffect(() => (onChanged ? model.valuesChanged.connect(onChanged) : undefined), [model, onChanged]);
   useImperativeHandle(ref, () => model, [model]);
 
   const fields = model.rows
@@ -121,11 +121,9 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
   if (draft?.cells.length && !draftError) {
     try {
       const preview = model.previewTable(parameterTableText(draft.cells));
-      draftSummary =
-        `${preview.data.length} data row(s) · ${preview.columns} parameter(s)` +
-        (preview.ignored.length ? ` · Ignored columns: ${preview.ignored.join(', ')}` : '');
+      draftSummary = tableImportSummary(preview);
     } catch (error) {
-      draftError = error instanceof Error ? error.message : String(error);
+      draftError = what(error);
     }
   }
 
@@ -146,35 +144,37 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
     dataSetCount: model.dataSets.length,
     selectDataSet: (index: number) => model.selectDataSet(index),
     openTable: () => setDraft((current) => current ?? tableDraftFromText('')),
-    tableDialog: draft && {
-      text: draft.text,
-      cells: draft.cells,
-      columnCount: Math.max(0, ...draft.cells.map((row) => row.length)),
-      parameterNames: [
-        ...new Set(
-          model.rows
-            .filter((row) => (row.functionName ?? '') === model.activeTab && !isInsulationEnabledKey(row.key))
-            .map((row) => row.texts[0]),
-        ),
-      ],
-      error: draftError,
-      summary: draftSummary,
-      canApply: !!draftSummary && !draftError,
-      close: () => setDraft(null),
-      setText: (text: string) => setDraft(tableDraftFromText(text)),
-      editCell: (row: number, column: number, value: string) =>
-        setDraft((current) => {
-          if (!current) return current;
-          const cells = current.cells.map((items) => [...items]);
-          while (cells[row].length <= column) cells[row].push('');
-          cells[row][column] = value;
+    tableDialog:
+      draft &&
+      ({
+        text: draft.text,
+        cells: draft.cells,
+        columnCount: Math.max(0, ...draft.cells.map((row) => row.length)),
+        parameterNames: [
+          ...new Set(
+            model.rows
+              .filter((row) => (row.functionName ?? '') === model.activeTab && !isInsulationEnabledKey(row.key))
+              .map((row) => row.texts[0]),
+          ),
+        ],
+        error: draftError,
+        summary: draftSummary,
+        canApply: !!draftSummary && !draftError,
+        close: () => setDraft(null),
+        setText: (text: string) => setDraft(tableDraftFromText(text)),
+        editCell: (row: number, column: number, value: string) =>
+          setDraft((current) => {
+            if (!current) return current;
+            const cells = current.cells.map((items) => [...items]);
+            while (cells[row].length <= column) cells[row].push('');
+            cells[row][column] = value;
 
-          return { text: parameterTableText(cells), cells, error: '' };
-        }),
-      apply: () => {
-        if (!draftError && draftSummary && model.importTable(parameterTableText(draft.cells))) setDraft(null);
-      },
-    },
+            return { text: parameterTableText(cells), cells, error: '' };
+          }),
+        apply: () => {
+          if (!draftError && draftSummary && model.importTable(parameterTableText(draft.cells))) setDraft(null);
+        },
+      } satisfies ParameterTableDialogState),
     resetToSource: () => model.resetToSource(),
   };
 }
