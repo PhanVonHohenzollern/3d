@@ -34,8 +34,7 @@ export default defineConfig([
     plugins: { '@stylistic': stylistic },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      // Project code is imported by relative path only (docs/architecture.md). The @/ alias exists
-      // only so the shadcn CLI can generate components; convert its imports to relative paths.
+      // Project code is imported by relative path only; no aliases are configured (docs/architecture.md).
       'no-restricted-imports': [
         'error',
         {

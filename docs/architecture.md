@@ -40,7 +40,7 @@ A layer imports only from layers below it:
 
 Four more rules:
 
-1. **Relative imports only.** Import project code by relative path. Aliases (`@/…`) and absolute paths (`src/…`, `/…`) are not allowed. The `@/` alias stays in `tsconfig.json` and `vite.config.ts` only because the shadcn CLI needs it to generate components; change the generated imports to relative paths.
+1. **Relative imports only.** Import project code by relative path. No path aliases are configured, and aliased (`@/…`) or absolute (`src/…`, `/…`) imports fail `npm run lint`. The shadcn CLI expects an alias, so add shadcn components by hand and give them relative imports.
 2. **Public API only.** Every slice (`features/run-preview`, `entities/parameter`, …) and every engine package has an `index.ts`. From outside the slice, import that file, never a file inside it: `../../entities/parameter`, not `../../entities/parameter/model/key`.
 3. **No imports between slices on the same layer.** One feature does not import another feature, and one widget does not import another widget. Composition happens one layer up: the page places both widgets. If two entities really need each other, use an FSD `@x` file (`entities/api-call/@x/variable.ts`) so the dependency is explicit, and add an `except` entry for it in `eslint.boundaries.config.js`.
 4. **Engine through its packages.** App code imports `engine/runtime`, `engine/geometry`, `engine/formats` or `engine/math` through their `index.ts`, never a deeper path.
