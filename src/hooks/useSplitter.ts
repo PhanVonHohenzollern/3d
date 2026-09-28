@@ -1,12 +1,7 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import {
-  distributeSplitterSizes,
-  draggedSplitterSizes,
-  kMinimumPaneSize,
-  kSplitterHandleSize,
-} from '../helpers/layout';
-import type { SplitterOptions } from '../types/layout';
-import { usePointerDrag } from './usePointerDrag';
+import { distributeSplitterSizes, draggedSplitterSizes, kMinimumPaneSize, kSplitterHandleSize } from '@/helpers/layout';
+import type { SplitterOptions } from '@/types/layout';
+import { usePointerDrag } from '@/hooks/usePointerDrag';
 
 export function useSplitter({ orientation, initialSizes, stretchFactors = [0, 0] }: SplitterOptions) {
   const containerRef = useRef<HTMLDivElement>(null);

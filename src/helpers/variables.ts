@@ -1,6 +1,6 @@
-import type { RuntimeResult, RuntimeVariable } from '../core/runtime/RuntimeTypes';
-import { runtimeTypeName, runtimeValueToString } from '../core/runtime/RuntimeValue';
-import type { VariableRow } from '../types/panels';
+import type { RuntimeResult, RuntimeVariable } from '@/core/runtime/RuntimeTypes';
+import { runtimeTypeName, runtimeValueToString } from '@/core/runtime/RuntimeValue';
+import type { VariableRow } from '@/types/panels';
 
 export function variableSummary(result: RuntimeResult, currentLine: number): string {
   return (

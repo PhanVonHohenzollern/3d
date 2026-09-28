@@ -1,4 +1,4 @@
-import { DVec3, type Xyz } from './DVec3';
+import { DVec3, type Xyz } from '@/utils/DVec3';
 
 export type DMat4 = number[][];
 

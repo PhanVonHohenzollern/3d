@@ -14,7 +14,11 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tests/*": ["./tests/*"]
+    }
   },
   "include": ["src", "tests", "vite.config.ts"]
 }

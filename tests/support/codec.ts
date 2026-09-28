@@ -1,19 +1,14 @@
-import { FdPoint3d, FdVector3d } from '../../src/core/runtime/FdMath';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
 import type {
   RuntimeApiCall,
   RuntimeArgumentTrace,
   RuntimeParameterRequest,
   RuntimeResult,
   RuntimeValueSource,
-} from '../../src/core/runtime/RuntimeTypes';
-import {
-  RuntimeArray,
-  runtimeTypeName,
-  runtimeValueToString,
-  type RuntimeValue,
-} from '../../src/core/runtime/RuntimeValue';
-import type { PreviewGeometryScene, PreviewMesh } from '../../src/core/geometry/PreviewGeometryEngine';
-import type { ConnectorPreview } from '../../src/core/geometry/ConnectorPreview';
+} from '@/core/runtime/RuntimeTypes';
+import { RuntimeArray, runtimeTypeName, runtimeValueToString, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import type { PreviewGeometryScene, PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
+import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type Json = any;

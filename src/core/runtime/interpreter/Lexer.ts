@@ -1,5 +1,5 @@
-import { isalnum, isalpha, isdigit, isspace, strtod } from '../../../utils/cpp';
-import { makeToken, TokKind, type Token } from '../helpers/tokens';
+import { isalnum, isalpha, isdigit, isspace, strtod } from '@/utils/cpp';
+import { makeToken, TokKind, type Token } from '@/core/runtime/helpers/tokens';
 
 const kMultiCharSymbols: ReadonlySet<string> = new Set([
   '+=',

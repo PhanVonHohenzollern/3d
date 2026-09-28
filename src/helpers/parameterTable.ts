@@ -1,4 +1,4 @@
-import { parameterKey, type RuntimeParameterRequest } from '../core/runtime/RuntimeTypes';
+import { parameterKey, type RuntimeParameterRequest } from '@/core/runtime/RuntimeTypes';
 
 // Excel's text clipboard uses tabs, CRLF, and CSV-style quotes for multiline cells.
 export function parameterTableCells(text: string): string[][] {

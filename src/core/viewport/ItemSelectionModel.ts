@@ -1,5 +1,5 @@
-import type { SelectionCommand, SelectionOp } from '../../types/viewportEngine';
-import { setsEqual } from '../../utils/sets';
+import type { SelectionCommand, SelectionOp } from '@/types/viewportEngine';
+import { setsEqual } from '@/utils/sets';
 
 export class ItemSelectionModel {
   private m_ranges = new Set<number>();

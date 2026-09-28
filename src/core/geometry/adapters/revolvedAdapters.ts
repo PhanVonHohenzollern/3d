@@ -1,6 +1,6 @@
-import { normalized } from '../../../utils/DVec3';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
+import { normalized } from '@/utils/DVec3';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
 import {
   buildCircleOutlineMesh,
   buildDiscMesh,
@@ -8,8 +8,8 @@ import {
   buildRingMesh,
   buildSpheroidSectionMesh,
   buildTorusSectionMesh,
-} from '../builders/circularMeshes';
-import { warningFor } from '../helpers/apiCall';
+} from '@/core/geometry/builders/circularMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
 import {
   kEps,
   sdkPerpVector,
@@ -19,11 +19,20 @@ import {
   validDirection,
   circularFaceCount,
   stableBasis,
-} from '../helpers/geometryMath';
-import { pushNonEmptyMesh } from '../helpers/meshData';
-import { asBool, asInt, asNumber, asPoint, asVector, intArray, numberArray, ref } from '../helpers/valueDecoding';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
+} from '@/core/geometry/helpers/geometryMath';
+import { pushNonEmptyMesh } from '@/core/geometry/helpers/meshData';
+import {
+  asBool,
+  asInt,
+  asNumber,
+  asPoint,
+  asVector,
+  intArray,
+  numberArray,
+  ref,
+} from '@/core/geometry/helpers/valueDecoding';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 export function appendFlatDisc(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 4) return false;

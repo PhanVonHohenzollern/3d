@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { GeometryRuntime } from '../src/core/runtime/GeometryRuntime';
-import { encodeParameterRequest, encodeResult } from './support/codec';
-import { expectSameJson } from './support/compare';
-import { evaluations, sourceHistories } from './support/dump';
-import { expectedOutput } from './support/expected';
-import { fixturesRoot, listFixtures, parseFixture } from './support/fixtures';
+import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { encodeParameterRequest, encodeResult } from '@tests/support/codec';
+import { expectSameJson } from '@tests/support/compare';
+import { evaluations, sourceHistories } from '@tests/support/dump';
+import { expectedOutput } from '@tests/support/expected';
+import { fixturesRoot, listFixtures, parseFixture } from '@tests/support/fixtures';
 
 describe('C++ function and block scopes', () => {
   it('resolves overloads by argument count and type, including default arguments and nested return values', () => {

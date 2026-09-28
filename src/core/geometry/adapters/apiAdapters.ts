@@ -1,27 +1,27 @@
-import { apiSignatureMetadataForCall } from '../../runtime/ApiMetadata';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { isGeometryCallName } from '../helpers/apiCall';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
-import { appendBox } from './boxAdapter';
-import { appendTubeIntersection } from './intersectionAdapters';
-import { appendSymbol, symbolApiNames } from './symbolAdapters';
-import { appendBowl } from './bowlAdapters';
-import { appendElbowedTube, appendRotatablePlane, appendTruncatedTube } from './pathAdapters';
-import { appendDerived, derivedApiNames } from './derivedAdapters';
-import { appendGrill, grillApiNames } from './grillAdapters';
-import { appendFlex, flexApiNames } from './flexAdapters';
-import { appendPlanar, planarApiNames } from './planarAdapters';
-import { appendVasco, vascoApiNames } from './vascoAdapters';
-import { appendPattern, patternApiNames } from './patternAdapters';
+import { apiSignatureMetadataForCall } from '@/core/runtime/ApiMetadata';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { isGeometryCallName } from '@/core/geometry/helpers/apiCall';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
+import { appendBox } from '@/core/geometry/adapters/boxAdapter';
+import { appendTubeIntersection } from '@/core/geometry/adapters/intersectionAdapters';
+import { appendSymbol, symbolApiNames } from '@/core/geometry/adapters/symbolAdapters';
+import { appendBowl } from '@/core/geometry/adapters/bowlAdapters';
+import { appendElbowedTube, appendRotatablePlane, appendTruncatedTube } from '@/core/geometry/adapters/pathAdapters';
+import { appendDerived, derivedApiNames } from '@/core/geometry/adapters/derivedAdapters';
+import { appendGrill, grillApiNames } from '@/core/geometry/adapters/grillAdapters';
+import { appendFlex, flexApiNames } from '@/core/geometry/adapters/flexAdapters';
+import { appendPlanar, planarApiNames } from '@/core/geometry/adapters/planarAdapters';
+import { appendVasco, vascoApiNames } from '@/core/geometry/adapters/vascoAdapters';
+import { appendPattern, patternApiNames } from '@/core/geometry/adapters/patternAdapters';
 import {
   appendConnector,
   appendFacettedCylinder,
   appendPlane,
   appendRectFace,
   appendScrew,
-} from './rectangularAdapters';
-import { appendRectToTubeIntersection, appendRectToTubeTransition } from './rectToTubeAdapters';
+} from '@/core/geometry/adapters/rectangularAdapters';
+import { appendRectToTubeIntersection, appendRectToTubeTransition } from '@/core/geometry/adapters/rectToTubeAdapters';
 import {
   appendDisc,
   appendDonutSection,
@@ -30,14 +30,14 @@ import {
   appendSpheroidSection,
   appendSymbolicCircle,
   appendTubularBend,
-} from './revolvedAdapters';
+} from '@/core/geometry/adapters/revolvedAdapters';
 import {
   appendSimpleTube,
   appendStraightTube,
   appendTube,
   appendUniVectorTube,
   appendVerySimpleTube,
-} from './tubeAdapters';
+} from '@/core/geometry/adapters/tubeAdapters';
 
 type ApiMeshAdapter = (scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]) => boolean;
 

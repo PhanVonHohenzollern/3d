@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { connectorOrientations, previewOrientationDirection } from '../../src/core/geometry/ConnectorPreview';
-import type { ViewportEngine } from '../../src/core/viewport/ViewportEngine';
-import { axesVertices, placeWorldAxisLabels } from '../../src/core/viewport/worldAxes';
-import type { AxisLabel } from '../../src/types/viewportEngine';
-import { QRectF } from '../../src/utils/Rect';
-import { fontWithPointSize, kDefaultFontFamily } from '../../src/utils/textMetrics';
-import { QPointF, QVector3D, QVector4D } from '../../src/utils/Vector3D';
-import { createEngine, fixedMeasurer, resultWithP0, updateCamera } from './helpers';
+import { connectorOrientations, previewOrientationDirection } from '@/core/geometry/ConnectorPreview';
+import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
+import { axesVertices, placeWorldAxisLabels } from '@/core/viewport/worldAxes';
+import type { AxisLabel } from '@/types/viewportEngine';
+import { QRectF } from '@/utils/Rect';
+import { fontWithPointSize, kDefaultFontFamily } from '@/utils/textMetrics';
+import { QPointF, QVector3D, QVector4D } from '@/utils/Vector3D';
+import { createEngine, fixedMeasurer, resultWithP0, updateCamera } from '@tests/renderer/helpers';
 
 function occupiedAreas(engine: ViewportEngine): QRectF[] {
   const areas = [engine.pointLabelPanel(), engine.vectorLabelPanel()]

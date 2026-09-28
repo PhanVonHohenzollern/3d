@@ -1,8 +1,17 @@
-import { kNativeApiSignatures } from './ApiMetadata.generated';
-import { additionalApiSignatures } from './ApiMetadata.additional';
-import type { RuntimeApiCall } from './RuntimeTypes';
-import { isArray, isBool, isDouble, isInt, isPoint, isString, isVector, type RuntimeValue } from './RuntimeValue';
-import { sdkCanonicalType, sdkTypeDefinition } from './SdkDefinitions';
+import { kNativeApiSignatures } from '@/core/runtime/ApiMetadata.generated';
+import { additionalApiSignatures } from '@/core/runtime/ApiMetadata.additional';
+import type { RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
+import {
+  isArray,
+  isBool,
+  isDouble,
+  isInt,
+  isPoint,
+  isString,
+  isVector,
+  type RuntimeValue,
+} from '@/core/runtime/RuntimeValue';
+import { sdkCanonicalType, sdkTypeDefinition } from '@/core/runtime/SdkDefinitions';
 
 export interface ApiParameterMetadata {
   name: string;

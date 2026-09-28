@@ -1,4 +1,4 @@
-import { useContainerPagination } from './useContainerPagination';
+import { useContainerPagination } from '@/hooks/useContainerPagination';
 import {
   useImperativeHandle,
   useLayoutEffect,
@@ -15,11 +15,11 @@ import {
   kLinkTableHeaders,
   kOrientationLabels,
   kSizePlaceholder,
-} from '../helpers/link';
-import { isInElement, isInTableHeader, tableCellOf } from '../helpers/tableEvents';
-import type { LinkPanelProps, SizeField } from '../types/panels';
-import { LinkPanelModel } from './linkPanel/LinkPanelModel';
-import { useObservable } from './useObservable';
+} from '@/helpers/link';
+import { isInElement, isInTableHeader, tableCellOf } from '@/helpers/tableEvents';
+import type { LinkPanelProps, SizeField } from '@/types/panels';
+import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
+import { useObservable } from '@/hooks/useObservable';
 
 export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: LinkPanelProps) {
   const [model] = useState(() => new LinkPanelModel());

@@ -1,15 +1,19 @@
-import { llroundToInt } from '../../../utils/cppStd';
-import { length, normalized } from '../../../utils/DVec3';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildFacettedCylinderMesh } from '../builders/circularMeshes';
-import { buildConnectorFlangeMesh, buildPolygonFaceMesh, buildRectFaceMesh } from '../builders/rectangularMeshes';
-import { warningFor } from '../helpers/apiCall';
-import { kEps, sdkPerpVector, toPoint, toVec, validDirection } from '../helpers/geometryMath';
-import { pushNonEmptyMesh } from '../helpers/meshData';
-import { asBool, asNumber, asPoint, asVector, pointArray, ref } from '../helpers/valueDecoding';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
+import { llroundToInt } from '@/utils/cppStd';
+import { length, normalized } from '@/utils/DVec3';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildFacettedCylinderMesh } from '@/core/geometry/builders/circularMeshes';
+import {
+  buildConnectorFlangeMesh,
+  buildPolygonFaceMesh,
+  buildRectFaceMesh,
+} from '@/core/geometry/builders/rectangularMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { kEps, sdkPerpVector, toPoint, toVec, validDirection } from '@/core/geometry/helpers/geometryMath';
+import { pushNonEmptyMesh } from '@/core/geometry/helpers/meshData';
+import { asBool, asNumber, asPoint, asVector, pointArray, ref } from '@/core/geometry/helpers/valueDecoding';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 export function appendFacettedCylinder(
   scene: PreviewGeometryScene,

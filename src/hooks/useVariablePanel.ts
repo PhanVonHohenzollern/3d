@@ -1,10 +1,10 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { eventModifiers } from '../helpers/keyboard';
-import { isInTableHeader, tableRowOf } from '../helpers/tableEvents';
-import type { VariablePanelProps } from '../types/panels';
-import { isOnScrollbar } from '../utils/dom';
-import { useObservable } from './useObservable';
-import { VariablePanelModel } from './variablePanel/VariablePanelModel';
+import { eventModifiers } from '@/helpers/keyboard';
+import { isInTableHeader, tableRowOf } from '@/helpers/tableEvents';
+import type { VariablePanelProps } from '@/types/panels';
+import { isOnScrollbar } from '@/utils/dom';
+import { useObservable } from '@/hooks/useObservable';
+import { VariablePanelModel } from '@/hooks/variablePanel/VariablePanelModel';
 
 export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps) {
   const [model] = useState(() => new VariablePanelModel());

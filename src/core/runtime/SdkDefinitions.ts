@@ -1,4 +1,7 @@
-import { kSdkConstants as generatedConstants, kSdkTypes as generatedTypes } from './SdkDefinitions.generated';
+import {
+  kSdkConstants as generatedConstants,
+  kSdkTypes as generatedTypes,
+} from '@/core/runtime/SdkDefinitions.generated';
 
 export interface SdkConstantDefinition {
   name: string;

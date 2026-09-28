@@ -1,6 +1,6 @@
-import { useTreeView } from '../hooks/useTreeView';
-import type { TreeViewProps } from '../types/treeView';
-import { cn } from '../utils/cn';
+import { useTreeView } from '@/hooks/useTreeView';
+import type { TreeViewProps } from '@/types/treeView';
+import { cn } from '@/utils/cn';
 
 export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
   const { containerRef, columns, rows, fittedWidths, onMouseDown, onMouseUp, onKeyDown, onResizeStart } =

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { FdPoint3d, FdVector3d } from '../../src/core/runtime/FdMath';
-import { appendVectorArrow } from '../../src/core/viewport/debugItems';
-import { VertexArray } from '../../src/core/viewport/VertexArray';
-import { debugValueText } from '../../src/helpers/debugValueText';
-import { QVector3D } from '../../src/utils/Vector3D';
-import { createEngine, updateCamera, vectorItem } from './helpers';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { appendVectorArrow } from '@/core/viewport/debugItems';
+import { VertexArray } from '@/core/viewport/VertexArray';
+import { debugValueText } from '@/helpers/debugValueText';
+import { QVector3D } from '@/utils/Vector3D';
+import { createEngine, updateCamera, vectorItem } from '@tests/renderer/helpers';
 
 function arrowFor(start: QVector3D, end: QVector3D) {
   const engine = createEngine();

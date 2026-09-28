@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
-import { ApiTracePanelModel } from '../../src/hooks/apiTrace/ApiTracePanelModel';
-import { TraceColumn } from '../../src/hooks/apiTrace/traceItems';
-import type { TreeWidgetItem } from '../../src/hooks/treeWidget/TreeWidgetItem';
-import type { Modifiers } from '../../src/types/qt';
-import { traceResult } from './traceFixture';
+import { emptyRuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
+import { TraceColumn } from '@/hooks/apiTrace/traceItems';
+import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import type { Modifiers } from '@/types/qt';
+import { traceResult } from '@tests/ui/traceFixture';
 
 const none: Modifiers = { shift: false, control: false };
 const ctrl: Modifiers = { shift: false, control: true };

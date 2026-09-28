@@ -1,5 +1,5 @@
-import type { Action } from '../hooks/mainWindow/Action';
-import type { ActionListItem } from './mainWindow';
+import type { Action } from '@/hooks/mainWindow/Action';
+import type { ActionListItem } from '@/types/mainWindow';
 
 export interface ToolBarProps {
   items: readonly ActionListItem[];

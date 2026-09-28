@@ -1,6 +1,6 @@
-import { runtimeError } from '../../../utils/cpp';
-import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, type Token } from '../helpers/tokens';
-import { Statement, StatementKind } from './Statement';
+import { runtimeError } from '@/utils/cpp';
+import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, type Token } from '@/core/runtime/helpers/tokens';
+import { Statement, StatementKind } from '@/core/runtime/interpreter/Statement';
 
 export class ProgramParser {
   private m_pos = 0;

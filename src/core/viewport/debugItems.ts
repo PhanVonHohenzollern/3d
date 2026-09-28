@@ -1,13 +1,13 @@
-import { debugValueText } from '../../helpers/debugValueText';
-import { apiDebugItemId } from '../../helpers/debugItems';
-import { clamp } from '../../utils/math';
-import { QVector3D } from '../../utils/Vector3D';
-import { apiParameterMetadataForCall, type ApiParameterMetadata } from '../runtime/ApiMetadata';
-import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '../runtime/DebugAnchorResolver';
-import type { RuntimeApiCall, RuntimeResult } from '../runtime/RuntimeTypes';
-import { isPoint } from '../runtime/RuntimeValue';
-import { DebugItem } from './DebugItem';
-import type { VertexArray } from './VertexArray';
+import { debugValueText } from '@/helpers/debugValueText';
+import { apiDebugItemId } from '@/helpers/debugItems';
+import { clamp } from '@/utils/math';
+import { QVector3D } from '@/utils/Vector3D';
+import { apiParameterMetadataForCall, type ApiParameterMetadata } from '@/core/runtime/ApiMetadata';
+import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@/core/runtime/DebugAnchorResolver';
+import type { RuntimeApiCall, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { isPoint } from '@/core/runtime/RuntimeValue';
+import { DebugItem } from '@/core/viewport/DebugItem';
+import type { VertexArray } from '@/core/viewport/VertexArray';
 
 export const kOverviewPointName = 'p0';
 

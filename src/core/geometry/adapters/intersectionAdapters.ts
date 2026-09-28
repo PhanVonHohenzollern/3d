@@ -1,4 +1,4 @@
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
 import {
   isArray,
   isPoint,
@@ -6,12 +6,12 @@ import {
   runtimeNumber,
   runtimeTruthy,
   type RuntimeValue,
-} from '../../runtime/RuntimeValue';
-import { warningFor } from '../helpers/apiCall';
-import { circularFaceCount, toVec } from '../helpers/geometryMath';
-import { addTriangle, pushNonEmptyMesh, vertex } from '../helpers/meshData';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene, PreviewMesh } from '../previewScene';
+} from '@/core/runtime/RuntimeValue';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { circularFaceCount, toVec } from '@/core/geometry/helpers/geometryMath';
+import { addTriangle, pushNonEmptyMesh, vertex } from '@/core/geometry/helpers/meshData';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene, PreviewMesh } from '@/core/geometry/previewScene';
 
 interface Cylinder {
   origin: FdPoint3d;

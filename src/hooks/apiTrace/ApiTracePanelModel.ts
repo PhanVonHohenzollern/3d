@@ -1,27 +1,27 @@
-import { apiParameterMetadataForCall, type ApiParameterMetadata } from '../../core/runtime/ApiMetadata';
-import { apiParameterRole } from '../../core/runtime/ApiSemantics';
-import { runtimeSourceHistory } from '../../core/runtime/GeometryRuntime';
+import { apiParameterMetadataForCall, type ApiParameterMetadata } from '@/core/runtime/ApiMetadata';
+import { apiParameterRole } from '@/core/runtime/ApiSemantics';
+import { runtimeSourceHistory } from '@/core/runtime/GeometryRuntime';
 import {
   emptyRuntimeResult,
   type RuntimeApiCall,
   type RuntimeArgumentTrace,
   type RuntimeResult,
   type RuntimeValueSource,
-} from '../../core/runtime/RuntimeTypes';
-import { isArray, isPoint, isVector, type RuntimeValue } from '../../core/runtime/RuntimeValue';
-import { apiDebugItemId } from '../../helpers/debugItems';
+} from '@/core/runtime/RuntimeTypes';
+import { isArray, isPoint, isVector, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { apiDebugItemId } from '@/helpers/debugItems';
 import {
   changeExpression,
   directSource,
   displayExpression,
   metadataTypeText,
   otherInputs,
-} from '../../helpers/traceFormatting';
-import type { ApiTracePanelHandle } from '../../types/panels';
-import { Observable } from '../observable/Observable';
-import { TreeWidget, UserRole } from '../treeWidget/TreeWidget';
-import { TreeWidgetItem } from '../treeWidget/TreeWidgetItem';
-import { ApiHistoryDialogModel } from './ApiHistoryDialogModel';
+} from '@/helpers/traceFormatting';
+import type { ApiTracePanelHandle } from '@/types/panels';
+import { Observable } from '@/hooks/observable/Observable';
+import { TreeWidget, UserRole } from '@/hooks/treeWidget/TreeWidget';
+import { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
 import {
   kDebugItemRole,
   kNodeKeyRole,
@@ -33,8 +33,8 @@ import {
   setValue,
   TraceColumn,
   updateArraySummary,
-} from './traceItems';
-import { TraceTree } from './TraceTree';
+} from '@/hooks/apiTrace/traceItems';
+import { TraceTree } from '@/hooks/apiTrace/TraceTree';
 
 const { Number: NumberColumn, Name, Type, Expression, Value, X, Z, Role, Line, ColumnCount } = TraceColumn;
 

@@ -1,5 +1,5 @@
-import { qFuzzyIsNull } from './math';
-import { QVector3D, QVector4D } from './Vector3D';
+import { qFuzzyIsNull } from '@/utils/math';
+import { QVector3D, QVector4D } from '@/utils/Vector3D';
 
 export class QMatrix4x4 {
   readonly data = new Float32Array(16);

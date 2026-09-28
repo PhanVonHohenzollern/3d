@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { extendedSelectionCommand, moveCursor } from '../../src/core/viewport/listSelection';
-import { debugLabelPanelsLayout } from '../../src/core/viewport/panelLayout';
-import { NoModifier, RightButton, mouseButtonFromDom, wheelAngleDeltaY } from '../../src/helpers/qtInput';
-import { Bounds3D } from '../../src/utils/Bounds3D';
+import { extendedSelectionCommand, moveCursor } from '@/core/viewport/listSelection';
+import { debugLabelPanelsLayout } from '@/core/viewport/panelLayout';
+import { NoModifier, RightButton, mouseButtonFromDom, wheelAngleDeltaY } from '@/helpers/qtInput';
+import { Bounds3D } from '@/utils/Bounds3D';
 
 const idle = { rowSelected: false, pressedRow: -1, dragSelecting: false };
 

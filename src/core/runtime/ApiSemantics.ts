@@ -1,6 +1,6 @@
-import { apiParameterMetadataForCall } from './ApiMetadata';
-import type { RuntimeApiCall } from './RuntimeTypes';
-import { isArray, isDouble, isInt, runtimeInteger } from './RuntimeValue';
+import { apiParameterMetadataForCall } from '@/core/runtime/ApiMetadata';
+import type { RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
+import { isArray, isDouble, isInt, runtimeInteger } from '@/core/runtime/RuntimeValue';
 
 export type ApiAnchorBinding = 'None' | 'First' | 'Last' | 'SameIndex' | 'EveryPoint';
 export type ApiArrayMeaning = 'Values' | 'Sections' | 'Endpoints' | 'ControlPoints' | 'Vertices';

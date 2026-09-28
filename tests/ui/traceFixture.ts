@@ -1,11 +1,11 @@
-import { FdPoint3d, FdVector3d } from '../../src/core/runtime/FdMath';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
 import type {
   RuntimeApiCall,
   RuntimeResult,
   RuntimeValueSource,
   RuntimeVariableChange,
-} from '../../src/core/runtime/RuntimeTypes';
-import { RuntimeArray } from '../../src/core/runtime/RuntimeValue';
+} from '@/core/runtime/RuntimeTypes';
+import { RuntimeArray } from '@/core/runtime/RuntimeValue';
 
 export const p = new FdPoint3d(2, 0, 0);
 export const q = new FdPoint3d(1, 1, 0);

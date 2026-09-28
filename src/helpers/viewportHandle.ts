@@ -1,5 +1,5 @@
-import type { ViewportEngine } from '../core/viewport/ViewportEngine';
-import type { Viewport3DHandle } from '../types/viewport';
+import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
+import type { Viewport3DHandle } from '@/types/viewport';
 
 export function createViewport3DHandle(engine: ViewportEngine): Viewport3DHandle {
   return {

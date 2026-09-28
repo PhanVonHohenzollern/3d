@@ -1,7 +1,7 @@
 import { useImperativeHandle, useLayoutEffect, useState } from 'react';
-import type { ApiTracePanelProps } from '../types/panels';
-import { ApiTracePanelModel } from './apiTrace/ApiTracePanelModel';
-import { useObservable } from './useObservable';
+import type { ApiTracePanelProps } from '@/types/panels';
+import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
+import { useObservable } from '@/hooks/useObservable';
 
 export function useApiTracePanel({
   onSelectionChanged,

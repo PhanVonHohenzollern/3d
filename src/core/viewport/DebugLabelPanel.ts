@@ -1,7 +1,7 @@
-import { LeftButton } from '../../helpers/qtInput';
-import type { KeyboardModifiers } from '../../types/input';
-import type { QColor } from '../../types/painting';
-import type { FontSpec, TextMeasurer } from '../../types/text';
+import { LeftButton } from '@/helpers/qtInput';
+import type { KeyboardModifiers } from '@/types/input';
+import type { QColor } from '@/types/painting';
+import type { FontSpec, TextMeasurer } from '@/types/text';
 import type {
   DebugLabelEntry,
   DebugLabelPanelSnapshot,
@@ -9,11 +9,11 @@ import type {
   SelectionCommand,
   SelectionEvent,
   SelectionOp,
-} from '../../types/viewportEngine';
-import { QRect } from '../../utils/Rect';
-import { approximateTextMeasurer, fontHeight, fontWithPointSize, kDefaultFontFamily } from '../../utils/textMetrics';
-import { labelRowLayout, sameEntries } from './debugLabelRows';
-import { ItemSelectionModel } from './ItemSelectionModel';
+} from '@/types/viewportEngine';
+import { QRect } from '@/utils/Rect';
+import { approximateTextMeasurer, fontHeight, fontWithPointSize, kDefaultFontFamily } from '@/utils/textMetrics';
+import { labelRowLayout, sameEntries } from '@/core/viewport/debugLabelRows';
+import { ItemSelectionModel } from '@/core/viewport/ItemSelectionModel';
 import {
   ClearAndSelect,
   NoUpdate,
@@ -23,7 +23,7 @@ import {
   isSelectAllKey,
   moveCursor,
   rowRange,
-} from './listSelection';
+} from '@/core/viewport/listSelection';
 
 export const kDebugLabelHeaderHeight = 25;
 export const kDebugLabelScrollBarWidth = 8;

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { clampDockHeight, kDocks } from '../helpers/layout';
-import type { DockName } from '../types/mainWindow';
-import { usePointerDrag } from './usePointerDrag';
+import { clampDockHeight, kDocks } from '@/helpers/layout';
+import type { DockName } from '@/types/mainWindow';
+import { usePointerDrag } from '@/hooks/usePointerDrag';
 
 export function useDockArea(
   raised: DockName,

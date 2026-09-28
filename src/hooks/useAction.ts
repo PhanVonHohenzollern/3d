@@ -1,6 +1,6 @@
-import { keySequenceText, stripMnemonic } from '../helpers/keyboard';
-import type { Action } from './mainWindow/Action';
-import { useObservable } from './useObservable';
+import { keySequenceText, stripMnemonic } from '@/helpers/keyboard';
+import type { Action } from '@/hooks/mainWindow/Action';
+import { useObservable } from '@/hooks/useObservable';
 
 export function useAction(action: Action, onTriggered?: () => void) {
   useObservable(action);

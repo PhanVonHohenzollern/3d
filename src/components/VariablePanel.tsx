@@ -1,6 +1,6 @@
-import { useVariablePanel } from '../hooks/useVariablePanel';
-import type { VariablePanelProps } from '../types/panels';
-import { Cell, HeaderCell, TableView } from './ui/TableView';
+import { useVariablePanel } from '@/hooks/useVariablePanel';
+import type { VariablePanelProps } from '@/types/panels';
+import { Cell, HeaderCell, TableView } from '@/components/ui/TableView';
 
 export function VariablePanel(props: VariablePanelProps) {
   const { tableRef, summary, rows, onMouseDown, onMouseUp, onKeyDown } = useVariablePanel(props);

@@ -1,10 +1,10 @@
 import { Plus, RotateCcw } from 'lucide-react';
-import { useParameterPanel } from '../hooks/useParameterPanel';
-import type { ParameterPanelProps } from '../types/panels';
-import { Button } from './ui/button';
-import { EditableComboBox } from './ui/EditableComboBox';
-import { FloatingWindow } from './ui/FloatingWindow';
-import { Input } from './ui/input';
+import { useParameterPanel } from '@/hooks/useParameterPanel';
+import type { ParameterPanelProps } from '@/types/panels';
+import { Button } from '@/components/ui/button';
+import { EditableComboBox } from '@/components/ui/EditableComboBox';
+import { FloatingWindow } from '@/components/ui/FloatingWindow';
+import { Input } from '@/components/ui/input';
 
 export function ParameterPanel(props: ParameterPanelProps) {
   const { gridRef, ...panel } = useParameterPanel(props);

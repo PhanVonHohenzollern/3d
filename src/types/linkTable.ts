@@ -1,6 +1,6 @@
 import type { KeyboardEvent, MouseEvent, Ref } from 'react';
-import type { LinkTableRow } from './panels';
-import type { ContainerPagination } from './pagination';
+import type { LinkTableRow } from '@/types/panels';
+import type { ContainerPagination } from '@/types/pagination';
 
 export interface LinkTableProps {
   tableRef: Ref<HTMLDivElement>;

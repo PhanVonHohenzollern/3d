@@ -1,10 +1,10 @@
-import { runtimeSourceHistory } from '../../core/runtime/GeometryRuntime';
-import type { RuntimeArgumentTrace, RuntimeResult } from '../../core/runtime/RuntimeTypes';
-import { isArray, runtimeTypeName, type RuntimeValue } from '../../core/runtime/RuntimeValue';
-import { earlierChanges, historyValueText } from '../../helpers/apiHistory';
-import { compoundExpression, directSource, displayExpression } from '../../helpers/traceFormatting';
-import { UserRole } from '../treeWidget/TreeWidget';
-import { TreeWidgetItem } from '../treeWidget/TreeWidgetItem';
+import { runtimeSourceHistory } from '@/core/runtime/GeometryRuntime';
+import type { RuntimeArgumentTrace, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { isArray, runtimeTypeName, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { earlierChanges, historyValueText } from '@/helpers/apiHistory';
+import { compoundExpression, directSource, displayExpression } from '@/helpers/traceFormatting';
+import { UserRole } from '@/hooks/treeWidget/TreeWidget';
+import { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
 
 export const HistoryColumn = {
   Parameter: 0,

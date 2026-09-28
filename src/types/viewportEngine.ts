@@ -1,8 +1,8 @@
-import type { QRect, QRectF } from '../utils/Rect';
-import type { QPointF } from '../utils/Vector3D';
-import type { QColor } from './painting';
-import type { KeyboardModifiers } from './input';
-import type { FontSpec } from './text';
+import type { QRect, QRectF } from '@/utils/Rect';
+import type { QPointF } from '@/utils/Vector3D';
+import type { QColor } from '@/types/painting';
+import type { KeyboardModifiers } from '@/types/input';
+import type { FontSpec } from '@/types/text';
 
 export interface GeometryRange {
   meshIndex: number;

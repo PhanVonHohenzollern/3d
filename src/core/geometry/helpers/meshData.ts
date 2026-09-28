@@ -1,5 +1,5 @@
-import type { DVec3 } from '../../../utils/DVec3';
-import type { PreviewGeometryScene, PreviewMesh, PreviewMeshVertex } from '../previewScene';
+import type { DVec3 } from '@/utils/DVec3';
+import type { PreviewGeometryScene, PreviewMesh, PreviewMeshVertex } from '@/core/geometry/previewScene';
 
 export const f32 = Math.fround;
 

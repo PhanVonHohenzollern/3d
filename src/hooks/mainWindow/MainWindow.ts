@@ -1,34 +1,29 @@
-import { writeObj } from '../../core/formats/obj';
-import type { InspectorCounts } from '../../types/dockArea';
-import type { ConnectorPreview } from '../../core/geometry/ConnectorPreview';
-import { PreviewGeometryEngine, type PreviewGeometryScene } from '../../core/geometry/PreviewGeometryEngine';
-import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '../../core/runtime/DebugAnchorResolver';
-import { GeometryRuntime } from '../../core/runtime/GeometryRuntime';
-import { emptyRuntimeResult, type RuntimeResult } from '../../core/runtime/RuntimeTypes';
-import { isApiDebugItemId } from '../../helpers/debugItems';
+import { writeObj } from '@/core/formats/obj';
+import type { InspectorCounts } from '@/types/dockArea';
+import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
+import { PreviewGeometryEngine, type PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
+import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@/core/runtime/DebugAnchorResolver';
+import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { emptyRuntimeResult, type RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { isApiDebugItemId } from '@/helpers/debugItems';
 import {
   closestTarget,
   floatingWindowSelector,
   matchesKeySequence,
   quitKeySequence,
   textInputSelector,
-} from '../../helpers/keyboard';
-import { pointDeclaration, unusedPreviewPointName } from '../../helpers/viewportPoints';
-import type { CodeEditorHandle, EditorExecutionFeedback } from '../../types/editor';
-import type { ActionListItem, DockName, Menu, PreviewMode } from '../../types/mainWindow';
-import type {
-  ApiTracePanelHandle,
-  LinkPanelHandle,
-  ParameterPanelHandle,
-  VariablePanelHandle,
-} from '../../types/panels';
-import type { Vec3, Viewport3DHandle } from '../../types/viewport';
-import { what } from '../../utils/cpp';
-import { Observable } from '../observable/Observable';
-import { Action } from './Action';
-import { SingleShotTimer } from './SingleShotTimer';
-import { StatusBarModel } from './StatusBarModel';
-import { FunctionWorkspace } from './FunctionWorkspace';
+} from '@/helpers/keyboard';
+import { pointDeclaration, unusedPreviewPointName } from '@/helpers/viewportPoints';
+import type { CodeEditorHandle, EditorExecutionFeedback } from '@/types/editor';
+import type { ActionListItem, DockName, Menu, PreviewMode } from '@/types/mainWindow';
+import type { ApiTracePanelHandle, LinkPanelHandle, ParameterPanelHandle, VariablePanelHandle } from '@/types/panels';
+import type { Vec3, Viewport3DHandle } from '@/types/viewport';
+import { what } from '@/utils/cpp';
+import { Observable } from '@/hooks/observable/Observable';
+import { Action } from '@/hooks/mainWindow/Action';
+import { SingleShotTimer } from '@/hooks/mainWindow/SingleShotTimer';
+import { StatusBarModel } from '@/hooks/mainWindow/StatusBarModel';
+import { FunctionWorkspace } from '@/hooks/mainWindow/FunctionWorkspace';
 
 export class MainWindow extends Observable {
   #editor: CodeEditorHandle | null = null;

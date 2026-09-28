@@ -1,10 +1,17 @@
-import { stdClamp, stdMax, stdMin, llroundToInt } from '../../../utils/cppStd';
-import { cross, dot, length, normalized } from '../../../utils/DVec3';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import { basisFromUp, circularFaceCount, kEps, rotateAroundAxis, stableBasis, toVec } from '../helpers/geometryMath';
-import { addTriangle, vertex } from '../helpers/meshData';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewMesh } from '../previewScene';
+import { stdClamp, stdMax, stdMin, llroundToInt } from '@/utils/cppStd';
+import { cross, dot, length, normalized } from '@/utils/DVec3';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import {
+  basisFromUp,
+  circularFaceCount,
+  kEps,
+  rotateAroundAxis,
+  stableBasis,
+  toVec,
+} from '@/core/geometry/helpers/geometryMath';
+import { addTriangle, vertex } from '@/core/geometry/helpers/meshData';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewMesh } from '@/core/geometry/previewScene';
 
 export function buildTaperedTubeMesh(
   context: MeshBuildContext,

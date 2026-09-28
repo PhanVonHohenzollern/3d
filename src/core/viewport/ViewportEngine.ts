@@ -1,7 +1,7 @@
-import { LeftButton, NoButton, NoModifier, RightButton } from '../../helpers/qtInput';
-import type { KeyboardModifiers, MouseEventData, WheelEventData } from '../../types/input';
-import type { FontSpec, TextMeasurer } from '../../types/text';
-import type { Vec3 } from '../../types/viewport';
+import { LeftButton, NoButton, NoModifier, RightButton } from '@/helpers/qtInput';
+import type { KeyboardModifiers, MouseEventData, WheelEventData } from '@/types/input';
+import type { FontSpec, TextMeasurer } from '@/types/text';
+import type { Vec3 } from '@/types/viewport';
 import type {
   AxisLabel,
   DebugKind,
@@ -11,36 +11,36 @@ import type {
   SelectionMode,
   SelectionModeButtonState,
   ViewportSurface,
-} from '../../types/viewportEngine';
-import { Bounds3D } from '../../utils/Bounds3D';
-import { CanvasTextMeasurer } from '../../utils/CanvasTextMeasurer';
-import { QMatrix4x4 } from '../../utils/Matrix4x4';
-import { qColor } from '../../utils/painting';
-import { QRect, QRectF } from '../../utils/Rect';
-import { setsEqual } from '../../utils/sets';
+} from '@/types/viewportEngine';
+import { Bounds3D } from '@/utils/Bounds3D';
+import { CanvasTextMeasurer } from '@/utils/CanvasTextMeasurer';
+import { QMatrix4x4 } from '@/utils/Matrix4x4';
+import { qColor } from '@/utils/painting';
+import { QRect, QRectF } from '@/utils/Rect';
+import { setsEqual } from '@/utils/sets';
+import { approximateTextMeasurer, fontWithPointSize, kDefaultFontFamily, pointSizeToPixels } from '@/utils/textMetrics';
+import { QPoint, QPointF, QVector3D } from '@/utils/Vector3D';
+import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
+import type { PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
+import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
 import {
-  approximateTextMeasurer,
-  fontWithPointSize,
-  kDefaultFontFamily,
-  pointSizeToPixels,
-} from '../../utils/textMetrics';
-import { QPoint, QPointF, QVector3D } from '../../utils/Vector3D';
-import type { ConnectorPreview } from '../geometry/ConnectorPreview';
-import type { PreviewGeometryScene } from '../geometry/PreviewGeometryEngine';
-import type { RuntimeResult } from '../runtime/RuntimeTypes';
-import { appendConnectorVertices, connectorSceneScale, connectorTip, drawConnectorPoints } from './connectorOverlay';
-import { DebugLabelPanel } from './DebugLabelPanel';
-import type { DebugItem } from './DebugItem';
-import { appendVectorArrow, buildDebugItems, kOverviewPointName } from './debugItems';
-import { drawDebugItems, drawPreselection, type DebugOverlayScene } from './debugOverlay';
-import { buildGeometryVertices, buildGeometryWireVertices } from './geometryVertices';
-import { OverlayPainter } from './OverlayPainter';
-import { debugLabelPanelsLayout } from './panelLayout';
-import { pickConnectorAt, pickDebugItemsAt, pickMeshesAlongRay } from './picking';
-import { VertexArray } from './VertexArray';
-import { ViewportCamera } from './ViewportCamera';
-import { ViewportRenderer } from './ViewportRenderer';
-import { axesVertices, drawWorldAxisLabels, placeWorldAxisLabels } from './worldAxes';
+  appendConnectorVertices,
+  connectorSceneScale,
+  connectorTip,
+  drawConnectorPoints,
+} from '@/core/viewport/connectorOverlay';
+import { DebugLabelPanel } from '@/core/viewport/DebugLabelPanel';
+import type { DebugItem } from '@/core/viewport/DebugItem';
+import { appendVectorArrow, buildDebugItems, kOverviewPointName } from '@/core/viewport/debugItems';
+import { drawDebugItems, drawPreselection, type DebugOverlayScene } from '@/core/viewport/debugOverlay';
+import { buildGeometryVertices, buildGeometryWireVertices } from '@/core/viewport/geometryVertices';
+import { OverlayPainter } from '@/core/viewport/OverlayPainter';
+import { debugLabelPanelsLayout } from '@/core/viewport/panelLayout';
+import { pickConnectorAt, pickDebugItemsAt, pickMeshesAlongRay } from '@/core/viewport/picking';
+import { VertexArray } from '@/core/viewport/VertexArray';
+import { ViewportCamera } from '@/core/viewport/ViewportCamera';
+import { ViewportRenderer } from '@/core/viewport/ViewportRenderer';
+import { axesVertices, drawWorldAxisLabels, placeWorldAxisLabels } from '@/core/viewport/worldAxes';
 
 const kSelectionModeNames: Record<SelectionMode, string> = { Point: 'Point', Vector: 'Vector', Mesh: 'Mesh' };
 const kNextSelectionMode: Record<SelectionMode, SelectionMode> = { Point: 'Vector', Vector: 'Mesh', Mesh: 'Point' };

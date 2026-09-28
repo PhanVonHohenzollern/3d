@@ -5,9 +5,9 @@ import {
   runtimeTypeName,
   runtimeValueToCompactString,
   type RuntimeValue,
-} from '../../core/runtime/RuntimeValue';
-import { UserRole } from '../treeWidget/TreeWidget';
-import type { TreeWidgetItem } from '../treeWidget/TreeWidgetItem';
+} from '@/core/runtime/RuntimeValue';
+import { UserRole } from '@/hooks/treeWidget/TreeWidget';
+import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
 
 export const kDebugItemRole = UserRole + 1;
 export const kNodeKeyRole = UserRole + 3;

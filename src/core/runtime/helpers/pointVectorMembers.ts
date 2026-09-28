@@ -1,7 +1,7 @@
-import { runtimeError } from '../../../utils/cpp';
-import { FdPoint3d, FdVector3d } from '../FdMath';
-import { FdBowlCorner, isBowlValue } from '../FdBowlData';
-import { callBowlMethod } from './bowlMethods';
+import { runtimeError } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { FdBowlCorner, isBowlValue } from '@/core/runtime/FdBowlData';
+import { callBowlMethod } from '@/core/runtime/helpers/bowlMethods';
 import {
   isArray,
   isPoint,
@@ -12,7 +12,7 @@ import {
   RuntimeArray,
   RuntimeStdVector,
   type RuntimeValue,
-} from '../RuntimeValue';
+} from '@/core/runtime/RuntimeValue';
 
 function requireVectorArgument(args: readonly RuntimeValue[], message: string): FdVector3d {
   const other = args[0];

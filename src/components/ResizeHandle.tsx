@@ -1,5 +1,5 @@
-import type { ResizeHandleProps } from '../types/layout';
-import { cn } from '../utils/cn';
+import type { ResizeHandleProps } from '@/types/layout';
+import { cn } from '@/utils/cn';
 
 export function ResizeHandle({ orientation, label, value, min, max, onPointerDown, onKeyDown }: ResizeHandleProps) {
   return (

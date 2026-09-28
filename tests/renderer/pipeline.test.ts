@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildConnectorPreview, defaultConnectorDefinition } from '../../src/core/geometry/ConnectorPreview';
-import { PreviewGeometryEngine } from '../../src/core/geometry/PreviewGeometryEngine';
-import { GeometryRuntime } from '../../src/core/runtime/GeometryRuntime';
-import { appendConnectorVertices } from '../../src/core/viewport/connectorOverlay';
-import { pickMeshAlongRay } from '../../src/core/viewport/picking';
-import { VertexArray } from '../../src/core/viewport/VertexArray';
-import { isApiDebugItemId } from '../../src/helpers/debugItems';
-import { LeftButton } from '../../src/helpers/qtInput';
-import { QVector3D } from '../../src/utils/Vector3D';
-import { click, createEngine, project, updateCamera } from './helpers';
+import { buildConnectorPreview, defaultConnectorDefinition } from '@/core/geometry/ConnectorPreview';
+import { PreviewGeometryEngine } from '@/core/geometry/PreviewGeometryEngine';
+import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { appendConnectorVertices } from '@/core/viewport/connectorOverlay';
+import { pickMeshAlongRay } from '@/core/viewport/picking';
+import { VertexArray } from '@/core/viewport/VertexArray';
+import { isApiDebugItemId } from '@/helpers/debugItems';
+import { LeftButton } from '@/helpers/qtInput';
+import { QVector3D } from '@/utils/Vector3D';
+import { click, createEngine, project, updateCamera } from '@tests/renderer/helpers';
 
 const source = `FdPoint3d p0(0, 0, 0);
 double W = 200;

@@ -1,6 +1,6 @@
-import { RightButton } from '../../helpers/qtInput';
-import type { KeyboardModifiers } from '../../types/input';
-import type { SelectionCommand, SelectionEvent } from '../../types/viewportEngine';
+import { RightButton } from '@/helpers/qtInput';
+import type { KeyboardModifiers } from '@/types/input';
+import type { SelectionCommand, SelectionEvent } from '@/types/viewportEngine';
 
 export const NoUpdate: SelectionCommand = {};
 export const ClearAndSelect: SelectionCommand = { clear: true, op: 'Select' };

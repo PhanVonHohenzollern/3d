@@ -1,4 +1,4 @@
-import { isalnum, trim } from '../../../utils/cpp';
+import { isalnum, trim } from '@/utils/cpp';
 
 export interface RuntimeFunctionMacro {
   parameters: string[];

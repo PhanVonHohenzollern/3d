@@ -1,5 +1,5 @@
-import type { RuntimeApiCall } from '../runtime/RuntimeTypes';
-import type { PreviewColor, PreviewMesh } from './previewScene';
+import type { RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
+import type { PreviewColor, PreviewMesh } from '@/core/geometry/previewScene';
 
 export class MeshBuildContext {
   constructor(

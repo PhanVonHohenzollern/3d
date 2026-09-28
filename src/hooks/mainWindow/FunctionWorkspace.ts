@@ -4,11 +4,11 @@ import {
   sourceFunctions,
   validFunctionCode,
   type SourceFunction,
-} from '../../helpers/functions';
-import type { RuntimeExecutionOptions } from '../../core/runtime/GeometryRuntime';
-import type { RuntimeApiCall } from '../../core/runtime/RuntimeTypes';
-import { Lexer } from '../../core/runtime/interpreter/Lexer';
-import { parameterSignatureType } from '../../core/runtime/helpers/functionSignatures';
+} from '@/helpers/functions';
+import type { RuntimeExecutionOptions } from '@/core/runtime/GeometryRuntime';
+import type { RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
+import { parameterSignatureType } from '@/core/runtime/helpers/functionSignatures';
 
 export interface FunctionProgram {
   source: string;

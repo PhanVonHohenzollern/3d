@@ -1,4 +1,4 @@
-import { kVertexFloats } from './VertexArray';
+import { kVertexFloats } from '@/core/viewport/VertexArray';
 
 export const kLineQuadFloats = 11;
 export const kLineQuadBytes = kLineQuadFloats * 4;

@@ -1,4 +1,4 @@
-import { CppException } from '../../utils/cpp';
+import { CppException } from '@/utils/cpp';
 
 export class FdVector3d {
   constructor(

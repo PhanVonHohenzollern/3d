@@ -1,5 +1,5 @@
 import { linter, lintGutter, lintKeymap } from '@codemirror/lint';
-import { executionDiagnosticsField, lintCppSyntax, setExecutionDiagnostics } from './linting';
+import { executionDiagnosticsField, lintCppSyntax, setExecutionDiagnostics } from '@/hooks/codeEditor/linting';
 import {
   acceptCompletion,
   startCompletion,
@@ -22,8 +22,8 @@ import {
   type ViewUpdate,
 } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
-import { traceLinesField } from './traceLines';
-import { codeCompletions } from './completions';
+import { traceLinesField } from '@/hooks/codeEditor/traceLines';
+import { codeCompletions } from '@/hooks/codeEditor/completions';
 
 const editorTheme = EditorView.theme(
   {

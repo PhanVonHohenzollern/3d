@@ -5,7 +5,7 @@ import {
   executionDiagnosticsField,
   lintCppSyntax,
   setExecutionDiagnostics,
-} from '../src/hooks/codeEditor/linting';
+} from '@/hooks/codeEditor/linting';
 
 describe('CodeMirror C++ syntax diagnostics', () => {
   it('locates runtime errors and discards stale diagnostics when the source changes', () => {

@@ -1,7 +1,7 @@
 import { CompletionContext, type CompletionResult, type CompletionSource } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { describe, expect, it } from 'vitest';
-import { createEditorExtensions } from '../../src/hooks/codeEditor/editorExtensions';
+import { createEditorExtensions } from '@/hooks/codeEditor/editorExtensions';
 
 async function complete(doc: string, explicit = false): Promise<CompletionResult | null> {
   const state = EditorState.create({ doc, extensions: createEditorExtensions(() => {}) });

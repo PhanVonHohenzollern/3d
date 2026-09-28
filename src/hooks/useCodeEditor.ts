@@ -2,10 +2,10 @@ import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } fro
 import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { forEachDiagnostic, openLintPanel } from '@codemirror/lint';
-import type { CodeEditorProps } from '../types/editor';
-import { createCodeEditorHandle, type EditorSignals } from './codeEditor/codeEditorHandle';
-import { createEditorExtensions } from './codeEditor/editorExtensions';
-import { executionDiagnostics, setExecutionDiagnostics } from './codeEditor/linting';
+import type { CodeEditorProps } from '@/types/editor';
+import { createCodeEditorHandle, type EditorSignals } from '@/hooks/codeEditor/codeEditorHandle';
+import { createEditorExtensions } from '@/hooks/codeEditor/editorExtensions';
+import { executionDiagnostics, setExecutionDiagnostics } from '@/hooks/codeEditor/linting';
 
 interface EditorProblem {
   from: number;

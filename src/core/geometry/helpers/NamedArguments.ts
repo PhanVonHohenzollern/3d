@@ -1,9 +1,9 @@
-import { cross, DVec3, length, normalized } from '../../../utils/DVec3';
-import { apiSignatureMetadataForCall } from '../../runtime/ApiMetadata';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import { isArray, runtimeNumber, runtimeTruthy, type RuntimeValue } from '../../runtime/RuntimeValue';
-import { basisFromUp, toVec } from './geometryMath';
-import type { MeshBuildContext } from '../MeshBuildContext';
+import { cross, DVec3, length, normalized } from '@/utils/DVec3';
+import { apiSignatureMetadataForCall } from '@/core/runtime/ApiMetadata';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { isArray, runtimeNumber, runtimeTruthy, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { basisFromUp, toVec } from '@/core/geometry/helpers/geometryMath';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
 
 /** Read by the selected overload's formal names, including SDK default arguments. */
 export class NamedArguments {

@@ -1,7 +1,7 @@
 import { EditorSelection, EditorState, type Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import type { CodeEditorHandle } from '../../types/editor';
-import { setTraceLinesEffect, traceLinesField } from './traceLines';
+import type { CodeEditorHandle } from '@/types/editor';
+import { setTraceLinesEffect, traceLinesField } from '@/hooks/codeEditor/traceLines';
 
 export interface EditorSignals {
   onTextChanged?: () => void;

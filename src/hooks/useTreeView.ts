@@ -1,13 +1,13 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
-import { eventModifiers } from '../helpers/keyboard';
-import { kTreeIndentation } from '../helpers/layout';
-import { resizeToContentsWidth } from '../helpers/treeColumns';
-import type { TreeColumnView, TreeMouseEvent, TreeRowView } from '../types/treeView';
-import { textWidth } from '../utils/measureText';
-import { isOnScrollbar } from '../utils/dom';
-import type { TreeWidget } from './treeWidget/TreeWidget';
-import { usePointerDrag } from './usePointerDrag';
-import { useObservable } from './useObservable';
+import { eventModifiers } from '@/helpers/keyboard';
+import { kTreeIndentation } from '@/helpers/layout';
+import { resizeToContentsWidth } from '@/helpers/treeColumns';
+import type { TreeColumnView, TreeMouseEvent, TreeRowView } from '@/types/treeView';
+import { textWidth } from '@/utils/measureText';
+import { isOnScrollbar } from '@/utils/dom';
+import type { TreeWidget } from '@/hooks/treeWidget/TreeWidget';
+import { usePointerDrag } from '@/hooks/usePointerDrag';
+import { useObservable } from '@/hooks/useObservable';
 
 export function useTreeView(tree: TreeWidget) {
   useObservable(tree);

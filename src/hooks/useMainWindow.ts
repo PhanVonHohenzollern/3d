@@ -1,7 +1,7 @@
-import { useModelFiles } from './useModelFiles';
+import { useModelFiles } from '@/hooks/useModelFiles';
 import { useEffect, useState } from 'react';
-import { MainWindow } from './mainWindow/MainWindow';
-import { useObservable } from './useObservable';
+import { MainWindow } from '@/hooks/mainWindow/MainWindow';
+import { useObservable } from '@/hooks/useObservable';
 
 export function useMainWindow() {
   const [mainWindow] = useState(() => new MainWindow());

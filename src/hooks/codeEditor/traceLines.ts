@@ -1,6 +1,6 @@
 import { RangeSet, StateEffect, StateField, type EditorState } from '@codemirror/state';
 import { Decoration, EditorView, GutterMarker, gutterLineClass, type DecorationSet } from '@codemirror/view';
-import type { TraceLines } from '../../types/editor';
+import type { TraceLines } from '@/types/editor';
 
 export const setTraceLinesEffect = StateEffect.define<TraceLines>();
 

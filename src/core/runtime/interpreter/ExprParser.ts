@@ -1,13 +1,20 @@
-import { doubleToInt64, runtimeError, stdException, stod, stoll, trim } from '../../../utils/cpp';
-import { FdPoint3d, FdVector3d } from '../FdMath';
-import { isBowlValue } from '../FdBowlData';
-import { builtinFunction } from '../helpers/builtinFunctions';
-import { createArray } from '../helpers/arrays';
-import { kMutatingMethods } from '../helpers/mutatingMethods';
-import type { RuntimeFunctionMacro } from '../helpers/macros';
-import { callMethod, indexValue, memberValue } from '../helpers/pointVectorMembers';
-import { makeToken, isIdentifier, isSymbol, parseCallArguments, TokKind, type Token } from '../helpers/tokens';
-import { isNumericType, parseRuntimeType, type ParsedType } from '../helpers/typeNames';
+import { doubleToInt64, runtimeError, stdException, stod, stoll, trim } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { isBowlValue } from '@/core/runtime/FdBowlData';
+import { builtinFunction } from '@/core/runtime/helpers/builtinFunctions';
+import { createArray } from '@/core/runtime/helpers/arrays';
+import { kMutatingMethods } from '@/core/runtime/helpers/mutatingMethods';
+import type { RuntimeFunctionMacro } from '@/core/runtime/helpers/macros';
+import { callMethod, indexValue, memberValue } from '@/core/runtime/helpers/pointVectorMembers';
+import {
+  makeToken,
+  isIdentifier,
+  isSymbol,
+  parseCallArguments,
+  TokKind,
+  type Token,
+} from '@/core/runtime/helpers/tokens';
+import { isNumericType, parseRuntimeType, type ParsedType } from '@/core/runtime/helpers/typeNames';
 import {
   addValues,
   compareValues,
@@ -17,7 +24,7 @@ import {
   mulValues,
   negateValue,
   subValues,
-} from '../helpers/valueOperations';
+} from '@/core/runtime/helpers/valueOperations';
 import {
   isDouble,
   isInt,
@@ -27,9 +34,9 @@ import {
   runtimeTruthy,
   RuntimeStdVector,
   type RuntimeValue,
-} from '../RuntimeValue';
-import { Lexer } from './Lexer';
-import type { RuntimeState } from './RuntimeState';
+} from '@/core/runtime/RuntimeValue';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
+import type { RuntimeState } from '@/core/runtime/interpreter/RuntimeState';
 
 const kEndToken: Token = makeToken(TokKind.End, '', 0.0, 0);
 

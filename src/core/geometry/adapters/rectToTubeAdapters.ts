@@ -1,18 +1,18 @@
-import { normalized } from '../../../utils/DVec3';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildSectionTubeMesh } from '../builders/circularMeshes';
+import { normalized } from '@/utils/DVec3';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildSectionTubeMesh } from '@/core/geometry/builders/circularMeshes';
 import {
   buildRectTubeIntersectionMeshes,
   buildRectToEllipseTransitionMesh,
   rectangleCorners,
-} from '../builders/transitionMeshes';
-import { warningFor } from '../helpers/apiCall';
-import { kEps, sdkPerpVector, toPoint, toVec, validDirection } from '../helpers/geometryMath';
-import { pushNonEmptyMesh } from '../helpers/meshData';
-import { asInt, asPoint, asVector, numberArray, pointArray, ref } from '../helpers/valueDecoding';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
+} from '@/core/geometry/builders/transitionMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { kEps, sdkPerpVector, toPoint, toVec, validDirection } from '@/core/geometry/helpers/geometryMath';
+import { pushNonEmptyMesh } from '@/core/geometry/helpers/meshData';
+import { asInt, asPoint, asVector, numberArray, pointArray, ref } from '@/core/geometry/helpers/valueDecoding';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 export function appendRectToTubeTransition(
   scene: PreviewGeometryScene,

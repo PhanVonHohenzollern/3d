@@ -1,17 +1,17 @@
 import { cppLanguage } from '@codemirror/lang-cpp';
-import { Lexer } from '../core/runtime/interpreter/Lexer';
-import { ProgramParser } from '../core/runtime/interpreter/ProgramParser';
-import { Statement, StatementKind } from '../core/runtime/interpreter/Statement';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
+import { ProgramParser } from '@/core/runtime/interpreter/ProgramParser';
+import { Statement, StatementKind } from '@/core/runtime/interpreter/Statement';
 import {
   functionParameters,
   functionSignature,
   parameterDefaultExpression,
   parameterName,
   parameterType,
-} from '../core/runtime/helpers/functionSignatures';
-import { TokKind, tokensToExpression } from '../core/runtime/helpers/tokens';
-import { parseRuntimeType } from '../core/runtime/helpers/typeNames';
-import { preprocess } from '../core/runtime/helpers/preprocessor';
+} from '@/core/runtime/helpers/functionSignatures';
+import { TokKind, tokensToExpression } from '@/core/runtime/helpers/tokens';
+import { parseRuntimeType } from '@/core/runtime/helpers/typeNames';
+import { preprocess } from '@/core/runtime/helpers/preprocessor';
 
 function functionParseSource(source: string): string {
   try {

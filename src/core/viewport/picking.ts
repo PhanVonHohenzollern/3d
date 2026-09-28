@@ -1,12 +1,12 @@
-import type { DebugKind } from '../../types/viewportEngine';
-import { distancePointToSegment, rayTriangleDistance } from '../../utils/geometry';
-import { isValidIndex } from '../../utils/math';
-import { QPointF, QVector3D } from '../../utils/Vector3D';
-import type { ConnectorPreview } from '../geometry/ConnectorPreview';
-import type { PreviewMesh } from '../geometry/PreviewGeometryEngine';
-import type { DebugItem } from './DebugItem';
-import type { VertexArray } from './VertexArray';
-import type { ScreenRay } from './ViewportCamera';
+import type { DebugKind } from '@/types/viewportEngine';
+import { distancePointToSegment, rayTriangleDistance } from '@/utils/geometry';
+import { isValidIndex } from '@/utils/math';
+import { QPointF, QVector3D } from '@/utils/Vector3D';
+import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
+import type { PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
+import type { DebugItem } from '@/core/viewport/DebugItem';
+import type { VertexArray } from '@/core/viewport/VertexArray';
+import type { ScreenRay } from '@/core/viewport/ViewportCamera';
 
 type Projection = (world: QVector3D) => QPointF | null;
 

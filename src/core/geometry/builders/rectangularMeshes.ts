@@ -1,9 +1,9 @@
-import { cross, dot, DVec3, length, normalized } from '../../../utils/DVec3';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import { basisFromUp, kEps, stableBasis, toVec } from '../helpers/geometryMath';
-import { addTriangle, vertex } from '../helpers/meshData';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewMesh } from '../previewScene';
+import { cross, dot, DVec3, length, normalized } from '@/utils/DVec3';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { basisFromUp, kEps, stableBasis, toVec } from '@/core/geometry/helpers/geometryMath';
+import { addTriangle, vertex } from '@/core/geometry/helpers/meshData';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewMesh } from '@/core/geometry/previewScene';
 
 export function buildConnectorFlangeMesh(
   context: MeshBuildContext,

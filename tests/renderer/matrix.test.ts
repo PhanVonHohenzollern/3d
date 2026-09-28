@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { QMatrix4x4 } from '../../src/utils/Matrix4x4';
-import { QVector3D, QVector4D } from '../../src/utils/Vector3D';
+import { QMatrix4x4 } from '@/utils/Matrix4x4';
+import { QVector3D, QVector4D } from '@/utils/Vector3D';
 
 function expectMatrixClose(actual: QMatrix4x4, expected: number[][], digits = 5) {
   for (let row = 0; row < 4; ++row)

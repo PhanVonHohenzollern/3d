@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DebugLabelPanel } from '../../src/core/viewport/DebugLabelPanel';
-import type { DebugLabelEntry } from '../../src/types/viewportEngine';
-import { qColor } from '../../src/utils/painting';
-import { LeftButton, NoModifier, RightButton } from '../../src/helpers/qtInput';
-import { elidedText } from '../../src/utils/textMetrics';
-import { debugLabelPanelsLayout } from '../../src/core/viewport/panelLayout';
-import { debugValueText } from '../../src/helpers/debugValueText';
-import { fixedMeasurer } from './helpers';
+import { DebugLabelPanel } from '@/core/viewport/DebugLabelPanel';
+import type { DebugLabelEntry } from '@/types/viewportEngine';
+import { qColor } from '@/utils/painting';
+import { LeftButton, NoModifier, RightButton } from '@/helpers/qtInput';
+import { elidedText } from '@/utils/textMetrics';
+import { debugLabelPanelsLayout } from '@/core/viewport/panelLayout';
+import { debugValueText } from '@/helpers/debugValueText';
+import { fixedMeasurer } from '@tests/renderer/helpers';
 
 const ROW = 24;
 

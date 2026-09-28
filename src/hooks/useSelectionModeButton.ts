@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { ViewportEngine } from '../core/viewport/ViewportEngine';
-import { preventDefault } from '../utils/events';
+import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
+import { preventDefault } from '@/utils/events';
 
 export function useSelectionModeButton(engine: ViewportEngine) {
   const { text, geometry } = useSyncExternalStore(engine.subscribeWidgets, engine.selectionModeButton);

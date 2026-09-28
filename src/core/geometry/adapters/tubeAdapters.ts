@@ -1,11 +1,11 @@
-import { stdMax } from '../../../utils/cppStd';
-import { DVec3, length, normalized } from '../../../utils/DVec3';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildSectionTubeMesh, buildTaperedTubeMesh } from '../builders/circularMeshes';
-import { warningFor } from '../helpers/apiCall';
-import { kEps, sdkPerpVector, toFdVector, toVec, validDirection } from '../helpers/geometryMath';
-import { pushNonEmptyMesh } from '../helpers/meshData';
+import { stdMax } from '@/utils/cppStd';
+import { DVec3, length, normalized } from '@/utils/DVec3';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildSectionTubeMesh, buildTaperedTubeMesh } from '@/core/geometry/builders/circularMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { kEps, sdkPerpVector, toFdVector, toVec, validDirection } from '@/core/geometry/helpers/geometryMath';
+import { pushNonEmptyMesh } from '@/core/geometry/helpers/meshData';
 import {
   asBool,
   asInt,
@@ -18,9 +18,9 @@ import {
   ref,
   twoPointsFromArray,
   vectorArray,
-} from '../helpers/valueDecoding';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
+} from '@/core/geometry/helpers/valueDecoding';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 export function appendVerySimpleTube(
   scene: PreviewGeometryScene,

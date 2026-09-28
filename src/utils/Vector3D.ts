@@ -1,4 +1,4 @@
-import { qFuzzyIsNull, qRound } from './math';
+import { qFuzzyIsNull, qRound } from '@/utils/math';
 
 export class QVector3D {
   constructor(

@@ -1,8 +1,8 @@
-import type { RuntimeResult } from '../../core/runtime/RuntimeTypes';
-import { rowForKey } from '../../helpers/tableNavigation';
-import { variableRow, variableSummary } from '../../helpers/variables';
-import type { ScrollRequest, VariablePanelHandle, VariableRow } from '../../types/panels';
-import { Observable } from '../observable/Observable';
+import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { rowForKey } from '@/helpers/tableNavigation';
+import { variableRow, variableSummary } from '@/helpers/variables';
+import type { ScrollRequest, VariablePanelHandle, VariableRow } from '@/types/panels';
+import { Observable } from '@/hooks/observable/Observable';
 
 export class VariablePanelModel extends Observable implements VariablePanelHandle {
   summary = '';
