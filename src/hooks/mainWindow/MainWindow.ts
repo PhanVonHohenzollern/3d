@@ -17,7 +17,8 @@ import {
 import { pointDeclaration, unusedPreviewPointName } from '@/helpers/viewportPoints';
 import type { CodeEditorHandle } from '@/types/editor';
 import type { ActionListItem, DockName, Menu } from '@/types/mainWindow';
-import type { ApiTracePanelHandle, VariablePanelHandle } from '@/types/panels';
+import type { ApiTracePanelHandle } from '@/widgets/api-trace-panel';
+import type { VariablePanelHandle } from '@/widgets/variable-panel';
 import type { LinkPanelHandle } from '@/features/edit-connector';
 import type { ParameterPanelHandle } from '@/features/edit-parameters';
 import type { Vec3, Viewport3DHandle } from '@/types/viewport';

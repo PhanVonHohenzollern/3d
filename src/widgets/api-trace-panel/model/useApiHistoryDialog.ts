@@ -1,4 +1,4 @@
-import type { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
+import type { ApiHistoryDialogModel } from '@/widgets/api-trace-panel/model/ApiHistoryDialogModel';
 import { useObservable } from '@/shared/lib/observable';
 
 export function useApiHistoryDialog(dialog: ApiHistoryDialogModel) {

@@ -2,7 +2,7 @@ import type { RuntimeResult } from '@engine/runtime';
 import { rowForKey } from '@/shared/ui/table-view';
 import { variableRow, variableSummary } from '@/entities/variable';
 import type { VariableRow } from '@/entities/variable';
-import type { VariablePanelHandle } from '@/types/panels';
+import type { VariablePanelHandle } from '@/widgets/variable-panel/model/types';
 import type { ScrollRequest } from '@/shared/ui/table-view';
 import { Observable } from '@/shared/lib/observable';
 

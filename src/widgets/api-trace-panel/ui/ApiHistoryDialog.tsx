@@ -1,5 +1,5 @@
-import type { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
-import { useApiHistoryDialog } from '@/hooks/useApiHistoryDialog';
+import type { ApiHistoryDialogModel } from '@/widgets/api-trace-panel/model/ApiHistoryDialogModel';
+import { useApiHistoryDialog } from '@/widgets/api-trace-panel/model/useApiHistoryDialog';
 import { FloatingWindow } from '@/shared/ui/floating-window';
 import { PushButton } from '@/shared/ui/PushButton';
 import { TreeView } from '@/shared/ui/tree';

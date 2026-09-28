@@ -1,11 +1,11 @@
 import { parseObj, writeObj } from '@engine/formats/obj';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
+import { ApiTracePanelModel } from '@/widgets/api-trace-panel';
 import { LinkPanelModel } from '@/features/edit-connector';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';
 import { GeometryRuntime } from '@engine/runtime';
 import { ParameterPanelModel } from '@/features/edit-parameters';
-import { VariablePanelModel } from '@/hooks/variablePanel/VariablePanelModel';
+import { VariablePanelModel } from '@/widgets/variable-panel';
 import type { CodeEditorHandle } from '@/types/editor';
 import type { Viewport3DHandle } from '@/types/viewport';
 import { createViewport3DHandle } from '@/helpers/viewportHandle';

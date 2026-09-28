@@ -11,11 +11,11 @@ import {
 import { isArray, isPoint, isVector, type RuntimeValue } from '@engine/runtime';
 import { apiDebugItemId } from '@/entities/api-call';
 import { changeExpression, directSource, displayExpression, metadataTypeText, otherInputs } from '@/entities/api-call';
-import type { ApiTracePanelHandle } from '@/types/panels';
+import type { ApiTracePanelHandle } from '@/widgets/api-trace-panel/model/types';
 import { Observable } from '@/shared/lib/observable';
 import { TreeWidget, UserRole } from '@/shared/ui/tree';
 import { TreeWidgetItem } from '@/shared/ui/tree';
-import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
+import { ApiHistoryDialogModel } from '@/widgets/api-trace-panel/model/ApiHistoryDialogModel';
 import {
   kDebugItemRole,
   kNodeKeyRole,

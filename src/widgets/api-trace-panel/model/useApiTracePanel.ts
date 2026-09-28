@@ -1,6 +1,6 @@
 import { useImperativeHandle, useLayoutEffect, useState } from 'react';
-import type { ApiTracePanelProps } from '@/types/panels';
-import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
+import type { ApiTracePanelProps } from '@/widgets/api-trace-panel/model/types';
+import { ApiTracePanelModel } from '@/widgets/api-trace-panel/model/ApiTracePanelModel';
 import { useObservable } from '@/shared/lib/observable';
 
 export function useApiTracePanel({

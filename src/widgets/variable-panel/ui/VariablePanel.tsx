@@ -1,5 +1,5 @@
-import { useVariablePanel } from '@/hooks/useVariablePanel';
-import type { VariablePanelProps } from '@/types/panels';
+import { useVariablePanel } from '@/widgets/variable-panel/model/useVariablePanel';
+import type { VariablePanelProps } from '@/widgets/variable-panel/model/types';
 import { Cell, HeaderCell, TableView } from '@/shared/ui/table-view';
 
 export function VariablePanel(props: VariablePanelProps) {

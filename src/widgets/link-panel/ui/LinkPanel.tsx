@@ -1,7 +1,7 @@
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { LinkForm, useLinkPanel } from '@/features/edit-connector';
 import type { LinkPanelProps } from '@/features/edit-connector';
-import { LinkTable } from '@/components/LinkTable';
+import { LinkTable } from '@/widgets/link-panel/ui/LinkTable';
 import { Button } from '@/shared/ui/button';
 
 export function LinkPanel(props: LinkPanelProps) {

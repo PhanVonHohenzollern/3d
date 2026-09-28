@@ -1,7 +1,7 @@
-import { useApiTracePanel } from '@/hooks/useApiTracePanel';
-import type { ApiTracePanelProps } from '@/types/panels';
+import { useApiTracePanel } from '@/widgets/api-trace-panel/model/useApiTracePanel';
+import type { ApiTracePanelProps } from '@/widgets/api-trace-panel/model/types';
 import { preventDefault } from '@/shared/lib/events';
-import { ApiHistoryDialog } from '@/components/ApiHistoryDialog';
+import { ApiHistoryDialog } from '@/widgets/api-trace-panel/ui/ApiHistoryDialog';
 import { TreeView } from '@/shared/ui/tree';
 import { ToolButton } from '@/shared/ui/ToolButton';
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyRuntimeResult } from '@engine/runtime/RuntimeTypes';
-import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
+import { ApiTracePanelModel } from '@/widgets/api-trace-panel';
 import { TraceColumn } from '@/entities/api-call';
 import type { TreeWidgetItem } from '@/shared/ui/tree';
 import type { Modifiers } from '@/shared/lib/qt';
