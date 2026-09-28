@@ -20,7 +20,8 @@ import {
   uniquePointName,
 } from '@/entities/connector';
 import { rowForKey } from '@/shared/ui/table-view';
-import type { LinkPanelHandle, LinkTableRow, PreviewChangedCallback, ScrollRequest, SizeField } from '@/types/panels';
+import type { SizeField } from '@/entities/connector';
+import type { LinkPanelHandle, LinkTableRow, PreviewChangedCallback, ScrollRequest } from '@/types/panels';
 import { sameItems } from '@/shared/lib/arrays';
 import { what } from '@engine/runtime';
 import { Observable } from '@/shared/lib/observable';

@@ -1,14 +1,12 @@
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { useLinkPanel } from '@/hooks/useLinkPanel';
+import { LinkForm, useLinkPanel } from '@/features/edit-connector';
 import type { LinkPanelProps } from '@/types/panels';
-import { LinkForm } from '@/components/LinkForm';
 import { LinkTable } from '@/components/LinkTable';
 import { Button } from '@/shared/ui/button';
 
 export function LinkPanel(props: LinkPanelProps) {
   const {
     tableRef,
-    nameRef,
     table,
     form,
     isEditing,
@@ -65,7 +63,7 @@ export function LinkPanel(props: LinkPanelProps) {
         <LinkTable tableRef={tableRef} {...table} />
       </div>
       <div className={isEditing ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-        <LinkForm nameRef={nameRef} {...form} />
+        <LinkForm {...form} />
       </div>
     </div>
   );

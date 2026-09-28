@@ -78,8 +78,6 @@ export interface LinkTableRow {
   buttonText: string;
 }
 
-export type SizeField = 'diameter' | 'aSize' | 'bSize';
-
 export interface ScrollRequest {
   row: number;
   serial: number;

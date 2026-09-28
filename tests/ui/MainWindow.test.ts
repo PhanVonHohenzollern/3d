@@ -1,7 +1,7 @@
 import { parseObj, writeObj } from '@engine/formats/obj';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
-import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
+import { LinkPanelModel } from '@/features/edit-connector';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';
 import { GeometryRuntime } from '@engine/runtime';
 import { ParameterPanelModel } from '@/features/edit-parameters';
