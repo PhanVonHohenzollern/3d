@@ -2,6 +2,7 @@ import { runtimeError, trim } from '@engine/runtime/cpp/cpp';
 import { parameterDisplayText, parameterTextToValue } from '@engine/runtime/helpers/parameters';
 import { readLValue, writeLValue } from '@engine/runtime/helpers/lvalues';
 import {
+  balancedEnd,
   isIdentifier,
   isSymbol,
   sliceTokens,
@@ -58,15 +59,7 @@ function discoverGetVal(
   for (let i = 0; i + 1 < tokens.length; ++i) {
     if (!isIdentifier(tokens[i], 'get_val') || !isSymbol(tokens[i + 1], '(')) continue;
 
-    let close = i + 2;
-    let depth = 1;
-    for (; close < tokens.length; ++close) {
-      if (isSymbol(tokens[close], '(')) ++depth;
-      else if (isSymbol(tokens[close], ')')) {
-        --depth;
-        if (depth === 0) break;
-      }
-    }
+    const close = balancedEnd(tokens, i + 1);
     if (close >= tokens.length) continue;
 
     const args = splitTopLevel(sliceTokens(tokens, i + 2, close), ',');

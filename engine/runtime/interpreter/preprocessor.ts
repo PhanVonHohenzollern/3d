@@ -1,5 +1,5 @@
 import { runtimeError } from '@engine/runtime/cpp/cpp';
-import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
+import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { kNoVariables } from '@engine/runtime/interpreter/evalContext';
 import { runtimeTruthy } from '@engine/runtime/RuntimeValue';
@@ -61,7 +61,7 @@ export function preprocess(code: string): { code: string; definitions: string[];
       token.kind === TokKind.Identifier ? { ...token, kind: TokKind.Number, text: '0', number: 0 } : token,
     );
 
-    return runtimeTruthy(new ExprParser(tokens, kNoVariables).parse());
+    return runtimeTruthy(evaluateExpression(tokens, kNoVariables));
   };
 
   const source = code

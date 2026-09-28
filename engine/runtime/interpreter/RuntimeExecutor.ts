@@ -13,7 +13,7 @@ import { stdException } from '@engine/runtime/cpp/cpp';
 import { DeclarationEvaluator } from '@engine/runtime/interpreter/DeclarationEvaluator';
 import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
 import { freshControlFlow, type ControlFlow, type Execution } from '@engine/runtime/interpreter/execution';
-import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
+import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { FunctionCalls } from '@engine/runtime/interpreter/FunctionCalls';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { resolveLValue } from '@engine/runtime/interpreter/lvalueResolution';
@@ -194,7 +194,7 @@ export class RuntimeExecutor implements Execution {
   // Execution: shared services.
 
   evaluate(tokens: readonly Token[]): RuntimeValue {
-    return new ExprParser(tokens, this.evalContext).parse();
+    return evaluateExpression(tokens, this.evalContext);
   }
 
   resolveLValue(tokens: readonly Token[]): LValueRef {

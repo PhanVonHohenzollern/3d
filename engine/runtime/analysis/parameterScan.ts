@@ -5,7 +5,14 @@ import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '@engine/r
 import { isScalarTypeToken, normalizedScalarType } from '@engine/runtime/helpers/typeNames';
 import { functionParameters, functionScope } from '@engine/runtime/helpers/functionSignatures';
 import { discoverParameters, isInsulationQuery, type StaticParameterDecl } from '@engine/runtime/intrinsics';
-import { isSymbol, sliceTokens, splitTopLevel, TokKind, type Token } from '@engine/runtime/helpers/tokens';
+import {
+  isSymbol,
+  sliceTokens,
+  splitTopLevel,
+  TokKind,
+  type Token,
+  scanTopLevel,
+} from '@engine/runtime/helpers/tokens';
 
 function neutralParameterValue(type: string): string {
   if (type === 'string') return '';
@@ -45,28 +52,12 @@ function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticPar
       ++begin;
     }
 
-    let end = begin;
-    let paren = 0,
-      bracket = 0,
-      brace = 0;
-    for (; end < tokens.length; ++end) {
-      const t = tokens[end];
-      if (isSymbol(t, '(')) ++paren;
-      else if (isSymbol(t, ')')) {
-        if (paren === 0 && bracket === 0 && brace === 0) break;
-        --paren;
-      } else if (isSymbol(t, '[')) ++bracket;
-      else if (isSymbol(t, ']')) --bracket;
-      else if (isSymbol(t, '{')) {
-        if (paren === 0 && bracket === 0 && brace === 0) break;
-        ++brace;
-      } else if (isSymbol(t, '}')) {
-        if (paren === 0 && bracket === 0 && brace === 0) break;
-        --brace;
-      } else if (isSymbol(t, ';') && paren === 0 && bracket === 0 && brace === 0) {
-        break;
-      }
-    }
+    // The declaration ends at ';', a block, or the bracket that closes around it.
+    const end = scanTopLevel(
+      tokens,
+      begin,
+      (t, _i, depth) => depth < 0 || (depth === 0 && (isSymbol(t, '{') || isSymbol(t, ';'))),
+    );
 
     const fragments = splitTopLevel(sliceTokens(tokens, begin, end), ',');
     for (const fragment of fragments) {

@@ -9,27 +9,22 @@ import {
   RuntimeStdVector,
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
-import { isSymbol, TokKind, type Token } from '@engine/runtime/helpers/tokens';
+import { isSymbol, scanTopLevel, TokKind, type Token } from '@engine/runtime/helpers/tokens';
 
+// The '.' of a top-level method call in a statement (`a[i].rotateBy(...)`), or -1.
 export function mutatingMethodDot(tokens: readonly Token[]): number {
-  let bracket = 0,
-    paren = 0;
-  for (let i = 0; i + 2 < tokens.length; ++i) {
-    if (isSymbol(tokens[i], '[')) ++bracket;
-    else if (isSymbol(tokens[i], ']')) --bracket;
-    else if (isSymbol(tokens[i], '(')) ++paren;
-    else if (isSymbol(tokens[i], ')')) --paren;
-    else if (
-      bracket === 0 &&
-      paren === 0 &&
-      isSymbol(tokens[i], '.') &&
+  const dot = scanTopLevel(
+    tokens,
+    0,
+    (token, i, depth) =>
+      depth === 0 &&
+      i + 2 < tokens.length &&
+      isSymbol(token, '.') &&
       tokens[i + 1].kind === TokKind.Identifier &&
-      isSymbol(tokens[i + 2], '(')
-    )
-      return i;
-  }
+      isSymbol(tokens[i + 2], '('),
+  );
 
-  return -1;
+  return dot < tokens.length ? dot : -1;
 }
 
 type Mutation = (

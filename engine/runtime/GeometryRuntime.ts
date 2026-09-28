@@ -3,7 +3,7 @@ import { parseMacroDefinition } from '@engine/runtime/helpers/macros';
 import { scanGetValParameters } from '@engine/runtime/analysis/parameterScan';
 import { preprocess } from '@engine/runtime/interpreter/preprocessor';
 import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
-import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
+import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { ProgramParser } from '@engine/runtime/interpreter/ProgramParser';
 import { RuntimeExecutor } from '@engine/runtime/interpreter/RuntimeExecutor';
@@ -56,7 +56,7 @@ export class GeometryRuntime {
     if (field === '') throw runtimeError('enter a number, variable or expression');
     const value = snapshot.hasVariable(field)
       ? snapshot.lookupValue(field)
-      : new ExprParser(Lexer.scanExpression(field), withExpressionIntrinsics(snapshot)).parse();
+      : evaluateExpression(Lexer.scanExpression(field), withExpressionIntrinsics(snapshot));
     const number = runtimeNumber(value);
     if (!Number.isFinite(number)) throw runtimeError('value must be finite');
 
@@ -73,7 +73,7 @@ export class GeometryRuntime {
         continue;
       }
       try {
-        const value = new ExprParser(Lexer.scanExpression(definition.expression), state).parse();
+        const value = evaluateExpression(Lexer.scanExpression(definition.expression), state);
         state.setVariable(definition.name, value, false);
       } catch (e) {
         stdException(e);
@@ -90,7 +90,7 @@ function withExpressionIntrinsics(state: RuntimeState): EvalContext {
     withBindings: (bindings, evaluate) => state.withBindings(bindings, evaluate),
     callFunction: expressionIntrinsicCaller({
       state,
-      evaluate: (tokens) => new ExprParser(tokens, context).parse(),
+      evaluate: (tokens) => evaluateExpression(tokens, context),
       resolveLValue: () => {
         throw runtimeError('assignments are not available here');
       },

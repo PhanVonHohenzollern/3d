@@ -1,15 +1,9 @@
 import { stdException } from '@engine/runtime/cpp/cpp';
 import { braceListItems, isBraceList } from '@engine/runtime/helpers/arrays';
-import {
-  isSymbol,
-  matchingBracketEnd,
-  sliceTokens,
-  TokKind,
-  tokensToExpression,
-  type Token,
-} from '@engine/runtime/helpers/tokens';
+import { isSymbol, TokKind, tokensToExpression, type Token } from '@engine/runtime/helpers/tokens';
 import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
-import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
+import { pathSteps } from '@engine/runtime/interpreter/paths';
+import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import type { RuntimeArgumentTrace, RuntimeValueSource } from '@engine/runtime/RuntimeTypes';
 import {
@@ -38,9 +32,23 @@ const isPureIndexToken = (t: Token): boolean =>
   (t.kind === TokKind.Symbol &&
     (t.text === '+' || t.text === '-' || t.text === '*' || t.text === '/' || t.text === '%'));
 
+const kLexed = new Map<string, readonly Token[]>();
+
+// Tracing lexes the same few expressions over and over inside loops.
+function lexed(expression: string): readonly Token[] {
+  let tokens = kLexed.get(expression);
+  if (!tokens) {
+    if (kLexed.size >= 1024) kLexed.clear();
+    tokens = new Lexer(expression).scan();
+    kLexed.set(expression, tokens);
+  }
+
+  return tokens;
+}
+
 export function captureValueSources(expression: string, view: SourceView): RuntimeValueSource[] {
   const sources: RuntimeValueSource[] = [];
-  const tokens = new Lexer(expression).scan();
+  const tokens = lexed(expression);
   for (let i = 0; i < tokens.length; ++i) {
     if (tokens[i].kind !== TokKind.Identifier) continue;
     if (i > 0 && (isSymbol(tokens[i - 1], '.') || isSymbol(tokens[i - 1], '::'))) continue;
@@ -73,17 +81,11 @@ function followSourcePath(
 ): { path: string; value: RuntimeValue } {
   let path = root;
   let value = rootValue;
-  let p = start;
-  while (p < tokens.length) {
-    if (isSymbol(tokens[p], '[')) {
-      const begin = p + 1;
-      const bracket = matchingBracketEnd(tokens, begin);
-      p = bracket.end;
-      if (!bracket.closed) break;
-      const indexTokens = sliceTokens(tokens, begin, p);
-      if (!indexTokens.every(isPureIndexToken)) break;
+  for (const step of pathSteps(tokens, start).steps) {
+    if (step.kind === 'index') {
+      if (!step.closed || !step.tokens.every(isPureIndexToken)) break;
       try {
-        const index = runtimeInteger(new ExprParser(indexTokens, context).parse());
+        const index = runtimeInteger(evaluateExpression(step.tokens, context));
         if (isArray(value)) {
           if (index < 0n || index >= BigInt(value.elements.length)) break;
           value = value.elements[Number(index)];
@@ -97,17 +99,10 @@ function followSourcePath(
         stdException(e);
         break;
       }
-      ++p;
-    } else if (
-      isSymbol(tokens[p], '.') &&
-      p + 1 < tokens.length &&
-      (tokens[p + 1].text === 'x' || tokens[p + 1].text === 'y' || tokens[p + 1].text === 'z')
-    ) {
-      const member = tokens[p + 1].text;
-      if (isPoint(value) || isVector(value)) value = member === 'x' ? value.x : member === 'y' ? value.y : value.z;
-      else break;
-      path += '.' + member;
-      p += 2;
+    } else if (step.kind === 'member' && (step.name === 'x' || step.name === 'y' || step.name === 'z')) {
+      if (!isPoint(value) && !isVector(value)) break;
+      value = step.name === 'x' ? value.x : step.name === 'y' ? value.y : value.z;
+      path += '.' + step.name;
     } else break;
   }
 
