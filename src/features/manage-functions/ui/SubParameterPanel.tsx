@@ -34,7 +34,7 @@ export function SubParameterPanel(props: SubParameterPanelProps) {
         </div>
         <Button
           size="xs"
-          title="Build this function with these argument values"
+          title="Build function with these arguments"
           disabled={!props.enabled || !fn}
           onClick={() => fn && props.apply(fn.name)}
         >

@@ -26,7 +26,7 @@ export function ModelFileControls({
         disabled={busy}
         onClick={chooseFile}
         aria-label="Import"
-        title="Import OBJ to replace the preview; your code is preserved"
+        title="Import OBJ into the preview (code is kept)"
       >
         <Upload className="size-3.5" aria-hidden />
         <span className="hidden sm:inline">{busy ? 'Importing…' : 'Import'}</span>
@@ -37,7 +37,7 @@ export function ModelFileControls({
         disabled={busy || !canExport}
         onClick={exportFile}
         aria-label="Export"
-        title={canExport ? 'Export the active model as OBJ' : 'Create or import a model to export'}
+        title={canExport ? 'Export model as OBJ' : 'No model to export yet'}
       >
         <Download className="size-3.5" aria-hidden />
         <span className="hidden sm:inline">Export</span>

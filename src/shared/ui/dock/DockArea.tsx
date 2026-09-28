@@ -36,10 +36,12 @@ export function DockArea<Id extends string>({ label, height, tabs, active, onAct
             </TabsTrigger>
           ))}
         </TabsList>
-        <span className="ml-auto hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground @3xl:flex">
-          <Info className="size-3.5" aria-hidden />
-          {activeTab?.hint}
-        </span>
+        {activeTab?.hint && (
+          <span className="ml-auto hidden shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground @3xl:flex">
+            <Info className="size-3.5" aria-hidden />
+            {activeTab.hint}
+          </span>
+        )}
       </div>
       <div className="workspace-surface relative min-h-0 flex-1 overflow-hidden bg-window">
         {tabs.map((tab) => (

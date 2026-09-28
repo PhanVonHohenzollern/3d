@@ -8,23 +8,14 @@ import { Button } from '@/shared/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip';
 
 const presentation: Record<string, { label: string; icon: LucideIcon; description: string }> = {
-  'Show Geometry': { label: 'Geometry', icon: Box, description: 'Show or hide generated geometry.' },
-  'Geometry Wireframe': { label: 'Wireframe', icon: Scan, description: 'Display geometry as wireframe.' },
-  'Fit Scene': { label: 'Fit', icon: Maximize, description: 'Fit the camera to the scene.' },
-  'Show Points': { label: 'Points', icon: CircleDot, description: 'Show or hide point debug markers.' },
-  'Show Vectors': { label: 'Vectors', icon: MoveUpRight, description: 'Show or hide vector debug arrows.' },
-  'Show Labels': { label: 'Labels', icon: Tags, description: 'Show or hide debug labels.' },
-  'Hide Selected': {
-    label: 'Hide',
-    icon: EyeOff,
-    description: 'Hide selected point and vector debug overlays.',
-  },
-  'Show Selected': {
-    label: 'Show',
-    icon: Eye,
-    description:
-      'Restore selected point and vector debug overlays. The Points, Vectors, and Labels toggles still apply.',
-  },
+  'Show Geometry': { label: 'Geometry', icon: Box, description: 'Show or hide geometry' },
+  'Geometry Wireframe': { label: 'Wireframe', icon: Scan, description: 'Draw geometry as wireframe' },
+  'Fit Scene': { label: 'Fit', icon: Maximize, description: 'Fit camera to scene' },
+  'Show Points': { label: 'Points', icon: CircleDot, description: 'Show or hide point markers' },
+  'Show Vectors': { label: 'Vectors', icon: MoveUpRight, description: 'Show or hide vector arrows' },
+  'Show Labels': { label: 'Labels', icon: Tags, description: 'Show or hide labels' },
+  'Hide Selected': { label: 'Hide', icon: EyeOff, description: 'Hide selected points and vectors' },
+  'Show Selected': { label: 'Show', icon: Eye, description: 'Unhide selected points and vectors' },
 };
 
 const groupNames = ['Scene', 'Debug overlays', 'Selection visibility'];

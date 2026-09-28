@@ -56,7 +56,7 @@ export function ParameterPanel(props: ParameterPanelProps) {
           size="sm"
           className="h-7 px-3 text-[11px]"
           aria-label="Apply parameter values"
-          title="Build the current code with these parameter values"
+          title="Build with these values"
           disabled={panel.fields.length === 0 || !props.onApply}
           onClick={props.onApply}
         >

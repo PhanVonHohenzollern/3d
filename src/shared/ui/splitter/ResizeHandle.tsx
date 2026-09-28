@@ -11,7 +11,7 @@ export function ResizeHandle({ orientation, label, value, min, max, onPointerDow
       aria-valuenow={Math.round(value)}
       aria-valuemin={Math.round(min)}
       aria-valuemax={Math.round(max)}
-      title={`${label}. Drag or use arrow keys; hold Shift for larger steps.`}
+      title={`${label} · drag or arrow keys (Shift: bigger steps)`}
       className={cn(
         'group flex shrink-0 touch-none items-center justify-center rounded-sm transition-colors outline-none hover:bg-secondary focus-visible:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
         orientation === 'vertical' ? 'w-3 cursor-col-resize' : 'h-3 cursor-row-resize',
