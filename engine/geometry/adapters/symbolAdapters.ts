@@ -1,39 +1,13 @@
-import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
+import { DVec3, length, normalized } from '@engine/math/DVec3';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { isArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
-import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
+import { MeshSketch } from '@engine/geometry/helpers/sketch';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { basisFromUp, stableBasis, toPoint, toVec } from '@engine/geometry/helpers/geometryMath';
-import { vertex } from '@engine/geometry/helpers/meshData';
+import { basisFromUp, stableBasis, toVec, deg, ellipsePoint } from '@engine/geometry/helpers/geometryMath';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
-
-// Symbols are narrow ribbons in the preview's triangle-only renderer. Their
-// centre lines retain SDK coordinates; stroke width is a display property.
-export function appendStroke(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  points: DVec3[],
-  closed = false,
-): void {
-  const mesh = context.createMesh();
-  for (let i = 1; i < points.length + Number(closed); ++i) {
-    const a = points[i - 1],
-      b = points[i % points.length];
-    const axis = b.sub(a);
-    if (length(axis) < 1e-9) continue;
-    const [u, v] = stableBasis(normalized(axis));
-    // Two crossed ribbons keep a line visible when viewed edge-on.
-    for (const offset of [u.mul(0.35), v.mul(0.35)]) {
-      const start = mesh.vertices.length;
-      const normal = normalized(cross(axis, offset));
-      mesh.vertices.push(...[a.sub(offset), b.sub(offset), b.add(offset), a.add(offset)].map((p) => vertex(p, normal)));
-      mesh.indices.push(start, start + 1, start + 2, start, start + 2, start + 3);
-    }
-  }
-  if (mesh.indices.length) scene.meshes.push(mesh);
-}
+import { kMaxListLength, kSymbolArcStepDegrees } from '@engine/geometry/config/previewConstants';
 
 function point(value: RuntimeValue): DVec3 {
   if (value instanceof FdPoint3d || value instanceof FdVector3d) return toVec(value);
@@ -62,12 +36,14 @@ type SymbolPlane = {
 type SymbolOutline = SymbolPlane & { h: number; w: number; rectangle: DVec3[] };
 
 // What every symbol builder shares: the arguments and the two ways of drawing.
-class SymbolSketch {
+class SymbolSketch extends MeshSketch {
   constructor(
-    readonly scene: PreviewGeometryScene,
-    readonly context: MeshBuildContext,
+    scene: PreviewGeometryScene,
+    context: MeshBuildContext,
     readonly args: RuntimeValue[],
-  ) {}
+  ) {
+    super(scene, context);
+  }
 
   point(index: number): DVec3 {
     return point(this.args[index]);
@@ -75,14 +51,6 @@ class SymbolSketch {
 
   number(index: number): number {
     return numeric(this.args[index]);
-  }
-
-  stroke(points: DVec3[], closed = false): void {
-    appendStroke(this.scene, this.context, points, closed);
-  }
-
-  fill(points: DVec3[]): void {
-    this.scene.meshes.push(buildPolygonFaceMesh(this.context, points.map(toPoint)));
   }
 
   normal(): DVec3 {
@@ -301,7 +269,7 @@ function silencer(s: SymbolSketch): void {
 }
 
 function segmentCount(s: SymbolSketch, index: number): number {
-  return Math.max(1, Math.min(4096, Math.trunc(s.number(index))));
+  return Math.max(1, Math.min(kMaxListLength, Math.trunc(s.number(index))));
 }
 
 function zigZag(s: SymbolSketch): void {
@@ -318,12 +286,12 @@ function dampers(s: SymbolSketch): void {
 
 function ellipse(c: DVec3, u: DVec3, v: DVec3, a: number, b: number, begin: number, end: number): DVec3[] {
   if (a <= 0 || b <= 0) throw new Error('symbol radii must be positive');
-  const count = Math.max(2, Math.min(4096, Math.ceil(Math.abs(end - begin) / 3)));
+  const count = Math.max(2, Math.min(kMaxListLength, Math.ceil(Math.abs(end - begin) / kSymbolArcStepDegrees)));
 
   return Array.from({ length: count + 1 }, (_, i) => {
-    const t = ((begin + ((end - begin) * i) / count) * Math.PI) / 180;
+    const t = deg(begin + ((end - begin) * i) / count);
 
-    return c.add(u.mul(a * Math.cos(t))).add(v.mul(b * Math.sin(t)));
+    return ellipsePoint(c, u, v, a, b, t);
   });
 }
 

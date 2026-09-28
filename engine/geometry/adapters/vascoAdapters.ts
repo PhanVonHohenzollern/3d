@@ -3,13 +3,18 @@ import { buildBoxMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { buildTaperedTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { rotateAroundAxis, toFdVector, toPoint } from '@engine/geometry/helpers/geometryMath';
+import {
+  rotateAroundAxis,
+  toFdVector,
+  toPoint,
+  deg,
+  ellipsePoint,
+  sweepAlongArc,
+} from '@engine/geometry/helpers/geometryMath';
 import { vertex } from '@engine/geometry/helpers/meshData';
-import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
+import { NamedArguments, type Frame } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
-
-type Frame = ReturnType<NamedArguments['frame']>;
 
 // What every Vasco builder shares: the arguments, the section frame and the two ways of adding
 // a duct piece.
@@ -25,18 +30,16 @@ class VascoSketch {
     if ([...widths, ...heights].some((x) => !Number.isFinite(x) || x <= 0))
       throw new Error('Vasco section dimensions must be positive');
     this.scene.meshes.push(
-      buildBoxMesh(
-        this.context,
-        centers.length - 1,
-        centers.map(toPoint),
-        normals.map(toFdVector),
-        centers.map(() => toFdVector(up)),
+      buildBoxMesh(this.context, {
+        count: centers.length - 1,
+        centers: centers.map(toPoint),
+        normals: normals.map(toFdVector),
+        upVectors: centers.map(() => toFdVector(up)),
         widths,
         heights,
-        [],
-        caps,
-        caps,
-      ),
+        beginCap: caps,
+        endCap: caps,
+      }),
     );
   }
 
@@ -84,40 +87,30 @@ function elbow(v: VascoSketch, kind: 'V' | 'H'): void {
     lens = a.numbers('length');
   const turn = kind === 'V' ? f.up : f.right,
     axis = normalized(cross(f.normal, turn));
-  const angle = (a.num('angle', 90) * Math.PI) / 180,
+  const angle = deg(a.num('angle', 90)),
     radius = Math.max(lens[1] ?? 0, Math.max(...w, ...h) / 2),
     count = a.count('nR');
   const centers = [],
     normals = [],
     widths = [],
     heights = [];
-  for (let i = 0; i <= count; ++i) {
-    const t = i / count,
-      theta = angle * t;
-    centers.push(
-      f.center
-        .add(f.normal.mul((lens[0] ?? 0) + radius * Math.sin(theta)))
-        .add(turn.mul(radius * (1 - Math.cos(theta)))),
-    );
-    normals.push(rotateAroundAxis(f.normal, axis, theta));
-    widths.push(w[0] + (w.at(-1)! - w[0]) * t);
-    heights.push(h[0] + (h.at(-1)! - h[0]) * t);
+  for (const section of sweepAlongArc(f.center, f.normal, turn, lens[0] ?? 0, radius, radius, angle, count)) {
+    centers.push(section.center);
+    normals.push(section.normal);
+    widths.push(w[0] + (w.at(-1)! - w[0]) * section.t);
+    heights.push(h[0] + (h.at(-1)! - h[0]) * section.t);
   }
   // V elbows need a rotating up direction, provided through a separate mesh.
   const ups = normals.map((_, i) => (kind === 'V' ? rotateAroundAxis(f.up, axis, (angle * i) / count) : f.up));
   v.scene.meshes.push(
-    buildBoxMesh(
-      v.context,
+    buildBoxMesh(v.context, {
       count,
-      centers.map(toPoint),
-      normals.map(toFdVector),
-      ups.map(toFdVector),
+      centers: centers.map(toPoint),
+      normals: normals.map(toFdVector),
+      upVectors: ups.map(toFdVector),
       widths,
       heights,
-      [],
-      false,
-      false,
-    ),
+    }),
   );
   if (lens[0] > 0) v.box([f.center, centers[0]], [f.normal, f.normal], [w[0], w[0]], [h[0], h[0]]);
   const tail = (lens[2] ?? 0) + (lens[3] ?? 0);
@@ -159,7 +152,7 @@ function transition(v: VascoSketch, diameters: 'elliptic' | 'round'): void {
     Array.from({ length: count }, (_, i) => {
       const t = Math.PI / 4 + (2 * Math.PI * i) / count;
 
-      return end.add(f.right.mul((diam[0] / 2) * Math.cos(t))).add(f.up.mul((diam[1] / 2) * Math.sin(t)));
+      return ellipsePoint(end, f.right, f.up, diam[0] / 2, diam[1] / 2, t);
     }),
   ];
   // Wall normals: across the loft (around the ring) × along it, turned away from the axis.

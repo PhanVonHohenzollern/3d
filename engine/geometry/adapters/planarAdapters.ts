@@ -1,14 +1,24 @@
 import earcut from 'earcut';
 import { DVec3, length } from '@engine/math/DVec3';
-import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { toPoint } from '@engine/geometry/helpers/geometryMath';
 import { vertex } from '@engine/geometry/helpers/meshData';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
+import { MeshSketch } from '@engine/geometry/helpers/sketch';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
-import { appendStroke } from '@engine/geometry/adapters/symbolAdapters';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
+import {
+  kArcSegmentsPerRadian,
+  kDashFill,
+  kDashLength,
+  kMaxArcSegments,
+  kMaxDashes,
+  kMaxListLength,
+  kMaxZigzagTeeth,
+  kMinArcSegments,
+  kZigzagAmplitude,
+  kZigzagStep,
+} from '@engine/geometry/config/previewConstants';
 
 // Center lines preview as dashes, like dashed lines.
 type LineStyle = 'solid' | 'dashed' | 'zigzag';
@@ -21,20 +31,14 @@ type ArcOptions = {
   zigzag?: boolean;
 };
 
-// What every planar builder shares: the arguments and the two ways of drawing a shape.
-class PlanarSketch {
+// What every planar builder shares: the arguments and the drawing surface.
+class PlanarSketch extends MeshSketch {
   constructor(
-    readonly scene: PreviewGeometryScene,
-    readonly context: MeshBuildContext,
+    scene: PreviewGeometryScene,
+    context: MeshBuildContext,
     readonly a: NamedArguments,
-  ) {}
-
-  stroke(p: DVec3[], closed = false): void {
-    appendStroke(this.scene, this.context, p, closed);
-  }
-
-  fill(p: DVec3[]): void {
-    this.scene.meshes.push(buildPolygonFaceMesh(this.context, p.map(toPoint)));
+  ) {
+    super(scene, context);
   }
 }
 
@@ -46,8 +50,8 @@ function planar(build: (s: PlanarSketch) => void): ApiMeshAdapter {
 
 function boardHatch(s: PlanarSketch): void {
   const { a } = s;
-  const points = a.points('pt').slice(0, a.count('n', 3, 4096)),
-    hole = a.get('hpt') === undefined ? [] : a.points('hpt').slice(0, a.count('hn', 3, 4096));
+  const points = a.points('pt').slice(0, a.count('n', 3, kMaxListLength)),
+    hole = a.get('hpt') === undefined ? [] : a.points('hpt').slice(0, a.count('hn', 3, kMaxListLength));
   const mesh = s.context.createMesh(),
     all = [...points, ...hole];
   mesh.vertices = all.map((p) => vertex(p, new DVec3(0, 0, 1)));
@@ -72,16 +76,18 @@ function line(s: PlanarSketch, style: LineStyle): void {
     delta = q.sub(p),
     distance = length(delta);
   if (style === 'zigzag') {
-    const count = Math.max(2, Math.min(512, Math.ceil(distance / 5))),
+    const count = Math.max(2, Math.min(kMaxZigzagTeeth, Math.ceil(distance / kZigzagStep))),
       side = new DVec3(-delta.y, delta.x, 0).div(Math.max(distance, 1e-9));
     s.stroke(
       Array.from({ length: count + 1 }, (_, i) =>
-        p.add(delta.mul(i / count)).add(side.mul(i === 0 || i === count ? 0 : i % 2 ? 2 : -2)),
+        p
+          .add(delta.mul(i / count))
+          .add(side.mul(i === 0 || i === count ? 0 : i % 2 ? kZigzagAmplitude : -kZigzagAmplitude)),
       ),
     );
   } else if (style === 'dashed') {
-    const count = Math.max(1, Math.min(2048, Math.ceil(distance / 12)));
-    for (let i = 0; i < count; ++i) s.stroke([p.add(delta.mul(i / count)), p.add(delta.mul((i + 0.65) / count))]);
+    const count = Math.max(1, Math.min(kMaxDashes, Math.ceil(distance / kDashLength)));
+    for (let i = 0; i < count; ++i) s.stroke([p.add(delta.mul(i / count)), p.add(delta.mul((i + kDashFill) / count))]);
   } else s.stroke([p, q]);
 }
 
@@ -94,7 +100,10 @@ function arc(s: PlanarSketch, { outline, size = 'rad', startAngle = 'bang', zigz
     end = a.num('fang', Math.PI * 2),
     rotation = a.num('ang', 0);
   // ads_* planar API angles follow AutoCAD radians, unlike 3D symbolic arcs.
-  const count = Math.max(8, Math.min(2048, Math.ceil(Math.abs(end - begin) * 24)));
+  const count = Math.max(
+    kMinArcSegments,
+    Math.min(kMaxArcSegments, Math.ceil(Math.abs(end - begin) * kArcSegmentsPerRadian)),
+  );
   const p = Array.from({ length: count + 1 }, (_, i) => {
     const t = begin + ((end - begin) * i) / count,
       r = radius * (zigzag ? (i % 2 ? 1.03 : 0.97) : 1),

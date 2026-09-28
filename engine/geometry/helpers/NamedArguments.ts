@@ -4,6 +4,9 @@ import { isArray, runtimeNumber, runtimeTruthy, type RuntimeValue } from '@engin
 import { basisFromUp, toVec } from '@engine/geometry/helpers/geometryMath';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 
+// A placement read from the arguments: centre, normal, and the up and right directions across it.
+export type Frame = { center: DVec3; normal: DVec3; up: DVec3; right: DVec3 };
+
 /** Read by the selected overload's formal names, including SDK default arguments. */
 export class NamedArguments {
   private values = new Map<string, RuntimeValue>();
@@ -72,7 +75,7 @@ export class NamedArguments {
     return this.vectorValue(this.get(...names), names.join('/'));
   }
 
-  frame(): { center: DVec3; normal: DVec3; up: DVec3; right: DVec3 } {
+  frame(): Frame {
     const center = this.vector('center', 'centralPoint', 'centralPointD', 'start', 'pcF', 'cpF', 'cp');
     const normal = normalized(this.vector('normal', 'normalF', 'vector', 'vectorD', 'Vector', 'v'));
     if (length(normal) < 1e-9) throw new Error('zero normal');

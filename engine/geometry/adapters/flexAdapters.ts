@@ -6,6 +6,7 @@ import { vertex } from '@engine/geometry/helpers/meshData';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewMesh } from '@engine/geometry/previewScene';
+import { kMaxListLength, kMaxRingSegments } from '@engine/geometry/config/previewConstants';
 
 // The sampled centre line every flex hose is swept along.
 type FlexPath = {
@@ -38,7 +39,7 @@ function flex(section: (a: NamedArguments) => FlexSection): ApiMeshAdapter {
 function flexPath(a: NamedArguments): FlexPath {
   if (a.get('ctrlPnts') === undefined)
     throw new Error('AcDbCurve overload requires a native CAD curve; use the control-point overload for preview');
-  const count = a.count('numCtrlPnts', 2, 4096),
+  const count = a.count('numCtrlPnts', 2, kMaxListLength),
     controls = a.points('ctrlPnts').slice(0, count);
   if (controls.length !== count || count < 2) throw new Error('flex needs at least two control points');
   const pitch = a.positive('crestDist'),
@@ -64,7 +65,7 @@ function flexPath(a: NamedArguments): FlexPath {
       ),
     ),
   );
-  if ((count - 1) * steps > 4096) throw new Error('flex sampling exceeds 4096 sections');
+  if ((count - 1) * steps > kMaxListLength) throw new Error(`flex sampling exceeds ${kMaxListLength} sections`);
   for (let i = 0; i < count - 1; ++i)
     for (let j = 0; j < steps; ++j) {
       const t = j / steps,
@@ -89,7 +90,7 @@ function flexPath(a: NamedArguments): FlexPath {
 
 function sweep(context: MeshBuildContext, a: NamedArguments, path: FlexPath, s: FlexSection): PreviewMesh {
   const { samples, distances, total, pitch, connectorLength } = path;
-  const around = Math.min(256, 4 * a.count('n')),
+  const around = Math.min(kMaxRingSegments, 4 * a.count('n')),
     mesh = context.createMesh();
   let up = stableBasis(normalized(samples[1].sub(samples[0])))[0];
   for (let i = 0; i < samples.length; ++i) {

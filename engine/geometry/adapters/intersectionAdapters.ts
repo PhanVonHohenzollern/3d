@@ -7,12 +7,13 @@ import {
   runtimeTruthy,
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
-import { warningFor } from '@engine/geometry/helpers/apiCall';
-import { circularFaceCount, toVec } from '@engine/geometry/helpers/geometryMath';
+import { circularFaceCount, toVec, deg } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, pushNonEmptyMesh, vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
-import type { PreviewGeometryScene, PreviewMesh } from '@engine/geometry/previewScene';
-import type { AdapterTable } from '@engine/geometry/adapters/types';
+import type { PreviewMesh } from '@engine/geometry/previewScene';
+import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
+import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
+import { kMaxRingSegments } from '@engine/geometry/config/previewConstants';
 
 interface Cylinder {
   origin: FdPoint3d;
@@ -102,8 +103,8 @@ function surface(
   half = false,
 ): PreviewMesh {
   const mesh = context.createMesh();
-  const around = Math.min(256, circularFaceCount(complexity));
-  const along = Math.min(256, Math.max(16, Math.ceil((tube.length / Math.min(cutter.a, cutter.b)) * 4)));
+  const around = Math.min(kMaxRingSegments, circularFaceCount(complexity));
+  const along = Math.min(kMaxRingSegments, Math.max(16, Math.ceil((tube.length / Math.min(cutter.a, cutter.b)) * 4)));
 
   const sample = (i: number, j: number): Sample => {
     const angle = (j / around) * Math.PI * (half ? 1 : 2);
@@ -131,15 +132,10 @@ function surface(
   return mesh;
 }
 
-function appendTubeIntersection(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-  variant: 'tubeData' | 'tubeParams',
-): boolean {
-  const [start, normal] = args;
-  if (!isPoint(start) || !isVector(normal)) return false;
-  try {
+function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
+  return withAdapterErrors('invalid intersection arguments', (scene, context, args) => {
+    const [start, normal] = args;
+    if (!isPoint(start) || !isVector(normal)) return false;
     const hasUp = isVector(args[2]),
       index = hasUp ? 3 : 2;
     const up = hasUp ? (args[2] as FdVector3d) : defaultUp(normal.normal());
@@ -156,9 +152,7 @@ function appendTubeIntersection(
       complexity = branchComplexity = runtimeNumber(args[index + 3]);
       half = runtimeTruthy(args[index + 4]);
       main = cylinder(start, normal, up, tube[0], tube[0], tube[1]);
-      const direction = up
-        .rotateBy(((angles[0] ?? 0) * Math.PI) / 180, main.side)
-        .rotateBy(((angles[1] ?? 0) * Math.PI) / 180, main.axis);
+      const direction = up.rotateBy(deg(angles[0] ?? 0), main.side).rotateBy(deg(angles[1] ?? 0), main.axis);
       const origin = start.add(main.axis.mul(inter[2])).add(main.side.mul(inter[3]));
       branch = cylinder(origin, direction, main.axis, inter[0], inter[0], inter[1]);
     } else {
@@ -172,11 +166,11 @@ function appendTubeIntersection(
       complexity = n[0];
       branchComplexity = n[1];
       main = cylinder(start, normal, up, tube[0], tube[1], tube[2]);
-      const alpha = (angles[0] * Math.PI) / 180;
+      const alpha = deg(angles[0]);
       const direction = main.axis
         .mul(-Math.cos(alpha))
         .add(main.up.mul(Math.sin(alpha)))
-        .rotateBy(((angles[2] ?? 0) * Math.PI) / 180, main.axis);
+        .rotateBy(deg(angles[2] ?? 0), main.axis);
       const origin = start.add(main.axis.mul(position[0])).add(main.side.mul(position[1]));
       branch = cylinder(origin, direction, main.axis, inter[1], inter[2], inter[0]);
     }
@@ -190,16 +184,10 @@ function appendTubeIntersection(
     const mesh = surface(context, branch, main, branchComplexity, half);
     mesh.apiName += '.branch';
     pushNonEmptyMesh(scene, mesh);
-  } catch (error) {
-    scene.warnings.push(
-      warningFor(context.call, error instanceof Error ? error.message : 'invalid intersection arguments'),
-    );
-  }
-
-  return true;
+  });
 }
 
 export const intersectionAdapters: AdapterTable = {
-  makeTubeToTubeIntersection: (scene, context, args) => appendTubeIntersection(scene, context, args, 'tubeParams'),
-  makeTubeToTubeIntersection2: (scene, context, args) => appendTubeIntersection(scene, context, args, 'tubeData'),
+  makeTubeToTubeIntersection: tubeIntersection('tubeParams'),
+  makeTubeToTubeIntersection2: tubeIntersection('tubeData'),
 };

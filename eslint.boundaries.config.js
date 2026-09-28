@@ -50,7 +50,15 @@ const slicePublicApi = allSlices.map(({ layer, slice }) => ({
   message: `Import ${layer}/${slice} through its index.ts only.`,
 }));
 
-const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi];
+const engineRules = [
+  {
+    target: './engine/geometry/adapters/!(apiAdapters).ts',
+    from: './engine/geometry/adapters/!(types).ts',
+    message: 'An adapter must not import another adapter; move shared code to geometry/builders or geometry/helpers.',
+  },
+];
+
+const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi, ...engineRules];
 
 export default defineConfig([
   globalIgnores(['dist', 'engine/runtime/*.generated.ts']),

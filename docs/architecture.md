@@ -111,6 +111,7 @@ A `use*` hook lives in the `model/` segment of the slice that owns its state. Cl
   - intrinsic functions (GPW-43)
   - value types such as `FdBowlInfo` (GPW-44)
   - preview adapters: each module in `engine/geometry/adapters/` exports an `AdapterTable` with one entry per API name, and `apiAdapters.ts` merges the tables and rejects a name registered twice. Adapters never branch on the API name; a variant is an option chosen in the table (GPW-40)
+- An adapter never imports another adapter (`npm run lint:boundaries`). Shared drawing code lives in `geometry/builders` (meshes: strokes, bowls, section tubes, boxes) and `geometry/helpers` (`withAdapterErrors`, `MeshSketch`/`FrameSketch`, `deg`, `ellipsePoint`, `sweepAlongArc`); display sizes and sampling caps are named in `geometry/config/previewConstants.ts` (GPW-41).
 - Geometry reads resolved API calls from the runtime. It reads the overload from `call.signature` and the arguments with defaults from `effectiveApiArguments`; it does not resolve overloads or fill in defaults itself (GPW-39).
 
 ## Migration map

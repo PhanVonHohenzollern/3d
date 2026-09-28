@@ -176,7 +176,17 @@ function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args:
 
   const { beginning, endCap } = endCaps(sig, args);
   scene.meshes.push(
-    buildBoxMesh(context, count, centers, normals, upVectors, widths, heights, sides, beginning, endCap),
+    buildBoxMesh(context, {
+      count,
+      centers,
+      normals,
+      upVectors,
+      widths,
+      heights,
+      visibleSides: sides,
+      beginCap: beginning,
+      endCap,
+    }),
   );
 
   const connectors = connectorSettings(sig, args);

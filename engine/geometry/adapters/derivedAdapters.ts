@@ -2,13 +2,13 @@ import { cross, DVec3, normalized } from '@engine/math/DVec3';
 import { FdBowlInfo } from '@engine/runtime/FdBowlData';
 import { RuntimeArray } from '@engine/runtime/RuntimeValue';
 import { buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
-import { warningFor } from '@engine/geometry/helpers/apiCall';
-import { rotateAroundAxis, toFdVector, toPoint } from '@engine/geometry/helpers/geometryMath';
+import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
+import { toFdVector, toPoint, deg, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
-import { appendBowl } from '@engine/geometry/adapters/bowlAdapters';
-import { appendStroke } from '@engine/geometry/adapters/symbolAdapters';
+import { appendBowlMeshes } from '@engine/geometry/builders/bowlMeshes';
+import { appendStroke } from '@engine/geometry/builders/strokeMeshes';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
 
 // Rim-to-bottom width and length ratios, and the corner radius ratio, of a sanitary bowl.
@@ -22,28 +22,10 @@ type DerivedSketch = {
   readonly a: NamedArguments;
 };
 
-// Errors become a warning and the call counts as handled; otherwise the builder's result is the
-// adapter's, since a bowl can be reported as unsupported.
-function derivedOrUnsupported(build: (d: DerivedSketch) => boolean): ApiMeshAdapter {
-  return (scene, context, args) => {
-    try {
-      return build({ scene, context, a: new NamedArguments(context, args) });
-    } catch (error) {
-      scene.warnings.push(
-        warningFor(context.call, error instanceof Error ? error.message : 'invalid derived geometry'),
-      );
-
-      return true;
-    }
-  };
-}
-
 function derived(build: (d: DerivedSketch) => void): ApiMeshAdapter {
-  return derivedOrUnsupported((d) => {
-    build(d);
-
-    return true;
-  });
+  return withAdapterErrors('invalid derived geometry', (scene, context, args) =>
+    build({ scene, context, a: new NamedArguments(context, args) }),
+  );
 }
 
 function alizeFront({ scene, context, a }: DerivedSketch): void {
@@ -92,7 +74,7 @@ function ellipticalPlane({ scene, context, a }: DerivedSketch): void {
 
 // Dimensions describe the rim envelope. Shape proportions are inferred from the sanitary fixture
 // (there are no profile tables in SDK headers).
-function sanitaryBowl({ scene, context, a }: DerivedSketch, profile: BowlProfile): boolean {
+function sanitaryBowl({ scene, context, a }: DerivedSketch, profile: BowlProfile): void {
   const f = a.frame();
   const w = a.positive('width'),
     l = a.positive('length'),
@@ -114,7 +96,7 @@ function sanitaryBowl({ scene, context, a }: DerivedSketch, profile: BowlProfile
     }),
   );
 
-  return appendBowl(scene, context, [bowl], false);
+  appendBowlMeshes(scene, context, bowl, undefined, false);
 }
 
 function bend({ scene, context, a }: DerivedSketch): void {
@@ -127,11 +109,10 @@ function bend({ scene, context, a }: DerivedSketch): void {
   const r0 = a.num('R11'),
     r1 = a.num('R12', r0);
   if (r0 < 0 || r1 < 0) throw new Error('bend radii cannot be negative');
-  const sweep = (a.num('alfa', 90) * Math.PI) / 180,
+  const sweep = deg(a.num('alfa', 90)),
     count = a.count('complexity');
   if (Math.abs(sweep) < 1e-9) throw new Error('bend angle must be nonzero');
   const turn = f.right.mul(a.bool('reverse') ? -1 : 1);
-  const axis = normalized(cross(f.normal, turn));
   const radius0 = r0 + w0 / 2,
     radius1 = r1 + w1 / 2;
   const centers = [],
@@ -141,16 +122,11 @@ function bend({ scene, context, a }: DerivedSketch): void {
     heights = [];
   const lead = a.num('beginLength', 0),
     tail = a.num('endBox', 0);
-  for (let i = 0; i <= count; ++i) {
-    const t = i / count,
-      theta = t * sweep;
-    const p = f.center
-      .add(f.normal.mul(lead + radius0 * Math.sin(theta)))
-      .add(turn.mul(radius1 * (1 - Math.cos(theta))));
-    centers.push(toPoint(p));
-    normals.push(toFdVector(rotateAroundAxis(f.normal, axis, theta)));
+  for (const section of sweepAlongArc(f.center, f.normal, turn, lead, radius0, radius1, sweep, count)) {
+    centers.push(toPoint(section.center));
+    normals.push(toFdVector(section.normal));
     ups.push(toFdVector(f.up));
-    widths.push(w0 + (w1 - w0) * t);
+    widths.push(w0 + (w1 - w0) * section.t);
     heights.push(h);
   }
   if (lead > 0) {
@@ -171,18 +147,15 @@ function bend({ scene, context, a }: DerivedSketch): void {
   const sides = a.get('sides');
   const visible = sides instanceof RuntimeArray ? sides.elements.slice(0, 4).map(Boolean) : [true, true, true, true];
   scene.meshes.push(
-    buildBoxMesh(
-      context,
-      centers.length - 1,
+    buildBoxMesh(context, {
+      count: centers.length - 1,
       centers,
       normals,
-      ups,
+      upVectors: ups,
       widths,
       heights,
-      Array.from({ length: centers.length - 1 }, () => visible).flat(),
-      false,
-      false,
-    ),
+      visibleSides: Array.from({ length: centers.length - 1 }, () => visible).flat(),
+    }),
   );
   if (a.bool('endCon')) {
     const c = centers.at(-1)!,
@@ -200,9 +173,9 @@ export const derivedAdapters: AdapterTable = {
   makeRectBend: derived(bend),
   makeSymetricBend: derived(bend),
   makeEllipticalPlane: derived(ellipticalPlane),
-  makeBowlWC: derivedOrUnsupported((d) => sanitaryBowl(d, [0.48, 0.6, 0.42])),
-  makeBowlSink: derivedOrUnsupported((d) => sanitaryBowl(d, [0.58, 0.65, 0.32])),
-  makeBowlBath: derivedOrUnsupported((d) => sanitaryBowl(d, [0.72, 0.82, 0.2])),
-  makeBowlShower: derivedOrUnsupported((d) => sanitaryBowl(d, [0.86, 0.86, 0.06])),
+  makeBowlWC: derived((d) => sanitaryBowl(d, [0.48, 0.6, 0.42])),
+  makeBowlSink: derived((d) => sanitaryBowl(d, [0.58, 0.65, 0.32])),
+  makeBowlBath: derived((d) => sanitaryBowl(d, [0.72, 0.82, 0.2])),
+  makeBowlShower: derived((d) => sanitaryBowl(d, [0.86, 0.86, 0.06])),
   makeAlizeFront: derived(alizeFront),
 };

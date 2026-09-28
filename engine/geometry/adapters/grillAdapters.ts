@@ -1,14 +1,11 @@
-import { cross, DVec3, normalized } from '@engine/math/DVec3';
-import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
+import { cross, normalized } from '@engine/math/DVec3';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { rotateAroundAxis, toPoint } from '@engine/geometry/helpers/geometryMath';
-import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
+import { rotateAroundAxis, deg } from '@engine/geometry/helpers/geometryMath';
+import { NamedArguments, type Frame } from '@engine/geometry/helpers/NamedArguments';
+import { FrameSketch, MeshSketch } from '@engine/geometry/helpers/sketch';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
-import { appendStroke } from '@engine/geometry/adapters/symbolAdapters';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
-
-type Frame = ReturnType<NamedArguments['frame']>;
 
 type RectGrillOptions = {
   // A fixed lamel count, or the argument that holds it.
@@ -19,40 +16,15 @@ type RectGrillOptions = {
 
 const invalidGrill = 'invalid grill';
 
-function appendFace(scene: PreviewGeometryScene, context: MeshBuildContext, points: DVec3[]): void {
-  scene.meshes.push(buildPolygonFaceMesh(context, points.map(toPoint)));
-}
-
-// What every framed grill builder shares: the arguments, the grill frame and the ways of adding
-// faces and outlines in that frame.
-class GrillSketch {
+// What every framed grill builder shares: the arguments and the grill frame to draw in.
+class GrillSketch extends FrameSketch {
   constructor(
-    readonly scene: PreviewGeometryScene,
-    readonly context: MeshBuildContext,
+    scene: PreviewGeometryScene,
+    context: MeshBuildContext,
     readonly a: NamedArguments,
-    readonly f: Frame,
-  ) {}
-
-  face(points: DVec3[]): void {
-    appendFace(this.scene, this.context, points);
-  }
-
-  stroke(points: DVec3[], closed = false): void {
-    appendStroke(this.scene, this.context, points, closed);
-  }
-
-  at(x: number, y: number, z = 0): DVec3 {
-    const { f } = this;
-
-    return f.center.add(f.right.mul(x)).add(f.up.mul(y)).add(f.normal.mul(z));
-  }
-
-  ring(radius: number, z = 0, begin = 0, end = 360, count = 64): DVec3[] {
-    return Array.from({ length: count + 1 }, (_, i) => {
-      const t = ((begin + ((end - begin) * i) / count) * Math.PI) / 180;
-
-      return this.at(radius * Math.cos(t), radius * Math.sin(t), z);
-    });
+    f: Frame,
+  ) {
+    super(scene, context, f);
   }
 }
 
@@ -71,7 +43,7 @@ const roseOfWindsLamels = withAdapterErrors(invalidGrill, (scene, context, args)
   for (let i = 0; i < count; ++i) {
     const t = i / count,
       s = (i + 1) / count;
-    appendFace(scene, context, [
+    new MeshSketch(scene, context).fill([
       points[0].add(points[1].sub(points[0]).mul(t)),
       points[2].add(points[3].sub(points[2]).mul(t)),
       points[4].add(points[5].sub(points[4]).mul(s)),
@@ -91,9 +63,9 @@ function donut(g: GrillSketch, kind: 'section' | 'krs'): void {
   for (let k = 0; k < bands; ++k) {
     const r0 = inner + ((outer - inner) * k) / bands,
       r1 = kind === 'krs' ? Math.min(outer, r0 + a.positive('llen')) : outer;
-    const p = g.ring(r0, 0, begin, end, count),
-      q = g.ring(r1, h, begin, end, count);
-    for (let i = 0; i < count; ++i) g.face([p[i], p[i + 1], q[i + 1], q[i]]);
+    const p = g.arc(r0, 0, begin, end, count),
+      q = g.arc(r1, h, begin, end, count);
+    for (let i = 0; i < count; ++i) g.fill([p[i], p[i + 1], q[i + 1], q[i]]);
   }
 }
 
@@ -101,13 +73,13 @@ function curvedLamel(g: GrillSketch): void {
   const { a } = g;
   const radius = a.positive('R'),
     w = a.positive('L'),
-    angle = (a.num('alfa') * Math.PI) / 180,
+    angle = deg(a.num('alfa')),
     count = 4 * a.count('cpx'),
     offset = a.num('rh');
   for (let i = 0; i < count; ++i) {
     const t = (i / count) * angle,
       s = ((i + 1) / count) * angle;
-    g.face([
+    g.fill([
       g.at(-w / 2, radius * Math.sin(t), offset + radius * (1 - Math.cos(t))),
       g.at(w / 2, radius * Math.sin(t), offset + radius * (1 - Math.cos(t))),
       g.at(w / 2, radius * Math.sin(s), offset + radius * (1 - Math.cos(s))),
@@ -121,7 +93,7 @@ function rectGrill(g: GrillSketch, { count: lamels, type, outline }: RectGrillOp
   const w = a.positive('L'),
     h = a.positive('H'),
     count = typeof lamels === 'number' ? lamels : a.count(lamels);
-  const angle = (a.num('alfa', 0) * Math.PI) / 180,
+  const angle = deg(a.num('alfa', 0)),
     depth = a.num('a', a.num('rt', a.num('thickness', (h / count) * 0.2)));
   const tilt = rotateAroundAxis(f.up, f.right, angle),
     band = Math.min((h / count) * 0.8, Math.max(0.7, Math.abs(depth)));
@@ -129,7 +101,7 @@ function rectGrill(g: GrillSketch, { count: lamels, type, outline }: RectGrillOp
     const y = -h / 2 + ((i + 0.5) * h) / count;
     const center = g.at(0, y);
     const dir = type % 2 === 0 ? tilt : rotateAroundAxis(tilt, f.normal, 0);
-    g.face([
+    g.fill([
       center.sub(f.right.mul(w / 2)).sub(dir.mul(band / 2)),
       center.add(f.right.mul(w / 2)).sub(dir.mul(band / 2)),
       center.add(f.right.mul(w / 2)).add(dir.mul(band / 2)),
@@ -149,9 +121,9 @@ function circularRim(g: GrillSketch, radius: number, inner: number): { count: nu
   const { a } = g;
   const count = a.count('n', 8, 128),
     rings = a.count('m', 3, 64),
-    angle = (a.num('alfa', 0) * Math.PI) / 180;
-  g.stroke(g.ring(radius));
-  if (inner > 0 && a.bool('innerCircle', true)) g.stroke(g.ring(inner));
+    angle = deg(a.num('alfa', 0));
+  g.stroke(g.arc(radius));
+  if (inner > 0 && a.bool('innerCircle', true)) g.stroke(g.arc(inner));
 
   return { count, rings, angle };
 }
@@ -180,10 +152,9 @@ function bladedGrill(g: GrillSketch): void {
     const tip = f.center.add(radial.mul(backRadius));
     const base = f.center.add(radial.mul(inner));
     const delta = rotateAroundAxis(tangent, radial, angle).mul(Math.max(0.5, Math.abs(height)) / 2);
-    g.face([base.sub(delta), tip.sub(delta), tip.add(delta), base.add(delta)]);
+    g.fill([base.sub(delta), tip.sub(delta), tip.add(delta), base.add(delta)]);
   }
-  for (let i = 1; i <= rings; ++i)
-    g.stroke(g.ring(inner + ((radius - inner) * i) / rings, (a.num('h', 0) * i) / rings));
+  for (let i = 1; i <= rings; ++i) g.stroke(g.arc(inner + ((radius - inner) * i) / rings, (a.num('h', 0) * i) / rings));
 }
 
 export const grillAdapters: AdapterTable = {

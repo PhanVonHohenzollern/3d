@@ -1,30 +1,21 @@
-import { DVec3 } from '@engine/math/DVec3';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
+import { NamedArguments, type Frame } from '@engine/geometry/helpers/NamedArguments';
+import { FrameSketch } from '@engine/geometry/helpers/sketch';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
-import { appendStroke } from '@engine/geometry/adapters/symbolAdapters';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
-
-type Frame = ReturnType<NamedArguments['frame']>;
+import { deg } from '@engine/geometry/helpers/geometryMath';
+import { kMaxRingSegments } from '@engine/geometry/config/previewConstants';
 
 // What every pattern shares: the arguments, the placement frame and how a stroke is drawn in it.
-class PatternSketch {
+class PatternSketch extends FrameSketch {
   constructor(
-    readonly scene: PreviewGeometryScene,
-    readonly context: MeshBuildContext,
+    scene: PreviewGeometryScene,
+    context: MeshBuildContext,
     readonly a: NamedArguments,
-    readonly f: Frame,
-  ) {}
-
-  at(x: number, y: number, z = 0): DVec3 {
-    const { f } = this;
-
-    return f.center.add(f.right.mul(x)).add(f.up.mul(y)).add(f.normal.mul(z));
-  }
-
-  stroke(p: DVec3[], closed = false): void {
-    appendStroke(this.scene, this.context, p, closed);
+    f: Frame,
+  ) {
+    super(scene, context, f);
   }
 }
 
@@ -66,10 +57,9 @@ function kfCurved(s: PatternSketch): void {
     spread = a.num('alfa'),
     shift = a.num('gamma');
   const rows = Math.min(128, Math.floor(h / spacing)),
-    cols = Math.min(256, Math.ceil(Math.abs(last - first) / pitch));
+    cols = Math.min(kMaxRingSegments, Math.ceil(Math.abs(last - first) / pitch));
 
-  const polar = (angle: number, z: number) =>
-    s.at(radius * Math.cos((angle * Math.PI) / 180), radius * Math.sin((angle * Math.PI) / 180), z);
+  const polar = (angle: number, z: number) => s.at(radius * Math.cos(deg(angle)), radius * Math.sin(deg(angle)), z);
 
   for (let r = 0; r <= rows; ++r)
     for (let c = 0; c < cols; ++c) {
@@ -87,8 +77,8 @@ function radialHoles(s: PatternSketch, shape: 'rect' | 'rounded'): void {
     outer = shape === 'rect' ? a.positive('Dout') / 2 : inner + a.positive('Len');
   const count = a.count('numberHoles', 4),
     half = a.positive('holeWidth') / 2,
-    ain = (a.num('alfaIn') * Math.PI) / 180,
-    aout = (a.num('alfaOut', a.num('alfaIn')) * Math.PI) / 180;
+    ain = deg(a.num('alfaIn')),
+    aout = deg(a.num('alfaOut', a.num('alfaIn')));
   for (let i = 0; i < count; ++i) {
     const t = (i * Math.PI * 2) / count,
       radial = f.right.mul(Math.cos(t)).add(f.up.mul(Math.sin(t))),

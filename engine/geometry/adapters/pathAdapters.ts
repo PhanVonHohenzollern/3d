@@ -3,11 +3,11 @@ import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { buildSectionTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { warningFor } from '@engine/geometry/helpers/apiCall';
-import { sdkPerpVector } from '@engine/geometry/helpers/geometryMath';
+import { sdkPerpVector, deg } from '@engine/geometry/helpers/geometryMath';
 import { pointArray } from '@engine/geometry/helpers/valueDecoding';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
-import { appendTube } from '@engine/geometry/adapters/tubeAdapters';
+import { appendSectionTube } from '@engine/geometry/builders/sectionTubes';
 import { cross, dot, DVec3, normalized } from '@engine/math/DVec3';
 import { vertex } from '@engine/geometry/helpers/meshData';
 import type { AdapterTable } from '@engine/geometry/adapters/types';
@@ -23,7 +23,7 @@ function appendRotatablePlane(scene: PreviewGeometryScene, context: MeshBuildCon
     return false;
   const axis = args[1],
     center = args[2],
-    angle = (Number(args[3]) * Math.PI) / 180;
+    angle = deg(Number(args[3]));
   if (!axis.length() || !Number.isFinite(angle)) {
     scene.warnings.push(warningFor(context.call, 'invalid plane rotation'));
 
@@ -92,7 +92,7 @@ function appendTruncatedTube(scene: PreviewGeometryScene, context: MeshBuildCont
     return true;
   }
   const temporary: PreviewGeometryScene = { meshes: [], warnings: [] };
-  appendTube(temporary, context, args.slice(0, 8));
+  appendSectionTube(temporary, context, args.slice(0, 8));
   scene.warnings.push(...temporary.warnings);
   const mesh = context.createMesh();
   for (const source of temporary.meshes)
