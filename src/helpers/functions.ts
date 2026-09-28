@@ -1,32 +1,13 @@
 import { cppLanguage } from '@codemirror/lang-cpp';
-import { Lexer } from '@engine/runtime';
-import { ProgramParser } from '@engine/runtime';
-import { Statement, StatementKind } from '@engine/runtime';
 import {
-  functionParameters,
-  functionSignature,
-  parameterDefaultExpression,
-  parameterName,
-  parameterType,
+  analyzeFunctionDefinition,
+  containsCode,
+  declaratorSignature,
+  maskPreprocessorLines,
+  type FunctionInput,
 } from '@engine/runtime';
-import { TokKind, tokensToExpression } from '@engine/runtime';
-import { parseRuntimeType } from '@engine/runtime';
-import { preprocess } from '@engine/runtime';
 
-function functionParseSource(source: string): string {
-  try {
-    return preprocess(source).maskedCode;
-  } catch {
-    return source;
-  }
-}
-
-export interface FunctionInput {
-  name: string;
-  type: string;
-  kind: 'point' | 'vector' | 'number' | 'text' | 'bool' | 'unsupported';
-  initial: string[];
-}
+export type { FunctionInput };
 
 export interface SourceFunction {
   name: string;
@@ -39,7 +20,7 @@ export interface SourceFunction {
 
 export function declaredFunctionNames(source: string): Set<string> {
   const names = new Set<string>();
-  cppLanguage.parser.parse(functionParseSource(source)).iterate({
+  cppLanguage.parser.parse(maskPreprocessorLines(source)).iterate({
     enter(node) {
       if (node.name !== 'FunctionDeclarator') return;
       const name = node.node.getChild('Identifier');
@@ -52,7 +33,7 @@ export function declaredFunctionNames(source: string): Set<string> {
 
 export function mainFunctionName(source: string): string | null {
   for (
-    let node = cppLanguage.parser.parse(functionParseSource(source)).topNode.firstChild;
+    let node = cppLanguage.parser.parse(maskPreprocessorLines(source)).topNode.firstChild;
     node;
     node = node.nextSibling
   )
@@ -67,7 +48,7 @@ export function removeFunctionSource(source: string, name: string, signature?: s
     .map(({ from, to }) => ({ from, to }));
   // Remove matching forward declarations, preserving other declarations in the same statement.
   for (
-    let node = cppLanguage.parser.parse(functionParseSource(source)).topNode.firstChild;
+    let node = cppLanguage.parser.parse(maskPreprocessorLines(source)).topNode.firstChild;
     node;
     node = node.nextSibling
   ) {
@@ -75,12 +56,8 @@ export function removeFunctionSource(source: string, name: string, signature?: s
     for (const declaration of node.getChildren('FunctionDeclarator')) {
       const identifier = declaration.getChild('Identifier');
       if (!identifier || source.slice(identifier.from, identifier.to) !== name) continue;
-      if (signature) {
-        const fn = new Statement(StatementKind.Function);
-        fn.functionName = name;
-        fn.signature = Lexer.scanExpression(source.slice(declaration.from, declaration.to));
-        if (functionSignature(fn) !== signature) continue;
-      }
+      if (signature && declaratorSignature(name, source.slice(declaration.from, declaration.to)) !== signature)
+        continue;
       const next = declaration.nextSibling,
         previous = declaration.prevSibling;
       ranges.push(
@@ -105,61 +82,15 @@ export function removeFunctionSource(source: string, name: string, signature?: s
 
 export function sourceFunctions(source: string): SourceFunction[] {
   const functions: SourceFunction[] = [];
-  const parseSource = functionParseSource(source);
+  const parseSource = maskPreprocessorLines(source);
   cppLanguage.parser.parse(parseSource).iterate({
     enter(node) {
       if (node.name !== 'FunctionDefinition') return;
       const code = source.slice(node.from, node.to);
       try {
-        const fn = new ProgramParser(new Lexer(parseSource.slice(node.from, node.to)).scan())
-          .parse()
-          .children.find((s) => s.kind === StatementKind.Function);
-        if (!fn?.functionName) return false;
-        const inputs = functionParameters(fn).map((tokens): FunctionInput => {
-          const type = parseRuntimeType(tokens, 0)?.type ?? '';
-          const expression = tokensToExpression(parameterDefaultExpression(tokens));
-          const kind =
-            parameterType(tokens).includes('[') || (parameterType(tokens).includes('*') && type !== 'char*')
-              ? 'unsupported'
-              : type === 'FdPoint3d'
-                ? 'point'
-                : type === 'FdVector3d'
-                  ? 'vector'
-                  : type === 'char*'
-                    ? 'text'
-                    : type === 'bool'
-                      ? 'bool'
-                      : ['double', 'float', 'ads_real', 'int', 'short', 'long'].includes(type)
-                        ? 'number'
-                        : 'unsupported';
-          const components = expression
-            .match(/(?:FdPoint3d|FdVector3d)\s*\(([^)]*)\)/)?.[1]
-            .split(',')
-            .map((v) => v.trim());
-          const literal = parameterDefaultExpression(tokens)[0];
-
-          return {
-            name: parameterName(tokens),
-            type: parameterType(tokens),
-            kind,
-            initial:
-              kind === 'point' || kind === 'vector'
-                ? [0, 1, 2].map((i) => components?.[i] || '0')
-                : [
-                    kind === 'text' && literal?.kind === TokKind.String
-                      ? literal.text
-                      : expression || (kind === 'text' ? '' : kind === 'bool' ? 'false' : '0'),
-                  ],
-          };
-        });
-        functions.push({
-          name: fn.functionName,
-          signature: functionSignature(fn),
-          code,
-          from: node.from,
-          to: node.to,
-          inputs,
-        });
+        const fn = analyzeFunctionDefinition(parseSource.slice(node.from, node.to));
+        if (!fn) return false;
+        functions.push({ ...fn, code, from: node.from, to: node.to });
       } catch {
         // Keep the editor usable while a definition is incomplete.
       }
@@ -173,7 +104,7 @@ export function sourceFunctions(source: string): SourceFunction[] {
 
 export function validFunctionCode(code: string, name?: string): string | null {
   let malformed = false;
-  cppLanguage.parser.parse(functionParseSource(code)).iterate({
+  cppLanguage.parser.parse(maskPreprocessorLines(code)).iterate({
     enter(node) {
       if (node.type.isError) malformed = true;
     },
@@ -182,7 +113,7 @@ export function validFunctionCode(code: string, name?: string): string | null {
   if (malformed || functions.length !== 1 || (name !== undefined && functions[0].name !== name))
     return name ? `Enter one complete function named ${name}.` : 'Enter one complete C++ function.';
   const remaining = code.slice(0, functions[0].from) + code.slice(functions[0].to);
-  if (new Lexer(remaining).scan().length > 1) return 'Keep only this function in its editor.';
+  if (containsCode(remaining)) return 'Keep only this function in its editor.';
 
   return null;
 }

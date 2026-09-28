@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
-import { preprocess } from '@engine/runtime/helpers/preprocessor';
+import { preprocess } from '@engine/runtime/interpreter/preprocessor';
 import {
   declaredFunctionNames,
   mainFunctionName,

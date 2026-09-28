@@ -1,3 +1,11 @@
+export {
+  analyzeFunctionDefinition,
+  containsCode,
+  declaratorSignature,
+  maskPreprocessorLines,
+  normalizedParameterType,
+} from '@engine/runtime/analysis/sourceFunctions';
+export type { FunctionDefinition, FunctionInput } from '@engine/runtime/analysis/sourceFunctions';
 export { allNativeApiSignatures, apiParameterMetadataForCall } from '@engine/runtime/ApiMetadata';
 export type { ApiParameterMetadata } from '@engine/runtime/ApiMetadata';
 export { apiParameterRole } from '@engine/runtime/ApiSemantics';
@@ -5,22 +13,8 @@ export { formatFixed, formatGeneral, what } from '@engine/runtime/cpp/cpp';
 export { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime/DebugAnchorResolver';
 export type { FdPoint3d } from '@engine/runtime/FdMath';
 export { GeometryRuntime, runtimeSourceHistory } from '@engine/runtime/GeometryRuntime';
-export {
-  functionParameters,
-  functionSignature,
-  parameterDefaultExpression,
-  parameterName,
-  parameterSignatureType,
-  parameterType,
-} from '@engine/runtime/helpers/functionSignatures';
 export { isInsulationQuery, kInsulationQueries } from '@engine/runtime/helpers/insulationQueries';
 export type { InsulationQuery } from '@engine/runtime/helpers/insulationQueries';
-export { preprocess } from '@engine/runtime/helpers/preprocessor';
-export { TokKind, tokensToExpression } from '@engine/runtime/helpers/tokens';
-export { parseRuntimeType } from '@engine/runtime/helpers/typeNames';
-export { Lexer } from '@engine/runtime/interpreter/Lexer';
-export { ProgramParser } from '@engine/runtime/interpreter/ProgramParser';
-export { Statement, StatementKind } from '@engine/runtime/interpreter/Statement';
 export { emptyRuntimeResult, parameterKey } from '@engine/runtime/RuntimeTypes';
 export type {
   RuntimeApiCall,

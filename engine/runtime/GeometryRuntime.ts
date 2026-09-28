@@ -1,8 +1,8 @@
 import { doubleToInt64, runtimeError, stdException, trim } from '@engine/runtime/cpp/cpp';
 import { FdVector3d } from '@engine/runtime/FdMath';
 import { parseMacroDefinition } from '@engine/runtime/helpers/macros';
-import { scanGetValParameters } from '@engine/runtime/helpers/parameters';
-import { preprocess } from '@engine/runtime/helpers/preprocessor';
+import { scanGetValParameters } from '@engine/runtime/analysis/parameterScan';
+import { preprocess } from '@engine/runtime/interpreter/preprocessor';
 import { collectVariables } from '@engine/runtime/helpers/runtimeResult';
 import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';

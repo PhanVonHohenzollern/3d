@@ -7,8 +7,7 @@ import {
 } from '@/helpers/functions';
 import type { RuntimeExecutionOptions } from '@engine/runtime';
 import type { RuntimeApiCall } from '@engine/runtime';
-import { Lexer } from '@engine/runtime';
-import { parameterSignatureType } from '@engine/runtime';
+import { normalizedParameterType } from '@engine/runtime';
 
 export interface FunctionProgram {
   source: string;
@@ -48,7 +47,7 @@ export class FunctionWorkspace {
   }
 
   tabForCall(call: RuntimeApiCall): string | undefined {
-    const types = call.formalParameterTypes.map((type) => parameterSignatureType(Lexer.scanExpression(type)));
+    const types = call.formalParameterTypes.map((type) => normalizedParameterType(type));
     const signature = `${call.name}(${types.join(', ')})`;
 
     return [...this.signatures].find(([, value]) => value === signature)?.[0];
