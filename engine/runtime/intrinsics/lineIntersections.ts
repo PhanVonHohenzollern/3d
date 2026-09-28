@@ -1,7 +1,8 @@
 import { runtimeError } from '@engine/runtime/cpp/cpp';
 import { createApiCall } from '@engine/runtime/helpers/apiCalls';
 import { lineIntersection } from '@engine/runtime/helpers/lineIntersection';
-import { readLValue, writeLValue } from '@engine/runtime/helpers/lvalues';
+import { readLValue } from '@engine/runtime/helpers/lvalues';
+import { recordChange } from '@engine/runtime/interpreter/changes';
 import { tokensToExpression } from '@engine/runtime/helpers/tokens';
 import { isPoint, runtimeDeepCopy } from '@engine/runtime/RuntimeValue';
 import type { LanguageIntrinsic } from '@engine/runtime/intrinsics/types';
@@ -20,19 +21,18 @@ export const lineIntersections: LanguageIntrinsic = {
     const before = readLValue(outRef);
     if (!isPoint(before)) throw runtimeError(name + ' output must be FdPoint3d');
     const intersection = lineIntersection(a0, a1, b0, b1, name === 'lineSegToLineSegInt');
-    if (intersection) {
-      const sources = state.captureValueSources(tokensToExpression(tokens));
-      writeLValue(outRef, intersection);
-      state.recordVariableChange(
-        line,
-        outRef.path,
-        name,
-        tokensToExpression(tokens),
-        before,
-        readLValue(outRef),
-        sources,
+    if (intersection)
+      recordChange(
+        state,
+        outRef,
+        {
+          line,
+          operation: name,
+          expression: tokensToExpression(tokens),
+          sources: () => state.captureValueSources(tokensToExpression(tokens)),
+        },
+        () => intersection,
       );
-    }
     const args = [a0, a1, b0, b1, readLValue(outRef)].map(runtimeDeepCopy);
     state.recordApiCall(createApiCall(name, line, parentApiIndex(), args, argGroups.map(tokensToExpression)));
 

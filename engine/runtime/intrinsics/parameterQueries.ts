@@ -12,6 +12,7 @@ import {
 } from '@engine/runtime/helpers/tokens';
 import type { RuntimeParameterRequest } from '@engine/runtime/RuntimeTypes';
 import { isString, runtimeTypeName, runtimeValueToCompactString } from '@engine/runtime/RuntimeValue';
+import { recordChange } from '@engine/runtime/interpreter/changes';
 import type { LanguageIntrinsic, SdkIntrinsic, StaticParameterDecl } from '@engine/runtime/intrinsics/types';
 
 // get_val("Name", variable): the Parameters panel's value for "Name", or the variable's own value.
@@ -26,13 +27,11 @@ export const getVal: LanguageIntrinsic = {
     const dest = resolveLValue(argGroups[1]);
     const before = readLValue(dest);
 
-    const configured = state.m_parameters.get(`${state.functionName}::${name}`) ?? state.m_parameters.get(name);
-    if (configured !== undefined) {
-      writeLValue(dest, parameterTextToValue(configured, before));
-      const after = readLValue(dest);
-      if (runtimeValueToCompactString(before) !== runtimeValueToCompactString(after))
-        state.recordVariableChange(line, dest.path, 'get_val', name, before, after);
-    }
+    const configured = state.parameter(`${state.functionName}::${name}`) ?? state.parameter(name);
+    if (configured !== undefined)
+      recordChange(state, dest, { line, operation: 'get_val', expression: name, onlyIfChanged: true }, (current) =>
+        parameterTextToValue(configured, current),
+      );
 
     state.recordParameterRequest({
       ...(state.functionName ? { functionName: state.functionName } : {}),
@@ -128,7 +127,7 @@ export const connectorQueries: LanguageIntrinsic = {
       line,
     };
     state.recordParameterRequest(request);
-    const configured = state.m_parameters.get(key);
+    const configured = state.parameter(key);
     if (configured !== undefined) writeLValue(dest, parameterTextToValue(configured, current));
 
     return 'done';
@@ -149,7 +148,7 @@ export const flangeQueries: SdkIntrinsic = {
     if (args.length !== 1 || !isString(args[0])) throw runtimeError(name + ' requires a link identifier');
     const query = kFlangeQueries[name];
     const key = args[0] + ':' + query;
-    const value = parameterTextToValue(state.m_parameters.get(key) ?? '0', 0.0);
+    const value = parameterTextToValue(state.parameter(key) ?? '0', 0.0);
     state.recordParameterRequest({
       name: key,
       type: 'double',

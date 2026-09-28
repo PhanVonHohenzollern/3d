@@ -10,11 +10,24 @@ import {
 } from '@/entities/parameter';
 import { adjacentCell, rowForKey } from '@/shared/ui/table-view';
 import type { ParameterEditor, ParameterRow } from '@/entities/parameter';
-import type { ParameterAvailability, ParameterPanelHandle } from '@/features/edit-parameters/model/types';
 import { isMacPlatform } from '@/shared/lib/platform';
 import { Observable, Signal } from '@/shared/lib/observable';
 import { parseParameterTable, tableImportSummary } from '@/entities/parameter';
 import { what } from '@engine/runtime';
+
+export type ParameterAvailability = (parameters: ReadonlyMap<string, string>) => ReadonlySet<string> | null;
+
+export interface ParameterPanelHandle {
+  setPlaceholderData(): void;
+  setDefinitions(definitions: readonly RuntimeParameterRequest[]): void;
+  setAvailability(query: ParameterAvailability | null): void;
+  updateRuntimeResult(result: RuntimeResult): void;
+  values(): Map<string, string>;
+  overrides(): Map<string, string>;
+  commitEditor(): void;
+  selectTab(id: string): void;
+  forgetFunction(name: string): void;
+}
 
 export const kParameterValueColumn = 3;
 export const kParameterHeaders = ['Parameter', 'Type', 'Variable', 'Value', 'Line'];

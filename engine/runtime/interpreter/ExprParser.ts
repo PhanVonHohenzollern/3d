@@ -26,15 +26,9 @@ import {
   negateValue,
   subValues,
 } from '@engine/runtime/helpers/valueOperations';
-import {
-  runtimeCoerceToType,
-  runtimeDeepCopy,
-  runtimeInteger,
-  runtimeTruthy,
-  type RuntimeValue,
-} from '@engine/runtime/RuntimeValue';
+import { runtimeCoerceToType, runtimeInteger, runtimeTruthy, type RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
-import type { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
+import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
 
 const kEndToken: Token = makeToken(TokKind.End, '', 0.0, 0);
 
@@ -62,7 +56,7 @@ export class ExprParser {
 
   constructor(
     private readonly m_tokens: readonly Token[],
-    private readonly m_state: RuntimeState,
+    private readonly m_context: EvalContext,
   ) {}
 
   parse(): RuntimeValue {
@@ -275,7 +269,7 @@ export class ExprParser {
     if (!this.m_evaluate) return 0n;
     const builtin = builtinFunction(name);
     if (builtin) return builtin(args);
-    const macro = this.m_state.m_functionMacros.get(name);
+    const macro = this.m_context.functionMacro(name);
     if (macro !== undefined) return this.expandFunctionMacro(name, macro, args);
     throw runtimeError('unsupported expression function: ' + name);
   }
@@ -283,22 +277,11 @@ export class ExprParser {
   private expandFunctionMacro(name: string, macro: RuntimeFunctionMacro, args: readonly RuntimeValue[]): RuntimeValue {
     if (args.length !== macro.parameters.length)
       throw runtimeError(`macro ${name} expects ${macro.parameters.length} argument(s)`);
-    const values = this.m_state.m_values;
-    const saved = macro.parameters.map((parameter, i) => {
-      const existed = values.has(parameter);
-      const value = existed ? runtimeDeepCopy(values.get(parameter)) : undefined;
-      values.set(parameter, runtimeDeepCopy(args[i]));
+    const bindings = new Map(macro.parameters.map((parameter, i) => [parameter, args[i]]));
 
-      return { existed, value };
-    });
-    try {
-      return new ExprParser(Lexer.scanExpression(macro.expression), this.m_state).parse();
-    } finally {
-      macro.parameters.forEach((parameter, i) => {
-        if (saved[i].existed) values.set(parameter, saved[i].value);
-        else values.delete(parameter);
-      });
-    }
+    return this.m_context.withBindings(bindings, () =>
+      new ExprParser(Lexer.scanExpression(macro.expression), this.m_context).parse(),
+    );
   }
 
   private parseArguments(): RuntimeValue[] {
@@ -334,10 +317,10 @@ export class ExprParser {
           if (!this.m_evaluate) value = 0n;
           else if (
             reference &&
-            this.m_state.mutateValue &&
+            this.m_context.mutateValue &&
             (isMutatingMethod(member) || valueTypeOf(value)?.changedInPlace)
           )
-            value = this.m_state.mutateValue(reference, member, args, this.m_tokens[start].line);
+            value = this.m_context.mutateValue(reference, member, args, this.m_tokens[start].line);
           else value = callMethod(value, member, args);
           if (elementReference && reference) reference = [...reference, ...this.m_tokens.slice(start, this.m_pos)];
           else if (!isMutatingMethod(member) || member === 'push_back') reference = undefined;
@@ -403,13 +386,13 @@ export class ExprParser {
       ? this.parseNamedCall(name, token.line)
       : !this.m_evaluate
         ? 0n
-        : this.m_state.lookupValue(name);
+        : this.m_context.lookupValue(name);
 
     return this.parsePostfix(value, callable ? undefined : [token]);
   }
 
   private parseNamedCall(name: string, line: number): RuntimeValue {
-    if (builtinFunction(name) || this.m_state.m_functionMacros.has(name))
+    if (builtinFunction(name) || this.m_context.functionMacro(name))
       return this.callFreeFunction(name, this.parseArguments());
     const args = parseCallArguments(this.m_tokens, this.m_pos);
     let depth = 0;
@@ -421,7 +404,7 @@ export class ExprParser {
     } while (!this.atEnd() && depth > 0);
     if (depth !== 0) throw runtimeError("expected ')' after arguments");
     if (!this.m_evaluate) return 0n;
-    if (this.m_state.callFunction) return this.m_state.callFunction(name, args, line);
+    if (this.m_context.callFunction) return this.m_context.callFunction(name, args, line);
     throw runtimeError('unsupported expression function: ' + name);
   }
 
@@ -439,7 +422,7 @@ export class ExprParser {
     if (this.currentIs('('))
       return this.parseNamedCall(qualified.startsWith('std::') ? qualified.slice(5) : qualified, this.current().line);
 
-    return this.parsePostfix(this.m_evaluate ? this.m_state.lookupValue(qualified) : 0n);
+    return this.parsePostfix(this.m_evaluate ? this.m_context.lookupValue(qualified) : 0n);
   }
 }
 

@@ -2,9 +2,14 @@ import type { RuntimeResult } from '@engine/runtime';
 import { rowForKey } from '@/shared/ui/table-view';
 import { variableRow, variableSummary } from '@/entities/variable';
 import type { VariableRow } from '@/entities/variable';
-import type { VariablePanelHandle } from '@/widgets/variable-panel/model/types';
 import type { ScrollRequest } from '@/shared/ui/table-view';
 import { Observable, Signal } from '@/shared/lib/observable';
+
+export interface VariablePanelHandle {
+  setRuntimeResult(result: RuntimeResult, currentLine: number): void;
+  selectVariable(name: string): void;
+  selectedVariable(): string;
+}
 
 export class VariablePanelModel extends Observable implements VariablePanelHandle {
   summary = '';

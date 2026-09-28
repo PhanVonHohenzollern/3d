@@ -13,12 +13,12 @@ export function seedSdkValues(state: RuntimeState): void {
     const value = constant.integer ? doubleToInt64(constant.value) : constant.value;
     // New immutable SDK constants need no variable lifetime/history. Preserve
     // existing trace identities when extending the SDK constant catalogue.
-    if (constant.name.startsWith('enBowl')) state.m_values.set(constant.name, value);
+    if (constant.name.startsWith('enBowl')) state.bindValue(constant.name, value);
     else state.setVariable(constant.name, value, false);
   }
   state.setVariable('cpx', 10n, false);
   state.setVariable('m_geoRepMode', 0n, false);
   state.setVariable('m_primitiveMode', 0n, false);
-  state.m_values.set('TRUE', true);
-  state.m_values.set('FALSE', false);
+  state.bindValue('TRUE', true);
+  state.bindValue('FALSE', false);
 }

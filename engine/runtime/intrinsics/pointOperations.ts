@@ -1,8 +1,8 @@
 import { runtimeError } from '@engine/runtime/cpp/cpp';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { readLValue, writeLValue } from '@engine/runtime/helpers/lvalues';
 import { tokensToExpression } from '@engine/runtime/helpers/tokens';
 import { isArray, runtimeDeepCopy, runtimeNumber, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { recordChange } from '@engine/runtime/interpreter/changes';
 import type { SdkIntrinsic } from '@engine/runtime/intrinsics/types';
 
 type Coordinates = [number, number, number];
@@ -64,13 +64,17 @@ export const pointOperations: SdkIntrinsic = {
   kind: 'sdk',
   names: Object.keys(kPointOperations),
   update({ state, resolveLValue }, { name, argGroups, line }, args) {
-    const target = resolveLValue(argGroups[0]);
-    const before = readLValue(target);
-    if (!isArray(before) || before.elements.length !== 3) throw runtimeError(name + ' requires ads_point');
-    const coords = kPointOperations[name](tuple(before), args);
-    const next = runtimeDeepCopy(before);
-    if (isArray(next)) next.elements = coords;
-    writeLValue(target, next);
-    state.recordVariableChange(line, target.path, name, tokensToExpression(argGroups[0]), before, readLValue(target));
+    recordChange(
+      state,
+      resolveLValue(argGroups[0]),
+      { line, operation: name, expression: tokensToExpression(argGroups[0]) },
+      (before) => {
+        if (!isArray(before) || before.elements.length !== 3) throw runtimeError(name + ' requires ads_point');
+        const next = runtimeDeepCopy(before);
+        if (isArray(next)) next.elements = kPointOperations[name](tuple(before), args);
+
+        return next;
+      },
+    );
   },
 };

@@ -3,17 +3,8 @@ import {
   kSdkTypes as generatedTypes,
 } from '@engine/runtime/SdkDefinitions.generated';
 
-export interface SdkConstantDefinition {
-  name: string;
-  value: number;
-  integer: boolean;
-}
-
-export interface SdkTypeDefinition {
-  name: string;
-  baseType: string;
-  arrayExtent: number;
-}
+export type { SdkConstantDefinition, SdkTypeDefinition } from '@engine/runtime/SdkDefinitions.types';
+import type { SdkConstantDefinition, SdkTypeDefinition } from '@engine/runtime/SdkDefinitions.types';
 
 export const kSdkConstants: readonly SdkConstantDefinition[] = [
   ...generatedConstants,

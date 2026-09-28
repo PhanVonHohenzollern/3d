@@ -57,7 +57,7 @@ Four more rules:
 
 `lint:boundaries` reads the slice folders on every run, so a new slice is checked as soon as it exists. It runs in `npm run validate` and in CI, and any finding fails the run (GPW-38). It is a separate config because resolving every import for these rules is slower than the rest of `npm run lint`.
 
-`no-cycle` only sees runtime imports: it skips `import type`. The four cycles known at the start of the migration all go through a type-only import, so they are not reported. GPW-15 and GPW-45 remove them.
+`no-cycle` only sees runtime imports: it skips `import type`. The type-only cycles known at the start of the migration are gone (GPW-15, GPW-45): metadata interfaces live in `*.types.ts` files, panel handle types live with their models, and the expression parser depends on an `EvalContext` interface instead of `RuntimeState`. One type-only cycle is left on purpose: a `TreeWidgetItem` knows its `TreeWidget`.
 
 At the start of the migration (branch `chore/p1-guardrails`), `lint:boundaries` reported 10 warnings and no cycles:
 
@@ -113,6 +113,7 @@ A `use*` hook lives in the `model/` segment of the slice that owns its state. Cl
   - preview adapters: each module in `engine/geometry/adapters/` exports an `AdapterTable` with one entry per API name, and `apiAdapters.ts` merges the tables and rejects a name registered twice. Adapters never branch on the API name; a variant is an option chosen in the table (GPW-40)
 - An adapter never imports another adapter (`npm run lint:boundaries`). Shared drawing code lives in `geometry/builders` (meshes: strokes, bowls, section tubes, boxes) and `geometry/helpers` (`withAdapterErrors`, `MeshSketch`/`FrameSketch`, `deg`, `ellipsePoint`, `sweepAlongArc`); display sizes and sampling caps are named in `geometry/config/previewConstants.ts` (GPW-41).
 - Adapters read arguments only through `NamedArguments`, by the parameter names of the call's resolved overload; strict readers (`point`, `fdVector`, `real`, `int`, `flag`, `pointArray`, …) require the SDK type, lenient ones (`vector`, `num`, `count`, …) accept what the SDK would convert, and `optionalFlag`/`optionalInt`/`optionalReal` give a fallback for optional settings. When an argument is wrong, the adapter throws an `Error` that names it; `withAdapterErrors` reports it as a warning on the call and the call counts as drawn. A call with no matching SDK overload never reaches an adapter: the engine warns that its arguments or overload are unsupported (GPW-42).
+- The interpreter: `RuntimeExecutor` picks the entry function and wires one `Execution` shared by `StatementExecutor`, `DeclarationEvaluator` and `FunctionCalls` (each under 400 lines). `RuntimeState` keeps its storage private; a program function call is a `pushFrame`/`popFrame` pair with a fresh `ControlFlow`, and every write that belongs in the variable history goes through `recordChange` (GPW-45).
 - Geometry reads resolved API calls from the runtime. It reads the overload from `call.signature` and the arguments with defaults from `effectiveApiArguments`; it does not resolve overloads or fill in defaults itself (GPW-39).
 
 ## Migration map

@@ -1,19 +1,4 @@
 import type { ParameterPanelModel } from '@/features/edit-parameters/model/ParameterPanelModel';
-import type { RuntimeParameterRequest, RuntimeResult } from '@engine/runtime';
-
-export type ParameterAvailability = (parameters: ReadonlyMap<string, string>) => ReadonlySet<string> | null;
-
-export interface ParameterPanelHandle {
-  setPlaceholderData(): void;
-  setDefinitions(definitions: readonly RuntimeParameterRequest[]): void;
-  setAvailability(query: ParameterAvailability | null): void;
-  updateRuntimeResult(result: RuntimeResult): void;
-  values(): Map<string, string>;
-  overrides(): Map<string, string>;
-  commitEditor(): void;
-  selectTab(id: string): void;
-  forgetFunction(name: string): void;
-}
 
 export interface ParameterPanelProps {
   model: ParameterPanelModel;
@@ -33,3 +18,5 @@ export type ParameterTableDialogState = {
   editCell: (row: number, column: number, value: string) => void;
   apply: () => void;
 };
+
+export type { ParameterAvailability, ParameterPanelHandle } from '@/features/edit-parameters/model/ParameterPanelModel';

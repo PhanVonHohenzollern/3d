@@ -21,7 +21,7 @@ export const insulationQueries: LanguageIntrinsic = {
     const [target] = argGroups;
     if (argGroups.length !== 1 || target.length !== 1 || target[0].kind !== TokKind.Identifier) return null;
     const destName = target[0].text;
-    const configured = state.m_parameters.get(name);
+    const configured = state.parameter(name);
     if (configured === undefined) return { value: false };
     const before = state.lookupValue(destName);
     let next = before;
