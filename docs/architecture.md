@@ -158,6 +158,22 @@ Old location → new location, with the ticket that moves it. Each ticket update
 | `src/components/App.tsx`, the rest of `MainWindow`                                                                                                                   | `src/pages/workspace/`                                                                                     | GPW-36         |
 | `src/main.tsx`, `src/index.css`, global shortcuts                                                                                                                    | `src/app/`                                                                                                 | GPW-37         |
 
+### Left in the old folders after P4
+
+`src/lib/` is gone (GPW-17). Every remaining file in `src/types/`, `src/helpers/` and `src/utils/` belongs to a feature, widget or page that P5 and P6 create, so it moves with that ticket. GPW-37 deletes the empty folders.
+
+| File                                                                                                                     | Moves to                    | Ticket         |
+| ------------------------------------------------------------------------------------------------------------------------ | --------------------------- | -------------- |
+| `src/types/panels.ts` (panel handle and props types)                                                                     | the panel widgets           | GPW-33         |
+| `src/types/linkForm.ts`, `src/types/linkTable.ts`                                                                        | the Link feature and widget | GPW-31, GPW-33 |
+| `src/types/modelFiles.ts`                                                                                                | `features/model-files`      | GPW-32         |
+| `src/types/editor.ts`                                                                                                    | `widgets/code-editor`       | GPW-34         |
+| `src/types/viewport.ts`, `src/types/viewportEngine.ts`, `src/helpers/viewportHandle.ts`, `src/helpers/viewportPoints.ts` | `widgets/viewport`          | GPW-34         |
+| `src/utils/{Vector3D,Matrix4x4,Rect,Bounds3D,geometry,math}.ts`                                                          | `widgets/viewport`          | GPW-34         |
+| `src/types/toolbar.ts`, `src/types/mainWindow.ts`                                                                        | `widgets/workspace-header`  | GPW-34         |
+| `src/types/dockArea.ts`, `src/helpers/layout.ts` (dock list and height)                                                  | the dock shell              | GPW-35         |
+| `src/types/statusBar.ts`                                                                                                 | `pages/workspace`           | GPW-36         |
+
 ## Open decisions
 
 These look like duplicates but behave differently in edge cases. Merging them would change output for degenerate input, so each needs a decision (ideally checked against the desktop app) before it is unified.
