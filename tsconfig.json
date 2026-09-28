@@ -16,8 +16,7 @@
     "noEmit": true,
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./src/*"],
-      "@engine/*": ["./engine/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", "tests", "vite.config.ts"]
