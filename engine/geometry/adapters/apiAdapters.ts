@@ -1,4 +1,3 @@
-import { apiSignatureMetadataForCall } from '@engine/runtime/ApiMetadata';
 import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { isGeometryCallName } from '@engine/geometry/helpers/apiCall';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
@@ -107,8 +106,12 @@ const compositeAdapters = adapterMap(
   registeredApiNames,
 );
 
+const kSupportedPreviewApiNames: readonly string[] = Object.freeze(
+  [...primitiveAdapters.keys(), ...compositeAdapters.keys()].sort(),
+);
+
 export function supportedPreviewApiNames(): readonly string[] {
-  return [...primitiveAdapters.keys(), ...compositeAdapters.keys()].sort();
+  return kSupportedPreviewApiNames;
 }
 
 const compositeGeometryHeaders = new Set([
@@ -139,8 +142,7 @@ export function appendCompositeApiMeshes(
   const call = context.call;
   if (call.userFunctionCall) return false;
 
-  const sig = apiSignatureMetadataForCall(call);
-  const header = sig ? sig.sourceHeader : '';
+  const header = call.signature?.sourceHeader ?? '';
   if (!compositeGeometryHeaders.has(header) && !isGeometryCallName(call.name)) return false;
   if (call.name.startsWith('append') || call.name.startsWith('calc') || call.name === 'SidePoints') return false;
 

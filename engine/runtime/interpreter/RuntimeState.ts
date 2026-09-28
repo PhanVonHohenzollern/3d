@@ -1,3 +1,4 @@
+import { resolveApiSignature, type ApiSignatureMetadata } from '@engine/runtime/ApiMetadata';
 import { runtimeError, stdException } from '@engine/runtime/cpp/cpp';
 import { braceListItems, isBraceList } from '@engine/runtime/helpers/arrays';
 import type { RuntimeFunctionMacro } from '@engine/runtime/helpers/macros';
@@ -274,8 +275,10 @@ export class RuntimeState {
     if (!exists) this.m_diagnostics.push({ line, message });
   }
 
-  recordApiCall(call: RuntimeApiCall): number {
+  // `signature` may be passed when the caller already resolved it for these arguments.
+  recordApiCall(call: RuntimeApiCall, signature?: ApiSignatureMetadata | null): number {
     call.arguments = call.arguments.map(runtimeDeepCopy);
+    call.signature = signature === undefined ? resolveApiSignature(call) : signature;
     call.arguments.forEach((argument, i) =>
       call.argumentTraces.push(this.captureArgumentTrace(call.argumentExpressions[i] ?? '', argument)),
     );

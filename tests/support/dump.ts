@@ -1,10 +1,6 @@
 import { buildConnectorPreview } from '@engine/geometry/ConnectorPreview';
 import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
-import {
-  allNativeApiSignatures,
-  apiParameterMetadataForCall,
-  apiSignatureMetadataForCall,
-} from '@engine/runtime/ApiMetadata';
+import { allNativeApiSignatures, apiParameterMetadataForCall } from '@engine/runtime/ApiMetadata';
 import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from '@engine/runtime/ApiSemantics';
 import { what } from '@engine/runtime/cpp/cpp';
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime/DebugAnchorResolver';
@@ -18,7 +14,7 @@ import type { Fixture } from '@tests/support/fixtures';
 const xyz = (p: { x: number; y: number; z: number }) => [encodeNumber(p.x), encodeNumber(p.y), encodeNumber(p.z)];
 
 export function callInfo(call: RuntimeApiCall) {
-  const sig = apiSignatureMetadataForCall(call);
+  const sig = call.signature;
   const semantics = apiSemanticsForCall(call);
 
   return {

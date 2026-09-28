@@ -1,3 +1,5 @@
+import type { ApiParameterMetadata, ApiSignatureMetadata } from '@engine/runtime/ApiMetadata.types';
+import { stod, stoll } from '@engine/runtime/cpp/cpp';
 import { kNativeApiSignatures } from '@engine/runtime/ApiMetadata.generated';
 import { additionalApiSignatures } from '@engine/runtime/ApiMetadata.additional';
 import type { RuntimeApiCall } from '@engine/runtime/RuntimeTypes';
@@ -9,23 +11,13 @@ import {
   isPoint,
   isString,
   isVector,
+  runtimeDeepCopy,
+  runtimeDefaultValueForType,
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
 import { sdkCanonicalType, sdkTypeDefinition } from '@engine/runtime/SdkDefinitions';
 
-export interface ApiParameterMetadata {
-  name: string;
-  type: string;
-  defaultValue: string;
-}
-
-export interface ApiSignatureMetadata {
-  name: string;
-  returnType: string;
-  sourceHeader: string;
-  requiredParameterCount: number;
-  parameters: ApiParameterMetadata[];
-}
+export type { ApiParameterMetadata, ApiSignatureMetadata } from '@engine/runtime/ApiMetadata.types';
 
 function compactType(s: string): string {
   for (const needle of ['const ', 'volatile ', 'struct ', 'class ']) s = s.split(needle).join('');
@@ -103,9 +95,9 @@ function typeCompatibilityScore(value: RuntimeValue, formalType: string): number
 
 const NO_MATCH = Number.NEGATIVE_INFINITY;
 
-function signatureScore(sig: ApiSignatureMetadata, call: RuntimeApiCall): number {
-  if (sig.name !== call.name) return NO_MATCH;
+type CallShape = Pick<RuntimeApiCall, 'name' | 'arguments'>;
 
+function signatureScore(sig: ApiSignatureMetadata, call: CallShape): number {
   const argc = call.arguments.length;
   if (argc < sig.requiredParameterCount || argc > sig.parameters.length) return NO_MATCH;
 
@@ -120,14 +112,28 @@ function signatureScore(sig: ApiSignatureMetadata, call: RuntimeApiCall): number
   return score;
 }
 
-export function allNativeApiSignatures(): readonly ApiSignatureMetadata[] {
-  return [...kNativeApiSignatures, ...additionalApiSignatures];
+const kAllSignatures: readonly ApiSignatureMetadata[] = Object.freeze([
+  ...kNativeApiSignatures,
+  ...additionalApiSignatures,
+]);
+
+const kSignaturesByName = new Map<string, ApiSignatureMetadata[]>();
+for (const sig of kAllSignatures) {
+  const list = kSignaturesByName.get(sig.name);
+  if (list) list.push(sig);
+  else kSignaturesByName.set(sig.name, [sig]);
 }
 
-export function apiSignatureMetadataForCall(call: RuntimeApiCall): ApiSignatureMetadata | null {
+export function allNativeApiSignatures(): readonly ApiSignatureMetadata[] {
+  return kAllSignatures;
+}
+
+// The best-scoring SDK overload for these arguments; the first one wins a tie. The runtime calls
+// this once per recorded call and stores the answer in `call.signature`.
+export function resolveApiSignature(call: CallShape): ApiSignatureMetadata | null {
   let best: ApiSignatureMetadata | null = null;
   let bestScore = NO_MATCH;
-  for (const sig of allNativeApiSignatures()) {
+  for (const sig of kSignaturesByName.get(call.name) ?? []) {
     const score = signatureScore(sig, call);
     if (score > bestScore) {
       bestScore = score;
@@ -139,5 +145,37 @@ export function apiSignatureMetadataForCall(call: RuntimeApiCall): ApiSignatureM
 }
 
 export function apiParameterMetadataForCall(call: RuntimeApiCall): ApiParameterMetadata[] {
-  return apiSignatureMetadataForCall(call)?.parameters ?? [];
+  return call.signature?.parameters ?? [];
+}
+
+function parseNumericDefault(type: string, text: string): RuntimeValue {
+  try {
+    if (type.includes('int') || type.includes('short') || type.includes('long')) {
+      const integer = stoll(text);
+      if (integer.used === text.length) return integer.value;
+    }
+    const real = stod(text);
+
+    return real.used === text.length ? real.value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseDefaultValue(parameter: ApiParameterMetadata): RuntimeValue {
+  const text = parameter.defaultValue;
+  if (text === '') return runtimeDefaultValueForType(parameter.type);
+  if (text === 'true') return true;
+  if (text === 'false') return false;
+
+  return parseNumericDefault(parameter.type, text) ?? runtimeDefaultValueForType(parameter.type);
+}
+
+// Copies of the call's arguments followed by the C++ default values of the parameters it left out.
+export function effectiveApiArguments(call: RuntimeApiCall): RuntimeValue[] {
+  const args = call.arguments.map(runtimeDeepCopy);
+  const parameters = call.signature?.parameters ?? [];
+  for (let i = args.length; i < parameters.length; ++i) args.push(parseDefaultValue(parameters[i]));
+
+  return args;
 }

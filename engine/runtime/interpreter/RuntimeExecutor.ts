@@ -1,5 +1,5 @@
 import { runtimeError, stdException } from '@engine/runtime/cpp/cpp';
-import { apiSignatureMetadataForCall } from '@engine/runtime/ApiMetadata';
+import { resolveApiSignature } from '@engine/runtime/ApiMetadata';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { FdBowlCorner, isBowlValue } from '@engine/runtime/FdBowlData';
 import { builtinFunction } from '@engine/runtime/helpers/builtinFunctions';
@@ -970,12 +970,13 @@ export class RuntimeExecutor {
         readLValue(target),
       );
     }
-    if (!apiSignatureMetadataForCall(call) && /^(make|add|draw)/.test(name)) {
+    const signature = resolveApiSignature(call);
+    if (!signature && /^(make|add|draw)/.test(name)) {
       this.m_state.addDiagnostic(line, 'unknown native geometry API: ' + name);
 
       return;
     }
-    this.m_state.recordApiCall(call);
+    this.m_state.recordApiCall(call, signature);
   }
 
   private resolveUserFunction(name: string, args: readonly RuntimeValue[]): Statement | null {

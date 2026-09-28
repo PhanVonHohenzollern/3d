@@ -1,5 +1,4 @@
 import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
-import { apiSignatureMetadataForCall } from '@engine/runtime/ApiMetadata';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { isArray, runtimeNumber, runtimeTruthy, type RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { basisFromUp, toVec } from '@engine/geometry/helpers/geometryMath';
@@ -10,7 +9,7 @@ export class NamedArguments {
   private values = new Map<string, RuntimeValue>();
 
   constructor(context: MeshBuildContext, args: RuntimeValue[]) {
-    const signature = apiSignatureMetadataForCall(context.call);
+    const signature = context.call.signature;
     if (!signature) throw new Error('no matching SDK overload');
     signature.parameters.forEach((p, i) => this.values.set(p.name, args[i]));
   }

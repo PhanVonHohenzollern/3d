@@ -1,3 +1,4 @@
+import { resolveApiSignature } from '@engine/runtime/ApiMetadata';
 import { CppException, what } from '@engine/runtime/cpp/cpp';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { emptyApiCall, emptyRuntimeResult } from '@engine/runtime/RuntimeTypes';
@@ -149,6 +150,7 @@ export function buildConnectorPreview(
       0.0,
     ];
   }
+  call.signature = resolveApiSignature(call);
   const runtime = emptyRuntimeResult();
   runtime.apiCalls.push(call);
   const geometry = new PreviewGeometryEngine().build(runtime);

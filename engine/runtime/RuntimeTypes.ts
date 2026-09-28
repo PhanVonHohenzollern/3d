@@ -1,3 +1,4 @@
+import type { ApiSignatureMetadata } from '@engine/runtime/ApiMetadata.types';
 import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
 
 export interface RuntimeVariable {
@@ -36,6 +37,8 @@ export interface RuntimeDiagnostic {
 }
 
 export interface RuntimeApiCall {
+  // The SDK overload the arguments select, resolved once when the call is recorded.
+  signature: ApiSignatureMetadata | null;
   line: number;
   parentApiIndex: number;
   userFunctionCall: boolean;
@@ -88,6 +91,7 @@ export function emptyApiCall(): RuntimeApiCall {
     formalParameterTypes: [],
     display: '',
     argumentTraces: [],
+    signature: null,
   };
 }
 

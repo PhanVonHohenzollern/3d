@@ -1,6 +1,6 @@
 import { stdMax } from '@engine/runtime/cpp/cppStd';
 import { DVec3, normalized } from '@engine/math/DVec3';
-import { apiSignatureMetadataForCall, type ApiSignatureMetadata } from '@engine/runtime/ApiMetadata';
+import type { ApiSignatureMetadata } from '@engine/runtime/ApiMetadata';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { buildBoxMesh, buildConnectorFlangeMesh } from '@engine/geometry/builders/rectangularMeshes';
@@ -151,7 +151,7 @@ export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext
     return true;
   };
 
-  const sig = apiSignatureMetadataForCall(call);
+  const sig = call.signature;
   const countRef = ref(0);
   const centers: FdPoint3d[] = [];
   if (args.length < 2 || !asInt(args[0], countRef) || !pointArray(args[1], centers))
