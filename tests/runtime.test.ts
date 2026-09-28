@@ -125,6 +125,30 @@ double pick(int value=1) { return 2; }`,
   });
 });
 
+describe('C++ declarations and values', () => {
+  it('closes nested std::vector templates written with >> while keeping >> as a shift', () => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      [
+        'std::vector<std::vector<double>> grid; std::vector<double> row; row.push_back(2.5); grid.push_back(row);',
+        'std::vector<std::vector<std::vector<int>>> cube;',
+        'double cell = grid[0][0]; int half = 8 >> 1;',
+      ].join('\n'),
+      999,
+      true,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(runtime.evaluateNumericExpression('cell')).toBe(2.5);
+    expect(runtime.evaluateNumericExpression('half')).toBe(4);
+    expect(result.variables.map((variable) => variable.name)).toContain('cube');
+  });
+
+  it('rejects a >> that closes more template levels than were opened', () => {
+    const result = new GeometryRuntime().executeUpToLine('std::vector<double>> bad;', 999, true);
+    expect(result.diagnostics).toHaveLength(1);
+  });
+});
+
 describe('fixture line endings', () => {
   it.each(['\n', '\r\n'])('keeps both empty eval directives with %j line endings', (eol) => {
     const file = path.join(fixturesRoot, 'runtime', 'runtime_errors.cpp');
