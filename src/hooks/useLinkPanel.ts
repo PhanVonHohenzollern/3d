@@ -15,7 +15,7 @@ import {
   kLinkTableHeaders,
   kOrientationLabels,
   kSizePlaceholder,
-} from '@/helpers/link';
+} from '@/entities/connector';
 import { isInElement, isInTableHeader, tableCellOf } from '@/shared/ui/table-view';
 import type { LinkPanelProps, SizeField } from '@/types/panels';
 import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';

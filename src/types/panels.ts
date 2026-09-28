@@ -8,13 +8,6 @@ export interface VariablePanelHandle {
   selectedVariable(): string;
 }
 
-export interface VariableRow {
-  name: string;
-  type: string;
-  value: string;
-  changed: string;
-}
-
 export interface VariablePanelProps {
   onSelectionChanged?: (name: string) => void;
   ref?: Ref<VariablePanelHandle>;

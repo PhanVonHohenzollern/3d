@@ -1,6 +1,6 @@
 import type { RuntimeResult, RuntimeVariable } from '@engine/runtime';
 import { runtimeTypeName, runtimeValueToString } from '@engine/runtime';
-import type { VariableRow } from '@/types/panels';
+import type { VariableRow } from '@/entities/variable/model/types';
 
 export function variableSummary(result: RuntimeResult, currentLine: number): string {
   return (
