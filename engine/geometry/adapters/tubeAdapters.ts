@@ -21,12 +21,9 @@ import {
 } from '@engine/geometry/helpers/valueDecoding';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-export function appendVerySimpleTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendVerySimpleTube(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const call = context.call;
   const start = ref(new FdPoint3d()),
     end = ref(new FdPoint3d());
@@ -53,11 +50,7 @@ export function appendVerySimpleTube(
   return true;
 }
 
-export function appendSimpleTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendSimpleTube(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const call = context.call;
   const start = ref(new FdPoint3d()),
     end = ref(new FdPoint3d());
@@ -158,11 +151,7 @@ export function appendTube(scene: PreviewGeometryScene, context: MeshBuildContex
   return true;
 }
 
-export function appendStraightTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendStraightTube(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length < 4) return false;
   const centers: FdPoint3d[] = [];
   const diams: number[] = [];
@@ -193,11 +182,7 @@ export function appendStraightTube(
   return true;
 }
 
-export function appendUniVectorTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendUniVectorTube(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length < 5) return false;
   const centers: FdPoint3d[] = [];
   const normal = ref(new FdVector3d());
@@ -226,3 +211,14 @@ export function appendUniVectorTube(
 
   return true;
 }
+
+export const tubePrimitiveAdapters: AdapterTable = {
+  makeVerySimpleTube: appendVerySimpleTube,
+  makeSimpleTube: appendSimpleTube,
+  makeTube: appendTube,
+};
+
+export const tubeCompositeAdapters: AdapterTable = {
+  makeStraightTube: appendStraightTube,
+  makeUniVectorTube: appendUniVectorTube,
+};

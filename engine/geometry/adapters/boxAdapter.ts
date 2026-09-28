@@ -18,6 +18,7 @@ import {
 } from '@engine/geometry/helpers/valueDecoding';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
 const noConnector = 5;
 
@@ -142,7 +143,7 @@ function connectorSettings(
   return { side1: side1.v, side2: side2.v, width };
 }
 
-export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const call = context.call;
 
   const warn = (reason: string) => {
@@ -202,3 +203,8 @@ export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext
 
   return true;
 }
+
+export const boxAdapters: AdapterTable = {
+  makeBox: appendBox,
+  makeBoxFromPlanes: appendBox,
+};

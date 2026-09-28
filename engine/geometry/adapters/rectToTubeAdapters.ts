@@ -13,8 +13,9 @@ import { pushNonEmptyMesh } from '@engine/geometry/helpers/meshData';
 import { asInt, asPoint, asVector, numberArray, pointArray, ref } from '@engine/geometry/helpers/valueDecoding';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-export function appendRectToTubeTransition(
+function appendRectToTubeTransition(
   scene: PreviewGeometryScene,
   context: MeshBuildContext,
   args: RuntimeValue[],
@@ -130,7 +131,7 @@ export function appendRectToTubeTransition(
   return true;
 }
 
-export function appendRectToTubeIntersection(
+function appendRectToTubeIntersection(
   scene: PreviewGeometryScene,
   context: MeshBuildContext,
   args: RuntimeValue[],
@@ -232,3 +233,8 @@ export function appendRectToTubeIntersection(
 
   return true;
 }
+
+export const rectToTubeAdapters: AdapterTable = {
+  makeRectToTubeTransition: appendRectToTubeTransition,
+  makeRectToTubeIntersection: appendRectToTubeIntersection,
+};

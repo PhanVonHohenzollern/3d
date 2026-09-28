@@ -7,6 +7,7 @@ import { stableBasis, toVec } from '@engine/geometry/helpers/geometryMath';
 import { vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene, PreviewMesh } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
 function contour(face: FdBowlFace, steps: number): DVec3[] {
   const corners = face.corners;
@@ -82,13 +83,18 @@ function loft(mesh: PreviewMesh, bowl: FdBowlInfo, reverse: boolean, caps: boole
   return [top, bottom];
 }
 
-export function appendBowl(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+export function appendBowl(
+  scene: PreviewGeometryScene,
+  context: MeshBuildContext,
+  args: RuntimeValue[],
+  subtraction: boolean,
+): boolean {
   const outer = args[0],
     inner = args[1];
   if (!(outer instanceof FdBowlInfo)) return false;
   try {
     const mesh = context.createMesh();
-    if (context.call.name === 'makeBowlSubstraction') {
+    if (subtraction) {
       if (!(inner instanceof FdBowlInfo)) throw new Error('bowl subtraction requires two FdBowlInfo objects');
       const outside = loft(mesh, outer, false, false),
         inside = loft(mesh, inner, true, true);
@@ -121,3 +127,8 @@ export function appendBowl(scene: PreviewGeometryScene, context: MeshBuildContex
     return true;
   }
 }
+
+export const bowlAdapters: AdapterTable = {
+  makeSimpleBowl: (scene, context, args) => appendBowl(scene, context, args, false),
+  makeBowlSubstraction: (scene, context, args) => appendBowl(scene, context, args, true),
+};

@@ -14,12 +14,9 @@ import { pushNonEmptyMesh } from '@engine/geometry/helpers/meshData';
 import { asBool, asNumber, asPoint, asVector, pointArray, ref } from '@engine/geometry/helpers/valueDecoding';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-export function appendFacettedCylinder(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendFacettedCylinder(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 9) return false;
   const call = context.call;
   const start = ref(new FdPoint3d()),
@@ -70,7 +67,12 @@ export function appendFacettedCylinder(
   return true;
 }
 
-export function appendScrew(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendScrew(
+  scene: PreviewGeometryScene,
+  context: MeshBuildContext,
+  args: RuntimeValue[],
+  hexAcrossCorners: boolean,
+): boolean {
   if (args.length !== 6 && args.length !== 7) return false;
   const call = context.call;
   const start = ref(new FdPoint3d());
@@ -98,7 +100,7 @@ export function appendScrew(scene: PreviewGeometryScene, context: MeshBuildConte
 
     return true;
   }
-  if (context.call.name === 'makeScrew2') diameter.v /= Math.cos(Math.PI / 6);
+  if (hexAcrossCorners) diameter.v /= Math.cos(Math.PI / 6);
   const dir = normalized(toVec(direction.v));
   const end = toPoint(toVec(start.v).add(dir.mul(screwLength.v)));
   scene.meshes.push(buildFacettedCylinderMesh(context, start.v, end, up.v, diameter.v, 0.0, 360.0, 6, front.v, back.v));
@@ -106,7 +108,7 @@ export function appendScrew(scene: PreviewGeometryScene, context: MeshBuildConte
   return true;
 }
 
-export function appendRectFace(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendRectFace(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 5) return false;
   const call = context.call;
   const center = ref(new FdPoint3d());
@@ -135,7 +137,7 @@ export function appendRectFace(scene: PreviewGeometryScene, context: MeshBuildCo
   return true;
 }
 
-export function appendPlane(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendPlane(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const planePoints: FdPoint3d[] = [];
   if (args.length !== 0 && pointArray(args[0], planePoints) && planePoints.length >= 4) {
     pushNonEmptyMesh(scene, buildPolygonFaceMesh(context, planePoints.slice(0, 4)));
@@ -179,7 +181,7 @@ export function appendPlane(scene: PreviewGeometryScene, context: MeshBuildConte
   return false;
 }
 
-export function appendConnector(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendConnector(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const center = ref(new FdPoint3d());
   const normal = ref(new FdVector3d());
   if (args.length < 4 || !asPoint(args[0], center) || !asVector(args[1], normal)) return false;
@@ -205,3 +207,15 @@ export function appendConnector(scene: PreviewGeometryScene, context: MeshBuildC
 
   return true;
 }
+
+export const rectangularPrimitiveAdapters: AdapterTable = {
+  makeFacettedCylinder: appendFacettedCylinder,
+  makeRectFace: appendRectFace,
+  makeScrew: (scene, context, args) => appendScrew(scene, context, args, false),
+  makeScrew2: (scene, context, args) => appendScrew(scene, context, args, true),
+};
+
+export const rectangularCompositeAdapters: AdapterTable = {
+  makePlane: appendPlane,
+  makeConnector: appendConnector,
+};

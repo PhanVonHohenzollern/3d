@@ -4,6 +4,7 @@ import type { RuntimeApiCall, RuntimeResult } from '@engine/runtime/RuntimeTypes
 import {
   appendCompositeApiMeshes,
   appendPrimitiveApiMeshes,
+  kCompositeGeometryHeaders,
   supportedPreviewApiNames,
 } from '@engine/geometry/adapters/apiAdapters';
 import { isGeometryCallName, warningFor } from '@engine/geometry/helpers/apiCall';
@@ -21,16 +22,8 @@ export {
   type PreviewMeshVertex,
 } from '@engine/geometry/previewScene';
 
-const adapterWarningHeaders = new Set([
-  'PnGeometry3d.h',
-  'GeoCache3dInt.h',
-  'SymbolsInt.h',
-  'GrillsInt.h',
-  'TubularPrimitivesInt.h',
-  'RectangularPrimitivesInt.h',
-  'VascoPrimitivesInt.h',
-  'BowlPrimitivesInt.h',
-]);
+// Calls from these headers get a warning when no adapter draws them.
+const adapterWarningHeaders = new Set([...kCompositeGeometryHeaders, 'PnGeometry3d.h']);
 
 function missingAdapterWarning(call: RuntimeApiCall): string | null {
   if (call.userFunctionCall) return null;

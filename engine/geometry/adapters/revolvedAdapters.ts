@@ -33,8 +33,9 @@ import {
 } from '@engine/geometry/helpers/valueDecoding';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-export function appendFlatDisc(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendFlatDisc(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 4) return false;
   const call = context.call;
   const center = ref(new FdPoint3d());
@@ -61,7 +62,7 @@ export function appendFlatDisc(scene: PreviewGeometryScene, context: MeshBuildCo
   return true;
 }
 
-export function appendFlatRing(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendFlatRing(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 5) return false;
   const call = context.call;
   const center = ref(new FdPoint3d());
@@ -96,7 +97,7 @@ export function appendFlatRing(scene: PreviewGeometryScene, context: MeshBuildCo
   return true;
 }
 
-export function appendDisc(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
+function appendDisc(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 6) return false;
   const call = context.call;
   const center = ref(new FdPoint3d());
@@ -145,11 +146,7 @@ export function appendDisc(scene: PreviewGeometryScene, context: MeshBuildContex
   return true;
 }
 
-export function appendSymbolicCircle(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendSymbolicCircle(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 3) return false;
   const call = context.call;
   const center = ref(new FdPoint3d());
@@ -170,11 +167,7 @@ export function appendSymbolicCircle(
   return true;
 }
 
-export function appendDonutSection(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendDonutSection(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 8) return false;
   const call = context.call;
   const center = ref(new FdPoint3d());
@@ -229,11 +222,7 @@ export function appendDonutSection(
   return true;
 }
 
-export function appendTubularBend(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendTubularBend(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length < 8) return false;
   const center = ref(new FdPoint3d());
   const normal = ref(new FdVector3d()),
@@ -287,11 +276,7 @@ export function appendTubularBend(
   return true;
 }
 
-export function appendSpheroidSection(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendSpheroidSection(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (args.length !== 7 && args.length !== 6) return false;
   const call = context.call;
   const center = ref(new FdPoint3d());
@@ -331,3 +316,16 @@ export function appendSpheroidSection(
 
   return true;
 }
+
+export const revolvedPrimitiveAdapters: AdapterTable = {
+  makeFlatDisc: appendFlatDisc,
+  makeFlatRing: appendFlatRing,
+  makeDisc: appendDisc,
+  makeDonutSection: appendDonutSection,
+  makeSpheroidSection: appendSpheroidSection,
+  makeSymbolicCircle: appendSymbolicCircle,
+};
+
+export const revolvedCompositeAdapters: AdapterTable = {
+  makeTubularBend: appendTubularBend,
+};

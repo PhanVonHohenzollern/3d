@@ -2,11 +2,12 @@ import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { isArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
-import { warningFor } from '@engine/geometry/helpers/apiCall';
+import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { basisFromUp, stableBasis, toPoint, toVec } from '@engine/geometry/helpers/geometryMath';
 import { vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
 
 // Symbols are narrow ribbons in the preview's triangle-only renderer. Their
 // centre lines retain SDK coordinates; stroke width is a display property.
@@ -50,239 +51,269 @@ function numeric(value: RuntimeValue): number {
   return n;
 }
 
-export const symbolApiNames = [
-  'makeSymbolicLine',
-  'addThinLine',
-  'drawAsThinLine',
-  'addCenterLine',
-  'addCenterPolyLine',
-  'makeSymbolicArc',
-  'makeSymbolicEllipse',
-  'addCenterArc',
-  'addThinCircle',
-  'addThinRect',
-  'drawRectAsThinLines',
-  'drawAsThinArc',
-  'addCircularConnector',
-  'addRectangularConnector',
-  'addSymbolicFlangeRect',
-  'addSymbGrillLine',
-  'addSymbGrillRect',
-  'addSymbGrillCircle',
-  'addSymbGrillArc',
-  'addSymbGrillEllipse',
-  'makeCircleSymbol',
-  'makeCircleWithPlus',
-  'makeCircleWithMinus',
-  'makeCircleWithTriangle',
-  'makeAssemblyHole',
-  'makeAssemblyHoles',
-  'makeSymbolicRectangle',
-  'makePolygonalHatch',
-  'makeRectHatch',
-  'makeBowTieHatch',
-  'makeBowTie',
-  'makeHourGlass',
-  'makeZigZag',
-  'makeDampers',
-  'makeInfinite',
-  'makeReversedSigma',
-  'makeSilencerSymbol',
-] as const;
+// The symbol's own plane: centre c, the supplied in-plane direction u and v across it.
+type SymbolPlane = {
+  c: DVec3;
+  u: DVec3;
+  v: DVec3;
+  at: (x: number, y: number) => DVec3;
+};
 
-export function appendSymbol(scene: PreviewGeometryScene, context: MeshBuildContext, input: RuntimeValue[]): boolean {
-  let name = context.call.name;
-  let args = input;
-  if (name.startsWith('addSymbGrill')) {
-    // visVector belongs to the SDK's view-dependent HLR pass. The 3D preview
-    // displays the stored symbol in its own plane.
-    args = args.slice(1);
-    name = (
-      {
-        Line: 'makeSymbolicLine',
-        Rect: 'addThinRect',
-        Circle: 'addThinCircle',
-        Arc: 'addCenterArc',
-        Ellipse: 'makeSymbolicEllipse',
-      } as Record<string, string>
-    )[name.slice(12)];
+type SymbolOutline = SymbolPlane & { h: number; w: number; rectangle: DVec3[] };
+
+// What every symbol builder shares: the arguments and the two ways of drawing.
+class SymbolSketch {
+  constructor(
+    readonly scene: PreviewGeometryScene,
+    readonly context: MeshBuildContext,
+    readonly args: RuntimeValue[],
+  ) {}
+
+  point(index: number): DVec3 {
+    return point(this.args[index]);
   }
 
-  const stroke = (points: DVec3[], closed = false) => appendStroke(scene, context, points, closed);
+  number(index: number): number {
+    return numeric(this.args[index]);
+  }
 
-  const fill = (points: DVec3[]) => scene.meshes.push(buildPolygonFaceMesh(context, points.map(toPoint)));
+  stroke(points: DVec3[], closed = false): void {
+    appendStroke(this.scene, this.context, points, closed);
+  }
 
-  try {
-    if (['makeSymbolicLine', 'addThinLine', 'drawAsThinLine', 'addCenterLine'].includes(name)) {
-      stroke([point(args[0]), point(args[1])]);
+  fill(points: DVec3[]): void {
+    this.scene.meshes.push(buildPolygonFaceMesh(this.context, points.map(toPoint)));
+  }
 
-      return true;
-    }
-    if (name === 'addCenterPolyLine' || name === 'makePolygonalHatch') {
-      if (!isArray(args[0])) throw new Error('expected vertex array');
-      const count = numeric(args[1]) + Number(name === 'addCenterPolyLine');
-      if (count < 2 || count > args[0].elements.length) throw new Error('vertex count exceeds array');
-      const points = args[0].elements.slice(0, count).map(point);
-      if (name === 'makePolygonalHatch') fill(points);
-      else stroke(points);
-
-      return true;
-    }
-    if (args.length === 4 && ['drawRectAsThinLines', 'addRectangularConnector'].includes(name)) {
-      stroke(args.map(point), true);
-
-      return true;
-    }
-    const c = point(args[0]);
-    let normal = new DVec3(0, 0, 1);
-    let u: DVec3, v: DVec3;
-    if (name === 'drawAsThinArc' || name === 'addCircularConnector') {
-      let radius = 5;
-      if (name === 'drawAsThinArc') radius = args.length > 1 ? numeric(args[1]) : 5;
-      else if (args[1] instanceof FdVector3d) {
-        normal = point(args[1]);
-        radius = args.length > 2 ? numeric(args[2]) : 5;
-      } else if (args.length > 1) radius = numeric(args[1]);
-      [u, v] = stableBasis(normalized(normal));
-      stroke(ellipse(c, u, v, radius, radius, 0, 360));
-
-      return true;
-    }
-    normal = point(args[1]);
+  normal(): DVec3 {
+    const normal = this.point(1);
     if (length(normal) < 1e-9) throw new Error('zero symbol normal');
-    if (name === 'addThinCircle') {
-      [u, v] = stableBasis(normalized(normal));
-      stroke(ellipse(c, u, v, numeric(args[2]) / 2, numeric(args[2]) / 2, 0, 360));
 
-      return true;
-    }
-    [u, v] = basisFromUp(normal, point(args[2]));
-    // basisFromUp returns the supplied in-plane direction first.
-    if (['makeSymbolicArc', 'makeSymbolicEllipse', 'addCenterArc'].includes(name)) {
-      const a = numeric(args[3]);
-      const b = name === 'makeSymbolicEllipse' ? numeric(args[4]) : a;
-      const begin = name === 'makeSymbolicArc' ? 0 : numeric(args[name === 'makeSymbolicEllipse' ? 5 : 4]);
-      const end = numeric(args[name === 'makeSymbolicEllipse' ? 6 : name === 'makeSymbolicArc' ? 4 : 5]);
-      stroke(ellipse(c, u, v, a, b, begin, end));
-
-      return true;
-    }
-
-    const at = (x: number, y: number) => c.add(v.mul(x)).add(u.mul(y));
-
-    if (name.startsWith('makeCircle')) {
-      const r = numeric(args[3]) / 2;
-      stroke(ellipse(c, u, v, r, r, 0, 360));
-      const kind =
-        name === 'makeCircleSymbol'
-          ? numeric(args[4])
-          : name === 'makeCircleWithMinus'
-            ? 2
-            : name === 'makeCircleWithPlus'
-              ? 1
-              : 4;
-      if (kind <= 3) stroke([at(-r * 0.65, 0), at(r * 0.65, 0)]);
-      if (kind === 1 || kind === 3) stroke([at(0, -r * 0.65), at(0, r * 0.65)]);
-      if (kind >= 4) {
-        const triangle = [at(0, r * 0.8), at(-r * 0.7, -r * 0.5), at(r * 0.7, -r * 0.5)];
-        if (kind === 5) fill(triangle);
-        else stroke(triangle, true);
-      }
-
-      return true;
-    }
-    if (name === 'makeAssemblyHole' || name === 'makeAssemblyHoles') {
-      const offsets =
-        name === 'makeAssemblyHole'
-          ? [c]
-          : [-1, 1].flatMap((x) => [-1, 1].map((y) => at((x * numeric(args[3])) / 2, (y * numeric(args[4])) / 2)));
-      const len = numeric(args[name === 'makeAssemblyHole' ? 3 : 5]);
-      const radius = numeric(args[name === 'makeAssemblyHole' ? 4 : 6]) / 2;
-      for (const center of offsets) {
-        const points = [
-          ...ellipse(center.add(u.mul(len / 2)), v, u, radius, radius, 0, 180),
-          ...ellipse(center.sub(u.mul(len / 2)), v, u, radius, radius, 180, 360),
-        ];
-        stroke(points, true);
-      }
-
-      return true;
-    }
-    const h = numeric(args[3]),
-      w = name === 'makeDampers' ? h : numeric(args[4]);
-    const rectangle = [at(-w / 2, -h / 2), at(w / 2, -h / 2), at(w / 2, h / 2), at(-w / 2, h / 2)];
-    if (
-      [
-        'addThinRect',
-        'drawRectAsThinLines',
-        'addRectangularConnector',
-        'addSymbolicFlangeRect',
-        'makeSymbolicRectangle',
-        'makeRectHatch',
-      ].includes(name)
-    ) {
-      if (name === 'makeRectHatch') fill(rectangle);
-      else if (name === 'makeSymbolicRectangle' && isArray(args[5])) {
-        const sides = args[5];
-        rectangle.forEach((p, i) => {
-          if (sides.elements[i]) stroke([p, rectangle[(i + 1) % 4]]);
-        });
-      } else stroke(rectangle, true);
-
-      return true;
-    }
-    if (['makeBowTie', 'makeHourGlass', 'makeBowTieHatch'].includes(name)) {
-      const points =
-        name === 'makeHourGlass'
-          ? [rectangle[0], rectangle[1], rectangle[3], rectangle[2]]
-          : [rectangle[0], rectangle[3], rectangle[1], rectangle[2]];
-      if (name === 'makeBowTieHatch') {
-        fill([points[0], points[1], c]);
-        fill([points[2], points[3], c]);
-      } else stroke(points, true);
-
-      return true;
-    }
-    if (name === 'makeInfinite') {
-      stroke(
-        Array.from({ length: 129 }, (_, i) => {
-          const t = (i * Math.PI) / 64;
-
-          return at(w * 0.5 * Math.cos(t), h * Math.sin(t) * Math.cos(t));
-        }),
-      );
-
-      return true;
-    }
-    if (name === 'makeReversedSigma') {
-      stroke([at(-w / 2, h / 2), at(w / 2, h / 2), at(0, 0), at(w / 2, -h / 2), at(-w / 2, -h / 2)]);
-
-      return true;
-    }
-    if (name === 'makeSilencerSymbol') {
-      stroke(rectangle, true);
-      stroke([rectangle[0], rectangle[2]]);
-      stroke([rectangle[1], rectangle[3]]);
-
-      return true;
-    }
-    if (name === 'makeZigZag' || name === 'makeDampers') {
-      const count = Math.max(1, Math.min(4096, Math.trunc(numeric(args[name === 'makeDampers' ? 4 : 5]))));
-      if (name === 'makeZigZag')
-        stroke(Array.from({ length: count + 1 }, (_, i) => at((i / count - 0.5) * w, ((i % 2) - 0.5) * h)));
-      else
-        for (let i = 0; i < count; ++i)
-          stroke([at(-h / 2, (i / count - 0.5) * h), at(h / 2, ((i + 1) / count - 0.5) * h)]);
-
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    scene.warnings.push(warningFor(context.call, error instanceof Error ? error.message : 'invalid symbol arguments'));
-
-    return true;
+    return normal;
   }
+
+  // Centre, normal and in-plane direction are the first three arguments.
+  plane(): SymbolPlane {
+    const c = this.point(0);
+    const normal = this.normal();
+    // basisFromUp returns the supplied in-plane direction first.
+    const [u, v] = basisFromUp(normal, this.point(2));
+
+    return { c, u, v, at: (x, y) => c.add(v.mul(x)).add(u.mul(y)) };
+  }
+
+  // Height and width follow the plane, unless the symbol is square.
+  outline(width: 'given' | 'square' = 'given'): SymbolOutline {
+    const plane = this.plane();
+    const { at } = plane;
+    const h = this.number(3),
+      w = width === 'square' ? h : this.number(4);
+    const rectangle = [at(-w / 2, -h / 2), at(w / 2, -h / 2), at(w / 2, h / 2), at(-w / 2, h / 2)];
+
+    return { ...plane, h, w, rectangle };
+  }
+}
+
+function symbol(build: (s: SymbolSketch) => void): ApiMeshAdapter {
+  return withAdapterErrors('invalid symbol arguments', (scene, context, args) => {
+    build(new SymbolSketch(scene, context, args));
+  });
+}
+
+// visVector belongs to the SDK's view-dependent HLR pass. The 3D preview
+// displays the stored symbol in its own plane.
+function grillSymbol(build: (s: SymbolSketch) => void): ApiMeshAdapter {
+  const adapter = symbol(build);
+
+  return (scene, context, args) => adapter(scene, context, args.slice(1));
+}
+
+function line(s: SymbolSketch): void {
+  s.stroke([s.point(0), s.point(1)]);
+}
+
+function vertexArray(s: SymbolSketch, countOffset: number): DVec3[] {
+  const vertices = s.args[0];
+  if (!isArray(vertices)) throw new Error('expected vertex array');
+  const count = s.number(1) + countOffset;
+  if (count < 2 || count > vertices.elements.length) throw new Error('vertex count exceeds array');
+
+  return vertices.elements.slice(0, count).map(point);
+}
+
+function centerPolyLine(s: SymbolSketch): void {
+  s.stroke(vertexArray(s, 1));
+}
+
+function polygonalHatch(s: SymbolSketch): void {
+  s.fill(vertexArray(s, 0));
+}
+
+function circle(s: SymbolSketch, c: DVec3, normal: DVec3, radius: number): void {
+  const [u, v] = stableBasis(normalized(normal));
+  s.stroke(ellipse(c, u, v, radius, radius, 0, 360));
+}
+
+function thinArc(s: SymbolSketch): void {
+  const c = s.point(0);
+  const radius = s.args.length > 1 ? s.number(1) : 5;
+  circle(s, c, new DVec3(0, 0, 1), radius);
+}
+
+function circularConnector(s: SymbolSketch): void {
+  const c = s.point(0);
+  let normal = new DVec3(0, 0, 1);
+  let radius = 5;
+  if (s.args[1] instanceof FdVector3d) {
+    normal = s.point(1);
+    radius = s.args.length > 2 ? s.number(2) : 5;
+  } else if (s.args.length > 1) radius = s.number(1);
+  circle(s, c, normal, radius);
+}
+
+function thinCircle(s: SymbolSketch): void {
+  const c = s.point(0);
+  const normal = s.normal();
+  circle(s, c, normal, s.number(2) / 2);
+}
+
+function symbolicArc(s: SymbolSketch): void {
+  const { c, u, v } = s.plane();
+  const radius = s.number(3);
+  s.stroke(ellipse(c, u, v, radius, radius, 0, s.number(4)));
+}
+
+function centerArc(s: SymbolSketch): void {
+  const { c, u, v } = s.plane();
+  const radius = s.number(3);
+  const begin = s.number(4);
+  s.stroke(ellipse(c, u, v, radius, radius, begin, s.number(5)));
+}
+
+function symbolicEllipse(s: SymbolSketch): void {
+  const { c, u, v } = s.plane();
+  const a = s.number(3),
+    b = s.number(4);
+  const begin = s.number(5);
+  s.stroke(ellipse(c, u, v, a, b, begin, s.number(6)));
+}
+
+// makeCircleSymbol's kind argument: 1 or 3 plus, 2 minus, 4 triangle, 5 filled triangle.
+const circleMarks = { plus: 1, minus: 2, triangle: 4 };
+
+function circleSymbol(s: SymbolSketch, mark: keyof typeof circleMarks | 'fromArgument'): void {
+  const { c, u, v, at } = s.plane();
+  const r = s.number(3) / 2;
+  s.stroke(ellipse(c, u, v, r, r, 0, 360));
+  const kind = mark === 'fromArgument' ? s.number(4) : circleMarks[mark];
+  if (kind <= 3) s.stroke([at(-r * 0.65, 0), at(r * 0.65, 0)]);
+  if (kind === 1 || kind === 3) s.stroke([at(0, -r * 0.65), at(0, r * 0.65)]);
+  if (kind >= 4) {
+    const triangle = [at(0, r * 0.8), at(-r * 0.7, -r * 0.5), at(r * 0.7, -r * 0.5)];
+    if (kind === 5) s.fill(triangle);
+    else s.stroke(triangle, true);
+  }
+}
+
+function slottedHoles(s: SymbolSketch, plane: SymbolPlane, centers: DVec3[], len: number, radius: number): void {
+  const { u, v } = plane;
+  for (const center of centers) {
+    const points = [
+      ...ellipse(center.add(u.mul(len / 2)), v, u, radius, radius, 0, 180),
+      ...ellipse(center.sub(u.mul(len / 2)), v, u, radius, radius, 180, 360),
+    ];
+    s.stroke(points, true);
+  }
+}
+
+function assemblyHole(s: SymbolSketch): void {
+  const plane = s.plane();
+  slottedHoles(s, plane, [plane.c], s.number(3), s.number(4) / 2);
+}
+
+function assemblyHoles(s: SymbolSketch): void {
+  const plane = s.plane();
+  const spacingX = s.number(3),
+    spacingY = s.number(4);
+  const centers = [-1, 1].flatMap((x) => [-1, 1].map((y) => plane.at((x * spacingX) / 2, (y * spacingY) / 2)));
+  slottedHoles(s, plane, centers, s.number(5), s.number(6) / 2);
+}
+
+function rectangle(s: SymbolSketch): void {
+  s.stroke(s.outline().rectangle, true);
+}
+
+// Four corner points, or the usual centre, normal, direction, height and width.
+function cornersOrRectangle(s: SymbolSketch): void {
+  if (s.args.length === 4) s.stroke(s.args.map(point), true);
+  else rectangle(s);
+}
+
+function symbolicRectangle(s: SymbolSketch): void {
+  const { rectangle } = s.outline();
+  const sides = s.args[5];
+  if (isArray(sides))
+    rectangle.forEach((p, i) => {
+      if (sides.elements[i]) s.stroke([p, rectangle[(i + 1) % 4]]);
+    });
+  else s.stroke(rectangle, true);
+}
+
+function rectHatch(s: SymbolSketch): void {
+  s.fill(s.outline().rectangle);
+}
+
+function bowTie(s: SymbolSketch, style: 'outline' | 'hatch'): void {
+  const { c, rectangle } = s.outline();
+  const points = [rectangle[0], rectangle[3], rectangle[1], rectangle[2]];
+  if (style === 'hatch') {
+    s.fill([points[0], points[1], c]);
+    s.fill([points[2], points[3], c]);
+  } else s.stroke(points, true);
+}
+
+function hourGlass(s: SymbolSketch): void {
+  const { rectangle } = s.outline();
+  s.stroke([rectangle[0], rectangle[1], rectangle[3], rectangle[2]], true);
+}
+
+function infinite(s: SymbolSketch): void {
+  const { at, h, w } = s.outline();
+  s.stroke(
+    Array.from({ length: 129 }, (_, i) => {
+      const t = (i * Math.PI) / 64;
+
+      return at(w * 0.5 * Math.cos(t), h * Math.sin(t) * Math.cos(t));
+    }),
+  );
+}
+
+function reversedSigma(s: SymbolSketch): void {
+  const { at, h, w } = s.outline();
+  s.stroke([at(-w / 2, h / 2), at(w / 2, h / 2), at(0, 0), at(w / 2, -h / 2), at(-w / 2, -h / 2)]);
+}
+
+function silencer(s: SymbolSketch): void {
+  const { rectangle } = s.outline();
+  s.stroke(rectangle, true);
+  s.stroke([rectangle[0], rectangle[2]]);
+  s.stroke([rectangle[1], rectangle[3]]);
+}
+
+function segmentCount(s: SymbolSketch, index: number): number {
+  return Math.max(1, Math.min(4096, Math.trunc(s.number(index))));
+}
+
+function zigZag(s: SymbolSketch): void {
+  const { at, h, w } = s.outline();
+  const count = segmentCount(s, 5);
+  s.stroke(Array.from({ length: count + 1 }, (_, i) => at((i / count - 0.5) * w, ((i % 2) - 0.5) * h)));
+}
+
+function dampers(s: SymbolSketch): void {
+  const { at, h } = s.outline('square');
+  const count = segmentCount(s, 4);
+  for (let i = 0; i < count; ++i) s.stroke([at(-h / 2, (i / count - 0.5) * h), at(h / 2, ((i + 1) / count - 0.5) * h)]);
 }
 
 function ellipse(c: DVec3, u: DVec3, v: DVec3, a: number, b: number, begin: number, end: number): DVec3[] {
@@ -295,3 +326,43 @@ function ellipse(c: DVec3, u: DVec3, v: DVec3, a: number, b: number, begin: numb
     return c.add(u.mul(a * Math.cos(t))).add(v.mul(b * Math.sin(t)));
   });
 }
+
+export const symbolAdapters: AdapterTable = {
+  makeSymbolicLine: symbol(line),
+  addThinLine: symbol(line),
+  drawAsThinLine: symbol(line),
+  addCenterLine: symbol(line),
+  addCenterPolyLine: symbol(centerPolyLine),
+  makeSymbolicArc: symbol(symbolicArc),
+  makeSymbolicEllipse: symbol(symbolicEllipse),
+  addCenterArc: symbol(centerArc),
+  addThinCircle: symbol(thinCircle),
+  addThinRect: symbol(rectangle),
+  drawRectAsThinLines: symbol(cornersOrRectangle),
+  drawAsThinArc: symbol(thinArc),
+  addCircularConnector: symbol(circularConnector),
+  addRectangularConnector: symbol(cornersOrRectangle),
+  addSymbolicFlangeRect: symbol(rectangle),
+  addSymbGrillLine: grillSymbol(line),
+  addSymbGrillRect: grillSymbol(rectangle),
+  addSymbGrillCircle: grillSymbol(thinCircle),
+  addSymbGrillArc: grillSymbol(centerArc),
+  addSymbGrillEllipse: grillSymbol(symbolicEllipse),
+  makeCircleSymbol: symbol((s) => circleSymbol(s, 'fromArgument')),
+  makeCircleWithPlus: symbol((s) => circleSymbol(s, 'plus')),
+  makeCircleWithMinus: symbol((s) => circleSymbol(s, 'minus')),
+  makeCircleWithTriangle: symbol((s) => circleSymbol(s, 'triangle')),
+  makeAssemblyHole: symbol(assemblyHole),
+  makeAssemblyHoles: symbol(assemblyHoles),
+  makeSymbolicRectangle: symbol(symbolicRectangle),
+  makePolygonalHatch: symbol(polygonalHatch),
+  makeRectHatch: symbol(rectHatch),
+  makeBowTieHatch: symbol((s) => bowTie(s, 'hatch')),
+  makeBowTie: symbol((s) => bowTie(s, 'outline')),
+  makeHourGlass: symbol(hourGlass),
+  makeZigZag: symbol(zigZag),
+  makeDampers: symbol(dampers),
+  makeInfinite: symbol(infinite),
+  makeReversedSigma: symbol(reversedSigma),
+  makeSilencerSymbol: symbol(silencer),
+};

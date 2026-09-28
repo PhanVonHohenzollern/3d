@@ -12,6 +12,7 @@ import { circularFaceCount, toVec } from '@engine/geometry/helpers/geometryMath'
 import { addTriangle, pushNonEmptyMesh, vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene, PreviewMesh } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
 interface Cylinder {
   origin: FdPoint3d;
@@ -130,10 +131,11 @@ function surface(
   return mesh;
 }
 
-export function appendTubeIntersection(
+function appendTubeIntersection(
   scene: PreviewGeometryScene,
   context: MeshBuildContext,
   args: RuntimeValue[],
+  variant: 'tubeData' | 'tubeParams',
 ): boolean {
   const [start, normal] = args;
   if (!isPoint(start) || !isVector(normal)) return false;
@@ -147,7 +149,7 @@ export function appendTubeIntersection(
       branchComplexity: number,
       half = false,
       onlyBranch = false;
-    if (context.call.name === 'makeTubeToTubeIntersection2') {
+    if (variant === 'tubeData') {
       const tube = numbers(args[index], 2, 'tubeData'),
         inter = numbers(args[index + 1], 4, 'interTubeData'),
         angles = numbers(args[index + 2], 0, 'angles');
@@ -196,3 +198,8 @@ export function appendTubeIntersection(
 
   return true;
 }
+
+export const intersectionAdapters: AdapterTable = {
+  makeTubeToTubeIntersection: (scene, context, args) => appendTubeIntersection(scene, context, args, 'tubeParams'),
+  makeTubeToTubeIntersection2: (scene, context, args) => appendTubeIntersection(scene, context, args, 'tubeData'),
+};

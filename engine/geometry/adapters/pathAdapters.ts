@@ -10,12 +10,9 @@ import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
 import { appendTube } from '@engine/geometry/adapters/tubeAdapters';
 import { cross, dot, DVec3, normalized } from '@engine/math/DVec3';
 import { vertex } from '@engine/geometry/helpers/meshData';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-export function appendRotatablePlane(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendRotatablePlane(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const points: FdPoint3d[] = [];
   if (
     !pointArray(args[0], points) ||
@@ -42,11 +39,7 @@ export function appendRotatablePlane(
   return true;
 }
 
-export function appendElbowedTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendElbowedTube(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   const points: FdPoint3d[] = [];
   const diameter = Number(args[1]),
     complexity = Number(args[2]),
@@ -89,11 +82,7 @@ export function appendElbowedTube(
   return true;
 }
 
-export function appendTruncatedTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
+function appendTruncatedTube(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
   if (!(args[8] instanceof FdPoint3d) || !(args[9] instanceof FdVector3d)) return false;
   const origin = new DVec3(args[8].x, args[8].y, args[8].z),
     normal = normalized(new DVec3(args[9].x, args[9].y, args[9].z));
@@ -131,3 +120,9 @@ export function appendTruncatedTube(
 
   return true;
 }
+
+export const pathAdapters: AdapterTable = {
+  makeElbowedTube: appendElbowedTube,
+  makeTruncatedTube: appendTruncatedTube,
+  makeRotatablePlane: appendRotatablePlane,
+};

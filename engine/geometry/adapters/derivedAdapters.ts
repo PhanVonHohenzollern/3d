@@ -1,6 +1,6 @@
 import { cross, DVec3, normalized } from '@engine/math/DVec3';
 import { FdBowlInfo } from '@engine/runtime/FdBowlData';
-import { RuntimeArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { RuntimeArray } from '@engine/runtime/RuntimeValue';
 import { buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { warningFor } from '@engine/geometry/helpers/apiCall';
 import { rotateAroundAxis, toFdVector, toPoint } from '@engine/geometry/helpers/geometryMath';
@@ -9,181 +9,200 @@ import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
 import { appendBowl } from '@engine/geometry/adapters/bowlAdapters';
 import { appendStroke } from '@engine/geometry/adapters/symbolAdapters';
+import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
 
-export const derivedApiNames = [
-  'makeBend',
-  'makeBend2',
-  'makeRectBend',
-  'makeSymetricBend',
-  'makeEllipticalPlane',
-  'makeBowlWC',
-  'makeBowlSink',
-  'makeBowlBath',
-  'makeBowlShower',
-  'makeAlizeFront',
-] as const;
+// Rim-to-bottom width and length ratios, and the corner radius ratio, of a sanitary bowl.
+type BowlProfile = readonly [number, number, number];
 
-export function appendDerived(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
-  try {
-    const a = new NamedArguments(context, args),
-      name = context.call.name;
-    if (name === 'makeAlizeFront') {
-      const w = a.positive('bh'),
-        h = a.positive('L'),
-        inset = a.num('bh1'),
-        step = a.num('bh2'),
-        depth = a.num('lx');
-      const points = [
-        new DVec3(-w / 2, 0, 0),
-        new DVec3(w / 2, 0, 0),
-        new DVec3(w / 2 - inset, 0, h - step),
-        new DVec3(0, depth, h),
-        new DVec3(-w / 2 + inset, 0, h - step),
-      ];
-      scene.meshes.push(buildPolygonFaceMesh(context, points.map(toPoint)));
-      const r = a.positive('D1') / 2;
-      appendStroke(
-        scene,
-        context,
-        Array.from(
-          { length: 65 },
-          (_, i) => new DVec3(r * Math.cos((i * Math.PI) / 32), depth, r * Math.sin((i * Math.PI) / 32) + h / 2),
-        ),
+// What every derived builder shares. The frame is read by each builder, not here, because
+// makeAlizeFront never reads one.
+type DerivedSketch = {
+  readonly scene: PreviewGeometryScene;
+  readonly context: MeshBuildContext;
+  readonly a: NamedArguments;
+};
+
+// Errors become a warning and the call counts as handled; otherwise the builder's result is the
+// adapter's, since a bowl can be reported as unsupported.
+function derivedOrUnsupported(build: (d: DerivedSketch) => boolean): ApiMeshAdapter {
+  return (scene, context, args) => {
+    try {
+      return build({ scene, context, a: new NamedArguments(context, args) });
+    } catch (error) {
+      scene.warnings.push(
+        warningFor(context.call, error instanceof Error ? error.message : 'invalid derived geometry'),
       );
 
       return true;
     }
-    const f = a.frame();
-    if (name === 'makeEllipticalPlane') {
-      const r1 = a.positive('R1'),
-        r2 = a.positive('R2'),
-        count = 4 * a.count('n');
-      scene.meshes.push(
-        buildPolygonFaceMesh(
-          context,
-          Array.from({ length: count }, (_, i) =>
-            toPoint(
-              f.center
-                .add(f.up.mul(r1 * Math.cos((2 * Math.PI * i) / count)))
-                .add(f.right.mul(r2 * Math.sin((2 * Math.PI * i) / count))),
-            ),
-          ),
+  };
+}
+
+function derived(build: (d: DerivedSketch) => void): ApiMeshAdapter {
+  return derivedOrUnsupported((d) => {
+    build(d);
+
+    return true;
+  });
+}
+
+function alizeFront({ scene, context, a }: DerivedSketch): void {
+  const w = a.positive('bh'),
+    h = a.positive('L'),
+    inset = a.num('bh1'),
+    step = a.num('bh2'),
+    depth = a.num('lx');
+  const points = [
+    new DVec3(-w / 2, 0, 0),
+    new DVec3(w / 2, 0, 0),
+    new DVec3(w / 2 - inset, 0, h - step),
+    new DVec3(0, depth, h),
+    new DVec3(-w / 2 + inset, 0, h - step),
+  ];
+  scene.meshes.push(buildPolygonFaceMesh(context, points.map(toPoint)));
+  const r = a.positive('D1') / 2;
+  appendStroke(
+    scene,
+    context,
+    Array.from(
+      { length: 65 },
+      (_, i) => new DVec3(r * Math.cos((i * Math.PI) / 32), depth, r * Math.sin((i * Math.PI) / 32) + h / 2),
+    ),
+  );
+}
+
+function ellipticalPlane({ scene, context, a }: DerivedSketch): void {
+  const f = a.frame();
+  const r1 = a.positive('R1'),
+    r2 = a.positive('R2'),
+    count = 4 * a.count('n');
+  scene.meshes.push(
+    buildPolygonFaceMesh(
+      context,
+      Array.from({ length: count }, (_, i) =>
+        toPoint(
+          f.center
+            .add(f.up.mul(r1 * Math.cos((2 * Math.PI * i) / count)))
+            .add(f.right.mul(r2 * Math.sin((2 * Math.PI * i) / count))),
         ),
-      );
-
-      return true;
-    }
-    if (name.startsWith('makeBowl')) {
-      const w = a.positive('width'),
-        l = a.positive('length'),
-        h = a.positive('height');
-      // Dimensions describe the rim envelope. Shape proportions are inferred
-      // from the named sanitary fixture (there are no profile tables in SDK headers).
-      const profile =
-        name === 'makeBowlShower'
-          ? [0.86, 0.86, 0.06]
-          : name === 'makeBowlBath'
-            ? [0.72, 0.82, 0.2]
-            : name === 'makeBowlWC'
-              ? [0.48, 0.6, 0.42]
-              : [0.58, 0.65, 0.32];
-      const bowl = new FdBowlInfo(4, a.count('nComplexityR'), a.count('nComplexityV'));
-      const vertical = toFdVector(f.normal),
-        direction = toFdVector(f.up);
-      bowl.faces[0].initAsRectangle(vertical, direction, toPoint(f.center), [w, l]);
-      bowl.faces[1].initAsRectangle(
-        vertical,
-        direction,
-        toPoint(f.center.sub(f.normal.mul(h))),
-        [w * profile[0], l * profile[1]],
-        true,
-      );
-      bowl.faces.forEach((face) =>
-        face.corners.forEach((c) => {
-          c.radii = [Math.min(w, l) * profile[2], Math.min(w, l) * profile[2]];
-        }),
-      );
-
-      return appendBowl(scene, context, [bowl]);
-    }
-    if (a.get('outEllipse') !== undefined) throw new Error('AcDbEllipse output overload requires a native CAD object');
-    if (!a.bool('draw', true)) return true;
-    const w0 = a.positive('beginWidth'),
-      w1 = a.positive('endWidth'),
-      h = a.positive('Height');
-    const r0 = a.num('R11'),
-      r1 = a.num('R12', r0);
-    if (r0 < 0 || r1 < 0) throw new Error('bend radii cannot be negative');
-    const sweep = (a.num('alfa', 90) * Math.PI) / 180,
-      count = a.count('complexity');
-    if (Math.abs(sweep) < 1e-9) throw new Error('bend angle must be nonzero');
-    const turn = f.right.mul(a.bool('reverse') ? -1 : 1);
-    const axis = normalized(cross(f.normal, turn));
-    const radius0 = r0 + w0 / 2,
-      radius1 = r1 + w1 / 2;
-    const centers = [],
-      normals = [],
-      ups = [],
-      widths = [],
-      heights = [];
-    const lead = a.num('beginLength', 0),
-      tail = a.num('endBox', 0);
-    for (let i = 0; i <= count; ++i) {
-      const t = i / count,
-        theta = t * sweep;
-      const p = f.center
-        .add(f.normal.mul(lead + radius0 * Math.sin(theta)))
-        .add(turn.mul(radius1 * (1 - Math.cos(theta))));
-      centers.push(toPoint(p));
-      normals.push(toFdVector(rotateAroundAxis(f.normal, axis, theta)));
-      ups.push(toFdVector(f.up));
-      widths.push(w0 + (w1 - w0) * t);
-      heights.push(h);
-    }
-    if (lead > 0) {
-      centers.unshift(toPoint(f.center));
-      normals.unshift(toFdVector(f.normal));
-      ups.unshift(toFdVector(f.up));
-      widths.unshift(w0);
-      heights.unshift(h);
-    }
-    if (tail > 0) {
-      const last = centers.at(-1)!;
-      centers.push(last.add(normals.at(-1)!.mul(tail)));
-      normals.push(normals.at(-1)!);
-      ups.push(ups.at(-1)!);
-      widths.push(w1);
-      heights.push(h);
-    }
-    const sides = a.get('sides');
-    const visible = sides instanceof RuntimeArray ? sides.elements.slice(0, 4).map(Boolean) : [true, true, true, true];
-    scene.meshes.push(
-      buildBoxMesh(
-        context,
-        centers.length - 1,
-        centers,
-        normals,
-        ups,
-        widths,
-        heights,
-        Array.from({ length: centers.length - 1 }, () => visible).flat(),
-        false,
-        false,
       ),
-    );
-    if (a.bool('endCon')) {
-      const c = centers.at(-1)!,
-        n = normals.at(-1)!;
-      const u = f.up.mul(h / 2),
-        r = normalized(cross(new DVec3(n.x, n.y, n.z), f.up)).mul(w1 / 2),
-        p = new DVec3(c.x, c.y, c.z);
-      appendStroke(scene, context, [p.add(u).add(r), p.add(u).sub(r), p.sub(u).sub(r), p.sub(u).add(r)], true);
-    }
+    ),
+  );
+}
 
-    return true;
-  } catch (error) {
-    scene.warnings.push(warningFor(context.call, error instanceof Error ? error.message : 'invalid derived geometry'));
+// Dimensions describe the rim envelope. Shape proportions are inferred from the sanitary fixture
+// (there are no profile tables in SDK headers).
+function sanitaryBowl({ scene, context, a }: DerivedSketch, profile: BowlProfile): boolean {
+  const f = a.frame();
+  const w = a.positive('width'),
+    l = a.positive('length'),
+    h = a.positive('height');
+  const bowl = new FdBowlInfo(4, a.count('nComplexityR'), a.count('nComplexityV'));
+  const vertical = toFdVector(f.normal),
+    direction = toFdVector(f.up);
+  bowl.faces[0].initAsRectangle(vertical, direction, toPoint(f.center), [w, l]);
+  bowl.faces[1].initAsRectangle(
+    vertical,
+    direction,
+    toPoint(f.center.sub(f.normal.mul(h))),
+    [w * profile[0], l * profile[1]],
+    true,
+  );
+  bowl.faces.forEach((face) =>
+    face.corners.forEach((c) => {
+      c.radii = [Math.min(w, l) * profile[2], Math.min(w, l) * profile[2]];
+    }),
+  );
 
-    return true;
+  return appendBowl(scene, context, [bowl], false);
+}
+
+function bend({ scene, context, a }: DerivedSketch): void {
+  const f = a.frame();
+  if (a.get('outEllipse') !== undefined) throw new Error('AcDbEllipse output overload requires a native CAD object');
+  if (!a.bool('draw', true)) return;
+  const w0 = a.positive('beginWidth'),
+    w1 = a.positive('endWidth'),
+    h = a.positive('Height');
+  const r0 = a.num('R11'),
+    r1 = a.num('R12', r0);
+  if (r0 < 0 || r1 < 0) throw new Error('bend radii cannot be negative');
+  const sweep = (a.num('alfa', 90) * Math.PI) / 180,
+    count = a.count('complexity');
+  if (Math.abs(sweep) < 1e-9) throw new Error('bend angle must be nonzero');
+  const turn = f.right.mul(a.bool('reverse') ? -1 : 1);
+  const axis = normalized(cross(f.normal, turn));
+  const radius0 = r0 + w0 / 2,
+    radius1 = r1 + w1 / 2;
+  const centers = [],
+    normals = [],
+    ups = [],
+    widths = [],
+    heights = [];
+  const lead = a.num('beginLength', 0),
+    tail = a.num('endBox', 0);
+  for (let i = 0; i <= count; ++i) {
+    const t = i / count,
+      theta = t * sweep;
+    const p = f.center
+      .add(f.normal.mul(lead + radius0 * Math.sin(theta)))
+      .add(turn.mul(radius1 * (1 - Math.cos(theta))));
+    centers.push(toPoint(p));
+    normals.push(toFdVector(rotateAroundAxis(f.normal, axis, theta)));
+    ups.push(toFdVector(f.up));
+    widths.push(w0 + (w1 - w0) * t);
+    heights.push(h);
+  }
+  if (lead > 0) {
+    centers.unshift(toPoint(f.center));
+    normals.unshift(toFdVector(f.normal));
+    ups.unshift(toFdVector(f.up));
+    widths.unshift(w0);
+    heights.unshift(h);
+  }
+  if (tail > 0) {
+    const last = centers.at(-1)!;
+    centers.push(last.add(normals.at(-1)!.mul(tail)));
+    normals.push(normals.at(-1)!);
+    ups.push(ups.at(-1)!);
+    widths.push(w1);
+    heights.push(h);
+  }
+  const sides = a.get('sides');
+  const visible = sides instanceof RuntimeArray ? sides.elements.slice(0, 4).map(Boolean) : [true, true, true, true];
+  scene.meshes.push(
+    buildBoxMesh(
+      context,
+      centers.length - 1,
+      centers,
+      normals,
+      ups,
+      widths,
+      heights,
+      Array.from({ length: centers.length - 1 }, () => visible).flat(),
+      false,
+      false,
+    ),
+  );
+  if (a.bool('endCon')) {
+    const c = centers.at(-1)!,
+      n = normals.at(-1)!;
+    const u = f.up.mul(h / 2),
+      r = normalized(cross(new DVec3(n.x, n.y, n.z), f.up)).mul(w1 / 2),
+      p = new DVec3(c.x, c.y, c.z);
+    appendStroke(scene, context, [p.add(u).add(r), p.add(u).sub(r), p.sub(u).sub(r), p.sub(u).add(r)], true);
   }
 }
+
+export const derivedAdapters: AdapterTable = {
+  makeBend: derived(bend),
+  makeBend2: derived(bend),
+  makeRectBend: derived(bend),
+  makeSymetricBend: derived(bend),
+  makeEllipticalPlane: derived(ellipticalPlane),
+  makeBowlWC: derivedOrUnsupported((d) => sanitaryBowl(d, [0.48, 0.6, 0.42])),
+  makeBowlSink: derivedOrUnsupported((d) => sanitaryBowl(d, [0.58, 0.65, 0.32])),
+  makeBowlBath: derivedOrUnsupported((d) => sanitaryBowl(d, [0.72, 0.82, 0.2])),
+  makeBowlShower: derivedOrUnsupported((d) => sanitaryBowl(d, [0.86, 0.86, 0.06])),
+  makeAlizeFront: derived(alizeFront),
+};

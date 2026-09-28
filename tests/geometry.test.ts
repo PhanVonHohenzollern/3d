@@ -263,6 +263,16 @@ describe('preview adapter registry', () => {
     expect(supportedPreviewApiNames().filter((name) => name === 'make_line')).toHaveLength(1);
   });
 
+  it('has an adapter for every PnGeometry.h make_* API', () => {
+    const supported = new Set(supportedPreviewApiNames());
+    const planar = apiMetadata
+      .allNativeApiSignatures()
+      .filter((signature) => signature.sourceHeader === 'PnGeometry.h' && signature.name.startsWith('make_'))
+      .map((signature) => signature.name);
+    expect(planar.length).toBeGreaterThan(30);
+    expect(planar.filter((name) => !supported.has(name))).toEqual([]);
+  });
+
   it('keeps every API in no_adapter.cpp without an adapter, so that fixture still draws nothing', () => {
     const [fixture] = listFixtures('geometry').filter((item) => item.name === 'geometry/no_adapter.cpp');
     const result = new GeometryRuntime().executeUpToLine(fixture.code, 999);
