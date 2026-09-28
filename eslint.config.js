@@ -39,8 +39,9 @@ export default defineConfig([
         {
           patterns: [
             {
-              regex: '^(@/|@engine(/|$)|~/|src/|/)',
-              message: 'Use a relative import. Aliases and absolute paths are not allowed (docs/architecture.md).',
+              regex: '^(\\.{1,2}(/|$)|~/|src/|tests/|/)',
+              message:
+                'Import project code with @/ (src) or @tests/ (tests), never a relative or absolute path (docs/architecture.md).',
             },
           ],
         },
