@@ -1,5 +1,6 @@
+import type { FunctionEditorActions, FunctionEditorState } from '@/components/FunctionEditor';
 import { useModelFiles } from '@/hooks/useModelFiles';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';
 import { useObservable } from '@/hooks/useObservable';
 
@@ -9,6 +10,19 @@ export function useMainWindow() {
   const files = useModelFiles(mainWindow);
   const workspace = mainWindow.functions;
   const parameterFunctions = workspace.parameterFunctions;
+  const functionActions = useMemo<FunctionEditorActions>(
+    () => ({
+      create: { add: mainWindow.addFunction, clearError: mainWindow.clearFunctionError },
+      current: {
+        attach: mainWindow.attachFunction,
+        cancel: mainWindow.cancelFunction,
+        remove: mainWindow.deleteFunction,
+        save: mainWindow.saveFunction,
+      },
+      select: mainWindow.selectFunction,
+    }),
+    [mainWindow],
+  );
 
   useEffect(() => {
     document.title = 'Geometry Preview';
@@ -26,17 +40,13 @@ export function useMainWindow() {
 
   return {
     functions: {
-      active: workspace.active,
-      names: workspace.names,
-      error: workspace.error,
-      unsaved: [...workspace.drafts.keys()].filter((name) => workspace.source(name) !== workspace.savedSource(name)),
-      add: mainWindow.addFunction,
-      clearError: mainWindow.clearFunctionError,
-      select: mainWindow.selectFunction,
-      save: mainWindow.saveFunction,
-      cancel: mainWindow.cancelFunction,
-      attach: mainWindow.attachFunction,
-      remove: mainWindow.deleteFunction,
+      state: {
+        active: workspace.active,
+        names: workspace.names,
+        error: workspace.error,
+        unsaved: [...workspace.drafts.keys()].filter((name) => workspace.source(name) !== workspace.savedSource(name)),
+      } satisfies FunctionEditorState,
+      actions: functionActions,
     },
     subParameters: {
       enabled: mainWindow.canEditSubParameters,
