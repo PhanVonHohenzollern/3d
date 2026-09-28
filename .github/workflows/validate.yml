@@ -29,6 +29,12 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Import boundaries (warnings only)
+        run: npm run lint:boundaries
+
+      - name: Feature-Sliced Design (warnings only)
+        run: npm run lint:fsd
+
       - name: Prettier
         run: npm run format:check
 
