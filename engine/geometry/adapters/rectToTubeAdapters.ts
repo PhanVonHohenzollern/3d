@@ -1,184 +1,117 @@
 import { normalized } from '@engine/math/DVec3';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { buildSectionTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import {
   buildRectTubeIntersectionMeshes,
   buildRectToEllipseTransitionMesh,
   rectangleCorners,
 } from '@engine/geometry/builders/transitionMeshes';
+import { namedAdapter } from '@engine/geometry/helpers/adapterErrors';
 import { warningFor } from '@engine/geometry/helpers/apiCall';
 import { kEps, sdkPerpVector, toPoint, toVec, validDirection } from '@engine/geometry/helpers/geometryMath';
 import { pushNonEmptyMesh } from '@engine/geometry/helpers/meshData';
-import { asInt, asPoint, asVector, numberArray, pointArray, ref } from '@engine/geometry/helpers/valueDecoding';
+import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
 import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-function appendRectToTubeTransition(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
-  const call = context.call;
-  if (args.length !== 7) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeTransition expects 7 evaluated arguments'));
+// The tessellation a transition previews with when its complexity cannot be evaluated.
+const kPreviewComplexity = 10;
 
-    return true;
-  }
-
-  const start = ref(new FdPoint3d()),
-    tubeStart = ref(new FdPoint3d());
-  const normal = ref(new FdVector3d()),
-    upVector = ref(new FdVector3d());
-  const tubeDiams: number[] = [];
-  const complexity = ref(0);
-  const hasComplexity = asInt(args[6], complexity);
-  if (
-    !asPoint(args[0], start) ||
-    !asVector(args[1], normal) ||
-    !asVector(args[2], upVector) ||
-    !asPoint(args[4], tubeStart) ||
-    !numberArray(args[5], tubeDiams)
-  ) {
+// An unevaluated complexity does not fail the call: it warns and previews with kPreviewComplexity.
+function transitionComplexity(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): number {
+  try {
+    return a.int('n');
+  } catch {
     scene.warnings.push(
-      warningFor(call, 'makeRectToTubeTransition position/orientation/dimension arguments could not be evaluated'),
+      warningFor(
+        context.call,
+        `makeRectToTubeTransition complexity is unresolved; using preview tessellation n=${kPreviewComplexity}`,
+      ),
     );
 
-    return true;
+    return kPreviewComplexity;
   }
-  if (!hasComplexity) {
-    complexity.v = 10;
-    scene.warnings.push(
-      warningFor(call, 'makeRectToTubeTransition complexity is unresolved; using preview tessellation n=10'),
-    );
+}
+
+// The overloads give the rectangle either as its corners[4] or as heightWidth[2] around start.
+function transitionCorners(a: NamedArguments, start: FdPoint3d, normal: FdVector3d, up: FdVector3d): FdPoint3d[] {
+  if (a.has('corners')) {
+    const corners = a.pointArray('corners');
+    if (corners.length < 4) throw new Error('makeRectToTubeTransition corners array must contain four points');
+
+    return corners.slice(0, 4);
   }
+  const heightWidth = a.realArray('heightWidth');
+  if (heightWidth.length < 2 || heightWidth[0] <= 0.0 || heightWidth[1] <= 0.0)
+    throw new Error('makeRectToTubeTransition requires corners[4] or positive heightWidth[2]');
+
+  return rectangleCorners(start, normal, up, heightWidth[0], heightWidth[1]);
+}
+
+function appendRectToTubeTransition(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const start = a.point('start');
+  const normal = a.fdVector('normal'),
+    upVector = a.fdVector('upVector');
+  const tubeStart = a.point('tubeStart');
+  const tubeDiams = a.realArray('tubeDiams');
+  const complexity = transitionComplexity(scene, context, a);
   if (
-    !validDirection(normal.v) ||
-    !validDirection(upVector.v) ||
+    !validDirection(normal) ||
+    !validDirection(upVector) ||
     tubeDiams.length < 3 ||
     tubeDiams[0] <= 0.0 ||
     tubeDiams[1] <= 0.0 ||
     Math.abs(tubeDiams[2]) <= kEps ||
-    complexity.v < 1
-  ) {
-    scene.warnings.push(
-      warningFor(call, 'makeRectToTubeTransition has invalid normal/upVector, tube diameters or tube length'),
-    );
-
-    return true;
-  }
-
-  let corners: FdPoint3d[] = [];
-  if (!pointArray(args[3], corners)) {
-    const heightWidth: number[] = [];
-    if (
-      !numberArray(args[3], heightWidth) ||
-      heightWidth.length < 2 ||
-      heightWidth[0] <= 0.0 ||
-      heightWidth[1] <= 0.0
-    ) {
-      scene.warnings.push(warningFor(call, 'makeRectToTubeTransition requires corners[4] or positive heightWidth[2]'));
-
-      return true;
-    }
-    corners = rectangleCorners(start.v, normal.v, upVector.v, heightWidth[0], heightWidth[1]);
-  }
-  if (corners.length < 4) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeTransition corners array must contain four points'));
-
-    return true;
-  }
-  corners.length = 4;
+    complexity < 1
+  )
+    throw new Error('makeRectToTubeTransition has invalid normal/upVector, tube diameters or tube length');
+  const corners = transitionCorners(a, start, normal, upVector);
 
   const transition = buildRectToEllipseTransitionMesh(
     context,
     corners,
-    start.v,
-    normal.v,
-    upVector.v,
-    tubeStart.v,
+    start,
+    normal,
+    upVector,
+    tubeStart,
     tubeDiams[0],
     tubeDiams[1],
-    complexity.v,
+    complexity,
   );
   transition.apiName += '.transition';
-  if (transition.vertices.length === 0 || transition.indices.length === 0) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeTransition could not build the rectangle-to-ellipse loft'));
-
-    return true;
-  }
+  if (transition.vertices.length === 0 || transition.indices.length === 0)
+    throw new Error('makeRectToTubeTransition could not build the rectangle-to-ellipse loft');
   pushNonEmptyMesh(scene, transition);
 
-  const n = normalized(toVec(normal.v));
-  const tubeEnd = toPoint(toVec(tubeStart.v).add(n.mul(tubeDiams[2])));
-  const centers = [tubeStart.v, tubeEnd];
-  const normals = [normal.v, normal.v];
-  const ups = [upVector.v, upVector.v];
+  const n = normalized(toVec(normal));
+  const tubeEnd = toPoint(toVec(tubeStart).add(n.mul(tubeDiams[2])));
+  const centers = [tubeStart, tubeEnd];
+  const normals = [normal, normal];
+  const ups = [upVector, upVector];
   const diameters = [
     [tubeDiams[0], tubeDiams[1]],
     [tubeDiams[0], tubeDiams[1]],
   ];
-  const tube = buildSectionTubeMesh(context, centers, normals, ups, diameters, complexity.v, 1, false);
+  const tube = buildSectionTubeMesh(context, centers, normals, ups, diameters, complexity, 1, false);
   tube.apiName += '.tube';
-  if (tube.vertices.length === 0 || tube.indices.length === 0) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeTransition could not build the elliptical tube'));
-
-    return true;
-  }
+  if (tube.vertices.length === 0 || tube.indices.length === 0)
+    throw new Error('makeRectToTubeTransition could not build the elliptical tube');
   pushNonEmptyMesh(scene, tube);
-
-  return true;
 }
 
-function appendRectToTubeIntersection(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
-  const call = context.call;
-  if (args.length !== 6 && args.length !== 7) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection expects 6 or 7 evaluated arguments'));
-
-    return true;
-  }
-  const start = ref(new FdPoint3d());
-  const normal = ref(new FdVector3d()),
-    upVector = ref(new FdVector3d());
-  const tubeParams: number[] = [],
-    ductPosition: number[] = [],
-    ductParams: number[] = [];
-  const complexity = ref(0);
-
-  const withUpVector = args.length === 7;
-  const tubeIndex = withUpVector ? 3 : 2;
-  if (!asPoint(args[0], start) || !asVector(args[1], normal)) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection start/normal could not be evaluated'));
-
-    return true;
-  }
-  if (withUpVector) {
-    if (!asVector(args[2], upVector)) {
-      scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection upVector could not be evaluated'));
-
-      return true;
-    }
-  } else {
-    upVector.v = sdkPerpVector(normal.v);
-  }
+// Without an upVector the section is oriented by the SDK's perpendicular to the normal.
+function appendRectToTubeIntersection(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const start = a.point('start');
+  const normal = a.fdVector('normal');
+  const upVector = a.has('upVector') ? a.fdVector('upVector') : sdkPerpVector(normal);
+  const tubeParams = a.realArray('tubeParams'),
+    ductPosition = a.realArray('ductPosition'),
+    ductParams = a.realArray('ductParams');
+  const complexity = a.int('n');
   if (
-    !numberArray(args[tubeIndex], tubeParams) ||
-    !numberArray(args[tubeIndex + 1], ductPosition) ||
-    !numberArray(args[tubeIndex + 2], ductParams) ||
-    !asInt(args[tubeIndex + 3], complexity)
-  ) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection array arguments could not be evaluated'));
-
-    return true;
-  }
-  if (
-    !validDirection(normal.v) ||
-    !validDirection(upVector.v) ||
+    !validDirection(normal) ||
+    !validDirection(upVector) ||
     tubeParams.length < 3 ||
     ductPosition.length < 2 ||
     ductParams.length < 3 ||
@@ -188,12 +121,9 @@ function appendRectToTubeIntersection(
     ductParams[0] <= 0.0 ||
     ductParams[1] <= 0.0 ||
     Math.abs(ductParams[2]) <= kEps ||
-    complexity.v < 1
-  ) {
-    scene.warnings.push(warningFor(call, 'makeRectToTubeIntersection has invalid dimensions, vectors or complexity'));
-
-    return true;
-  }
+    complexity < 1
+  )
+    throw new Error('makeRectToTubeIntersection has invalid dimensions, vectors or complexity');
 
   const halfWidth = ductParams[0] * 0.5,
     halfHeight = ductParams[1] * 0.5;
@@ -203,21 +133,15 @@ function appendRectToTubeIntersection(
     ductPosition[0] + halfWidth > tubeParams[2] + kEps ||
     Math.abs(ductPosition[1]) + halfHeight > tubeParams[0] * 0.5 + kEps ||
     Math.abs(ductParams[2]) <= tubeParams[1] * 0.5 + kEps
-  ) {
-    scene.warnings.push(
-      warningFor(
-        call,
-        'makeRectToTubeIntersection opening must lie within the main tube and ductLength must extend beyond diamB/2',
-      ),
+  )
+    throw new Error(
+      'makeRectToTubeIntersection opening must lie within the main tube and ductLength must extend beyond diamB/2',
     );
-
-    return true;
-  }
   const [mainTube, duct] = buildRectTubeIntersectionMeshes(
     context,
-    start.v,
-    normal.v,
-    upVector.v,
+    start,
+    normal,
+    upVector,
     tubeParams[0],
     tubeParams[1],
     tubeParams[2],
@@ -226,15 +150,16 @@ function appendRectToTubeIntersection(
     ductParams[0],
     ductParams[1],
     ductParams[2],
-    complexity.v,
+    complexity,
   );
   pushNonEmptyMesh(scene, mainTube);
   pushNonEmptyMesh(scene, duct);
-
-  return true;
 }
 
 export const rectToTubeAdapters: AdapterTable = {
-  makeRectToTubeTransition: appendRectToTubeTransition,
-  makeRectToTubeIntersection: appendRectToTubeIntersection,
+  makeRectToTubeTransition: namedAdapter('invalid makeRectToTubeTransition arguments', appendRectToTubeTransition),
+  makeRectToTubeIntersection: namedAdapter(
+    'invalid makeRectToTubeIntersection arguments',
+    appendRectToTubeIntersection,
+  ),
 };

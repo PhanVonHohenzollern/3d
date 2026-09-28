@@ -3,6 +3,22 @@ import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { isArray, runtimeNumber, runtimeTruthy, type RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { basisFromUp, toVec } from '@engine/geometry/helpers/geometryMath';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
+import {
+  asBool,
+  asInt,
+  asNumber,
+  boolArray,
+  intArray,
+  numberArray,
+  numberMatrix,
+  pointArray,
+  ref,
+  vectorArray,
+} from '@engine/geometry/helpers/valueDecoding';
+
+function isScalar(value: RuntimeValue): value is number | bigint | boolean {
+  return typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean';
+}
 
 // A placement read from the arguments: centre, normal, and the up and right directions across it.
 export type Frame = { center: DVec3; normal: DVec3; up: DVec3; right: DVec3 };
@@ -15,6 +31,95 @@ export class NamedArguments {
     const signature = context.call.signature;
     if (!signature) throw new Error('no matching SDK overload');
     signature.parameters.forEach((p, i) => this.values.set(p.name, args[i]));
+  }
+
+  // Whether the call's overload has a parameter with this name.
+  has(name: string): boolean {
+    return this.values.has(name);
+  }
+
+  // Strict readers: the value must already have the SDK type, as the C++ call would require.
+  // Each one throws an error naming the parameter otherwise.
+
+  point(name: string): FdPoint3d {
+    const value = this.get(name);
+    if (!(value instanceof FdPoint3d)) throw new Error(`${name} must be an FdPoint3d`);
+
+    return value;
+  }
+
+  fdVector(name: string): FdVector3d {
+    const value = this.get(name);
+    if (!(value instanceof FdVector3d)) throw new Error(`${name} must be an FdVector3d`);
+
+    return value;
+  }
+
+  real(name: string): number {
+    const out = ref(0);
+    if (!asNumber(this.get(name), out)) throw new Error(`${name} must be a number`);
+
+    return out.v;
+  }
+
+  // Rounded to the nearest integer, as the SDK's int parameters are.
+  int(name: string): number {
+    const out = ref(0);
+    if (!asInt(this.get(name), out)) throw new Error(`${name} must be an integer`);
+
+    return out.v;
+  }
+
+  flag(name: string): boolean {
+    const out = ref(false);
+    if (!asBool(this.get(name), out)) throw new Error(`${name} must be a bool`);
+
+    return out.v;
+  }
+
+  // Lenient readers for optional settings: a missing or non-scalar value gives the fallback.
+
+  optionalFlag(name: string, fallback: boolean): boolean {
+    return isScalar(this.get(name)) ? this.flag(name) : fallback;
+  }
+
+  optionalInt(name: string, fallback: number): number {
+    return isScalar(this.get(name)) ? this.int(name) : fallback;
+  }
+
+  optionalReal(name: string, fallback: number): number {
+    return isScalar(this.get(name)) ? this.real(name) : fallback;
+  }
+
+  pointArray(name: string): FdPoint3d[] {
+    return this.#array(name, pointArray, 'an FdPoint3d array');
+  }
+
+  vectorArray(name: string): FdVector3d[] {
+    return this.#array(name, vectorArray, 'an FdVector3d array');
+  }
+
+  realArray(name: string): number[] {
+    return this.#array(name, numberArray, 'a number array');
+  }
+
+  intArray(name: string): number[] {
+    return this.#array(name, intArray, 'an integer array');
+  }
+
+  flagArray(name: string): boolean[] {
+    return this.#array(name, boolArray, 'a bool array');
+  }
+
+  realMatrix(name: string): number[][] {
+    return this.#array(name, numberMatrix, 'a number matrix');
+  }
+
+  #array<T>(name: string, decode: (value: RuntimeValue, out: T[]) => boolean, kind: string): T[] {
+    const out: T[] = [];
+    if (!decode(this.get(name), out)) throw new Error(`${name} must be ${kind}`);
+
+    return out;
   }
 
   get(...names: string[]): RuntimeValue {

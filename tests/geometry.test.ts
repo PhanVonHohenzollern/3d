@@ -315,7 +315,7 @@ describe('tube-to-tube intersections', () => {
     [
       'a scalar angle',
       'double pos[2] = {100,0}; double ang = 90;',
-      'makeTubeToTubeIntersection: angles needs 1 number',
+      'makeTubeToTubeIntersection: angles must be a number array',
     ],
   ])('warns instead of drawing nothing for %s', (_, declarations, warning) => {
     const scene = build(
