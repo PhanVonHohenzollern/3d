@@ -1,6 +1,6 @@
 import { Braces, Info, Link2, ListTree, SlidersHorizontal } from 'lucide-react';
 import type { DockAreaProps } from '@/types/dockArea';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/shared/ui/tabs';
 
 const icons = {
   VariablesDock: Braces,

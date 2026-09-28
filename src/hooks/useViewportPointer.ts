@@ -1,8 +1,8 @@
 import { useRef, type PointerEvent, type RefObject } from 'react';
 import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
-import { NoButton, mouseButtonFromDom, mouseButtonsFromDom, mouseEventData } from '@/helpers/qtInput';
-import { capturePointer } from '@/utils/dom';
-import { preventDefault } from '@/utils/events';
+import { NoButton, mouseButtonFromDom, mouseButtonsFromDom, mouseEventData } from '@/shared/lib/qt';
+import { capturePointer } from '@/shared/lib/dom';
+import { preventDefault } from '@/shared/lib/events';
 
 type CanvasPointerEvent = PointerEvent<HTMLCanvasElement>;
 

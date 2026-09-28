@@ -1,7 +1,7 @@
-import { LeftButton } from '@/helpers/qtInput';
-import type { KeyboardModifiers } from '@/types/input';
-import type { QColor } from '@/types/painting';
-import type { FontSpec, TextMeasurer } from '@/types/text';
+import { LeftButton } from '@/shared/lib/qt';
+import type { KeyboardModifiers } from '@/shared/lib/qt';
+import type { QColor } from '@/shared/lib/painting';
+import type { FontSpec, TextMeasurer } from '@/shared/lib/text';
 import type {
   DebugLabelEntry,
   DebugLabelPanelSnapshot,
@@ -11,7 +11,7 @@ import type {
   SelectionOp,
 } from '@/types/viewportEngine';
 import { QRect } from '@/utils/Rect';
-import { approximateTextMeasurer, fontHeight, fontWithPointSize, kDefaultFontFamily } from '@/utils/textMetrics';
+import { approximateTextMeasurer, fontHeight, fontWithPointSize, kDefaultFontFamily } from '@/shared/lib/text';
 import { labelRowLayout, sameEntries } from '@/core/viewport/debugLabelRows';
 import { ItemSelectionModel } from '@/core/viewport/ItemSelectionModel';
 import {

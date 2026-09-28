@@ -1,9 +1,9 @@
 import { debugValueText } from '@/helpers/debugValueText';
-import type { TextMeasurer } from '@/types/text';
+import type { TextMeasurer } from '@/shared/lib/text';
 import type { ConnectorVertexRanges } from '@/types/viewportEngine';
-import { Qt, qColor, qPen } from '@/utils/painting';
+import { Qt, qColor, qPen } from '@/shared/lib/painting';
 import { QRectF } from '@/utils/Rect';
-import { fontHeight, horizontalAdvance } from '@/utils/textMetrics';
+import { fontHeight, horizontalAdvance } from '@/shared/lib/text';
 import { QVector3D, type QPointF } from '@/utils/Vector3D';
 import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
 import type { FdPoint3d } from '@/core/runtime/FdMath';

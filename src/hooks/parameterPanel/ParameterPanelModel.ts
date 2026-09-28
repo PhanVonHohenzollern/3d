@@ -8,10 +8,10 @@ import {
   parameterSeed,
   refinedParameterValue,
 } from '@/helpers/parameters';
-import { adjacentCell, rowForKey } from '@/helpers/tableNavigation';
+import { adjacentCell, rowForKey } from '@/shared/ui/table-view';
 import type { ParameterEditor, ParameterPanelHandle, ParameterRow } from '@/types/panels';
-import { isMacPlatform } from '@/utils/platform';
-import { Observable } from '@/hooks/observable/Observable';
+import { isMacPlatform } from '@/shared/lib/platform';
+import { Observable } from '@/shared/lib/observable';
 import { parseParameterTable } from '@/helpers/parameterTable';
 
 export const kParameterValueColumn = 3;

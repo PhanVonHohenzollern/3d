@@ -1,7 +1,7 @@
 import type { GpuVertexLayout } from '@/types/viewportEngine';
 import { QMatrix4x4 } from '@/utils/Matrix4x4';
 import { QVector3D } from '@/utils/Vector3D';
-import { createProgram } from '@/core/viewport/glProgram';
+import { createProgram } from '@/shared/lib/webgl/glProgram';
 import { expandLineQuads, kLineQuadBytes, kLineQuadVerticesPerVertex } from '@/core/viewport/lineQuads';
 import {
   kFragmentShader,

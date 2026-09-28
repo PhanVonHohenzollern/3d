@@ -1,4 +1,4 @@
-import { Qt, qColor, qPen } from '@/utils/painting';
+import { Qt, qColor, qPen } from '@/shared/lib/painting';
 import type { QRect } from '@/utils/Rect';
 import { QPointF, type QVector3D } from '@/utils/Vector3D';
 import type { DebugItem } from '@/core/viewport/DebugItem';

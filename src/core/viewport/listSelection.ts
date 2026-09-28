@@ -1,5 +1,5 @@
-import { RightButton } from '@/helpers/qtInput';
-import type { KeyboardModifiers } from '@/types/input';
+import { RightButton } from '@/shared/lib/qt';
+import type { KeyboardModifiers } from '@/shared/lib/qt';
 import type { SelectionCommand, SelectionEvent } from '@/types/viewportEngine';
 
 export const NoUpdate: SelectionCommand = {};

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { containerPageSize } from '@/helpers/pagination';
+import { containerPageSize } from '@/shared/ui/pagination';
 
 describe('Inspector page capacity', () => {
   it('reserves table headers and navigation when fitting rows', () => {

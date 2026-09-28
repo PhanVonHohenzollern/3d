@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DebugLabelPanel } from '@/core/viewport/DebugLabelPanel';
 import type { DebugLabelEntry } from '@/types/viewportEngine';
-import { qColor } from '@/utils/painting';
-import { LeftButton, NoModifier, RightButton } from '@/helpers/qtInput';
-import { elidedText } from '@/utils/textMetrics';
+import { qColor } from '@/shared/lib/painting';
+import { LeftButton, NoModifier, RightButton } from '@/shared/lib/qt';
+import { elidedText } from '@/shared/lib/text';
 import { debugLabelPanelsLayout } from '@/core/viewport/panelLayout';
 import { debugValueText } from '@/helpers/debugValueText';
 import { fixedMeasurer } from '@tests/renderer/helpers';

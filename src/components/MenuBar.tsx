@@ -1,8 +1,8 @@
-import { stripMnemonic } from '@/helpers/keyboard';
-import { useAction } from '@/hooks/useAction';
-import type { Action } from '@/hooks/mainWindow/Action';
+import { stripMnemonic } from '@/shared/lib/qt';
+import { useAction } from '@/shared/lib/action';
+import type { Action } from '@/shared/lib/action';
 import type { Menu } from '@/types/mainWindow';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/ui/button';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -11,7 +11,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-} from '@/components/ui/dropdown-menu';
+} from '@/shared/ui/dropdown-menu';
 
 function MenuItem({ action }: { action: Action }) {
   const { menuText, shortcutText, checkable, checked, trigger } = useAction(action);
