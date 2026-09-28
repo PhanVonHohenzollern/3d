@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { adapterMap, supportedPreviewApiNames } from '../src/core/geometry/adapters/apiAdapters';
 import { buildConnectorPreview } from '../src/core/geometry/ConnectorPreview';
 import { PreviewGeometryEngine } from '../src/core/geometry/PreviewGeometryEngine';
 import type { PreviewMesh } from '../src/core/geometry/previewScene';
@@ -207,6 +208,28 @@ it('keeps external insulation dark red across color changes and restores colors 
     r: 0,
     g: 1,
     b: 0,
+  });
+});
+
+describe('preview adapter registry', () => {
+  it('rejects an API name registered to two adapters', () => {
+    const draw = () => true;
+
+    const registered = new Set<string>();
+    adapterMap([['makeTube', draw]], registered);
+    expect(() => adapterMap([['makeTube', draw]], registered)).toThrow('preview adapter registered twice: makeTube');
+  });
+
+  it('draws make_line and make_thin_line with the planar adapter', () => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      'FdPoint3d a(0, 0, 0), b(100, 0, 0);\nmake_line(a, b);\nmake_thin_line(a, b);',
+      999,
+    );
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    expect(supportedPreviewApiNames().filter((name) => name === 'make_line')).toHaveLength(1);
   });
 });
 
