@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { ParameterPanelModel } from '@/features/edit-parameters/model/ParameterPanelModel';
 import type { RuntimeParameterRequest, RuntimeResult } from '@engine/runtime';
 
 export type ParameterAvailability = (parameters: ReadonlyMap<string, string>) => ReadonlySet<string> | null;
@@ -16,9 +16,8 @@ export interface ParameterPanelHandle {
 }
 
 export interface ParameterPanelProps {
-  onChanged?: () => void;
+  model: ParameterPanelModel;
   onApply?: () => void;
-  ref?: Ref<ParameterPanelHandle>;
 }
 
 export type ParameterTableDialogState = {

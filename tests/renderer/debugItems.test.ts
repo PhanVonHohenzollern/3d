@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { appendVectorArrow } from '@/core/viewport/debugItems';
-import { VertexArray } from '@/core/viewport/VertexArray';
+import { appendVectorArrow } from '@/widgets/viewport/lib/render/debugItems';
+import { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import { debugValueText } from '@/entities/api-call';
-import { QVector3D } from '@/utils/Vector3D';
+import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { createEngine, updateCamera, vectorItem } from '@tests/renderer/helpers';
 
 function arrowFor(start: QVector3D, end: QVector3D) {

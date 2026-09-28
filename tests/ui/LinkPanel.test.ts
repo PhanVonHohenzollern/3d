@@ -15,7 +15,7 @@ function createPanel() {
   const model = new LinkPanelModel();
   const published: { previews: readonly ConnectorPreview[]; selectedId: number; tested: boolean }[] = [];
   model.setExpressionEvaluator(evaluate);
-  model.setPreviewChangedCallback((previews, selectedId, tested) => published.push({ previews, selectedId, tested }));
+  model.previewChanged.connect((previews, selectedId, tested) => published.push({ previews, selectedId, tested }));
 
   return { model, published };
 }

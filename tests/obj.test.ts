@@ -1,4 +1,4 @@
-import { buildGeometryVertices } from '@/core/viewport/geometryVertices';
+import { buildGeometryVertices } from '@/widgets/viewport/lib/render/geometryVertices';
 import { describe, expect, it } from 'vitest';
 import { parseObj, writeObj } from '@engine/formats/obj';
 const triangle = 'v 0 0 0\nv 2 0 0\nv 0 2 0\nf 1 2 3';

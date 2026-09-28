@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildConnectorPreview, defaultConnectorDefinition } from '@engine/geometry/ConnectorPreview';
 import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
-import { appendConnectorVertices } from '@/core/viewport/connectorOverlay';
-import { pickMeshAlongRay } from '@/core/viewport/picking';
-import { VertexArray } from '@/core/viewport/VertexArray';
+import { appendConnectorVertices } from '@/widgets/viewport/lib/render/connectorOverlay';
+import { pickMeshAlongRay } from '@/widgets/viewport/lib/render/picking';
+import { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import { isApiDebugItemId } from '@/entities/api-call';
 import { LeftButton } from '@/shared/lib/qt';
-import { QVector3D } from '@/utils/Vector3D';
+import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { click, createEngine, project, updateCamera } from '@tests/renderer/helpers';
 
 const source = `FdPoint3d p0(0, 0, 0);

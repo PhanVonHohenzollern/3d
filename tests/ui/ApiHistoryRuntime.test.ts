@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import type { RuntimeResult } from '@engine/runtime/RuntimeTypes';
-import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
+import { ApiHistoryDialogModel } from '@/widgets/api-trace-panel';
 import { HistoryColumn } from '@/entities/api-call';
 import type { TreeWidgetItem } from '@/shared/ui/tree';
 

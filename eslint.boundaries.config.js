@@ -50,40 +50,7 @@ const slicePublicApi = allSlices.map(({ layer, slice }) => ({
   message: `Import ${layer}/${slice} through its index.ts only.`,
 }));
 
-const legacyFolders = [
-  {
-    target: './src/features',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/utils'],
-    message: 'features/ must not import app code (components, hooks, helpers, types, core, utils).',
-  },
-  {
-    target: './src/entities',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/utils'],
-    message: 'entities/ must not import app code (components, hooks, helpers, types, core, utils).',
-  },
-  {
-    target: './src/shared',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/lib'],
-    message: 'shared/ must not import app code (components, hooks, helpers, types, core).',
-  },
-  {
-    target: './src/utils',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/core'],
-    message: 'utils/ must stay generic: no app or engine imports.',
-  },
-  {
-    target: './src/types',
-    from: ['./src/components', './src/hooks'],
-    message: 'types/ must not import hooks or components; move the type next to the code that owns it.',
-  },
-  {
-    target: './src/core/viewport',
-    from: ['./src/components', './src/hooks', './src/helpers'],
-    message: 'The viewport must not depend on app helpers, hooks or components.',
-  },
-];
-
-const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi, ...legacyFolders];
+const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi];
 
 export default defineConfig([
   globalIgnores(['dist', 'engine/runtime/*.generated.ts']),
@@ -97,8 +64,8 @@ export default defineConfig([
       'import-x/resolver-next': [createTypeScriptImportResolver()],
     },
     rules: {
-      'import-x/no-restricted-paths': ['warn', { zones }],
-      'import-x/no-cycle': ['warn', { ignoreExternal: true }],
+      'import-x/no-restricted-paths': ['error', { zones }],
+      'import-x/no-cycle': ['error', { ignoreExternal: true }],
     },
   },
 ]);

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
-import { QVector3D } from '@/utils/Vector3D';
-import { kVertexFloats } from '@/core/viewport/VertexArray';
-import { expandLineQuads, kLineQuadFloats } from '@/core/viewport/lineQuads';
-import { buildGeometryVertices, buildGeometryWireVertices } from '@/core/viewport/geometryVertices';
+import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { kVertexFloats } from '@/widgets/viewport/lib/render/VertexArray';
+import { expandLineQuads, kLineQuadFloats } from '@/widgets/viewport/lib/render/lineQuads';
+import { buildGeometryVertices, buildGeometryWireVertices } from '@/widgets/viewport/lib/render/geometryVertices';
 import { boxMesh, scene } from '@tests/renderer/helpers';
 
 function normalAt(data: Float32Array, vertex: number): QVector3D {

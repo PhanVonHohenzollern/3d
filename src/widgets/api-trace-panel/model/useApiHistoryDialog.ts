@@ -1,0 +1,15 @@
+import type { ApiHistoryDialogModel } from '@/widgets/api-trace-panel/model/ApiHistoryDialogModel';
+import { useObservable } from '@/shared/lib/observable';
+
+export function useApiHistoryDialog(dialog: ApiHistoryDialogModel) {
+  useObservable(dialog);
+
+  return {
+    open: dialog.isOpen(),
+    title: dialog.windowTitle,
+    caption: dialog.caption,
+    tree: dialog.tree,
+    raiseSerial: dialog.raiseSerial(),
+    close: () => dialog.close(),
+  };
+}

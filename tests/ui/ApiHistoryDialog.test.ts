@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { earlierChanges } from '@/entities/api-call';
 import { directSource, displayExpression } from '@/entities/api-call';
-import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
+import { ApiHistoryDialogModel } from '@/widgets/api-trace-panel';
 import { HistoryColumn } from '@/entities/api-call';
 import type { TreeWidgetItem } from '@/shared/ui/tree';
 import { p, traceResult } from '@tests/ui/traceFixture';

@@ -1,10 +1,6 @@
-import { useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import type { ParameterPanelProps } from '@/features/edit-parameters/model/types';
-import {
-  isInsulationEnabledKey,
-  kParameterValueColumn,
-  ParameterPanelModel,
-} from '@/features/edit-parameters/model/ParameterPanelModel';
+import { isInsulationEnabledKey, kParameterValueColumn } from '@/features/edit-parameters/model/ParameterPanelModel';
 import { useObservable } from '@/shared/lib/observable';
 import { parameterTableCells, parameterTableText, tableImportSummary } from '@/entities/parameter';
 import { what } from '@engine/runtime';
@@ -25,8 +21,7 @@ function tableDraftFromText(text: string): TableDraft {
   }
 }
 
-export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
-  const [model] = useState(() => new ParameterPanelModel());
+export function useParameterPanel({ model }: Pick<ParameterPanelProps, 'model'>) {
   const [draft, setDraft] = useState<TableDraft | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridSize, setGridSize] = useState({ width: 0, height: 0 });
@@ -47,9 +42,6 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
 
     return () => observer.disconnect();
   }, []);
-
-  useLayoutEffect(() => (onChanged ? model.valuesChanged.connect(onChanged) : undefined), [model, onChanged]);
-  useImperativeHandle(ref, () => model, [model]);
 
   const fields = model.rows
     .map((row, index) => {

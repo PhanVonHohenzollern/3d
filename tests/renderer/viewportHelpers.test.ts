@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { extendedSelectionCommand, moveCursor } from '@/core/viewport/listSelection';
-import { debugLabelPanelsLayout } from '@/core/viewport/panelLayout';
+import { extendedSelectionCommand, moveCursor } from '@/widgets/viewport/lib/render/listSelection';
+import { debugLabelPanelsLayout } from '@/widgets/viewport/lib/render/panelLayout';
 import { NoModifier, RightButton, mouseButtonFromDom, wheelAngleDeltaY } from '@/shared/lib/qt';
-import { Bounds3D } from '@/utils/Bounds3D';
+import { Bounds3D } from '@/widgets/viewport/lib/math/Bounds3D';
 
 const idle = { rowSelected: false, pressedRow: -1, dragSelecting: false };
 

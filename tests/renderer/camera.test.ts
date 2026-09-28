@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ViewportCamera } from '@/core/viewport/ViewportCamera';
-import { QPoint, QVector3D } from '@/utils/Vector3D';
+import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
+import { QPoint, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { createEngine, project, updateCamera } from '@tests/renderer/helpers';
 
 describe('ViewportCamera', () => {

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { connectorOrientations, previewOrientationDirection } from '@engine/geometry/ConnectorPreview';
-import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
-import { axesVertices, placeWorldAxisLabels } from '@/core/viewport/worldAxes';
-import type { AxisLabel } from '@/types/viewportEngine';
-import { QRectF } from '@/utils/Rect';
+import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
+import { axesVertices, placeWorldAxisLabels } from '@/widgets/viewport/lib/render/worldAxes';
+import type { AxisLabel } from '@/widgets/viewport/lib/render/types';
+import { QRectF } from '@/widgets/viewport/lib/math/Rect';
 import { fontWithPointSize, kDefaultFontFamily } from '@/shared/lib/text';
-import { QPointF, QVector3D, QVector4D } from '@/utils/Vector3D';
+import { QPointF, QVector3D, QVector4D } from '@/widgets/viewport/lib/math/Vector3D';
 import { createEngine, fixedMeasurer, resultWithP0, updateCamera } from '@tests/renderer/helpers';
 
 function occupiedAreas(engine: ViewportEngine): QRectF[] {

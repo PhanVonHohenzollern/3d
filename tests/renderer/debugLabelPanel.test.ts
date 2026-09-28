@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DebugLabelPanel } from '@/core/viewport/DebugLabelPanel';
-import type { DebugLabelEntry } from '@/types/viewportEngine';
+import { DebugLabelPanel } from '@/widgets/viewport/lib/render/DebugLabelPanel';
+import type { DebugLabelEntry } from '@/widgets/viewport/lib/render/types';
 import { qColor } from '@/shared/lib/painting';
 import { LeftButton, NoModifier, RightButton } from '@/shared/lib/qt';
 import { elidedText } from '@/shared/lib/text';
-import { debugLabelPanelsLayout } from '@/core/viewport/panelLayout';
+import { debugLabelPanelsLayout } from '@/widgets/viewport/lib/render/panelLayout';
 import { debugValueText } from '@/entities/api-call';
 import { fixedMeasurer } from '@tests/renderer/helpers';
 
