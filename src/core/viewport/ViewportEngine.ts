@@ -1,6 +1,6 @@
-import { LeftButton, NoButton, NoModifier, RightButton } from '@/helpers/qtInput';
-import type { KeyboardModifiers, MouseEventData, WheelEventData } from '@/types/input';
-import type { FontSpec, TextMeasurer } from '@/types/text';
+import { LeftButton, NoButton, NoModifier, RightButton } from '@/shared/lib/qt';
+import type { KeyboardModifiers, MouseEventData, WheelEventData } from '@/shared/lib/qt';
+import type { FontSpec, TextMeasurer } from '@/shared/lib/text';
 import type { Vec3 } from '@/types/viewport';
 import type {
   AxisLabel,
@@ -13,12 +13,12 @@ import type {
   ViewportSurface,
 } from '@/types/viewportEngine';
 import { Bounds3D } from '@/utils/Bounds3D';
-import { CanvasTextMeasurer } from '@/utils/CanvasTextMeasurer';
+import { CanvasTextMeasurer } from '@/shared/lib/text';
 import { QMatrix4x4 } from '@/utils/Matrix4x4';
-import { qColor } from '@/utils/painting';
+import { qColor } from '@/shared/lib/painting';
 import { QRect, QRectF } from '@/utils/Rect';
-import { setsEqual } from '@/utils/sets';
-import { approximateTextMeasurer, fontWithPointSize, kDefaultFontFamily, pointSizeToPixels } from '@/utils/textMetrics';
+import { setsEqual } from '@/shared/lib/sets';
+import { approximateTextMeasurer, fontWithPointSize, kDefaultFontFamily, pointSizeToPixels } from '@/shared/lib/text';
 import { QPoint, QPointF, QVector3D } from '@/utils/Vector3D';
 import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
 import type { PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';

@@ -8,11 +8,11 @@ import {
   type UIEvent,
 } from 'react';
 import type { DebugLabelPanel } from '@/core/viewport/DebugLabelPanel';
-import { isDomMiddleButton, modifiersFromEvent, mouseButtonFromDom, mouseButtonsFromDom } from '@/helpers/qtInput';
-import { capturePointer } from '@/utils/dom';
-import { preventDefault } from '@/utils/events';
-import { cssColor } from '@/utils/painting';
-import { cssFont } from '@/utils/textMetrics';
+import { isDomMiddleButton, modifiersFromEvent, mouseButtonFromDom, mouseButtonsFromDom } from '@/shared/lib/qt';
+import { capturePointer } from '@/shared/lib/dom';
+import { preventDefault } from '@/shared/lib/events';
+import { cssColor } from '@/shared/lib/painting';
+import { cssFont } from '@/shared/lib/text';
 
 type ListPointerEvent = PointerEvent<HTMLDivElement>;
 

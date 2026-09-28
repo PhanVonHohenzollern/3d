@@ -5,7 +5,7 @@ import {
   kParameterValueColumn,
   ParameterPanelModel,
 } from '@/hooks/parameterPanel/ParameterPanelModel';
-import { useObservable } from '@/hooks/useObservable';
+import { useObservable } from '@/shared/lib/observable';
 import { parameterTableCells, parameterTableText } from '@/helpers/parameterTable';
 import { parameterGridLayout } from '@/helpers/parameters';
 

@@ -1,4 +1,4 @@
-import type { ChildIndicatorPolicy } from '@/types/qt';
+import type { ChildIndicatorPolicy } from '@/shared/lib/qt';
 import type { TreeWidget } from '@/shared/ui/tree/TreeWidget';
 
 const kInvisibleRoot = Symbol('invisibleRootItem');

@@ -2,7 +2,7 @@ import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
 import { rowForKey } from '@/shared/ui/table-view';
 import { variableRow, variableSummary } from '@/helpers/variables';
 import type { ScrollRequest, VariablePanelHandle, VariableRow } from '@/types/panels';
-import { Observable } from '@/hooks/observable/Observable';
+import { Observable } from '@/shared/lib/observable';
 
 export class VariablePanelModel extends Observable implements VariablePanelHandle {
   summary = '';

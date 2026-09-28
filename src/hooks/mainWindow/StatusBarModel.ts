@@ -1,5 +1,5 @@
 import type { StatusTone } from '@/types/statusBar';
-import { Observable } from '@/hooks/observable/Observable';
+import { Observable } from '@/shared/lib/observable';
 
 export class StatusBarModel extends Observable {
   #message = '';

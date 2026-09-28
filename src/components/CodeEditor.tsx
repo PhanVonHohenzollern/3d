@@ -1,6 +1,6 @@
 import { useCodeEditor } from '@/hooks/useCodeEditor';
 import type { CodeEditorProps } from '@/types/editor';
-import { isMacPlatform } from '@/utils/platform';
+import { isMacPlatform } from '@/shared/lib/platform';
 
 export function CodeEditor(props: CodeEditorProps) {
   const { hostRef, cursorPosition, problems, showProblem, showAllProblems } = useCodeEditor(props);

@@ -1,6 +1,6 @@
-import { stripMnemonic } from '@/helpers/keyboard';
-import type { KeySequence } from '@/types/qt';
-import { Observable } from '@/hooks/observable/Observable';
+import { stripMnemonic } from '@/shared/lib/qt';
+import type { KeySequence } from '@/shared/lib/qt';
+import { Observable } from '@/shared/lib/observable';
 
 export class Action extends Observable {
   #shortcut: KeySequence | null = null;

@@ -1,5 +1,5 @@
-import type { KeySequence, Modifiers } from '@/types/qt';
-import { isMacPlatform, isWindowsPlatform } from '@/utils/platform';
+import type { KeySequence, Modifiers } from '@/shared/lib/qt/qt';
+import { isMacPlatform, isWindowsPlatform } from '@/shared/lib/platform';
 
 export const quitKeySequence: KeySequence | null = isWindowsPlatform ? null : { key: 'q', control: true };
 

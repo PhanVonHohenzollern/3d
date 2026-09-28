@@ -1,4 +1,4 @@
-import type { KeyboardModifiers } from '@/types/input';
+import type { KeyboardModifiers } from '@/shared/lib/qt/input';
 
 export type Modifiers = Pick<KeyboardModifiers, 'control' | 'shift'>;
 

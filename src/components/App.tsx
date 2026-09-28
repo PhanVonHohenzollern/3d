@@ -1,6 +1,6 @@
 import { Button } from '@/shared/ui/button';
 import { Box, CodeXml } from 'lucide-react';
-import { useCompactLayout } from '@/hooks/useCompactLayout';
+import { useCompactLayout } from '@/shared/lib/react';
 import { useDockArea } from '@/hooks/useDockArea';
 import { useMainWindow } from '@/hooks/useMainWindow';
 import { ApiTracePanel } from '@/components/ApiTracePanel';

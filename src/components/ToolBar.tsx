@@ -1,9 +1,9 @@
 import { Box, CircleDot, Eye, EyeOff, Maximize, MoveUpRight, Scan, Tags, type LucideIcon } from 'lucide-react';
-import { useAction } from '@/hooks/useAction';
-import type { Action } from '@/hooks/mainWindow/Action';
+import { useAction } from '@/shared/lib/action';
+import type { Action } from '@/shared/lib/action';
 import type { ToolBarProps, ToolBarButtonProps } from '@/types/toolbar';
 import { cn } from '@/lib/utils';
-import { preventDefault } from '@/utils/events';
+import { preventDefault } from '@/shared/lib/events';
 import { Button } from '@/shared/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip';
 

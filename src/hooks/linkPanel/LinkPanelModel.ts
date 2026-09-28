@@ -21,9 +21,9 @@ import {
 } from '@/helpers/link';
 import { rowForKey } from '@/shared/ui/table-view';
 import type { LinkPanelHandle, LinkTableRow, PreviewChangedCallback, ScrollRequest, SizeField } from '@/types/panels';
-import { sameItems } from '@/utils/arrays';
+import { sameItems } from '@/shared/lib/arrays';
 import { what } from '@/utils/cpp';
-import { Observable } from '@/hooks/observable/Observable';
+import { Observable } from '@/shared/lib/observable';
 
 interface Entry {
   definition: ConnectorDefinition;

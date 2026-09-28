@@ -1,5 +1,5 @@
-import type { FontSpec, TextMeasurer } from '@/types/text';
-import { cssFont } from '@/utils/textMetrics';
+import type { FontSpec, TextMeasurer } from '@/shared/lib/text/types';
+import { cssFont } from '@/shared/lib/text/textMetrics';
 
 type Context2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 

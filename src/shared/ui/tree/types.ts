@@ -1,6 +1,6 @@
 import type { TreeWidget } from '@/shared/ui/tree/TreeWidget';
 import type { TreeWidgetItem } from '@/shared/ui/tree/TreeWidgetItem';
-import type { Modifiers } from '@/types/qt';
+import type { Modifiers } from '@/shared/lib/qt';
 
 export interface TreeMouseEvent {
   item: TreeWidgetItem | null;

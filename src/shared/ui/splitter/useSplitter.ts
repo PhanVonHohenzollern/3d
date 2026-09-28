@@ -6,7 +6,7 @@ import {
   kSplitterHandleSize,
 } from '@/shared/ui/splitter/sizes';
 import type { SplitterOptions } from '@/shared/ui/splitter/types';
-import { usePointerDrag } from '@/hooks/usePointerDrag';
+import { usePointerDrag } from '@/shared/lib/react';
 
 export function useSplitter({ orientation, initialSizes, stretchFactors = [0, 0] }: SplitterOptions) {
   const containerRef = useRef<HTMLDivElement>(null);

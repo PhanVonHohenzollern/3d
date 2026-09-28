@@ -19,7 +19,7 @@ import {
 import { isInElement, isInTableHeader, tableCellOf } from '@/shared/ui/table-view';
 import type { LinkPanelProps, SizeField } from '@/types/panels';
 import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
-import { useObservable } from '@/hooks/useObservable';
+import { useObservable } from '@/shared/lib/observable';
 
 export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: LinkPanelProps) {
   const [model] = useState(() => new LinkPanelModel());

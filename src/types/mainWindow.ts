@@ -1,4 +1,4 @@
-import type { Action } from '@/hooks/mainWindow/Action';
+import type { Action } from '@/shared/lib/action';
 
 export type DockName = 'VariablesDock' | 'ParametersDock' | 'ApiTraceDock' | 'LinkDock' | 'SubParametersDock';
 

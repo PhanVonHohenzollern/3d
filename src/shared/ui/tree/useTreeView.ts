@@ -1,15 +1,15 @@
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
-import { eventModifiers } from '@/helpers/keyboard';
+import { eventModifiers } from '@/shared/lib/qt';
 import { kTreeIndentation } from '@/shared/ui/tree/columns';
 import { resizeToContentsWidth } from '@/shared/ui/tree/columns';
 import type { TreeColumnView, TreeMouseEvent, TreeRowView } from '@/shared/ui/tree/types';
-import { textWidth } from '@/utils/measureText';
-import { isOnScrollbar } from '@/utils/dom';
+import { textWidth } from '@/shared/lib/text';
+import { isOnScrollbar } from '@/shared/lib/dom';
 import type { TreeWidget } from '@/shared/ui/tree/TreeWidget';
 import type { TreeWidgetItem } from '@/shared/ui/tree/TreeWidgetItem';
-import { usePointerDrag } from '@/hooks/usePointerDrag';
-import { useObservable } from '@/hooks/useObservable';
-import { useScrollSelectionIntoView } from '@/hooks/useScrollSelectionIntoView';
+import { usePointerDrag } from '@/shared/lib/react';
+import { useObservable } from '@/shared/lib/observable';
+import { useScrollSelectionIntoView } from '@/shared/lib/react';
 
 // Keep the selected call below the sticky header without scrolling the whole page.
 function scrollToSelectedItem(container: HTMLElement, request: { item: TreeWidgetItem }): void {

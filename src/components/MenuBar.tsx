@@ -1,6 +1,6 @@
-import { stripMnemonic } from '@/helpers/keyboard';
-import { useAction } from '@/hooks/useAction';
-import type { Action } from '@/hooks/mainWindow/Action';
+import { stripMnemonic } from '@/shared/lib/qt';
+import { useAction } from '@/shared/lib/action';
+import type { Action } from '@/shared/lib/action';
 import type { Menu } from '@/types/mainWindow';
 import { Button } from '@/shared/ui/button';
 import {

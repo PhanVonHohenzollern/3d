@@ -4,7 +4,7 @@ import {
   movedFloatingGeometry,
   resizedFloatingGeometry,
 } from '@/shared/ui/floating-window/geometry';
-import { usePointerDrag } from '@/hooks/usePointerDrag';
+import { usePointerDrag } from '@/shared/lib/react';
 
 export function useFloatingWindow(raiseSerial: number, onClose: () => void) {
   const windowRef = useRef<HTMLDivElement>(null);

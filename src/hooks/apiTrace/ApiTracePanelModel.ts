@@ -18,7 +18,7 @@ import {
   otherInputs,
 } from '@/helpers/traceFormatting';
 import type { ApiTracePanelHandle } from '@/types/panels';
-import { Observable } from '@/hooks/observable/Observable';
+import { Observable } from '@/shared/lib/observable';
 import { TreeWidget, UserRole } from '@/shared/ui/tree';
 import { TreeWidgetItem } from '@/shared/ui/tree';
 import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
