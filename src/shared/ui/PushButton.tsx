@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/button';
 
 interface PushButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

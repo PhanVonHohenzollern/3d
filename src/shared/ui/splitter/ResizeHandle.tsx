@@ -1,5 +1,5 @@
 import type { ResizeHandleProps } from '@/shared/ui/splitter/types';
-import { cn } from '@/utils/cn';
+import { cn } from '@/shared/lib/cn';
 
 export function ResizeHandle({ orientation, label, value, min, max, onPointerDown, onKeyDown }: ResizeHandleProps) {
   return (

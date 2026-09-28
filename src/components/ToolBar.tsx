@@ -2,7 +2,7 @@ import { Box, CircleDot, Eye, EyeOff, Maximize, MoveUpRight, Scan, Tags, type Lu
 import { useAction } from '@/shared/lib/action';
 import type { Action } from '@/shared/lib/action';
 import type { ToolBarProps, ToolBarButtonProps } from '@/types/toolbar';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/cn';
 import { preventDefault } from '@/shared/lib/events';
 import { Button } from '@/shared/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip';

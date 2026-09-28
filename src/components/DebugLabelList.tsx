@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import type { DebugLabelPanel } from '@/core/viewport/DebugLabelPanel';
 import { useDebugLabelList } from '@/hooks/useDebugLabelList';
-import { cn } from '@/utils/cn';
+import { cn } from '@/shared/lib/cn';
 
 interface DebugLabelListProps {
   panel: DebugLabelPanel;

@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { LinkFormProps } from '@/types/linkForm';
-import { cn } from '@/utils/cn';
+import { cn } from '@/shared/lib/cn';
 import { ComboBox } from '@/shared/ui/ComboBox';
 import { EditableComboBox } from '@/shared/ui/editable-combo-box';
 import { FormLabel } from '@/shared/ui/FormLabel';

@@ -1,5 +1,5 @@
 import { useEditableComboBox } from '@/shared/ui/editable-combo-box/useEditableComboBox';
-import { cn } from '@/utils/cn';
+import { cn } from '@/shared/lib/cn';
 import { preventDefault } from '@/shared/lib/events';
 import { LineEdit } from '@/shared/ui/LineEdit';
 import { useId, type KeyboardEvent } from 'react';

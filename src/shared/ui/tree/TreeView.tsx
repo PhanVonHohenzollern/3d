@@ -1,6 +1,6 @@
 import { useTreeView } from '@/shared/ui/tree/useTreeView';
 import type { TreeViewProps } from '@/shared/ui/tree/types';
-import { cn } from '@/utils/cn';
+import { cn } from '@/shared/lib/cn';
 
 export function TreeView({ tree, variant = 'default' }: TreeViewProps) {
   const { containerRef, columns, rows, fittedWidths, onMouseDown, onMouseUp, onKeyDown, onResizeStart } =
