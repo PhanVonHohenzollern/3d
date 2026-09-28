@@ -25,6 +25,7 @@ import { Action } from '@/shared/lib/action';
 import { SingleShotTimer } from '@/shared/lib/SingleShotTimer';
 import { StatusBarModel } from '@/hooks/mainWindow/StatusBarModel';
 import { FunctionWorkspace } from '@/entities/source-function';
+import { FunctionTabsController } from '@/features/manage-functions';
 
 export class MainWindow extends Observable {
   #editor: CodeEditorHandle | null = null;
@@ -82,6 +83,11 @@ export class MainWindow extends Observable {
   readonly session = new PreviewSession();
   #switchingEditor = false;
   readonly functions = new FunctionWorkspace();
+  readonly functionTabs = new FunctionTabsController(
+    this.functions,
+    () => this.m_editor,
+    () => this.m_parameters,
+  );
 
   get m_runtime() {
     return this.session.runtime;
@@ -183,6 +189,7 @@ export class MainWindow extends Observable {
 
   constructor() {
     super();
+    this.#connectFunctionTabs();
     this.createDockPanels();
     this.createActions();
   }
@@ -264,67 +271,16 @@ export class MainWindow extends Observable {
 
   readonly applyParameters = this.buildPreview;
 
-  readonly addFunction = (name: string): boolean => {
-    this.m_parameters.commitEditor();
-    this.functions.edit(this.m_editor.toPlainText());
-    if (!this.functions.add(name)) {
-      this.changed();
-
-      return false;
-    }
-    this.showFunctionEditor();
-
-    return true;
-  };
-
-  // The Add Function dialog shows its own error; this keeps it from outliving the dialog.
-  readonly clearFunctionError = (): void => {
-    if (!this.functions.error) return;
-    this.functions.clearError();
-    this.changed();
-  };
-
-  readonly selectFunction = (name: string): void => {
-    if (name === this.functions.active || (name && !this.functions.names.includes(name))) return;
-    this.m_parameters.commitEditor();
-    this.functions.edit(this.m_editor.toPlainText());
-    this.functions.select(name);
-    this.showFunctionEditor();
-  };
-
-  readonly saveFunction = (): void => {
-    this.functions.edit(this.m_editor.toPlainText());
-    if (this.functions.save()) this.showFunctionEditor();
-    this.changed();
-  };
-
-  readonly cancelFunction = (): void => {
-    const name = this.functions.active;
-    this.functions.cancel();
-    this.session.forgetBuild(name);
-    this.showFunctionEditor();
-  };
-
-  readonly attachFunction = (): void => {
-    this.functions.edit(this.m_editor.toPlainText());
-    if (this.functions.attach()) this.statusBar().showMessage('Function attached to the main code.', 2600);
-    this.changed();
-  };
-
-  readonly deleteFunction = (): void => {
-    if (!this.functions.active) return;
-    this.m_parameters.commitEditor();
-    const name = this.functions.removeActive();
-    if (!name) return;
-    this.m_previewTimer.stop();
-    this.session.forgetFunction(name);
-    this.m_parameters.forgetFunction?.(name);
-    this.showFunctionEditor();
-    this.statusBar().showMessage(`Function ${name} deleted.`, 2600);
-  };
+  readonly addFunction = (name: string): boolean => this.functionTabs.add(name);
+  readonly clearFunctionError = (): void => this.functionTabs.clearError();
+  readonly selectFunction = (name: string): void => this.functionTabs.select(name);
+  readonly saveFunction = (): void => this.functionTabs.save();
+  readonly cancelFunction = (): void => this.functionTabs.cancel();
+  readonly attachFunction = (): void => this.functionTabs.attach();
+  readonly deleteFunction = (): void => this.functionTabs.remove();
 
   get canEditSubParameters(): boolean {
-    return !!this.functions.active && this.functions.parameterFunctions.length > 0;
+    return this.functionTabs.canEditInputs;
   }
 
   readonly setFunctionInput = (
@@ -333,23 +289,23 @@ export class MainWindow extends Observable {
     initial: string[],
     index: number,
     value: string,
-  ): void => {
-    if (!this.canEditSubParameters) return;
-    this.functions.setInput(name, parameter, initial, index, value);
-    this.onParametersChanged();
-  };
+  ): void => this.functionTabs.setInput(name, parameter, initial, index, value);
+  readonly selectFunctionInputs = (name: string): void => this.functionTabs.selectInputs(name);
+  readonly applyFunctionInputs = (name: string): void => this.functionTabs.applyInputs(name);
 
-  readonly selectFunctionInputs = (name: string): void => {
-    if (!this.canEditSubParameters) return;
-    this.functions.selectInputTab(name);
-    this.changed();
-  };
-
-  readonly applyFunctionInputs = (name: string): void => {
-    if (!this.canEditSubParameters || !this.functions.parameterFunctions.some((fn) => fn.name === name)) return;
-    this.selectFunction(name);
-    this.applyParameters();
-  };
+  #connectFunctionTabs(): void {
+    const tabs = this.functionTabs;
+    tabs.editorSwitched.connect(() => this.showFunctionEditor());
+    tabs.stateChanged.connect(() => this.changed());
+    tabs.draftCancelled.connect((name) => this.session.forgetBuild(name));
+    tabs.functionDeleted.connect((name) => {
+      this.m_previewTimer.stop();
+      this.session.forgetFunction(name);
+    });
+    tabs.inputsChanged.connect(() => this.onParametersChanged());
+    tabs.applyRequested.connect(() => this.applyParameters());
+    tabs.statusMessage.connect((text) => this.statusBar().showMessage(text, 2600));
+  }
 
   private showFunctionEditor(): void {
     this.m_previewTimer.stop();
@@ -380,7 +336,7 @@ export class MainWindow extends Observable {
       } else this.buildPreview();
     } else this.runPreview();
     const main = this.functions.inline[0];
-    this.m_parameters.selectTab?.(
+    this.m_parameters.selectTab(
       this.functions.active || (main && currentProgram.options.functionScopes?.get(main.signature)) || main?.name || '',
     );
     if (!this.canEditSubParameters && this.#raisedDock === 'SubParametersDock') this.#raisedDock = 'ParametersDock';

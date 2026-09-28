@@ -4,7 +4,7 @@ import {
   type FunctionEditorActions,
   type FunctionEditorContextValue,
   type FunctionEditorState,
-} from '@/components/FunctionEditor/FunctionEditorContext';
+} from '@/features/manage-functions/ui/FunctionEditor/FunctionEditorContext';
 
 type FunctionEditorProviderProps = {
   actions: FunctionEditorActions;

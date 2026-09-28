@@ -1,4 +1,4 @@
-import type { FunctionEditorActions, FunctionEditorState } from '@/components/FunctionEditor';
+import type { FunctionEditorActions, FunctionEditorState } from '@/features/manage-functions';
 import { useModelFiles } from '@/hooks/useModelFiles';
 import { useEffect, useMemo, useState } from 'react';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';

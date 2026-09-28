@@ -1,4 +1,4 @@
-import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
+import { useFunctionEditor } from '@/features/manage-functions/ui/FunctionEditor/FunctionEditorContext';
 
 const FunctionEditorError = () => {
   const { state } = useFunctionEditor();

@@ -15,9 +15,9 @@ import { Splitter } from '@/shared/ui/splitter';
 import { ToolBar } from '@/components/ToolBar';
 import { VariablePanel } from '@/components/VariablePanel';
 import { Viewport3D } from '@/components/Viewport3D';
-import { FunctionEditor } from '@/components/FunctionEditor';
+import { FunctionEditor } from '@/features/manage-functions';
 import { PreviewModeToggle } from '@/features/run-preview';
-import { SubParameterPanel } from '@/components/SubParameterPanel';
+import { SubParameterPanel } from '@/features/manage-functions';
 
 export function App() {
   const mainWindow = useMainWindow();
