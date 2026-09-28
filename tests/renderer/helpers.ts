@@ -3,7 +3,7 @@ import { emptyRuntimeResult, type RuntimeResult } from '@/core/runtime/RuntimeTy
 import { FdPoint3d } from '@/core/runtime/FdMath';
 import { DebugItem } from '@/core/viewport/DebugItem';
 import { ViewportEngine } from '@/core/viewport/ViewportEngine';
-import type { TextMeasurer } from '@/types/text';
+import type { TextMeasurer } from '@/shared/lib/text';
 import type { QPointF, QVector3D } from '@/utils/Vector3D';
 
 export const fixedMeasurer: TextMeasurer = {

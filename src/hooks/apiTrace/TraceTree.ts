@@ -1,6 +1,6 @@
-import type { TreeMouseEvent } from '@/types/treeView';
-import { TreeWidget } from '@/hooks/treeWidget/TreeWidget';
-import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import type { TreeMouseEvent } from '@/shared/ui/tree';
+import { TreeWidget } from '@/shared/ui/tree';
+import type { TreeWidgetItem } from '@/shared/ui/tree';
 
 export class TraceTree extends TreeWidget {
   #anchor: TreeWidgetItem | null = null;

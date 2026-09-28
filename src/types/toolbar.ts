@@ -1,4 +1,4 @@
-import type { Action } from '@/hooks/mainWindow/Action';
+import type { Action } from '@/shared/lib/action';
 import type { ActionListItem } from '@/types/mainWindow';
 
 export interface ToolBarProps {

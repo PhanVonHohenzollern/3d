@@ -4,7 +4,7 @@ import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
 import { axesVertices, placeWorldAxisLabels } from '@/core/viewport/worldAxes';
 import type { AxisLabel } from '@/types/viewportEngine';
 import { QRectF } from '@/utils/Rect';
-import { fontWithPointSize, kDefaultFontFamily } from '@/utils/textMetrics';
+import { fontWithPointSize, kDefaultFontFamily } from '@/shared/lib/text';
 import { QPointF, QVector3D, QVector4D } from '@/utils/Vector3D';
 import { createEngine, fixedMeasurer, resultWithP0, updateCamera } from '@tests/renderer/helpers';
 

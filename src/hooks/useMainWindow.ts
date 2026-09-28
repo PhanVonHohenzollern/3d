@@ -2,7 +2,7 @@ import type { FunctionEditorActions, FunctionEditorState } from '@/components/Fu
 import { useModelFiles } from '@/hooks/useModelFiles';
 import { useEffect, useMemo, useState } from 'react';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';
-import { useObservable } from '@/hooks/useObservable';
+import { useObservable } from '@/shared/lib/observable';
 
 export function useMainWindow() {
   const [mainWindow] = useState(() => new MainWindow());

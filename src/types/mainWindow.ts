@@ -1,4 +1,4 @@
-import type { Action } from '@/hooks/mainWindow/Action';
+import type { Action } from '@/shared/lib/action';
 
 export type DockName = 'VariablesDock' | 'ParametersDock' | 'ApiTraceDock' | 'LinkDock' | 'SubParametersDock';
 
@@ -14,11 +14,4 @@ export type ActionListItem = Action | 'separator';
 export interface Menu {
   title: string;
   items: readonly ActionListItem[];
-}
-
-export interface WindowGeometry {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
 }

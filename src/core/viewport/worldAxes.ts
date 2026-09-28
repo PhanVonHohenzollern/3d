@@ -1,9 +1,9 @@
-import type { FontSpec, TextMeasurer } from '@/types/text';
+import type { FontSpec, TextMeasurer } from '@/shared/lib/text';
 import type { AxisLabel } from '@/types/viewportEngine';
 import type { QMatrix4x4 } from '@/utils/Matrix4x4';
-import { qColor } from '@/utils/painting';
+import { qColor } from '@/shared/lib/painting';
 import { QRectF } from '@/utils/Rect';
-import { fontHeightF } from '@/utils/textMetrics';
+import { fontHeightF } from '@/shared/lib/text';
 import { QPointF, QVector3D, QVector4D } from '@/utils/Vector3D';
 import { connectorOrientations, previewOrientationDirection } from '@/core/geometry/ConnectorPreview';
 import type { OverlayPainter } from '@/core/viewport/OverlayPainter';

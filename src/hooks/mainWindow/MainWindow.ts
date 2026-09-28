@@ -13,16 +13,16 @@ import {
   matchesKeySequence,
   quitKeySequence,
   textInputSelector,
-} from '@/helpers/keyboard';
+} from '@/shared/lib/qt';
 import { pointDeclaration, unusedPreviewPointName } from '@/helpers/viewportPoints';
 import type { CodeEditorHandle, EditorExecutionFeedback } from '@/types/editor';
 import type { ActionListItem, DockName, Menu, PreviewMode } from '@/types/mainWindow';
 import type { ApiTracePanelHandle, LinkPanelHandle, ParameterPanelHandle, VariablePanelHandle } from '@/types/panels';
 import type { Vec3, Viewport3DHandle } from '@/types/viewport';
 import { what } from '@/utils/cpp';
-import { Observable } from '@/hooks/observable/Observable';
-import { Action } from '@/hooks/mainWindow/Action';
-import { SingleShotTimer } from '@/hooks/mainWindow/SingleShotTimer';
+import { Observable } from '@/shared/lib/observable';
+import { Action } from '@/shared/lib/action';
+import { SingleShotTimer } from '@/shared/lib/SingleShotTimer';
 import { StatusBarModel } from '@/hooks/mainWindow/StatusBarModel';
 import { FunctionWorkspace } from '@/hooks/mainWindow/FunctionWorkspace';
 

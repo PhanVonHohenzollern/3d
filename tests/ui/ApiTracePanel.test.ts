@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { emptyRuntimeResult } from '@/core/runtime/RuntimeTypes';
 import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
 import { TraceColumn } from '@/hooks/apiTrace/traceItems';
-import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
-import type { Modifiers } from '@/types/qt';
+import type { TreeWidgetItem } from '@/shared/ui/tree';
+import type { Modifiers } from '@/shared/lib/qt';
 import { traceResult } from '@tests/ui/traceFixture';
 
 const none: Modifiers = { shift: false, control: false };

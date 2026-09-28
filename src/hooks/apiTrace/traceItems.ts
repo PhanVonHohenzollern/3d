@@ -6,8 +6,8 @@ import {
   runtimeValueToCompactString,
   type RuntimeValue,
 } from '@/core/runtime/RuntimeValue';
-import { UserRole } from '@/hooks/treeWidget/TreeWidget';
-import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import { UserRole } from '@/shared/ui/tree';
+import type { TreeWidgetItem } from '@/shared/ui/tree';
 
 export const kDebugItemRole = UserRole + 1;
 export const kNodeKeyRole = UserRole + 3;

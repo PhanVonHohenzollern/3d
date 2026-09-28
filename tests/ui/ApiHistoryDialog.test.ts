@@ -3,7 +3,7 @@ import { earlierChanges } from '@/helpers/apiHistory';
 import { directSource, displayExpression } from '@/helpers/traceFormatting';
 import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
 import { HistoryColumn } from '@/hooks/apiTrace/historyItems';
-import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import type { TreeWidgetItem } from '@/shared/ui/tree';
 import { p, traceResult } from '@tests/ui/traceFixture';
 
 const row = (item: TreeWidgetItem) => Array.from({ length: 8 }, (_, c) => item.text(c));
