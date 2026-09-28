@@ -38,27 +38,31 @@ A layer imports only from layers below it:
 | `shared`   | engine (only `engine/math`, for vector and matrix types) |
 | `engine`   | nothing in `src/`                                        |
 
-Three more rules:
+Four more rules:
 
-1. **Public API only.** Every slice (`features/run-preview`, `entities/parameter`, …) and every engine package has an `index.ts`. Import from there, never from a file inside it: `@/entities/parameter`, not `@/entities/parameter/model/key`.
-2. **No imports between slices on the same layer.** One feature does not import another feature, and one widget does not import another widget. Composition happens one layer up: the page places both widgets. If two entities really need each other, use an FSD `@x` file (`entities/api-call/@x/variable.ts`) so the dependency is explicit.
-3. **Engine through its packages.** App code imports `@engine/runtime`, `@engine/geometry`, `@engine/formats` or `@engine/math`, never a deeper path.
+1. **Relative imports only.** Import project code by relative path. Aliases (`@/…`) and absolute paths (`src/…`, `/…`) are not allowed. The `@/` alias stays in `tsconfig.json` and `vite.config.ts` only because the shadcn CLI needs it to generate components; change the generated imports to relative paths.
+2. **Public API only.** Every slice (`features/run-preview`, `entities/parameter`, …) and every engine package has an `index.ts`. From outside the slice, import that file, never a file inside it: `../../entities/parameter`, not `../../entities/parameter/model/key`.
+3. **No imports between slices on the same layer.** One feature does not import another feature, and one widget does not import another widget. Composition happens one layer up: the page places both widgets. If two entities really need each other, use an FSD `@x` file (`entities/api-call/@x/variable.ts`) so the dependency is explicit, and add an `except` entry for it in `eslint.boundaries.config.js`.
+4. **Engine through its packages.** App code imports `engine/runtime`, `engine/geometry`, `engine/formats` or `engine/math` through their `index.ts`, never a deeper path.
 
 ### How the rules are checked
 
-| Command                   | Checks                                                                                             | Mode now |
-| ------------------------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `npm run lint:boundaries` | Import direction between the current folders (`eslint.boundaries.config.js`)                       | warnings |
-| `npm run lint:fsd`        | FSD structure of `src/`: layers, slices, public APIs, cross-imports (Steiger, `steiger.config.js`) | warnings |
+| Rule                                                                                                     | Checked by                                                                                  | Mode now |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| Relative imports only (rule 1)                                                                           | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
+| Layer direction, public API, no cross-slice imports, engine independence (rules 2–4 and the table above) | `npm run lint:boundaries` (`import-x/no-restricted-paths` in `eslint.boundaries.config.js`) | warning  |
+| No import cycles                                                                                         | `npm run lint:boundaries` (`import-x/no-cycle`)                                             | warning  |
+| Folder structure inside a slice (segment names, an `index.ts` per slice)                                 | code review                                                                                 | —        |
 
-Both run in `npm run validate` and in CI, but only warn during the migration. GPW-38 turns them into errors.
+`lint:boundaries` reads the slice folders on every run, so a new slice is checked as soon as it exists. It runs in `npm run validate` and in CI but only warns during the migration; GPW-38 turns it into errors. It is a separate config so `npm run lint` keeps allowing zero warnings.
 
-At the start of the migration (branch `chore/p1-guardrails`) the baseline was:
+`no-cycle` only sees runtime imports: it skips `import type`. The four cycles known at the start of the migration all go through a type-only import, so they are not reported. GPW-15 and GPW-45 remove them.
 
-- **`lint:boundaries`: 10 warnings.** 6 are the viewport importing app helpers (`qtInput`, `debugItems`, `debugValueText`). 4 are `types/` importing from `hooks/` (`Action`, `TreeWidget`, `TreeWidgetItem`). The engine already imports nothing from app code.
-- **`lint:fsd`: 2 warnings.** `lib/` and `types/` look like misspelled layer names; both folders go away during the migration.
+At the start of the migration (branch `chore/p1-guardrails`), `lint:boundaries` reported 10 warnings and no cycles:
 
-The engine's public-API rule (rule 3) is added to `lint:boundaries` in GPW-19, when `engine/` and its `index.ts` files exist.
+- 6 are the viewport importing app helpers (`qtInput`, `debugItems`, `debugValueText`).
+- 4 are `types/` importing from `hooks/` (`Action`, `TreeWidget`, `TreeWidgetItem`).
+- The engine already imports nothing from app code.
 
 ## Where does new code go?
 
@@ -98,7 +102,7 @@ A `use*` hook lives in the `model/` segment of the slice that owns its state. Cl
 
 ## Engine rules
 
-- Each engine package exports its public API from `index.ts`; tests use that API too.
+- Each engine package exports its public API from `index.ts`. App code uses only that; engine tests may import internals.
 - The engine never imports from `src/`.
 - SDK knowledge is registered in tables, not spread through the interpreter:
   - intrinsic functions (GPW-43)
