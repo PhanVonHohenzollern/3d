@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
 import type { ConnectorExpressionEvaluator, ConnectorPreview } from '@engine/geometry';
-import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '@engine/runtime';
+import type { RuntimeParameterRequest, RuntimeResult } from '@engine/runtime';
 
 export interface VariablePanelHandle {
   setRuntimeResult(result: RuntimeResult, currentLine: number): void;
@@ -13,13 +13,12 @@ export interface VariablePanelProps {
   ref?: Ref<VariablePanelHandle>;
 }
 
+export type ParameterAvailability = (parameters: ReadonlyMap<string, string>) => ReadonlySet<string> | null;
+
 export interface ParameterPanelHandle {
   setPlaceholderData(): void;
-  setDefinitions(
-    definitions: readonly RuntimeParameterRequest[],
-    source?: string,
-    options?: RuntimeExecutionOptions,
-  ): void;
+  setDefinitions(definitions: readonly RuntimeParameterRequest[]): void;
+  setAvailability(query: ParameterAvailability | null): void;
   updateRuntimeResult(result: RuntimeResult): void;
   values(): Map<string, string>;
   overrides(): Map<string, string>;

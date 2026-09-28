@@ -45,6 +45,7 @@ export class MainWindow extends Observable {
   };
   readonly bindParameters = (handle: ParameterPanelHandle | null): void => {
     this.#parameters = handle;
+    handle?.setAvailability((parameters) => this.session.activeParameterKeys(parameters));
   };
   readonly bindApiTrace = (handle: ApiTracePanelHandle | null): void => {
     this.#apiTrace = handle;
@@ -692,7 +693,7 @@ export class MainWindow extends Observable {
     }
     this.functions.clearError();
     const parameterDefinitions = this.session.discoverParameters(program, (name) => this.functions.isDeleted(name));
-    this.m_parameters.setDefinitions(parameterDefinitions, program.source, program.options);
+    this.m_parameters.setDefinitions(parameterDefinitions);
 
     const outcome = this.session.execute(program, source, line, parameters ?? this.m_parameters.overrides());
     if ('error' in outcome) {

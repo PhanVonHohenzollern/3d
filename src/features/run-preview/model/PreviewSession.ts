@@ -5,6 +5,7 @@ import { PreviewGeometryEngine, type PreviewGeometryScene } from '@engine/geomet
 import {
   emptyRuntimeResult,
   GeometryRuntime,
+  parameterKey,
   what,
   type RuntimeParameterRequest,
   type RuntimeResult,
@@ -19,10 +20,32 @@ export interface TabBuild {
 
 export type ExecutionOutcome = { result: RuntimeResult } | { error: string };
 
+const kAvailabilityCacheSize = 32;
+
+function lineCount(source: string): number {
+  return source.split('\n').length;
+}
+
+function runKey(
+  program: FunctionProgram,
+  parameters: ReadonlyMap<string, string>,
+  line: number,
+  fullProgram: boolean,
+): string {
+  const entries = [...parameters].sort(([a], [b]) => a.localeCompare(b));
+
+  return JSON.stringify([program.source, program.options, entries, line, fullProgram], (_, value: unknown) =>
+    value instanceof Map ? [...value] : value,
+  );
+}
+
 // Runs the C++ program and keeps what the preview shows: the result, the scene, the feedback for
 // the editor, the preview mode, and the Build cache per function tab. Nothing else runs the program.
 export class PreviewSession {
-  readonly runtime = new GeometryRuntime();
+  #runtime = new GeometryRuntime();
+  #spareRuntime = new GeometryRuntime();
+  #spareRun: { key: string; result: RuntimeResult } | null = null;
+  readonly #activeKeys = new Map<string, ReadonlySet<string>>();
   readonly #engine = new PreviewGeometryEngine();
   #mode: PreviewMode = 'debug';
   #scene: PreviewGeometryScene = { meshes: [], warnings: [] };
@@ -37,6 +60,11 @@ export class PreviewSession {
   #builtSource: string | null = null;
   #builtProgram: FunctionProgram | undefined;
   readonly #tabBuilds = new Map<string, TabBuild>();
+
+  // The runtime that produced the last preview; the Link evaluator and tests read its variables.
+  get runtime(): GeometryRuntime {
+    return this.#runtime;
+  }
 
   get mode(): PreviewMode {
     return this.#mode;
@@ -105,20 +133,57 @@ export class PreviewSession {
       .filter((definition) => !definition.functionName || !isDeleted(definition.functionName));
   }
 
+  // Which parameter keys the whole program asks for with these values; rows for the others are
+  // disabled. Runs the full program on the spare runtime, cached per program and values.
+  activeParameterKeys(parameters: ReadonlyMap<string, string>): ReadonlySet<string> | null {
+    const program = this.#program;
+    if (!program) return null;
+    const lines = lineCount(program.source);
+    const key = runKey(program, parameters, lines, true);
+    const cached = this.#activeKeys.get(key);
+    if (cached) return cached;
+    this.#spareRuntime.setParameters(parameters);
+    const result = this.#spareRuntime.executeUpToLine(program.source, lines, true, program.options);
+    this.#spareRun = { key, result };
+
+    return this.#rememberActiveKeys(key, result);
+  }
+
+  #rememberActiveKeys(key: string, result: RuntimeResult): ReadonlySet<string> {
+    const keys = new Set(result.parameterRequests.map(parameterKey));
+    if (this.#activeKeys.size >= kAvailabilityCacheSize)
+      this.#activeKeys.delete(this.#activeKeys.keys().next().value ?? '');
+    this.#activeKeys.set(key, keys);
+
+    return keys;
+  }
+
   execute(
     program: FunctionProgram,
     source: string,
     line: number,
     parameters: ReadonlyMap<string, string>,
   ): ExecutionOutcome {
-    this.runtime.setParameters(parameters);
+    const fullProgram = this.#mode === 'build';
+    const lines = lineCount(program.source);
+    const effectiveLine = Math.min(Math.max(0, line), lines);
+    const key = runKey(program, parameters, effectiveLine, fullProgram);
     let result: RuntimeResult;
-    try {
-      result = this.runtime.executeUpToLine(program.source, line, this.#mode === 'build', program.options);
-    } catch (e) {
-      this.#feedback = { source, diagnostics: [{ line, message: what(e) }] };
+    if (this.#spareRun?.key === key) {
+      // A Build asks exactly what the availability check just ran: keep that run and its runtime.
+      result = this.#spareRun.result;
+      [this.#runtime, this.#spareRuntime] = [this.#spareRuntime, this.#runtime];
+      this.#spareRun = null;
+    } else {
+      this.#runtime.setParameters(parameters);
+      try {
+        result = this.#runtime.executeUpToLine(program.source, line, fullProgram, program.options);
+      } catch (e) {
+        this.#feedback = { source, diagnostics: [{ line, message: what(e) }] };
 
-      return { error: what(e) };
+        return { error: what(e) };
+      }
+      if (fullProgram && effectiveLine === lines) this.#rememberActiveKeys(key, result);
     }
     const sourceLines = source.split('\n').length;
     this.#feedback = {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { RuntimeParameterRequest, RuntimeResult } from '@engine/runtime/RuntimeTypes';
-import { emptyRuntimeResult } from '@engine/runtime/RuntimeTypes';
+import { emptyRuntimeResult, parameterKey } from '@engine/runtime/RuntimeTypes';
 import { ParameterPanelModel } from '@/hooks/parameterPanel/ParameterPanelModel';
 import { parameterTableCells, parameterTableText } from '@/entities/parameter';
 import { parameterGridLayout } from '@/entities/parameter';
@@ -23,6 +23,19 @@ function resultWith(requests: RuntimeParameterRequest[]): RuntimeResult {
   return { ...emptyRuntimeResult(), parameterRequests: requests };
 }
 
+// Answers availability the way the whole program does, like PreviewSession.activeParameterKeys.
+function availabilityFor(source: string) {
+  const runtime = new GeometryRuntime();
+
+  return (parameters: ReadonlyMap<string, string>) => {
+    runtime.setParameters(parameters);
+
+    return new Set(
+      runtime.executeUpToLine(source, source.split('\n').length, true).parameterRequests.map(parameterKey),
+    );
+  };
+}
+
 function editValue(model: ParameterPanelModel, row: number, text: string): void {
   model.mouseDoubleClick(row, 3);
   model.editorTextEdited(text);
@@ -41,7 +54,8 @@ describe('ParameterPanel', () => {
       'void makeSDK() { double H=50; get_val("H", H); }',
     ].join('\n');
     const model = new ParameterPanelModel();
-    model.setDefinitions(new GeometryRuntime().discoverParameters(source), source);
+    model.setAvailability(availabilityFor(source));
+    model.setDefinitions(new GeometryRuntime().discoverParameters(source));
 
     const row = (key: string) => model.rows.find((item) => item.key === key)!;
 
@@ -90,6 +104,7 @@ if (ASF) { double H=30; get_val("H", H); }
     const runtime = new GeometryRuntime();
     const model = new ParameterPanelModel();
     const definitions = runtime.discoverParameters(source);
+    model.setAvailability(availabilityFor(source));
 
     const run = () => {
       runtime.setParameters(model.overrides());
@@ -100,7 +115,7 @@ if (ASF) { double H=30; get_val("H", H); }
 
     const row = (key: string) => model.rows.find((item) => item.key === `element::${key}`)!;
 
-    model.setDefinitions(definitions, source);
+    model.setDefinitions(definitions);
     run();
     expect(row('ASS').texts[3]).toBe('false');
     expect(row('ASF').texts[3]).toBe('0');
@@ -110,13 +125,13 @@ if (ASF) { double H=30; get_val("H", H); }
     expect(runtime.evaluateNumericExpression('ASS')).toBe(0);
     expect(runtime.evaluateNumericExpression('ASF')).toBe(0);
     model.setCheckbox('element::ASS', true);
-    model.setDefinitions(definitions, source);
+    model.setDefinitions(definitions);
     run();
     expect(row('ASS').texts[3]).toBe('true');
     expect(row('D').disabled).toBe(false);
     expect(runtime.evaluateNumericExpression('ASS')).toBe(1);
     expect(model.importTable('ASF\n1')).toBe(true);
-    model.setDefinitions(definitions, source);
+    model.setDefinitions(definitions);
     run();
     expect(row('H').disabled).toBe(false);
     expect(runtime.evaluateNumericExpression('ASF')).toBe(1);

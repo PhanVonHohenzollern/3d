@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { GeometryRuntime } from '@engine/runtime';
 import { FunctionWorkspace } from '@/entities/source-function';
 import { PreviewSession } from '@/features/run-preview';
 
@@ -76,5 +77,27 @@ describe('PreviewSession', () => {
 
     session.markDriftSince(main!, new Map([['Width', '4']]), program);
     expect(session.previewDirty).toBe(true);
+  });
+
+  it('runs the program once per Build and never repeats an availability check with the same values', () => {
+    const session = new PreviewSession();
+    const program = programFor(kSource);
+    session.setMode('build');
+    session.discoverParameters(program, () => false);
+    const runs = vi.spyOn(GeometryRuntime.prototype, 'executeUpToLine');
+    try {
+      const parameters = new Map([['Width', '5']]);
+      expect(session.activeParameterKeys(parameters)).toEqual(new Set(['Width']));
+      expect(session.activeParameterKeys(parameters)).toEqual(new Set(['Width']));
+      session.execute(program, kSource, kSource.split('\n').length, parameters);
+      expect(runs).toHaveBeenCalledTimes(1);
+      expect(session.runtime.evaluateNumericExpression('w')).toBe(5);
+      expect(session.scene.meshes).toHaveLength(1);
+
+      session.activeParameterKeys(new Map([['Width', '6']]));
+      expect(runs).toHaveBeenCalledTimes(2);
+    } finally {
+      runs.mockRestore();
+    }
   });
 });

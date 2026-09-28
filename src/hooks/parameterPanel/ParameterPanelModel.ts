@@ -1,6 +1,5 @@
 import { isFunctionParameterKey } from '@/entities/parameter';
 import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '@engine/runtime';
-import { GeometryRuntime, type RuntimeExecutionOptions } from '@engine/runtime';
 import { isInsulationQuery, kInsulationQueries, type InsulationQuery } from '@engine/runtime';
 import {
   definitionId,
@@ -11,7 +10,7 @@ import {
 } from '@/entities/parameter';
 import { adjacentCell, rowForKey } from '@/shared/ui/table-view';
 import type { ParameterEditor, ParameterRow } from '@/entities/parameter';
-import type { ParameterPanelHandle } from '@/types/panels';
+import type { ParameterAvailability, ParameterPanelHandle } from '@/types/panels';
 import { isMacPlatform } from '@/shared/lib/platform';
 import { Observable } from '@/shared/lib/observable';
 import { parseParameterTable } from '@/entities/parameter';
@@ -46,8 +45,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   pasteMessage = '';
   pasteIsError = false;
   activeTab = '';
-  #source = '';
-  #executionOptions?: RuntimeExecutionOptions;
+  #availability: ParameterAvailability | null = null;
   #activeKeys: Set<string> | null = null;
   readonly #tableTabs = new Map<string, { dataSets: ReadonlyMap<string, string>[]; index: number }>();
   readonly #enabledInsulation = new Set<InsulationQuery>();
@@ -71,13 +69,14 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.changed();
   }
 
+  // Rows for parameters the program does not reach with the current values are disabled.
+  setAvailability(query: ParameterAvailability | null): void {
+    this.#availability = query;
+  }
+
   #refreshAvailability(): void {
-    this.#activeKeys = null;
-    if (!this.#source) return;
-    const runtime = new GeometryRuntime();
-    runtime.setParameters(this.overrides());
-    const result = runtime.executeUpToLine(this.#source, this.#source.split('\n').length, true, this.#executionOptions);
-    this.#activeKeys = new Set(result.parameterRequests.map(parameterKey));
+    const keys = this.#availability?.(this.overrides());
+    this.#activeKeys = keys ? new Set(keys) : null;
   }
 
   #definitions: RuntimeParameterRequest[] = [];
@@ -91,7 +90,6 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   setPlaceholderData(): void {
     this.#definitions = [];
-    this.#source = '';
     this.#activeKeys = null;
     this.activeTab = '';
     this.#enabledInsulation.clear();
@@ -99,13 +97,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.changed();
   }
 
-  setDefinitions(
-    definitions: readonly RuntimeParameterRequest[],
-    source = '',
-    options?: RuntimeExecutionOptions,
-  ): void {
-    this.#source = source;
-    this.#executionOptions = options;
+  setDefinitions(definitions: readonly RuntimeParameterRequest[]): void {
     this.#definitions = definitions.map((definition) => ({ ...definition }));
     for (const query of this.#enabledInsulation)
       if (!this.#hasInsulationQuery(query)) this.#enabledInsulation.delete(query);
