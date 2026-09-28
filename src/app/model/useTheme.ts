@@ -1,5 +1,4 @@
 import { useLayoutEffect, useState } from 'react';
-
 import type { Theme } from '@/widgets/workspace-header';
 
 function initialTheme(): Theme {

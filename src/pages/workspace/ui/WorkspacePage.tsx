@@ -3,14 +3,13 @@ import { Box, CodeXml } from 'lucide-react';
 import { useCompactLayout } from '@/shared/lib/react';
 import { useDockHeight } from '@/shared/ui/dock';
 import { useWorkspace } from '@/pages/workspace/model/useWorkspace';
-import { useTheme } from '@/hooks/useTheme';
 import { ApiTracePanel } from '@/widgets/api-trace-panel';
 import { CodeEditor } from '@/widgets/code-editor';
 import { inspectorMinimumHeight } from '@/pages/workspace/config/docks';
 import { InspectorDock } from '@/pages/workspace/ui/InspectorDock';
 import { LinkPanel } from '@/widgets/link-panel';
 import { PanelHeader } from '@/shared/ui/panel-header';
-import { WorkspaceHeader } from '@/widgets/workspace-header';
+import { WorkspaceHeader, type Theme } from '@/widgets/workspace-header';
 import { ParameterPanel } from '@/widgets/parameter-panel';
 import { ResizeHandle } from '@/shared/ui/splitter';
 import { Splitter } from '@/shared/ui/splitter';
@@ -21,9 +20,13 @@ import { FunctionEditor } from '@/features/manage-functions';
 import { PreviewModeToggle } from '@/features/run-preview';
 import { SubParameterPanel } from '@/features/manage-functions';
 
-export function WorkspacePage() {
+type WorkspacePageProps = {
+  theme: Theme;
+  onToggleTheme: () => void;
+};
+
+export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
   const workspace = useWorkspace();
-  const { theme, toggleTheme } = useTheme();
   const compact = useCompactLayout();
   const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum } = useDockHeight(
     inspectorMinimumHeight(workspace.raisedDock),
@@ -31,7 +34,7 @@ export function WorkspacePage() {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
-      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={toggleTheme} />
+      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={onToggleTheme} />
       {workspace.files.message && (
         <div
           role={workspace.files.error ? 'alert' : 'status'}

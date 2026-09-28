@@ -30,8 +30,6 @@ export function useWorkspace() {
   );
 
   useEffect(() => {
-    document.title = 'Geometry Preview';
-
     const onKeyDown = (event: KeyboardEvent) => model.handleKeyDown(event);
 
     window.addEventListener('keydown', onKeyDown);

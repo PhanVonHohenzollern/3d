@@ -50,35 +50,7 @@ const slicePublicApi = allSlices.map(({ layer, slice }) => ({
   message: `Import ${layer}/${slice} through its index.ts only.`,
 }));
 
-const legacyFolders = [
-  {
-    target: './src/widgets',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/utils'],
-    message: 'widgets/ must not import app code (components, hooks, helpers, types, core, utils).',
-  },
-  {
-    target: './src/features',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/utils'],
-    message: 'features/ must not import app code (components, hooks, helpers, types, core, utils).',
-  },
-  {
-    target: './src/entities',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/utils'],
-    message: 'entities/ must not import app code (components, hooks, helpers, types, core, utils).',
-  },
-  {
-    target: './src/shared',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/lib'],
-    message: 'shared/ must not import app code (components, hooks, helpers, types, core).',
-  },
-  {
-    target: './src/types',
-    from: ['./src/components', './src/hooks'],
-    message: 'types/ must not import hooks or components; move the type next to the code that owns it.',
-  },
-];
-
-const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi, ...legacyFolders];
+const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi];
 
 export default defineConfig([
   globalIgnores(['dist', 'engine/runtime/*.generated.ts']),

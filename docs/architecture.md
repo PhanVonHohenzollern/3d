@@ -5,7 +5,7 @@ The app has two parts with different rules:
 - **The engine** interprets FLM3Geo C++ scripts and turns API calls into meshes. It has no React and no DOM, and it has its own tests. It lives in `engine/`, outside `src/`, and the app uses it like a package.
 - **The app** in `src/` is the React UI: editor, 3D viewport, inspector panels. It follows [Feature-Sliced Design](https://feature-sliced.design/) (FSD).
 
-The code is moving to this layout ticket by ticket (see the migration map below). Until that is finished, the old folders (`components/`, `hooks/`, `helpers/`, `types/`, `utils/`, `lib/`, `core/`) still exist. New code goes into the new layout.
+Everything in `src/` lives in one of the six layers below; `npm run lint` fails for a file anywhere else. The migration map at the end records where the old folders (`components/`, `hooks/`, `helpers/`, `types/`, `utils/`, `lib/`, `core/`) went.
 
 ## Layout
 
@@ -16,8 +16,8 @@ engine/                  framework-free C++ interpreter and geometry
   formats/               OBJ read and write
   math/                  vectors and matrices
 src/
-  app/                   entry point, providers, global styles, global shortcuts
-  pages/workspace/       the one page: composes widgets, owns the models, syncs selection
+  app/                   entry point, theme, global styles
+  pages/workspace/       the one page: composes widgets, owns the models, syncs selection, keyboard shortcuts
   widgets/               self-contained blocks: code-editor, viewport, parameter-panel, …
   features/              user actions: run-preview, edit-parameters, manage-functions, …
   entities/              domain data: parameter, api-call, variable, connector, source-function
@@ -134,7 +134,7 @@ Old location → new location, with the ticket that moves it. Each ticket update
 | `src/utils/cn.ts`, `src/lib/utils.ts`                                                                                                                                | `src/shared/lib/cn.ts` (one version, with tailwind-merge)                                                                                             | GPW-17 (done) |
 | `src/core/viewport/glProgram.ts`                                                                                                                                     | `src/shared/lib/webgl/`                                                                                                                               | GPW-18 (done) |
 | `src/core/viewport/{VertexArray,lineQuads,shaders,panelLayout}.ts` (this viewport's vertex format, shaders and label layout)                                         | `src/widgets/viewport/`                                                                                                                               | GPW-34 (done) |
-| `src/hooks/useTheme.ts` (stores the app's theme choice)                                                                                                              | `src/app/`                                                                                                                                            | GPW-37        |
+| `src/hooks/useTheme.ts` (stores the app's theme choice)                                                                                                              | `src/app/`                                                                                                                                            | GPW-37 (done) |
 | `src/core/runtime`, `src/core/geometry`, `src/core/formats`                                                                                                          | `engine/runtime`, `engine/geometry`, `engine/formats`, each with an `index.ts`                                                                        | GPW-19 (done) |
 | `src/utils/{cpp,cppStd}.ts`                                                                                                                                          | `engine/runtime/cpp/` (`what()` and number formatting are exported from `@engine/runtime`)                                                            | GPW-19 (done) |
 | `src/utils/{DVec3,dmat4}.ts`                                                                                                                                         | `engine/math/`                                                                                                                                        | GPW-19 (done) |
@@ -157,11 +157,11 @@ Old location → new location, with the ticket that moves it. Each ticket update
 | editor, viewport, header and menus                                                                                                                                   | `src/widgets/{code-editor,viewport,workspace-header}/`                                                                                                | GPW-34 (done) |
 | `src/components/DockArea.tsx`, `src/hooks/useDockArea.ts`, `src/helpers/layout.ts`, `src/types/dockArea.ts`                                                          | `src/shared/ui/dock/` (generic `DockArea`, `useDockHeight`); the inspector's tabs, icons and hints go to `src/pages/workspace/`                       | GPW-35 (done) |
 | `src/components/App.tsx`, the rest of `MainWindow`                                                                                                                   | `src/pages/workspace/` (`WorkspacePage`, `WorkspaceModel`, `SelectionSync`, `StatusBarModel`); the page creates the panel models and passes them down | GPW-36 (done) |
-| `src/main.tsx`, `src/index.css`, global shortcuts                                                                                                                    | `src/app/`                                                                                                                                            | GPW-37        |
+| `src/main.tsx`, `src/index.css`, `src/hooks/useTheme.ts`                                                                                                             | `src/app/` (`main.tsx`, `App`, `model/useTheme`, `styles/index.css`); the keyboard shortcuts stay with the page, whose actions they trigger           | GPW-37 (done) |
 
 ### Left in the old folders after P4
 
-`src/lib/` is gone (GPW-17). Every remaining file in `src/types/`, `src/helpers/` and `src/utils/` belongs to a feature, widget or page that P5 and P6 create, so it moves with that ticket. GPW-37 deletes the empty folders.
+`src/lib/` went in GPW-17; the rest moved in P5 and P6, and GPW-37 deleted the empty folders.
 
 | File                                                                                                                     | Moves to                                                                      | Ticket                |
 | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | --------------------- |

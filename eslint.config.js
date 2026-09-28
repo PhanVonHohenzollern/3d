@@ -79,6 +79,19 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/{app,pages,widgets,features,entities,shared}/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Program',
+          message: 'Code in src/ lives in a layer: app, pages, widgets, features, entities or shared.',
+        },
+      ],
+    },
+  },
+  {
     files: ['engine/**/*.ts'],
     rules: {
       'no-restricted-imports': [
