@@ -7,24 +7,19 @@ import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/r
 import { emptyRuntimeResult, type RuntimeResult } from '@engine/runtime';
 import { PreviewSession, type EditorExecutionFeedback, type PreviewMode } from '@/features/run-preview';
 import { isApiDebugItemId } from '@/entities/api-call';
-import {
-  closestTarget,
-  floatingWindowSelector,
-  matchesKeySequence,
-  quitKeySequence,
-  textInputSelector,
-} from '@/shared/lib/qt';
-import { pointDeclaration, unusedPreviewPointName } from '@/helpers/viewportPoints';
-import type { CodeEditorHandle } from '@/types/editor';
-import type { ActionListItem, DockName, Menu } from '@/types/mainWindow';
+import { closestTarget, floatingWindowSelector, matchesKeySequence, textInputSelector } from '@/shared/lib/qt';
+import { pointDeclaration, unusedPreviewPointName } from '@/widgets/viewport';
+import type { CodeEditorHandle } from '@/widgets/code-editor';
+import type { DockName } from '@/types/mainWindow';
+import { createWorkspaceActions, type ActionListItem } from '@/widgets/workspace-header';
 import type { ApiTracePanelHandle } from '@/widgets/api-trace-panel';
 import type { VariablePanelHandle } from '@/widgets/variable-panel';
 import type { LinkPanelHandle } from '@/features/edit-connector';
 import type { ParameterPanelHandle } from '@/features/edit-parameters';
-import type { Vec3, Viewport3DHandle } from '@/types/viewport';
+import type { Vec3, Viewport3DHandle } from '@/widgets/viewport';
 import { what } from '@engine/runtime';
 import { Observable } from '@/shared/lib/observable';
-import { Action } from '@/shared/lib/action';
+import type { Action } from '@/shared/lib/action';
 import { SingleShotTimer } from '@/shared/lib/SingleShotTimer';
 import { StatusBarModel } from '@/hooks/mainWindow/StatusBarModel';
 import { FunctionWorkspace } from '@/entities/source-function';
@@ -177,7 +172,6 @@ export class MainWindow extends Observable {
 
   readonly #statusBar = new StatusBarModel();
   #raisedDock: DockName = 'ParametersDock';
-  menus: Menu[] = [];
   toolbarItems: ActionListItem[] = [];
   shortcutActions: Action[] = [];
 
@@ -475,133 +469,41 @@ export class MainWindow extends Observable {
   };
 
   createActions(): void {
-    const exitAction = new Action('E&xit');
-    exitAction.setShortcut(quitKeySequence);
-    exitAction.onTriggered(() => window.close());
-
-    const runAction = new Action('&Run Preview');
-    runAction.setShortcut({ key: 'r', control: true });
-    const clearFocusAction = new Action('Clear API Focus');
-    clearFocusAction.onTriggered(() => this.m_apiTrace.clearApiFocus());
-
-    const showGeometryAction = new Action('Show &Geometry');
-    this.#showGeometryAction = showGeometryAction;
-    showGeometryAction.setCheckable(true);
-    showGeometryAction.setChecked(true);
-
-    const wireframeAction = new Action('Geometry &Wireframe');
-    wireframeAction.setCheckable(true);
-    wireframeAction.setChecked(false);
-
-    const fitSceneAction = new Action('Fit &Scene');
-
-    const showPointsAction = new Action('Show &Points');
-    showPointsAction.setCheckable(true);
-    showPointsAction.setChecked(true);
-
-    const showVectorsAction = new Action('Show &Vectors');
-    showVectorsAction.setCheckable(true);
-    showVectorsAction.setChecked(true);
-
-    const showLabelsAction = new Action('Show &Labels');
-    showLabelsAction.setCheckable(true);
-    showLabelsAction.setChecked(true);
-
-    const fitAction = new Action('&Fit Debug');
-    fitAction.setShortcut({ key: 'f' });
-
-    const hideSelectedAction = new Action('Hide Selected');
-    hideSelectedAction.setShortcut({ key: 'h' });
-    const showSelectedAction = new Action('Show Selected');
-    showSelectedAction.setShortcut({ key: 'h', shift: true });
-    const hideAllDebugAction = new Action('Hide All Debug');
-    const showAllDebugAction = new Action('Show All Debug');
-
-    this.menus = [
-      { title: '&File', items: [exitAction] },
-      {
-        title: '&Preview',
-        items: [
-          runAction,
-          clearFocusAction,
-          'separator',
-          showGeometryAction,
-          wireframeAction,
-          fitSceneAction,
-          'separator',
-          showPointsAction,
-          showVectorsAction,
-          showLabelsAction,
-          fitAction,
-          'separator',
-          hideSelectedAction,
-          showSelectedAction,
-          hideAllDebugAction,
-          showAllDebugAction,
-        ],
+    const actions = createWorkspaceActions({
+      exit: () => window.close(),
+      runPreview: () => {
+        if (this.previewMode === 'build') this.buildPreview();
+        else this.runPreview();
       },
-    ];
-    this.toolbarItems = [
-      showGeometryAction,
-      wireframeAction,
-      fitSceneAction,
-      'separator',
-      showPointsAction,
-      showVectorsAction,
-      showLabelsAction,
-      'separator',
-      hideSelectedAction,
-      showSelectedAction,
-    ];
-    this.shortcutActions = [exitAction, runAction, fitAction, hideSelectedAction, showSelectedAction];
+      setShowGeometry: (show) => this.m_viewport.setShowGeometry(show),
+      setGeometryWireframe: (wireframe) => this.m_viewport.setGeometryWireframe(wireframe),
+      fitScene: () => this.m_viewport.fitScene(),
+      setShowPoints: (show) => this.m_viewport.setShowPoints(show),
+      setShowVectors: (show) => this.m_viewport.setShowVectors(show),
+      setShowLabels: (show) => this.m_viewport.setShowLabels(show),
+      fitDebugOverlay: () => this.m_viewport.fitDebugOverlay(),
+      setSelectedDebugItemsVisible: (visible) => this.#setSelectedDebugItemsVisible(visible),
+    });
+    this.toolbarItems = actions.toolbarItems;
+    this.shortcutActions = actions.shortcutActions;
+    this.#showGeometryAction = actions.showGeometry;
+  }
 
-    runAction.onTriggered(() => {
-      if (this.previewMode === 'build') this.buildPreview();
-      else this.runPreview();
-    });
-    showGeometryAction.onToggled((checked) => this.m_viewport.setShowGeometry(checked));
-    wireframeAction.onToggled((checked) => this.m_viewport.setGeometryWireframe(checked));
-    fitSceneAction.onTriggered(() => this.m_viewport.fitScene());
-    showPointsAction.onToggled((checked) => this.m_viewport.setShowPoints(checked));
-    showVectorsAction.onToggled((checked) => this.m_viewport.setShowVectors(checked));
-    showLabelsAction.onToggled((checked) => this.m_viewport.setShowLabels(checked));
-    fitAction.onTriggered(() => this.m_viewport.fitDebugOverlay());
-    hideSelectedAction.onTriggered(() => {
-      let names = this.m_apiTrace.selectedDebugItems();
-      if (names.size === 0) names = this.m_viewport.selectedDebugItems();
-      if (names.size === 0) {
-        this.statusBar().showMessage(
-          'Select a point/vector parameter in API Trace, Variables, or the viewport first',
-          2500,
-        );
+  #setSelectedDebugItemsVisible(visible: boolean): void {
+    let names = this.m_apiTrace.selectedDebugItems();
+    if (names.size === 0) names = this.m_viewport.selectedDebugItems();
+    if (names.size === 0) {
+      this.statusBar().showMessage(
+        visible
+          ? 'Select a point/vector parameter in API Trace or Variables first'
+          : 'Select a point/vector parameter in API Trace, Variables, or the viewport first',
+        2500,
+      );
 
-        return;
-      }
-      for (const name of names) this.m_viewport.setDebugItemVisible(name, false);
-      this.statusBar().showMessage(`Hidden ${names.size} selected debug item(s)`, 1800);
-    });
-    showSelectedAction.onTriggered(() => {
-      let names = this.m_apiTrace.selectedDebugItems();
-      if (names.size === 0) names = this.m_viewport.selectedDebugItems();
-      if (names.size === 0) {
-        this.statusBar().showMessage('Select a point/vector parameter in API Trace or Variables first', 2500);
-
-        return;
-      }
-      for (const name of names) this.m_viewport.setDebugItemVisible(name, true);
-      this.statusBar().showMessage(`Shown ${names.size} selected debug item(s)`, 1800);
-    });
-    hideAllDebugAction.onTriggered(() => {
-      this.m_viewport.hideAllDebugItems();
-      this.statusBar().showMessage('All point/vector debug items hidden', 1800);
-    });
-    showAllDebugAction.onTriggered(() => {
-      showPointsAction.setChecked(true);
-      showVectorsAction.setChecked(true);
-      showLabelsAction.setChecked(true);
-      this.m_viewport.showAllDebugItems();
-      this.statusBar().showMessage('All point/vector debug overlays shown', 1800);
-    });
+      return;
+    }
+    for (const name of names) this.m_viewport.setDebugItemVisible(name, visible);
+    this.statusBar().showMessage(`${visible ? 'Shown' : 'Hidden'} ${names.size} selected debug item(s)`, 1800);
   }
 
   readonly exitPreviewFocus = (): void => {

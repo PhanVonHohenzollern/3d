@@ -72,19 +72,9 @@ const legacyFolders = [
     message: 'shared/ must not import app code (components, hooks, helpers, types, core).',
   },
   {
-    target: './src/utils',
-    from: ['./src/components', './src/hooks', './src/helpers', './src/core'],
-    message: 'utils/ must stay generic: no app or engine imports.',
-  },
-  {
     target: './src/types',
     from: ['./src/components', './src/hooks'],
     message: 'types/ must not import hooks or components; move the type next to the code that owns it.',
-  },
-  {
-    target: './src/core/viewport',
-    from: ['./src/components', './src/hooks', './src/helpers'],
-    message: 'The viewport must not depend on app helpers, hooks or components.',
   },
 ];
 

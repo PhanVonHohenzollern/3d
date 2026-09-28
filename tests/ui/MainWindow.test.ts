@@ -6,10 +6,10 @@ import { MainWindow } from '@/hooks/mainWindow/MainWindow';
 import { GeometryRuntime } from '@engine/runtime';
 import { ParameterPanelModel } from '@/features/edit-parameters';
 import { VariablePanelModel } from '@/widgets/variable-panel';
-import type { CodeEditorHandle } from '@/types/editor';
-import type { Viewport3DHandle } from '@/types/viewport';
-import { createViewport3DHandle } from '@/helpers/viewportHandle';
-import { QVector3D } from '@/utils/Vector3D';
+import type { CodeEditorHandle } from '@/widgets/code-editor';
+import type { Viewport3DHandle } from '@/widgets/viewport';
+import { createViewport3DHandle } from '@/widgets/viewport/model/viewportHandle';
+import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { boxMesh, click, createEngine, project, scene } from '@tests/renderer/helpers';
 import { declaredFunctionNames, removeFunctionSource, sourceFunctions } from '@/entities/source-function';
 
@@ -1335,6 +1335,25 @@ return H;
     expect(mw.previewMode).toBe('build');
     expect(mw.m_currentPreviewLine).toBe(6);
     expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(8);
+    mw.dispose();
+  });
+
+  it('H hides and Shift+H shows the selected debug items, or asks for a selection', () => {
+    const { mw, editor, apiTrace, log } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 6);
+    mw.handleKeyDown(keyEvent('h'));
+    expect(mw.statusBar().currentMessage()).toBe(
+      'Select a point/vector parameter in API Trace, Variables, or the viewport first',
+    );
+
+    vi.spyOn(apiTrace, 'selectedDebugItems').mockReturnValue(new Set(['@api0:point:center']));
+    mw.handleKeyDown(keyEvent('h'));
+    expect(log).toContain('setDebugItemVisible(@api0:point:center, false)');
+    expect(mw.statusBar().currentMessage()).toBe('Hidden 1 selected debug item(s)');
+    mw.handleKeyDown(keyEvent('h', { shift: true }));
+    expect(log).toContain('setDebugItemVisible(@api0:point:center, true)');
+    expect(mw.statusBar().currentMessage()).toBe('Shown 1 selected debug item(s)');
     mw.dispose();
   });
 

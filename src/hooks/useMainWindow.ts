@@ -76,7 +76,6 @@ export function useMainWindow() {
     buildPreview: mainWindow.buildPreview,
     debugPreview: mainWindow.debugPreview,
     debugBlocked: mainWindow.debugBlocked,
-    menus: mainWindow.menus,
     toolbarItems: mainWindow.toolbarItems,
     inspectorCounts: mainWindow.inspectorCounts,
     raisedDock: mainWindow.raisedDock(),

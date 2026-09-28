@@ -1,10 +1,10 @@
 import type { PreviewMesh, PreviewGeometryScene } from '@engine/geometry/PreviewGeometryEngine';
 import { emptyRuntimeResult, type RuntimeResult } from '@engine/runtime/RuntimeTypes';
 import { FdPoint3d } from '@engine/runtime/FdMath';
-import { DebugItem } from '@/core/viewport/DebugItem';
-import { ViewportEngine } from '@/core/viewport/ViewportEngine';
+import { DebugItem } from '@/widgets/viewport/lib/render/DebugItem';
+import { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
 import type { TextMeasurer } from '@/shared/lib/text';
-import type { QPointF, QVector3D } from '@/utils/Vector3D';
+import type { QPointF, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 
 export const fixedMeasurer: TextMeasurer = {
   horizontalAdvance: (text) => Array.from(text).length * 7,

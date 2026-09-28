@@ -3,24 +3,26 @@ import { Box, CodeXml } from 'lucide-react';
 import { useCompactLayout } from '@/shared/lib/react';
 import { useDockArea } from '@/hooks/useDockArea';
 import { useMainWindow } from '@/hooks/useMainWindow';
+import { useTheme } from '@/hooks/useTheme';
 import { ApiTracePanel } from '@/widgets/api-trace-panel';
-import { CodeEditor } from '@/components/CodeEditor';
+import { CodeEditor } from '@/widgets/code-editor';
 import { DockArea } from '@/components/DockArea';
 import { LinkPanel } from '@/widgets/link-panel';
 import { PanelHeader } from '@/shared/ui/panel-header';
-import { WorkspaceHeader } from '@/components/WorkspaceHeader';
+import { WorkspaceHeader } from '@/widgets/workspace-header';
 import { ParameterPanel } from '@/widgets/parameter-panel';
 import { ResizeHandle } from '@/shared/ui/splitter';
 import { Splitter } from '@/shared/ui/splitter';
-import { ToolBar } from '@/components/ToolBar';
+import { ToolBar } from '@/widgets/workspace-header';
 import { VariablePanel } from '@/widgets/variable-panel';
-import { Viewport3D } from '@/components/Viewport3D';
+import { Viewport3D } from '@/widgets/viewport';
 import { FunctionEditor } from '@/features/manage-functions';
 import { PreviewModeToggle } from '@/features/run-preview';
 import { SubParameterPanel } from '@/features/manage-functions';
 
 export function App() {
   const mainWindow = useMainWindow();
+  const { theme, toggleTheme } = useTheme();
   const compact = useCompactLayout();
   const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum, title, tabs } =
     useDockArea(
@@ -32,7 +34,7 @@ export function App() {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
-      <WorkspaceHeader files={mainWindow.files.controls} />
+      <WorkspaceHeader files={mainWindow.files.controls} theme={theme} onToggleTheme={toggleTheme} />
       {mainWindow.files.message && (
         <div
           role={mainWindow.files.error ? 'alert' : 'status'}
