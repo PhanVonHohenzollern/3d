@@ -16,8 +16,14 @@ const overloadStatement = {
   selector: 'TSDeclareFunction, ExportNamedDeclaration[declaration.type="TSDeclareFunction"]',
 };
 
+const relativeImports = {
+  regex: '^(\\.{1,2}(/|$)|~/|src/|tests/|engine/|/)',
+  message:
+    'Import project code with @/ (src), @engine/ (engine) or @tests/ (tests), never a relative or absolute path (docs/architecture.md).',
+};
+
 export default defineConfig([
-  globalIgnores(['dist', 'src/core/runtime/*.generated.ts']),
+  globalIgnores(['dist', 'engine/runtime/*.generated.ts']),
   {
     files: ['**/*.{js,mjs,ts,tsx}'],
     extends: [
@@ -34,18 +40,7 @@ export default defineConfig([
     plugins: { '@stylistic': stylistic },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              regex: '^(\\.{1,2}(/|$)|~/|src/|tests/|/)',
-              message:
-                'Import project code with @/ (src) or @tests/ (tests), never a relative or absolute path (docs/architecture.md).',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { patterns: [relativeImports] }],
       '@stylistic/padding-line-between-statements': [
         'error',
         { blankLine: 'always', prev: '*', next: 'return' },
@@ -62,6 +57,38 @@ export default defineConfig([
           ],
         },
         { exceptAfterOverload: true },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            relativeImports,
+            {
+              regex: '^@engine/[^/]+/.+',
+              message:
+                'Import the engine through its package: @engine/runtime, @engine/geometry, @engine/formats or @engine/math.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['engine/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            relativeImports,
+            { regex: '^@(tests)?/', message: 'The engine must not import app or test code.' },
+          ],
+        },
       ],
     },
   },

@@ -1,6 +1,6 @@
-import { runtimeSourceHistory } from '@/core/runtime/GeometryRuntime';
-import type { RuntimeArgumentTrace, RuntimeResult } from '@/core/runtime/RuntimeTypes';
-import { isArray, runtimeTypeName, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { runtimeSourceHistory } from '@engine/runtime';
+import type { RuntimeArgumentTrace, RuntimeResult } from '@engine/runtime';
+import { isArray, runtimeTypeName, type RuntimeValue } from '@engine/runtime';
 import { earlierChanges, historyValueText } from '@/helpers/apiHistory';
 import { compoundExpression, directSource, displayExpression } from '@/helpers/traceFormatting';
 import { UserRole } from '@/shared/ui/tree';

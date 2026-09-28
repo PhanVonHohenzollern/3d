@@ -1,6 +1,6 @@
-import type { PreviewMesh, PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
-import { emptyRuntimeResult, type RuntimeResult } from '@/core/runtime/RuntimeTypes';
-import { FdPoint3d } from '@/core/runtime/FdMath';
+import type { PreviewMesh, PreviewGeometryScene } from '@engine/geometry/PreviewGeometryEngine';
+import { emptyRuntimeResult, type RuntimeResult } from '@engine/runtime/RuntimeTypes';
+import { FdPoint3d } from '@engine/runtime/FdMath';
 import { DebugItem } from '@/core/viewport/DebugItem';
 import { ViewportEngine } from '@/core/viewport/ViewportEngine';
 import type { TextMeasurer } from '@/shared/lib/text';

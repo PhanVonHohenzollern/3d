@@ -1,7 +1,7 @@
 import { cppLanguage } from '@codemirror/lang-cpp';
 import type { Diagnostic } from '@codemirror/lint';
 import { StateEffect, StateField } from '@codemirror/state';
-import type { RuntimeDiagnostic } from '@/core/runtime/RuntimeTypes';
+import type { RuntimeDiagnostic } from '@engine/runtime';
 
 export const setExecutionDiagnostics = StateEffect.define<readonly Diagnostic[]>();
 export const executionDiagnosticsField = StateField.define<readonly Diagnostic[]>({

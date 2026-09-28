@@ -6,7 +6,6 @@ import tseslint from 'typescript-eslint';
 
 const kLayers = ['app', 'pages', 'widgets', 'features', 'entities', 'shared']; // highest first
 const kSlicedLayers = ['pages', 'widgets', 'features', 'entities'];
-const kEnginePackages = ['runtime', 'geometry', 'formats', 'math'];
 
 const directories = (path) =>
   fs.existsSync(path)
@@ -51,31 +50,6 @@ const slicePublicApi = allSlices.map(({ layer, slice }) => ({
   message: `Import ${layer}/${slice} through its index.ts only.`,
 }));
 
-const enginePublicApi = kEnginePackages.map((name) => ({
-  target: './src',
-  from: `./engine/${name}`,
-  except: ['./index.ts'],
-  message: `Import engine/${name} through its index.ts only.`,
-}));
-
-const legacyEngine = ['./src/core/runtime', './src/core/geometry', './src/core/formats'];
-const appFolders = ['./src/components', './src/hooks', './src/helpers', './src/types', './src/lib'];
-
-const engineIndependence = [
-  { target: './engine', from: './src', message: 'The engine must not import app code.' },
-  ...legacyEngine.map((target) => ({
-    target,
-    from: [...appFolders, './src/core/viewport'],
-    message: 'The engine (runtime, geometry, formats) must not import app code.',
-  })),
-  ...legacyEngine.map((target) => ({
-    target,
-    from: './src/utils',
-    except: ['./cpp.ts', './cppStd.ts', './DVec3.ts', './dmat4.ts'],
-    message: 'The engine may only use the utils that move into engine/ with it (cpp, cppStd, DVec3, dmat4).',
-  })),
-];
-
 const legacyFolders = [
   {
     target: './src/shared',
@@ -99,17 +73,10 @@ const legacyFolders = [
   },
 ];
 
-const zones = [
-  ...layerDirection,
-  ...noCrossSliceImports,
-  ...slicePublicApi,
-  ...enginePublicApi,
-  ...engineIndependence,
-  ...legacyFolders,
-];
+const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi, ...legacyFolders];
 
 export default defineConfig([
-  globalIgnores(['dist', 'src/core/runtime/*.generated.ts']),
+  globalIgnores(['dist', 'engine/runtime/*.generated.ts']),
   {
     files: ['src/**/*.{ts,tsx}', 'engine/**/*.{ts,tsx}'],
     languageOptions: { parser: tseslint.parser },

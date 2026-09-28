@@ -11,7 +11,7 @@
     "test": "vitest run",
     "update-expected": "vitest run tests/update-expected.test.ts",
     "lint": "eslint . --max-warnings 0",
-    "lint:boundaries": "eslint -c eslint.boundaries.config.js src",
+    "lint:boundaries": "eslint -c eslint.boundaries.config.js src engine",
     "lint:fix": "eslint . --fix",
     "format": "npm run lint:fix && prettier --write .",
     "format:check": "prettier --check .",

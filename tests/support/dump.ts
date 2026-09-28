@@ -1,16 +1,16 @@
-import { buildConnectorPreview } from '@/core/geometry/ConnectorPreview';
-import { PreviewGeometryEngine } from '@/core/geometry/PreviewGeometryEngine';
+import { buildConnectorPreview } from '@engine/geometry/ConnectorPreview';
+import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
 import {
   allNativeApiSignatures,
   apiParameterMetadataForCall,
   apiSignatureMetadataForCall,
-} from '@/core/runtime/ApiMetadata';
-import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from '@/core/runtime/ApiSemantics';
-import { what } from '@/utils/cpp';
-import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@/core/runtime/DebugAnchorResolver';
-import { GeometryRuntime, runtimeSourceHistory } from '@/core/runtime/GeometryRuntime';
-import type { RuntimeApiCall, RuntimeArgumentTrace, RuntimeResult } from '@/core/runtime/RuntimeTypes';
-import { RuntimeArray } from '@/core/runtime/RuntimeValue';
+} from '@engine/runtime/ApiMetadata';
+import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from '@engine/runtime/ApiSemantics';
+import { what } from '@engine/runtime/cpp/cpp';
+import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime/DebugAnchorResolver';
+import { GeometryRuntime, runtimeSourceHistory } from '@engine/runtime/GeometryRuntime';
+import type { RuntimeApiCall, RuntimeArgumentTrace, RuntimeResult } from '@engine/runtime/RuntimeTypes';
+import { RuntimeArray } from '@engine/runtime/RuntimeValue';
 import { encodeConnector, encodeNumber, encodeParameterRequest, encodeResult, encodeScene } from '@tests/support/codec';
 import { connectorDefinition } from '@tests/support/connectors';
 import type { Fixture } from '@tests/support/fixtures';

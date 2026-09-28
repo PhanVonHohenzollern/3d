@@ -1,6 +1,6 @@
-import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '@/core/runtime/RuntimeTypes';
-import { GeometryRuntime, type RuntimeExecutionOptions } from '@/core/runtime/GeometryRuntime';
-import { isInsulationQuery, kInsulationQueries, type InsulationQuery } from '@/core/runtime/helpers/insulationQueries';
+import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '@engine/runtime';
+import { GeometryRuntime, type RuntimeExecutionOptions } from '@engine/runtime';
+import { isInsulationQuery, kInsulationQueries, type InsulationQuery } from '@engine/runtime';
 import {
   definitionId,
   neutralValueForType,

@@ -1,5 +1,5 @@
 import type { Vec3 } from '@/types/viewport';
-import { formatFixed } from '@/utils/cpp';
+import { formatFixed } from '@engine/runtime';
 
 function coordinateText(value: number): string {
   const text = formatFixed(value, 3)

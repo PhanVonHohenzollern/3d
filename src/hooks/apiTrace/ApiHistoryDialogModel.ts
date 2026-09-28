@@ -1,5 +1,5 @@
-import { apiParameterMetadataForCall } from '@/core/runtime/ApiMetadata';
-import type { RuntimeArgumentTrace, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { apiParameterMetadataForCall } from '@engine/runtime';
+import type { RuntimeArgumentTrace, RuntimeResult } from '@engine/runtime';
 import { historyWindowTitle } from '@/helpers/apiHistory';
 import { Observable } from '@/shared/lib/observable';
 import { TreeWidget } from '@/shared/ui/tree';

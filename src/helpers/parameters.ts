@@ -1,4 +1,4 @@
-import type { RuntimeParameterRequest } from '@/core/runtime/RuntimeTypes';
+import type { RuntimeParameterRequest } from '@engine/runtime';
 
 /** Use the available width, narrowing pairs only when needed to fit the panel height. */
 export function parameterGridLayout(count: number, width: number, height: number) {

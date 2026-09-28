@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
-import { PreviewGeometryEngine } from '@/core/geometry/PreviewGeometryEngine';
-import { preprocess } from '@/core/runtime/helpers/preprocessor';
+import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
+import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
+import { preprocess } from '@engine/runtime/interpreter/preprocessor';
 import {
   declaredFunctionNames,
   mainFunctionName,
@@ -10,7 +10,7 @@ import {
   validFunctionCode,
 } from '@/helpers/functions';
 import { FunctionWorkspace } from '@/hooks/mainWindow/FunctionWorkspace';
-import { RuntimeStdVector } from '@/core/runtime/RuntimeValue';
+import { RuntimeStdVector } from '@engine/runtime/RuntimeValue';
 
 describe('vendor C++ compatibility regressions', () => {
   const conditionalSource = [

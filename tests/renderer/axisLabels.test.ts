@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectorOrientations, previewOrientationDirection } from '@/core/geometry/ConnectorPreview';
+import { connectorOrientations, previewOrientationDirection } from '@engine/geometry/ConnectorPreview';
 import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
 import { axesVertices, placeWorldAxisLabels } from '@/core/viewport/worldAxes';
 import type { AxisLabel } from '@/types/viewportEngine';

@@ -2,4 +2,4 @@ dist
 node_modules
 package-lock.json
 tests/fixtures
-src/core/runtime/*.generated.ts
+engine/runtime/*.generated.ts

@@ -1,11 +1,11 @@
-import { writeObj } from '@/core/formats/obj';
+import { writeObj } from '@engine/formats';
 import type { InspectorCounts } from '@/types/dockArea';
-import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
-import { PreviewGeometryEngine, type PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
-import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@/core/runtime/DebugAnchorResolver';
-import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
-import { isInsulationQuery } from '@/core/runtime/helpers/insulationQueries';
-import { emptyRuntimeResult, type RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import type { ConnectorPreview } from '@engine/geometry';
+import { PreviewGeometryEngine, type PreviewGeometryScene } from '@engine/geometry';
+import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime';
+import { GeometryRuntime } from '@engine/runtime';
+import { isInsulationQuery } from '@engine/runtime';
+import { emptyRuntimeResult, type RuntimeResult } from '@engine/runtime';
 import { isApiDebugItemId } from '@/helpers/debugItems';
 import {
   closestTarget,
@@ -19,7 +19,7 @@ import type { CodeEditorHandle, EditorExecutionFeedback } from '@/types/editor';
 import type { ActionListItem, DockName, Menu, PreviewMode } from '@/types/mainWindow';
 import type { ApiTracePanelHandle, LinkPanelHandle, ParameterPanelHandle, VariablePanelHandle } from '@/types/panels';
 import type { Vec3, Viewport3DHandle } from '@/types/viewport';
-import { what } from '@/utils/cpp';
+import { what } from '@engine/runtime';
 import { Observable } from '@/shared/lib/observable';
 import { Action } from '@/shared/lib/action';
 import { SingleShotTimer } from '@/shared/lib/SingleShotTimer';

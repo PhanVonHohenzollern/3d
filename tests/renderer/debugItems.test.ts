@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { appendVectorArrow } from '@/core/viewport/debugItems';
 import { VertexArray } from '@/core/viewport/VertexArray';
 import { debugValueText } from '@/helpers/debugValueText';

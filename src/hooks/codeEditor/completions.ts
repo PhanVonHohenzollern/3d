@@ -1,7 +1,7 @@
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
-import { allNativeApiSignatures } from '@/core/runtime/ApiMetadata';
-import { kSdkConstants, kSdkTypes } from '@/core/runtime/SdkDefinitions';
+import { allNativeApiSignatures } from '@engine/runtime';
+import { kSdkConstants, kSdkTypes } from '@engine/runtime';
 
 const keywords = `alignas alignof asm auto bool break case catch char char8_t char16_t char32_t class
 const consteval constexpr constinit const_cast continue co_await co_return co_yield decltype default delete

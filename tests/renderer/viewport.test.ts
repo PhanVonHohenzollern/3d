@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { LeftButton, RightButton } from '@/shared/lib/qt';
 import { QVector3D } from '@/utils/Vector3D';
 import { boxMesh, click, createEngine, mouse, project, resultWithP0, scene } from '@tests/renderer/helpers';
-import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 
 function meshModeEngine() {
   const engine = createEngine();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
+import type { PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
 import { QVector3D } from '@/utils/Vector3D';
 import { kVertexFloats } from '@/core/viewport/VertexArray';
 import { expandLineQuads, kLineQuadFloats } from '@/core/viewport/lineQuads';
