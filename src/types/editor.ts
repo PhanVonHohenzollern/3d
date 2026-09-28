@@ -1,11 +1,7 @@
 import type { Ref, ReactNode } from 'react';
-import type { RuntimeDiagnostic } from '@engine/runtime';
+import type { EditorExecutionFeedback } from '@/features/run-preview';
 
-export interface EditorExecutionFeedback {
-  source: string;
-  diagnostics: readonly RuntimeDiagnostic[];
-  externalDiagnostics?: { name: string; line: number; sourceLine: number; message: string }[];
-}
+export type { EditorExecutionFeedback };
 
 export interface CodeEditorHandle {
   toPlainText(): string;

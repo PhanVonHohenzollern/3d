@@ -16,6 +16,7 @@ import { ToolBar } from '@/components/ToolBar';
 import { VariablePanel } from '@/components/VariablePanel';
 import { Viewport3D } from '@/components/Viewport3D';
 import { FunctionEditor } from '@/components/FunctionEditor';
+import { PreviewModeToggle } from '@/features/run-preview';
 import { SubParameterPanel } from '@/components/SubParameterPanel';
 
 export function App() {
@@ -63,31 +64,12 @@ export function App() {
                 <span className="workspace-surface hidden bg-secondary px-2 py-1 font-code text-xs text-muted-foreground @min-[340px]/editor:inline">
                   C++
                 </span>
-                <div role="group" aria-label="Preview mode" className="flex shrink-0 items-center gap-1">
-                  <Button
-                    size="xs"
-                    variant={mainWindow.previewMode === 'build' ? 'default' : 'outline'}
-                    aria-pressed={mainWindow.previewMode === 'build'}
-                    title="Build the full code and keep the preview until the next build"
-                    onClick={mainWindow.buildPreview}
-                  >
-                    Build
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant={mainWindow.previewMode === 'debug' ? 'default' : 'outline'}
-                    aria-pressed={mainWindow.previewMode === 'debug'}
-                    disabled={mainWindow.debugBlocked}
-                    title={
-                      mainWindow.debugBlocked
-                        ? 'Code changed — Build again to enable Debug'
-                        : 'Debug to the current line and update the preview while editing'
-                    }
-                    onClick={mainWindow.debugPreview}
-                  >
-                    Debug
-                  </Button>
-                </div>
+                <PreviewModeToggle
+                  mode={mainWindow.previewMode}
+                  debugBlocked={mainWindow.debugBlocked}
+                  onBuild={mainWindow.buildPreview}
+                  onDebug={mainWindow.debugPreview}
+                />
               </PanelHeader>
               <FunctionEditor.Provider state={mainWindow.functions.state} actions={mainWindow.functions.actions}>
                 <FunctionEditor.Tabs />
