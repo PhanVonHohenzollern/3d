@@ -512,6 +512,9 @@ makeVerySimpleTube(cP, cP + vz * L, D, 8);
     mw.buildPreview();
     expect(mw.addFunction('Main')).toBe(false);
     expect(mw.functions.error).toContain('already exists');
+    // Closing the Add Function dialog must not leave its error in the tab strip.
+    mw.clearFunctionError();
+    expect(mw.functions.error).toBe('');
     expect(mw.addFunction('   ')).toBe(false);
     expect(mw.addFunction('piece')).toBe(true);
     expect(editor.text).toContain('void piece()');

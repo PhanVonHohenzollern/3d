@@ -292,6 +292,13 @@ export class MainWindow extends Observable {
     return true;
   };
 
+  // The Add Function dialog shows its own error; this keeps it from outliving the dialog.
+  readonly clearFunctionError = (): void => {
+    if (!this.functions.error) return;
+    this.functions.error = '';
+    this.changed();
+  };
+
   readonly selectFunction = (name: string): void => {
     if (name === this.functions.active || (name && !this.functions.names.includes(name))) return;
     this.m_parameters.commitEditor();

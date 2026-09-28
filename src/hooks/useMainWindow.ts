@@ -31,6 +31,7 @@ export function useMainWindow() {
       error: workspace.error,
       unsaved: [...workspace.drafts.keys()].filter((name) => workspace.source(name) !== workspace.savedSource(name)),
       add: mainWindow.addFunction,
+      clearError: mainWindow.clearFunctionError,
       select: mainWindow.selectFunction,
       save: mainWindow.saveFunction,
       cancel: mainWindow.cancelFunction,
