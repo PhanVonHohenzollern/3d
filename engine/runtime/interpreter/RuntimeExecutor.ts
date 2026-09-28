@@ -18,7 +18,6 @@ import {
   signatureParameterList,
   writableReferenceParameter,
 } from '@engine/runtime/helpers/functionSignatures';
-import { lineIntersection } from '@engine/runtime/helpers/lineIntersection';
 import {
   arraySlot,
   bowlCornerSlot,
@@ -27,7 +26,6 @@ import {
   writeLValue,
   type LValueRef,
 } from '@engine/runtime/helpers/lvalues';
-import { parameterDisplayText, parameterTextToValue } from '@engine/runtime/helpers/parameters';
 import { kMutatingMethods, mutatedValue, mutatingMethodDot } from '@engine/runtime/helpers/mutatingMethods';
 import { callMethod } from '@engine/runtime/helpers/pointVectorMembers';
 import {
@@ -45,16 +43,10 @@ import {
 } from '@engine/runtime/helpers/tokens';
 import { isKnownSdkTypedef, parseRuntimeType } from '@engine/runtime/helpers/typeNames';
 import { addValues, compoundOperation } from '@engine/runtime/helpers/valueOperations';
-import type {
-  RuntimeArgumentTrace,
-  RuntimeExecutionOptions,
-  RuntimeParameterRequest,
-  RuntimeValueSource,
-} from '@engine/runtime/RuntimeTypes';
+import type { RuntimeArgumentTrace, RuntimeExecutionOptions, RuntimeValueSource } from '@engine/runtime/RuntimeTypes';
 import {
   isArray,
   isPoint,
-  isString,
   runtimeCoerceToType,
   runtimeDeepCopy,
   runtimeDefaultValueForType,
@@ -70,19 +62,13 @@ import {
 import { sdkTypeDefinition } from '@engine/runtime/SdkDefinitions';
 import { rootName } from '@engine/runtime/helpers/variablePaths';
 import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
+import { isBaseClassCall, languageIntrinsic, sdkIntrinsic, type IntrinsicContext } from '@engine/runtime/intrinsics';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import type { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
 import { StatementKind, type Statement } from '@engine/runtime/interpreter/Statement';
 
 const kMaxIterations = 10000;
 const kMaxFunctionCallDepth = 64;
-const kParameterQueries: readonly string[] = [
-  'get_fln_size',
-  'get_fln_thick',
-  'get_fln_diam',
-  'get_ldist',
-  'get_ext_diam',
-];
 
 interface ReferenceOutput {
   index: number;
@@ -100,6 +86,7 @@ export class RuntimeExecutor {
   private m_functionCallDepth = 0;
   private readonly m_functions = new Map<string, Statement[]>();
   private readonly m_parentApiStack: number[] = [];
+  #intrinsics: IntrinsicContext | undefined;
 
   constructor(
     private readonly m_state: RuntimeState,
@@ -179,7 +166,7 @@ export class RuntimeExecutor {
       if (
         this.m_options?.isolated &&
         (child.kind !== StatementKind.Simple ||
-          (!parseRuntimeType(child.tokens, 0) && child.tokens[0]?.text !== 'get_val'))
+          (!parseRuntimeType(child.tokens, 0) && !languageIntrinsic(child.tokens[0]?.text)?.readsParameters))
       )
         continue;
       this.m_state.globalValues = new Map(this.m_state.m_values);
@@ -762,107 +749,28 @@ export class RuntimeExecutor {
   private executeFreeCall(tokens: readonly Token[], line: number): boolean {
     const lparen = tokens.findIndex((token) => token.text === '(');
     if (lparen < 1) return false;
-    const scopedName = tokensToText(tokens.slice(0, lparen));
-    const baseCall = /^(?:FLM3Geo::)?BlockCreator3d::\w+$/.test(scopedName);
+    const baseCall = isBaseClassCall(tokensToText(tokens.slice(0, lparen)));
     if (baseCall) tokens = tokens.slice(lparen - 1);
     if (tokens.length < 2 || tokens[0].kind !== TokKind.Identifier || !isSymbol(tokens[1], '(')) return false;
     const name = tokens[0].text;
     const argGroups = parseCallArguments(tokens, 1);
-
-    if (name === 'get_val') this.executeGetVal(argGroups, line);
-    else if (kParameterQueries.includes(name)) this.executeParameterQuery(name, argGroups, line);
-    else if (name === 'lineSegToLineSegInt' || name === 'lineToLineInt')
-      this.executeLineIntersection(name, tokens, argGroups, line);
-    else {
-      if (name === 'setPrimitiveMode' && argGroups.length === 1) {
-        const mode = this.evaluate(argGroups[0]);
-        this.m_state.setVariable('m_primitiveMode', runtimeCoerceToType(mode, 'int'), false);
-      }
-      if (name !== 'ASSERT' && name !== 'delete') this.executeCall(name, argGroups, line, false, baseCall);
-    }
+    const intrinsic = languageIntrinsic(name);
+    if (intrinsic?.statement?.(this.intrinsics, { name, argGroups, line }, tokens) === 'done') return true;
+    this.executeCall(name, argGroups, line, false, baseCall);
 
     return true;
   }
 
-  private executeGetVal(argGroups: readonly Token[][], line: number): void {
-    if (argGroups.length !== 2) throw runtimeError('get_val requires parameter name and destination');
-    const name = this.evaluate(argGroups[0]);
-    if (!isString(name)) throw runtimeError('get_val parameter name must be a string');
-    const dest = this.resolveLValue(argGroups[1]);
-    const before = readLValue(dest);
-
-    const configured =
-      this.m_state.m_parameters.get(`${this.m_state.functionName}::${name}`) ?? this.m_state.m_parameters.get(name);
-    if (configured !== undefined) {
-      writeLValue(dest, parameterTextToValue(configured, before));
-      const after = readLValue(dest);
-      if (runtimeValueToCompactString(before) !== runtimeValueToCompactString(after))
-        this.m_state.recordVariableChange(line, dest.path, 'get_val', name, before, after);
-    }
-
-    this.m_state.recordParameterRequest({
-      ...(this.m_state.functionName ? { functionName: this.m_state.functionName } : {}),
-      name,
-      type: runtimeTypeName(before),
-      defaultValue: parameterDisplayText(before),
-      currentValue: parameterDisplayText(readLValue(dest)),
-      sourceFunction: 'get_val',
-      variableName: dest.path,
-      line,
-    });
-  }
-
-  private executeParameterQuery(name: string, argGroups: readonly Token[][], line: number): void {
-    if (argGroups.length < 2) return;
-    const id = this.evaluate(argGroups[0]);
-    const dest = this.resolveLValue(argGroups[1]);
-    const current = readLValue(dest);
-    const key = (isString(id) ? id : '') + ':' + name;
-    const request: RuntimeParameterRequest = {
-      name: key,
-      type: runtimeTypeName(current),
-      defaultValue: runtimeValueToCompactString(current),
-      currentValue: runtimeValueToCompactString(current),
-      sourceFunction: name,
-      variableName: dest.path,
-      line,
+  // What SDK intrinsics may use from this executor.
+  private get intrinsics(): IntrinsicContext {
+    this.#intrinsics ??= {
+      state: this.m_state,
+      evaluate: (tokens) => this.evaluate(tokens),
+      resolveLValue: (tokens) => this.resolveLValue(tokens),
+      parentApiIndex: () => this.parentApiIndex(),
     };
-    this.m_state.recordParameterRequest(request);
-    const configured = this.m_state.m_parameters.get(key);
-    if (configured !== undefined) writeLValue(dest, parameterTextToValue(configured, current));
-  }
 
-  private executeLineIntersection(
-    name: string,
-    tokens: readonly Token[],
-    argGroups: readonly Token[][],
-    line: number,
-  ): void {
-    if (argGroups.length !== 5) throw runtimeError(name + ' requires 5 arguments');
-    const [a0, a1, b0, b1] = argGroups.slice(0, 4).map((group) => this.evaluate(group));
-    if (!isPoint(a0) || !isPoint(a1) || !isPoint(b0) || !isPoint(b1))
-      throw runtimeError(name + ' requires four FdPoint3d inputs');
-    const outRef = this.resolveLValue(argGroups[4]);
-    const before = readLValue(outRef);
-    if (!isPoint(before)) throw runtimeError(name + ' output must be FdPoint3d');
-    const intersection = lineIntersection(a0, a1, b0, b1, name === 'lineSegToLineSegInt');
-    if (intersection) {
-      const sources = this.m_state.captureValueSources(tokensToExpression(tokens));
-      writeLValue(outRef, intersection);
-      this.m_state.recordVariableChange(
-        line,
-        outRef.path,
-        name,
-        tokensToExpression(tokens),
-        before,
-        readLValue(outRef),
-        sources,
-      );
-    }
-    const args = [a0, a1, b0, b1, readLValue(outRef)].map(runtimeDeepCopy);
-    this.m_state.recordApiCall(
-      createApiCall(name, line, this.parentApiIndex(), args, argGroups.map(tokensToExpression)),
-    );
+    return this.#intrinsics;
   }
 
   private executeCall(
@@ -872,6 +780,10 @@ export class RuntimeExecutor {
     expression = false,
     baseCall = false,
   ): RuntimeValue {
+    if (expression) {
+      const intrinsic = languageIntrinsic(name)?.expression?.(this.intrinsics, { name, argGroups, line });
+      if (intrinsic) return intrinsic.value;
+    }
     line = line || this.m_state.m_apiCalls[this.parentApiIndex()]?.line || 1;
     const args: RuntimeValue[] = [];
     let hasUnresolvedArgument = false;
@@ -898,78 +810,10 @@ export class RuntimeExecutor {
 
       return;
     }
-    if (name === 'GetFlgSize' || name === 'GetFlgThick' || name === 'GetFlgDiam') {
-      if (args.length !== 1 || !isString(args[0])) throw runtimeError(name + ' requires a link identifier');
-      const query = name === 'GetFlgSize' ? 'get_fln_size' : name === 'GetFlgThick' ? 'get_fln_thick' : 'get_fln_diam';
-      const key = args[0] + ':' + query;
-      const value = parameterTextToValue(this.m_state.m_parameters.get(key) ?? '0', 0.0);
-      this.m_state.recordParameterRequest({
-        name: key,
-        type: 'double',
-        defaultValue: '0',
-        currentValue: runtimeValueToCompactString(value),
-        sourceFunction: query,
-        variableName: '',
-        line,
-      });
-
-      return value;
-    }
+    const intrinsic = sdkIntrinsic(name);
+    if (intrinsic?.value) return intrinsic.value(this.intrinsics, { name, argGroups, line }, args);
     if (expression) throw runtimeError('unsupported expression function: ' + name);
-    if (['setpt', 'addpt', 'rotate', 'rotatePoint'].includes(name)) {
-      const target = this.resolveLValue(argGroups[0]);
-      const before = readLValue(target);
-      if (!isArray(before) || before.elements.length !== 3) throw runtimeError(name + ' requires ads_point');
-
-      const tuple = (value: RuntimeValue): [number, number, number] => {
-        if (!isArray(value) || value.elements.length !== 3) throw runtimeError('expected three coordinates');
-
-        return value.elements.map(runtimeNumber) as [number, number, number];
-      };
-
-      let coords = tuple(before);
-      if (name === 'setpt') {
-        if (args.length === 2) coords = tuple(args[1]);
-        else if (args.length >= 4 && args.length <= 6)
-          coords = [
-            runtimeNumber(args[1]) * (args.length > 4 ? runtimeNumber(args[4]) : 1),
-            runtimeNumber(args[2]) * (args.length > 5 ? runtimeNumber(args[5]) : 1),
-            runtimeNumber(args[3]),
-          ];
-        else throw runtimeError('setpt requires a source point or x, y, z');
-      } else if (name === 'addpt') {
-        if (args.length !== 2) throw runtimeError('addpt requires two points');
-        const offset = tuple(args[1]);
-        coords = coords.map((v, i) => v + offset[i]) as [number, number, number];
-      } else {
-        let axis = new FdVector3d(0, 0, 1),
-          origin = new FdPoint3d(),
-          angle: number;
-        if (name === 'rotate' && args.length === 2) angle = runtimeNumber(args[1]);
-        else if (name === 'rotatePoint' && args.length === 4) {
-          axis = new FdVector3d(...tuple(args[1]));
-          origin = new FdPoint3d(...tuple(args[2]));
-          angle = runtimeNumber(args[3]);
-        } else if (name === 'rotatePoint' && args.length === 8) {
-          axis = new FdVector3d(...(args.slice(1, 4).map(runtimeNumber) as [number, number, number]));
-          origin = new FdPoint3d(...(args.slice(4, 7).map(runtimeNumber) as [number, number, number]));
-          angle = runtimeNumber(args[7]);
-        } else throw runtimeError('invalid ' + name + ' arguments');
-        const rotated = new FdPoint3d(...coords).rotateBy(angle, axis, origin);
-        coords = [rotated.x, rotated.y, rotated.z];
-      }
-      const next = runtimeDeepCopy(before);
-      if (isArray(next)) next.elements = coords;
-      writeLValue(target, next);
-      this.m_state.recordVariableChange(
-        line,
-        target.path,
-        name,
-        tokensToExpression(argGroups[0]),
-        before,
-        readLValue(target),
-      );
-    }
+    intrinsic?.update?.(this.intrinsics, { name, argGroups, line }, args);
     const signature = resolveApiSignature(call);
     if (!signature && /^(make|add|draw)/.test(name)) {
       this.m_state.addDiagnostic(line, 'unknown native geometry API: ' + name);

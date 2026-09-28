@@ -1,9 +1,9 @@
-import { doubleToInt64, runtimeError, stdException, trim } from '@engine/runtime/cpp/cpp';
-import { FdVector3d } from '@engine/runtime/FdMath';
+import { runtimeError, stdException, trim } from '@engine/runtime/cpp/cpp';
 import { parseMacroDefinition } from '@engine/runtime/helpers/macros';
 import { scanGetValParameters } from '@engine/runtime/analysis/parameterScan';
 import { preprocess } from '@engine/runtime/interpreter/preprocessor';
 import { collectVariables } from '@engine/runtime/helpers/runtimeResult';
+import type { Token } from '@engine/runtime/helpers/tokens';
 import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { ProgramParser } from '@engine/runtime/interpreter/ProgramParser';
@@ -11,7 +11,7 @@ import { RuntimeExecutor } from '@engine/runtime/interpreter/RuntimeExecutor';
 import { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
 import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '@engine/runtime/RuntimeTypes';
 import { runtimeDeepCopy, runtimeNumber } from '@engine/runtime/RuntimeValue';
-import { kSdkConstants } from '@engine/runtime/SdkDefinitions';
+import { expressionIntrinsicCaller, seedSdkValues } from '@engine/runtime/intrinsics';
 
 export type * from '@engine/runtime/RuntimeTypes';
 export type { RuntimeFunctionMacro } from '@engine/runtime/helpers/macros';
@@ -28,7 +28,7 @@ export class GeometryRuntime {
   ): RuntimeResult {
     const state = this.m_state;
     state.reset();
-    this.seedBuiltinValues();
+    seedSdkValues(this.m_state);
 
     try {
       const processed = preprocess(code);
@@ -73,6 +73,14 @@ export class GeometryRuntime {
   private evaluationSnapshot(): RuntimeState {
     const state = this.m_state;
     const snapshot = new RuntimeState();
+    snapshot.callFunction = expressionIntrinsicCaller({
+      state: snapshot,
+      evaluate: (tokens: readonly Token[]) => new ExprParser(tokens, snapshot).parse(),
+      resolveLValue: () => {
+        throw runtimeError('assignments are not available here');
+      },
+      parentApiIndex: () => -1,
+    });
     for (const [name, value] of state.m_values) snapshot.m_values.set(name, runtimeDeepCopy(value));
     snapshot.m_functionMacros = new Map(state.m_functionMacros);
     for (const request of state.m_parameterRequests) {
@@ -81,25 +89,6 @@ export class GeometryRuntime {
     }
 
     return snapshot;
-  }
-
-  private seedBuiltinValues(): void {
-    const state = this.m_state;
-    state.setVariable('vx', new FdVector3d(1, 0, 0), false);
-    state.setVariable('vy', new FdVector3d(0, 1, 0), false);
-    state.setVariable('vz', new FdVector3d(0, 0, 1), false);
-    for (const constant of kSdkConstants) {
-      const value = constant.integer ? doubleToInt64(constant.value) : constant.value;
-      // New immutable SDK constants need no variable lifetime/history. Preserve
-      // existing trace identities when extending the SDK constant catalogue.
-      if (constant.name.startsWith('enBowl')) state.m_values.set(constant.name, value);
-      else state.setVariable(constant.name, value, false);
-    }
-    state.setVariable('cpx', 10n, false);
-    state.setVariable('m_geoRepMode', 0n, false);
-    state.setVariable('m_primitiveMode', 0n, false);
-    state.m_values.set('TRUE', true);
-    state.m_values.set('FALSE', false);
   }
 
   private importSourceMacros(code: string): void {

@@ -13,8 +13,8 @@ export { formatFixed, formatGeneral, what } from '@engine/runtime/cpp/cpp';
 export { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime/DebugAnchorResolver';
 export type { FdPoint3d } from '@engine/runtime/FdMath';
 export { GeometryRuntime, runtimeSourceHistory } from '@engine/runtime/GeometryRuntime';
-export { isInsulationQuery, kInsulationQueries } from '@engine/runtime/helpers/insulationQueries';
-export type { InsulationQuery } from '@engine/runtime/helpers/insulationQueries';
+export { isInsulationQuery, kInsulationQueries } from '@engine/runtime/intrinsics';
+export type { InsulationQuery } from '@engine/runtime/intrinsics';
 export { emptyRuntimeResult, parameterKey } from '@engine/runtime/RuntimeTypes';
 export type {
   RuntimeApiCall,

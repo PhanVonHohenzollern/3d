@@ -108,7 +108,7 @@ A `use*` hook lives in the `model/` segment of the slice that owns its state. Cl
 - Each engine package exports its public API from `index.ts`. App code uses only that; engine tests may import internals.
 - The engine never imports from `src/`.
 - SDK knowledge is registered in tables, not spread through the interpreter:
-  - intrinsic functions (GPW-43)
+  - intrinsic functions: `engine/runtime/intrinsics/` has one module per family (parameter and connector queries, insulation queries, point operations, line intersection, program control) and one registry that the executor, the expression parser and source scanning all read. `language` intrinsics such as `get_val` run before the program's own functions; `sdk` ones such as `setpt` run after them, so a helper with the same name replaces them. The expression parser has no side effects (GPW-43)
   - value types such as `FdBowlInfo` (GPW-44)
   - preview adapters: each module in `engine/geometry/adapters/` exports an `AdapterTable` with one entry per API name, and `apiAdapters.ts` merges the tables and rejects a name registered twice. Adapters never branch on the API name; a variant is an option chosen in the table (GPW-40)
 - An adapter never imports another adapter (`npm run lint:boundaries`). Shared drawing code lives in `geometry/builders` (meshes: strokes, bowls, section tubes, boxes) and `geometry/helpers` (`withAdapterErrors`, `MeshSketch`/`FrameSketch`, `deg`, `ellipsePoint`, `sweepAlongArc`); display sizes and sampling caps are named in `geometry/config/previewConstants.ts` (GPW-41).

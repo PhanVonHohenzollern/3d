@@ -1,20 +1,11 @@
-import { trim } from '@engine/runtime/cpp/cpp';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { ProgramParser } from '@engine/runtime/interpreter/ProgramParser';
 import { StatementKind, type Statement } from '@engine/runtime/interpreter/Statement';
 import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '@engine/runtime/RuntimeTypes';
 import { isScalarTypeToken, normalizedScalarType } from '@engine/runtime/helpers/typeNames';
 import { functionParameters, functionScope } from '@engine/runtime/helpers/functionSignatures';
-import { isInsulationQuery, kInsulationQueries } from '@engine/runtime/helpers/insulationQueries';
-import {
-  isIdentifier,
-  isSymbol,
-  sliceTokens,
-  splitTopLevel,
-  TokKind,
-  tokensToExpression,
-  type Token,
-} from '@engine/runtime/helpers/tokens';
+import { discoverParameters, isInsulationQuery, type StaticParameterDecl } from '@engine/runtime/intrinsics';
+import { isSymbol, sliceTokens, splitTopLevel, TokKind, type Token } from '@engine/runtime/helpers/tokens';
 
 function neutralParameterValue(type: string): string {
   if (type === 'string') return '';
@@ -39,11 +30,6 @@ function simpleInitializerValue(tokens: readonly Token[], type: string): string 
     return tokens[0].text + tokens[1].text;
 
   return neutralParameterValue(type);
-}
-
-interface StaticParameterDecl {
-  type: string;
-  defaultValue: string;
 }
 
 function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticParameterDecl> {
@@ -222,81 +208,5 @@ function scanParameterTokens(
   tokens: readonly Token[],
   declarations: ReadonlyMap<string, StaticParameterDecl>,
 ): RuntimeParameterRequest[] {
-  const out: RuntimeParameterRequest[] = [];
-
-  for (let i = 0; i + 1 < tokens.length; ++i) {
-    if (!isIdentifier(tokens[i], 'get_val') || !isSymbol(tokens[i + 1], '(')) continue;
-
-    let close = i + 2;
-    let depth = 1;
-    for (; close < tokens.length; ++close) {
-      if (isSymbol(tokens[close], '(')) ++depth;
-      else if (isSymbol(tokens[close], ')')) {
-        --depth;
-        if (depth === 0) break;
-      }
-    }
-    if (close >= tokens.length) continue;
-
-    const args = splitTopLevel(sliceTokens(tokens, i + 2, close), ',');
-    if (args.length !== 2 || args[0].length !== 1 || args[0][0].kind !== TokKind.String) continue;
-
-    const req: RuntimeParameterRequest = {
-      name: args[0][0].text,
-      type: '',
-      defaultValue: '',
-      currentValue: '',
-      sourceFunction: 'get_val',
-      variableName: trim(tokensToExpression(args[1])),
-      line: tokens[i].line,
-    };
-
-    let baseVariable = '';
-    for (const t of args[1]) {
-      if (t.kind === TokKind.Identifier) {
-        baseVariable = t.text;
-        break;
-      }
-    }
-    const decl = declarations.get(baseVariable);
-    if (decl !== undefined) {
-      req.type = decl.type;
-      req.defaultValue = decl.defaultValue;
-    } else {
-      req.type = 'unknown';
-      req.defaultValue = '0';
-    }
-    req.currentValue = req.defaultValue;
-
-    const duplicate = out.find((existing) => existing.name === req.name && existing.variableName === req.variableName);
-    if (duplicate === undefined) out.push(req);
-  }
-
-  // Insulation is an optional numeric query: the UI supplies its value only when enabled.
-  // One request per query per statement; walk() removes repeats across statements.
-  for (const query of kInsulationQueries)
-    for (let i = 0; i + 3 < tokens.length; ++i) {
-      if (
-        !isIdentifier(tokens[i], query) ||
-        !isSymbol(tokens[i + 1], '(') ||
-        tokens[i + 2].kind !== TokKind.Identifier ||
-        !isSymbol(tokens[i + 3], ')')
-      )
-        continue;
-      if (['.', '->', '::'].includes(tokens[i - 1]?.text)) continue;
-      const variableName = tokens[i + 2].text;
-      const defaultValue = declarations.get(variableName)?.defaultValue ?? '0';
-      out.push({
-        name: query,
-        type: 'double',
-        defaultValue,
-        currentValue: defaultValue,
-        sourceFunction: query,
-        variableName,
-        line: tokens[i].line,
-      });
-      break;
-    }
-
-  return out;
+  return discoverParameters(tokens, declarations);
 }

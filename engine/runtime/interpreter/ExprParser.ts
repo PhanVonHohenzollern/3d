@@ -1,9 +1,8 @@
-import { doubleToInt64, runtimeError, stdException, stod, stoll, trim } from '@engine/runtime/cpp/cpp';
+import { doubleToInt64, runtimeError } from '@engine/runtime/cpp/cpp';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { isBowlValue } from '@engine/runtime/FdBowlData';
 import { builtinFunction } from '@engine/runtime/helpers/builtinFunctions';
 import { createArray } from '@engine/runtime/helpers/arrays';
-import { isInsulationQuery } from '@engine/runtime/helpers/insulationQueries';
 import { kMutatingMethods } from '@engine/runtime/helpers/mutatingMethods';
 import type { RuntimeFunctionMacro } from '@engine/runtime/helpers/macros';
 import { callMethod, indexValue, memberValue } from '@engine/runtime/helpers/pointVectorMembers';
@@ -27,8 +26,6 @@ import {
   subValues,
 } from '@engine/runtime/helpers/valueOperations';
 import {
-  isDouble,
-  isInt,
   runtimeCoerceToType,
   runtimeDeepCopy,
   runtimeInteger,
@@ -395,13 +392,6 @@ export class ExprParser {
 
       return this.m_evaluate ? createArray(parsed.type, dims) : 0n;
     }
-    if (
-      isInsulationQuery(name) &&
-      this.current().text === '(' &&
-      this.current(1).kind === TokKind.Identifier &&
-      this.current(2).text === ')'
-    )
-      return this.parseInsulationQuery(name, token.line);
     if (this.match('::')) return this.parseScopedName(name);
 
     const callable = this.currentIs('(');
@@ -429,29 +419,6 @@ export class ExprParser {
     if (!this.m_evaluate) return 0n;
     if (this.m_state.callFunction) return this.m_state.callFunction(name, args, line);
     throw runtimeError('unsupported expression function: ' + name);
-  }
-
-  private parseInsulationQuery(name: string, line: number): RuntimeValue {
-    ++this.m_pos;
-    const destName = this.current().text;
-    ++this.m_pos;
-    this.expect(')');
-    if (!this.m_evaluate) return false;
-    const configured = this.m_state.m_parameters.get(name);
-    if (configured === undefined) return false;
-    const before = this.m_state.lookupValue(destName);
-    let next = before;
-    try {
-      if (isDouble(before)) next = stod(trim(configured)).value;
-      else if (isInt(before)) next = stoll(trim(configured)).value;
-    } catch (e) {
-      stdException(e);
-
-      return false;
-    }
-    this.m_state.setVariable(destName, next, true, line, name, configured);
-
-    return true;
   }
 
   private parseScopedName(name: string): RuntimeValue {
