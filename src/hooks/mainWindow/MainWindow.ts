@@ -1,5 +1,5 @@
 import { parameterSlotCount } from '@/entities/parameter';
-import { writeObj } from '@engine/formats';
+import { canExportModel, exportedObjText, type ImportedModel } from '@/features/model-files';
 import type { InspectorCounts } from '@/types/dockArea';
 import type { ConnectorPreview } from '@engine/geometry';
 import type { PreviewGeometryScene } from '@engine/geometry';
@@ -129,17 +129,13 @@ export class MainWindow extends Observable {
     return this.session.previewStatus;
   }
 
-  importedObj: { name: string; scene: PreviewGeometryScene } | null = null;
+  importedObj: ImportedModel | null = null;
   #connectorPreviews: readonly ConnectorPreview[] = [];
   #selectedConnectorId = -1;
   #showGeometryAction: Action | null = null;
 
   get canExportObj(): boolean {
-    return (
-      (this.importedObj?.scene.meshes.length ??
-        this.m_geometryScene.meshes.length +
-          this.#connectorPreviews.reduce((sum, preview) => sum + preview.meshes.length, 0)) > 0
-    );
+    return canExportModel(this.importedObj, this.m_geometryScene, this.#connectorPreviews);
   }
 
   replacePreviewWithObj(scene: PreviewGeometryScene, name: string): void {
@@ -169,12 +165,7 @@ export class MainWindow extends Observable {
   exportObj(): string {
     if (!this.importedObj) this.runPreview();
 
-    return writeObj(
-      this.importedObj?.scene ?? {
-        meshes: [...this.m_geometryScene.meshes, ...this.#connectorPreviews.flatMap((preview) => preview.meshes)],
-        warnings: [],
-      },
-    );
+    return exportedObjText(this.importedObj, this.m_geometryScene, this.#connectorPreviews);
   }
 
   inspectorCounts: InspectorCounts = { VariablesDock: 0, ParametersDock: 0, ApiTraceDock: 0 };
