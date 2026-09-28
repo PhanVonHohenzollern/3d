@@ -1,4 +1,4 @@
-import { QPoint, QPointF } from './Vector3D';
+import { QPoint, QPointF } from '@/utils/Vector3D';
 
 export class QRectF {
   constructor(

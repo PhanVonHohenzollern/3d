@@ -1,11 +1,11 @@
 import { Box, CircleDot, Eye, EyeOff, Maximize, MoveUpRight, Scan, Tags, type LucideIcon } from 'lucide-react';
-import { useAction } from '../hooks/useAction';
-import type { Action } from '../hooks/mainWindow/Action';
-import type { ToolBarProps, ToolBarButtonProps } from '../types/toolbar';
-import { cn } from '../lib/utils';
-import { preventDefault } from '../utils/events';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { useAction } from '@/hooks/useAction';
+import type { Action } from '@/hooks/mainWindow/Action';
+import type { ToolBarProps, ToolBarButtonProps } from '@/types/toolbar';
+import { cn } from '@/lib/utils';
+import { preventDefault } from '@/utils/events';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const presentation: Record<string, { label: string; icon: LucideIcon; description: string }> = {
   'Show Geometry': { label: 'Geometry', icon: Box, description: 'Show or hide generated geometry.' },

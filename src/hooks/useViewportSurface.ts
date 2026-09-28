@@ -1,7 +1,7 @@
 import { useLayoutEffect, type RefObject } from 'react';
-import type { ViewportEngine } from '../core/viewport/ViewportEngine';
-import { wheelAngleDeltaY } from '../helpers/qtInput';
-import { pointSizeToPixels } from '../utils/textMetrics';
+import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
+import { wheelAngleDeltaY } from '@/helpers/qtInput';
+import { pointSizeToPixels } from '@/utils/textMetrics';
 
 export interface ViewportSurfaceRefs {
   hostRef: RefObject<HTMLDivElement | null>;

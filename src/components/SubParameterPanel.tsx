@@ -1,6 +1,6 @@
-import type { SourceFunction, FunctionInput } from '../helpers/functions';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import type { SourceFunction, FunctionInput } from '@/helpers/functions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface SubParameterPanelProps {
   enabled: boolean;

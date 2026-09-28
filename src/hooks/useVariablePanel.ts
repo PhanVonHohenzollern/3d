@@ -1,11 +1,11 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { eventModifiers } from '../helpers/keyboard';
-import { isInTableHeader, tableRowOf } from '../helpers/tableEvents';
-import type { ScrollRequest, VariablePanelProps } from '../types/panels';
-import { isOnScrollbar } from '../utils/dom';
-import { useObservable } from './useObservable';
-import { useScrollSelectionIntoView } from './useScrollSelectionIntoView';
-import { VariablePanelModel } from './variablePanel/VariablePanelModel';
+import { eventModifiers } from '@/helpers/keyboard';
+import { isInTableHeader, tableRowOf } from '@/helpers/tableEvents';
+import type { ScrollRequest, VariablePanelProps } from '@/types/panels';
+import { isOnScrollbar } from '@/utils/dom';
+import { useObservable } from '@/hooks/useObservable';
+import { useScrollSelectionIntoView } from '@/hooks/useScrollSelectionIntoView';
+import { VariablePanelModel } from '@/hooks/variablePanel/VariablePanelModel';
 
 // Scroll this inspector only, keeping the selected row below its sticky header.
 function scrollToSelectedVariable(table: HTMLElement, request: ScrollRequest): void {

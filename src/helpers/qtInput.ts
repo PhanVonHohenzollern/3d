@@ -1,4 +1,4 @@
-import type { KeyboardModifiers, MouseEventData } from '../types/input';
+import type { KeyboardModifiers, MouseEventData } from '@/types/input';
 
 export const NoButton = 0;
 export const LeftButton = 1;

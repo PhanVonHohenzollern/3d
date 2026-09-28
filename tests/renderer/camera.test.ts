@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ViewportCamera } from '../../src/core/viewport/ViewportCamera';
-import { QPoint, QVector3D } from '../../src/utils/Vector3D';
-import { createEngine, project, updateCamera } from './helpers';
+import { ViewportCamera } from '@/core/viewport/ViewportCamera';
+import { QPoint, QVector3D } from '@/utils/Vector3D';
+import { createEngine, project, updateCamera } from '@tests/renderer/helpers';
 
 describe('ViewportCamera', () => {
   it('projects the camera target to the viewport center', () => {

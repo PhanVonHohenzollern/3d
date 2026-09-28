@@ -1,10 +1,15 @@
-import type { GpuVertexLayout } from '../../types/viewportEngine';
-import { QMatrix4x4 } from '../../utils/Matrix4x4';
-import { QVector3D } from '../../utils/Vector3D';
-import { createProgram } from './glProgram';
-import { expandLineQuads, kLineQuadBytes, kLineQuadVerticesPerVertex } from './lineQuads';
-import { kFragmentShader, kLineQuadFragmentShader, kLineQuadVertexShader, kVertexShader } from './shaders';
-import { kVertexBytes, kVertexFloats, type VertexArray } from './VertexArray';
+import type { GpuVertexLayout } from '@/types/viewportEngine';
+import { QMatrix4x4 } from '@/utils/Matrix4x4';
+import { QVector3D } from '@/utils/Vector3D';
+import { createProgram } from '@/core/viewport/glProgram';
+import { expandLineQuads, kLineQuadBytes, kLineQuadVerticesPerVertex } from '@/core/viewport/lineQuads';
+import {
+  kFragmentShader,
+  kLineQuadFragmentShader,
+  kLineQuadVertexShader,
+  kVertexShader,
+} from '@/core/viewport/shaders';
+import { kVertexBytes, kVertexFloats, type VertexArray } from '@/core/viewport/VertexArray';
 
 type BoolUniform = 'uUseOverrideColor' | 'uLightingEnabled';
 

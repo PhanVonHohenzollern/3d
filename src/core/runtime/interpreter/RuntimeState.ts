@@ -1,8 +1,15 @@
-import { runtimeError, stdException } from '../../../utils/cpp';
-import { braceListItems, isBraceList } from '../helpers/arrays';
-import type { RuntimeFunctionMacro } from '../helpers/macros';
-import { matchingBracketEnd, isSymbol, sliceTokens, TokKind, tokensToExpression, type Token } from '../helpers/tokens';
-import { parentPaths, rootName } from '../helpers/variablePaths';
+import { runtimeError, stdException } from '@/utils/cpp';
+import { braceListItems, isBraceList } from '@/core/runtime/helpers/arrays';
+import type { RuntimeFunctionMacro } from '@/core/runtime/helpers/macros';
+import {
+  matchingBracketEnd,
+  isSymbol,
+  sliceTokens,
+  TokKind,
+  tokensToExpression,
+  type Token,
+} from '@/core/runtime/helpers/tokens';
+import { parentPaths, rootName } from '@/core/runtime/helpers/variablePaths';
 import type {
   RuntimeApiCall,
   RuntimeArgumentTrace,
@@ -10,10 +17,17 @@ import type {
   RuntimeParameterRequest,
   RuntimeValueSource,
   RuntimeVariableChange,
-} from '../RuntimeTypes';
-import { isArray, isPoint, isVector, runtimeDeepCopy, runtimeInteger, type RuntimeValue } from '../RuntimeValue';
-import { ExprParser } from './ExprParser';
-import { Lexer } from './Lexer';
+} from '@/core/runtime/RuntimeTypes';
+import {
+  isArray,
+  isPoint,
+  isVector,
+  runtimeDeepCopy,
+  runtimeInteger,
+  type RuntimeValue,
+} from '@/core/runtime/RuntimeValue';
+import { ExprParser } from '@/core/runtime/interpreter/ExprParser';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
 
 const emptyTrace = (): RuntimeArgumentTrace => ({ expression: '', sources: [], elements: [] });
 

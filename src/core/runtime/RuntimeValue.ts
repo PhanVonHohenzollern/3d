@@ -1,7 +1,7 @@
-import { CppException, doubleToInt64, formatFixed } from '../../utils/cpp';
-import { FdPoint3d, FdVector3d } from './FdMath';
-import { FdBowlInfo, FdBowlFace, FdBowlCorner, isBowlValue, type BowlValue } from './FdBowlData';
-import { sdkCanonicalType } from './SdkDefinitions';
+import { CppException, doubleToInt64, formatFixed } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { FdBowlInfo, FdBowlFace, FdBowlCorner, isBowlValue, type BowlValue } from '@/core/runtime/FdBowlData';
+import { sdkCanonicalType } from '@/core/runtime/SdkDefinitions';
 
 export class RuntimeArray {
   constructor(

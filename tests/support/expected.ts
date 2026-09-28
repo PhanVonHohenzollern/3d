@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import zlib from 'node:zlib';
-import type { Fixture } from './fixtures';
+import type { Fixture } from '@tests/support/fixtures';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ExpectedDocument = any;

@@ -1,5 +1,5 @@
-import type { ConnectorDefinition } from '../../src/core/geometry/ConnectorPreview';
-import type { ConnectorDirective } from './fixtures';
+import type { ConnectorDefinition } from '@/core/geometry/ConnectorPreview';
+import type { ConnectorDirective } from '@tests/support/fixtures';
 
 export function connectorDefinition(d: ConnectorDirective): ConnectorDefinition {
   return {

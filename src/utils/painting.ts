@@ -1,4 +1,4 @@
-import type { PenCapStyle, QColor, QPen } from '../types/painting';
+import type { PenCapStyle, QColor, QPen } from '@/types/painting';
 
 export function qColor(r: number, g: number, b: number, a = 255): QColor {
   return { r, g, b, a };

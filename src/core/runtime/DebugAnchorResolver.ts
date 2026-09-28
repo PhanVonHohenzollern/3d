@@ -1,8 +1,8 @@
-import { apiParameterMetadataForCall, type ApiParameterMetadata } from './ApiMetadata';
-import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from './ApiSemantics';
-import type { FdPoint3d, FdVector3d } from './FdMath';
-import type { RuntimeApiCall } from './RuntimeTypes';
-import { isArray, isPoint, isVector, type RuntimeValue } from './RuntimeValue';
+import { apiParameterMetadataForCall, type ApiParameterMetadata } from '@/core/runtime/ApiMetadata';
+import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from '@/core/runtime/ApiSemantics';
+import type { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
+import { isArray, isPoint, isVector, type RuntimeValue } from '@/core/runtime/RuntimeValue';
 
 export interface DebugPointSnapshot {
   name: string;

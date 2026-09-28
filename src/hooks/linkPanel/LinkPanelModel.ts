@@ -5,8 +5,8 @@ import {
   type ConnectorDefinition,
   type ConnectorExpressionEvaluator,
   type ConnectorPreview,
-} from '../../core/geometry/ConnectorPreview';
-import type { RuntimeResult } from '../../core/runtime/RuntimeTypes';
+} from '@/core/geometry/ConnectorPreview';
+import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
 import {
   connectorGeometryChanged,
   connectorStatusText,
@@ -18,18 +18,12 @@ import {
   orientationIndex,
   pointNameError,
   uniquePointName,
-} from '../../helpers/link';
-import { rowForKey } from '../../helpers/tableNavigation';
-import type {
-  LinkPanelHandle,
-  LinkTableRow,
-  PreviewChangedCallback,
-  ScrollRequest,
-  SizeField,
-} from '../../types/panels';
-import { sameItems } from '../../utils/arrays';
-import { what } from '../../utils/cpp';
-import { Observable } from '../observable/Observable';
+} from '@/helpers/link';
+import { rowForKey } from '@/helpers/tableNavigation';
+import type { LinkPanelHandle, LinkTableRow, PreviewChangedCallback, ScrollRequest, SizeField } from '@/types/panels';
+import { sameItems } from '@/utils/arrays';
+import { what } from '@/utils/cpp';
+import { Observable } from '@/hooks/observable/Observable';
 
 interface Entry {
   definition: ConnectorDefinition;

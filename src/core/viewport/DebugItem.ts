@@ -1,5 +1,5 @@
-import type { DebugKind } from '../../types/viewportEngine';
-import { QVector3D } from '../../utils/Vector3D';
+import type { DebugKind } from '@/types/viewportEngine';
+import { QVector3D } from '@/utils/Vector3D';
 
 export class DebugItem {
   kind: DebugKind = 'Point';

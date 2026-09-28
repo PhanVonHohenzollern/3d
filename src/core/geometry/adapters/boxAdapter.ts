@@ -1,11 +1,11 @@
-import { stdMax } from '../../../utils/cppStd';
-import { DVec3, normalized } from '../../../utils/DVec3';
-import { apiSignatureMetadataForCall, type ApiSignatureMetadata } from '../../runtime/ApiMetadata';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildBoxMesh, buildConnectorFlangeMesh } from '../builders/rectangularMeshes';
-import { parameterIndex, warningFor } from '../helpers/apiCall';
-import { sdkPerpVector, toFdVector, toVec, validDirection } from '../helpers/geometryMath';
+import { stdMax } from '@/utils/cppStd';
+import { DVec3, normalized } from '@/utils/DVec3';
+import { apiSignatureMetadataForCall, type ApiSignatureMetadata } from '@/core/runtime/ApiMetadata';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildBoxMesh, buildConnectorFlangeMesh } from '@/core/geometry/builders/rectangularMeshes';
+import { parameterIndex, warningFor } from '@/core/geometry/helpers/apiCall';
+import { sdkPerpVector, toFdVector, toVec, validDirection } from '@/core/geometry/helpers/geometryMath';
 import {
   asBool,
   asInt,
@@ -15,9 +15,9 @@ import {
   pointArray,
   ref,
   vectorArray,
-} from '../helpers/valueDecoding';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
+} from '@/core/geometry/helpers/valueDecoding';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 const noConnector = 5;
 

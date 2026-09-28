@@ -1,8 +1,8 @@
-import { CppException, what } from '../../utils/cpp';
-import { FdPoint3d, FdVector3d } from '../runtime/FdMath';
-import { emptyApiCall, emptyRuntimeResult } from '../runtime/RuntimeTypes';
-import { RuntimeArray, type RuntimeValue } from '../runtime/RuntimeValue';
-import { PreviewGeometryEngine, type PreviewMesh } from './PreviewGeometryEngine';
+import { CppException, what } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { emptyApiCall, emptyRuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { RuntimeArray, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { PreviewGeometryEngine, type PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
 
 export type ConnectorType = 'Circular' | 'Rectangular';
 export type ConnectorOrientation = 'XPositive' | 'XNegative' | 'YPositive' | 'YNegative' | 'ZPositive' | 'ZNegative';

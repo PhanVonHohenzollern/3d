@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import type { PreviewGeometryScene } from '../../src/core/geometry/previewScene';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 // A NaN or infinite vertex never renders, so an adapter that produces one fails silently in the app.
 export function expectFiniteScene(scene: PreviewGeometryScene): void {

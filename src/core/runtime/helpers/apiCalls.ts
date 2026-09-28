@@ -1,5 +1,5 @@
-import { emptyApiCall, type RuntimeApiCall } from '../RuntimeTypes';
-import type { RuntimeValue } from '../RuntimeValue';
+import { emptyApiCall, type RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
 
 export function createApiCall(
   name: string,

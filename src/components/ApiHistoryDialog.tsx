@@ -1,8 +1,8 @@
-import type { ApiHistoryDialogModel } from '../hooks/apiTrace/ApiHistoryDialogModel';
-import { useApiHistoryDialog } from '../hooks/useApiHistoryDialog';
-import { FloatingWindow } from './ui/FloatingWindow';
-import { PushButton } from './ui/PushButton';
-import { TreeView } from './TreeView';
+import type { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
+import { useApiHistoryDialog } from '@/hooks/useApiHistoryDialog';
+import { FloatingWindow } from '@/components/ui/FloatingWindow';
+import { PushButton } from '@/components/ui/PushButton';
+import { TreeView } from '@/components/TreeView';
 
 export function ApiHistoryDialog({ dialog }: { dialog: ApiHistoryDialogModel }) {
   const { open, title, caption, tree, raiseSerial, close } = useApiHistoryDialog(dialog);

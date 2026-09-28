@@ -1,9 +1,9 @@
 import { describe, it } from 'vitest';
-import { decodeResult, type Json } from './support/codec';
-import { expectSameJson } from './support/compare';
-import { callInfo } from './support/dump';
-import { expectedOutput } from './support/expected';
-import { listFixtures } from './support/fixtures';
+import { decodeResult, type Json } from '@tests/support/codec';
+import { expectSameJson } from '@tests/support/compare';
+import { callInfo } from '@tests/support/dump';
+import { expectedOutput } from '@tests/support/expected';
+import { listFixtures } from '@tests/support/fixtures';
 
 for (const fixture of listFixtures()) {
   describe(fixture.name, () => {

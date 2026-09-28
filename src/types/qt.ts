@@ -1,4 +1,4 @@
-import type { KeyboardModifiers } from './input';
+import type { KeyboardModifiers } from '@/types/input';
 
 export type Modifiers = Pick<KeyboardModifiers, 'control' | 'shift'>;
 

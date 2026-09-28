@@ -1,4 +1,4 @@
-import { QVector3D } from './Vector3D';
+import { QVector3D } from '@/utils/Vector3D';
 
 export class Bounds3D {
   private m_empty = true;

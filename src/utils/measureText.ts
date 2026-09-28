@@ -1,4 +1,4 @@
-import { CanvasTextMeasurer } from './CanvasTextMeasurer';
+import { CanvasTextMeasurer } from '@/utils/CanvasTextMeasurer';
 
 let measurer: CanvasTextMeasurer | null | undefined;
 let bodyFont: { family: string; pixelSize: number } | undefined;

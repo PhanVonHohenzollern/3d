@@ -1,5 +1,5 @@
-import { runtimeError, wrapInt64 } from '../../../utils/cpp';
-import { FdPoint3d } from '../FdMath';
+import { runtimeError, wrapInt64 } from '@/utils/cpp';
+import { FdPoint3d } from '@/core/runtime/FdMath';
 import {
   isBool,
   isDouble,
@@ -11,7 +11,7 @@ import {
   runtimeNumber,
   runtimeTypeName,
   type RuntimeValue,
-} from '../RuntimeValue';
+} from '@/core/runtime/RuntimeValue';
 
 export function isNumeric(v: RuntimeValue): v is number | bigint | boolean {
   return isDouble(v) || isInt(v) || isBool(v);

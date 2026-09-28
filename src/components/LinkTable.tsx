@@ -1,8 +1,8 @@
-import { PaginationControls } from './PaginationControls';
-import type { LinkTableProps } from '../types/linkTable';
-import { stopPropagation } from '../utils/events';
-import { Cell, HeaderCell, TableView } from './ui/TableView';
-import { ToolButton } from './ui/ToolButton';
+import { PaginationControls } from '@/components/PaginationControls';
+import type { LinkTableProps } from '@/types/linkTable';
+import { stopPropagation } from '@/utils/events';
+import { Cell, HeaderCell, TableView } from '@/components/ui/TableView';
+import { ToolButton } from '@/components/ui/ToolButton';
 
 export function LinkTable({
   tableRef,

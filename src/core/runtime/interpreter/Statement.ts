@@ -1,4 +1,4 @@
-import type { Token } from '../helpers/tokens';
+import type { Token } from '@/core/runtime/helpers/tokens';
 
 export const StatementKind = {
   Block: 0,

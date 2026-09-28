@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { GeometryRuntime } from '../../src/core/runtime/GeometryRuntime';
-import type { RuntimeResult } from '../../src/core/runtime/RuntimeTypes';
-import { ApiHistoryDialogModel } from '../../src/hooks/apiTrace/ApiHistoryDialogModel';
-import { HistoryColumn } from '../../src/hooks/apiTrace/historyItems';
-import type { TreeWidgetItem } from '../../src/hooks/treeWidget/TreeWidgetItem';
+import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
+import { HistoryColumn } from '@/hooks/apiTrace/historyItems';
+import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
 
 function execute(source: string): RuntimeResult {
   const result = new GeometryRuntime().executeUpToLine(source, 999, true);

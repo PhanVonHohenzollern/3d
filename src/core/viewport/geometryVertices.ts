@@ -1,8 +1,8 @@
-import type { PreviewGeometryScene } from '../geometry/PreviewGeometryEngine';
-import type { GeometryRange } from '../../types/viewportEngine';
-import { isValidIndex } from '../../utils/math';
-import { QVector3D } from '../../utils/Vector3D';
-import { VertexArray } from './VertexArray';
+import type { PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
+import type { GeometryRange } from '@/types/viewportEngine';
+import { isValidIndex } from '@/utils/math';
+import { QVector3D } from '@/utils/Vector3D';
+import { VertexArray } from '@/core/viewport/VertexArray';
 
 export function buildGeometryVertices(scene: PreviewGeometryScene): { vertices: VertexArray; ranges: GeometryRange[] } {
   const vertices = new VertexArray(1024);

@@ -1,8 +1,8 @@
-import type { WorkspaceHeaderProps } from '../types/modelFiles';
-import { ModelFileControls } from './ModelFileControls';
-import { Button } from './ui/button';
+import type { WorkspaceHeaderProps } from '@/types/modelFiles';
+import { ModelFileControls } from '@/components/ModelFileControls';
+import { Button } from '@/components/ui/button';
 import { Box, Moon, Sun } from 'lucide-react';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from '@/hooks/useTheme';
 
 export function WorkspaceHeader({ files }: WorkspaceHeaderProps) {
   const { theme, toggleTheme } = useTheme();

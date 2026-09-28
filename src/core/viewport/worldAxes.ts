@@ -1,13 +1,13 @@
-import type { FontSpec, TextMeasurer } from '../../types/text';
-import type { AxisLabel } from '../../types/viewportEngine';
-import type { QMatrix4x4 } from '../../utils/Matrix4x4';
-import { qColor } from '../../utils/painting';
-import { QRectF } from '../../utils/Rect';
-import { fontHeightF } from '../../utils/textMetrics';
-import { QPointF, QVector3D, QVector4D } from '../../utils/Vector3D';
-import { connectorOrientations, previewOrientationDirection } from '../geometry/ConnectorPreview';
-import type { OverlayPainter } from './OverlayPainter';
-import { VertexArray } from './VertexArray';
+import type { FontSpec, TextMeasurer } from '@/types/text';
+import type { AxisLabel } from '@/types/viewportEngine';
+import type { QMatrix4x4 } from '@/utils/Matrix4x4';
+import { qColor } from '@/utils/painting';
+import { QRectF } from '@/utils/Rect';
+import { fontHeightF } from '@/utils/textMetrics';
+import { QPointF, QVector3D, QVector4D } from '@/utils/Vector3D';
+import { connectorOrientations, previewOrientationDirection } from '@/core/geometry/ConnectorPreview';
+import type { OverlayPainter } from '@/core/viewport/OverlayPainter';
+import { VertexArray } from '@/core/viewport/VertexArray';
 
 export interface WorldAxisLabelInput {
   axes: VertexArray;

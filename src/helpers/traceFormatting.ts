@@ -1,4 +1,4 @@
-import type { RuntimeArgumentTrace, RuntimeValueSource, RuntimeVariableChange } from '../core/runtime/RuntimeTypes';
+import type { RuntimeArgumentTrace, RuntimeValueSource, RuntimeVariableChange } from '@/core/runtime/RuntimeTypes';
 import {
   isArray,
   isBool,
@@ -11,7 +11,7 @@ import {
   runtimeNumber,
   runtimeValueToCompactString,
   type RuntimeValue,
-} from '../core/runtime/RuntimeValue';
+} from '@/core/runtime/RuntimeValue';
 
 const kWhitespace = /[ \t\n\v\f\r]+/g;
 const kNumber = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;

@@ -1,10 +1,10 @@
-import { runtimeError, stdException } from '../../../utils/cpp';
-import { apiSignatureMetadataForCall } from '../ApiMetadata';
-import { FdPoint3d, FdVector3d } from '../FdMath';
-import { FdBowlCorner, isBowlValue } from '../FdBowlData';
-import { builtinFunction } from '../helpers/builtinFunctions';
-import { createApiCall } from '../helpers/apiCalls';
-import { braceListItems, createArray, inferArrayDimensions, isBraceList } from '../helpers/arrays';
+import { runtimeError, stdException } from '@/utils/cpp';
+import { apiSignatureMetadataForCall } from '@/core/runtime/ApiMetadata';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { FdBowlCorner, isBowlValue } from '@/core/runtime/FdBowlData';
+import { builtinFunction } from '@/core/runtime/helpers/builtinFunctions';
+import { createApiCall } from '@/core/runtime/helpers/apiCalls';
+import { braceListItems, createArray, inferArrayDimensions, isBraceList } from '@/core/runtime/helpers/arrays';
 import {
   functionParameters,
   functionSignature,
@@ -17,12 +17,19 @@ import {
   populateFormalParameterMetadata,
   signatureParameterList,
   writableReferenceParameter,
-} from '../helpers/functionSignatures';
-import { lineIntersection } from '../helpers/lineIntersection';
-import { arraySlot, bowlCornerSlot, mapSlot, readLValue, writeLValue, type LValueRef } from '../helpers/lvalues';
-import { parameterDisplayText, parameterTextToValue } from '../helpers/parameters';
-import { kMutatingMethods, mutatedValue, mutatingMethodDot } from '../helpers/mutatingMethods';
-import { callMethod } from '../helpers/pointVectorMembers';
+} from '@/core/runtime/helpers/functionSignatures';
+import { lineIntersection } from '@/core/runtime/helpers/lineIntersection';
+import {
+  arraySlot,
+  bowlCornerSlot,
+  mapSlot,
+  readLValue,
+  writeLValue,
+  type LValueRef,
+} from '@/core/runtime/helpers/lvalues';
+import { parameterDisplayText, parameterTextToValue } from '@/core/runtime/helpers/parameters';
+import { kMutatingMethods, mutatedValue, mutatingMethodDot } from '@/core/runtime/helpers/mutatingMethods';
+import { callMethod } from '@/core/runtime/helpers/pointVectorMembers';
 import {
   findTopLevelAssignment,
   isIdentifier,
@@ -35,15 +42,15 @@ import {
   tokensToExpression,
   tokensToText,
   type Token,
-} from '../helpers/tokens';
-import { isKnownSdkTypedef, parseRuntimeType } from '../helpers/typeNames';
-import { addValues, compoundOperation } from '../helpers/valueOperations';
+} from '@/core/runtime/helpers/tokens';
+import { isKnownSdkTypedef, parseRuntimeType } from '@/core/runtime/helpers/typeNames';
+import { addValues, compoundOperation } from '@/core/runtime/helpers/valueOperations';
 import type {
   RuntimeArgumentTrace,
   RuntimeExecutionOptions,
   RuntimeParameterRequest,
   RuntimeValueSource,
-} from '../RuntimeTypes';
+} from '@/core/runtime/RuntimeTypes';
 import {
   isArray,
   isPoint,
@@ -59,13 +66,13 @@ import {
   RuntimeStdVector,
   stdVectorElementType,
   type RuntimeValue,
-} from '../RuntimeValue';
-import { sdkTypeDefinition } from '../SdkDefinitions';
-import { rootName } from '../helpers/variablePaths';
-import { ExprParser } from './ExprParser';
-import { Lexer } from './Lexer';
-import type { RuntimeState } from './RuntimeState';
-import { StatementKind, type Statement } from './Statement';
+} from '@/core/runtime/RuntimeValue';
+import { sdkTypeDefinition } from '@/core/runtime/SdkDefinitions';
+import { rootName } from '@/core/runtime/helpers/variablePaths';
+import { ExprParser } from '@/core/runtime/interpreter/ExprParser';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
+import type { RuntimeState } from '@/core/runtime/interpreter/RuntimeState';
+import { StatementKind, type Statement } from '@/core/runtime/interpreter/Statement';
 
 const kMaxIterations = 10000;
 const kMaxFunctionCallDepth = 64;

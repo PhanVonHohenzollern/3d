@@ -1,19 +1,19 @@
-import { buildConnectorPreview } from '../../src/core/geometry/ConnectorPreview';
-import { PreviewGeometryEngine } from '../../src/core/geometry/PreviewGeometryEngine';
+import { buildConnectorPreview } from '@/core/geometry/ConnectorPreview';
+import { PreviewGeometryEngine } from '@/core/geometry/PreviewGeometryEngine';
 import {
   allNativeApiSignatures,
   apiParameterMetadataForCall,
   apiSignatureMetadataForCall,
-} from '../../src/core/runtime/ApiMetadata';
-import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from '../../src/core/runtime/ApiSemantics';
-import { what } from '../../src/utils/cpp';
-import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '../../src/core/runtime/DebugAnchorResolver';
-import { GeometryRuntime, runtimeSourceHistory } from '../../src/core/runtime/GeometryRuntime';
-import type { RuntimeApiCall, RuntimeArgumentTrace, RuntimeResult } from '../../src/core/runtime/RuntimeTypes';
-import { RuntimeArray } from '../../src/core/runtime/RuntimeValue';
-import { encodeConnector, encodeNumber, encodeParameterRequest, encodeResult, encodeScene } from './codec';
-import { connectorDefinition } from './connectors';
-import type { Fixture } from './fixtures';
+} from '@/core/runtime/ApiMetadata';
+import { apiParameterRole, apiSemanticsForCall, apiUsedElementCount } from '@/core/runtime/ApiSemantics';
+import { what } from '@/utils/cpp';
+import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@/core/runtime/DebugAnchorResolver';
+import { GeometryRuntime, runtimeSourceHistory } from '@/core/runtime/GeometryRuntime';
+import type { RuntimeApiCall, RuntimeArgumentTrace, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { RuntimeArray } from '@/core/runtime/RuntimeValue';
+import { encodeConnector, encodeNumber, encodeParameterRequest, encodeResult, encodeScene } from '@tests/support/codec';
+import { connectorDefinition } from '@tests/support/connectors';
+import type { Fixture } from '@tests/support/fixtures';
 
 const xyz = (p: { x: number; y: number; z: number }) => [encodeNumber(p.x), encodeNumber(p.y), encodeNumber(p.z)];
 

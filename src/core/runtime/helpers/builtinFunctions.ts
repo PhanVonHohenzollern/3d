@@ -1,6 +1,6 @@
-import { cppPow, cppRound, runtimeError } from '../../../utils/cpp';
-import { FdPoint3d, FdVector3d } from '../FdMath';
-import { FdBowlInfo, FdBowlFace, FdBowlCorner } from '../FdBowlData';
+import { cppPow, cppRound, runtimeError } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { FdBowlInfo, FdBowlFace, FdBowlCorner } from '@/core/runtime/FdBowlData';
 import {
   isString,
   isArray,
@@ -8,8 +8,8 @@ import {
   runtimeDefaultValueForType,
   runtimeNumber,
   type RuntimeValue,
-} from '../RuntimeValue';
-import { isNumericType } from './typeNames';
+} from '@/core/runtime/RuntimeValue';
+import { isNumericType } from '@/core/runtime/helpers/typeNames';
 
 export type BuiltinFunction = (args: readonly RuntimeValue[]) => RuntimeValue;
 

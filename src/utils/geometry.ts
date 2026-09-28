@@ -1,5 +1,5 @@
-import { clamp } from './math';
-import type { QPointF, QVector3D } from './Vector3D';
+import { clamp } from '@/utils/math';
+import type { QPointF, QVector3D } from '@/utils/Vector3D';
 
 interface Point3 {
   x: number;

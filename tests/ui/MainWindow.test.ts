@@ -1,16 +1,16 @@
-import { parseObj, writeObj } from '../../src/core/formats/obj';
+import { parseObj, writeObj } from '@/core/formats/obj';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiTracePanelModel } from '../../src/hooks/apiTrace/ApiTracePanelModel';
-import { LinkPanelModel } from '../../src/hooks/linkPanel/LinkPanelModel';
-import { MainWindow } from '../../src/hooks/mainWindow/MainWindow';
-import { ParameterPanelModel } from '../../src/hooks/parameterPanel/ParameterPanelModel';
-import { VariablePanelModel } from '../../src/hooks/variablePanel/VariablePanelModel';
-import type { CodeEditorHandle } from '../../src/types/editor';
-import type { Viewport3DHandle } from '../../src/types/viewport';
-import { createViewport3DHandle } from '../../src/helpers/viewportHandle';
-import { QVector3D } from '../../src/utils/Vector3D';
-import { boxMesh, click, createEngine, project, scene } from '../renderer/helpers';
-import { declaredFunctionNames, removeFunctionSource, sourceFunctions } from '../../src/helpers/functions';
+import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
+import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
+import { MainWindow } from '@/hooks/mainWindow/MainWindow';
+import { ParameterPanelModel } from '@/hooks/parameterPanel/ParameterPanelModel';
+import { VariablePanelModel } from '@/hooks/variablePanel/VariablePanelModel';
+import type { CodeEditorHandle } from '@/types/editor';
+import type { Viewport3DHandle } from '@/types/viewport';
+import { createViewport3DHandle } from '@/helpers/viewportHandle';
+import { QVector3D } from '@/utils/Vector3D';
+import { boxMesh, click, createEngine, project, scene } from '@tests/renderer/helpers';
+import { declaredFunctionNames, removeFunctionSource, sourceFunctions } from '@/helpers/functions';
 
 class FakeEditor implements CodeEditorHandle {
   text = '';

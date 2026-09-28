@@ -1,6 +1,6 @@
-import type { Vec3 } from '../types/viewport';
-import { formatFixed } from '../utils/cpp';
-import { escapeRegExp } from '../utils/regexp';
+import type { Vec3 } from '@/types/viewport';
+import { formatFixed } from '@/utils/cpp';
+import { escapeRegExp } from '@/utils/regexp';
 
 export function formatCoordinate(value: number): string {
   value = Math.fround(value);

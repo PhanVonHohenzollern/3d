@@ -1,6 +1,6 @@
-import type { RuntimeResult, RuntimeValueSource, RuntimeVariable } from '../RuntimeTypes';
-import { isArray, runtimeDeepCopy, type RuntimeValue } from '../RuntimeValue';
-import { containsPath } from './variablePaths';
+import type { RuntimeResult, RuntimeValueSource, RuntimeVariable } from '@/core/runtime/RuntimeTypes';
+import { isArray, runtimeDeepCopy, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { containsPath } from '@/core/runtime/helpers/variablePaths';
 
 export function collectVariables(
   order: readonly string[],

@@ -1,5 +1,5 @@
-import { runtimeError } from '../../utils/cpp';
-import { FdPoint3d, FdVector3d } from './FdMath';
+import { runtimeError } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
 
 export class FdBowlCorner {
   vertex = new FdPoint3d();

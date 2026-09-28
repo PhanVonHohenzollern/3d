@@ -34,6 +34,18 @@ export default defineConfig([
     plugins: { '@stylistic': stylistic },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^(\\.{1,2}(/|$)|~/|src/|tests/|/)',
+              message:
+                'Import project code with @/ (src) or @tests/ (tests), never a relative or absolute path (docs/architecture.md).',
+            },
+          ],
+        },
+      ],
       '@stylistic/padding-line-between-statements': [
         'error',
         { blankLine: 'always', prev: '*', next: 'return' },

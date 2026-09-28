@@ -7,16 +7,24 @@ import {
   RuntimeArray,
   runtimeValueToCompactString,
   type RuntimeValue,
-} from '../RuntimeValue';
-import { stdException, stod, stoll, trim } from '../../../utils/cpp';
-import { Lexer } from '../interpreter/Lexer';
-import { ProgramParser } from '../interpreter/ProgramParser';
-import { StatementKind, type Statement } from '../interpreter/Statement';
-import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '../RuntimeTypes';
-import { isScalarTypeToken, normalizedScalarType } from './typeNames';
-import { functionParameters, functionScope } from './functionSignatures';
-import { isInsulationQuery, kInsulationQueries } from './insulationQueries';
-import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, tokensToExpression, type Token } from './tokens';
+} from '@/core/runtime/RuntimeValue';
+import { stdException, stod, stoll, trim } from '@/utils/cpp';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
+import { ProgramParser } from '@/core/runtime/interpreter/ProgramParser';
+import { StatementKind, type Statement } from '@/core/runtime/interpreter/Statement';
+import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '@/core/runtime/RuntimeTypes';
+import { isScalarTypeToken, normalizedScalarType } from '@/core/runtime/helpers/typeNames';
+import { functionParameters, functionScope } from '@/core/runtime/helpers/functionSignatures';
+import { isInsulationQuery, kInsulationQueries } from '@/core/runtime/helpers/insulationQueries';
+import {
+  isIdentifier,
+  isSymbol,
+  sliceTokens,
+  splitTopLevel,
+  TokKind,
+  tokensToExpression,
+  type Token,
+} from '@/core/runtime/helpers/tokens';
 
 function neutralParameterValue(type: string): string {
   if (type === 'string') return '';

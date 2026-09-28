@@ -1,17 +1,11 @@
-import {
-  rotationMatrix,
-  transformDirection,
-  transformPoint,
-  translationMatrix,
-  type DMat4,
-} from '../../../utils/dmat4';
-import { DVec3 } from '../../../utils/DVec3';
-import { FdVector3d } from '../../runtime/FdMath';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import type { PreviewMesh } from '../previewScene';
-import { validDirection } from './geometryMath';
-import { f32 } from './meshData';
-import { asNumber, asVector, ref } from './valueDecoding';
+import { rotationMatrix, transformDirection, transformPoint, translationMatrix, type DMat4 } from '@/utils/dmat4';
+import { DVec3 } from '@/utils/DVec3';
+import { FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import type { PreviewMesh } from '@/core/geometry/previewScene';
+import { validDirection } from '@/core/geometry/helpers/geometryMath';
+import { f32 } from '@/core/geometry/helpers/meshData';
+import { asNumber, asVector, ref } from '@/core/geometry/helpers/valueDecoding';
 
 export function meshTransformDelta(args: RuntimeValue[]): DMat4 | null {
   if (args.length === 1) {

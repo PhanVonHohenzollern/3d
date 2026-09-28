@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { earlierChanges } from '../../src/helpers/apiHistory';
-import { directSource, displayExpression } from '../../src/helpers/traceFormatting';
-import { ApiHistoryDialogModel } from '../../src/hooks/apiTrace/ApiHistoryDialogModel';
-import { HistoryColumn } from '../../src/hooks/apiTrace/historyItems';
-import type { TreeWidgetItem } from '../../src/hooks/treeWidget/TreeWidgetItem';
-import { p, traceResult } from './traceFixture';
+import { earlierChanges } from '@/helpers/apiHistory';
+import { directSource, displayExpression } from '@/helpers/traceFormatting';
+import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
+import { HistoryColumn } from '@/hooks/apiTrace/historyItems';
+import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import { p, traceResult } from '@tests/ui/traceFixture';
 
 const row = (item: TreeWidgetItem) => Array.from({ length: 8 }, (_, c) => item.text(c));
 

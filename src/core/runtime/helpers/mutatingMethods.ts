@@ -1,5 +1,5 @@
-import { runtimeError } from '../../../utils/cpp';
-import { FdPoint3d, FdVector3d } from '../FdMath';
+import { runtimeError } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
 import {
   isPoint,
   isVector,
@@ -8,8 +8,8 @@ import {
   runtimeNumber,
   RuntimeStdVector,
   type RuntimeValue,
-} from '../RuntimeValue';
-import { isSymbol, TokKind, type Token } from './tokens';
+} from '@/core/runtime/RuntimeValue';
+import { isSymbol, TokKind, type Token } from '@/core/runtime/helpers/tokens';
 
 export const kMutatingMethods: readonly string[] = ['rotateBy', 'normalize', 'mirror', 'set', 'push_back'];
 

@@ -3,10 +3,10 @@ import {
   type ConnectorDefinition,
   type ConnectorPreview,
   type ConnectorType,
-} from '../core/geometry/ConnectorPreview';
-import type { RuntimeResult } from '../core/runtime/RuntimeTypes';
-import { formatGeneral } from '../utils/cpp';
-import { sameItems } from '../utils/arrays';
+} from '@/core/geometry/ConnectorPreview';
+import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { formatGeneral } from '@/utils/cpp';
+import { sameItems } from '@/utils/arrays';
 
 export const kConnectorTypes: readonly ConnectorType[] = ['Circular', 'Rectangular'];
 export const kOrientationLabels = ['X+', 'X-', 'Y+', 'Y-', 'Z+', 'Z-'] as const;

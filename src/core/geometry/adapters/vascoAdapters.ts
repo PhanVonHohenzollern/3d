@@ -1,13 +1,13 @@
-import { cross, dot, DVec3, normalized } from '../../../utils/DVec3';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildBoxMesh } from '../builders/rectangularMeshes';
-import { buildTaperedTubeMesh } from '../builders/circularMeshes';
-import { warningFor } from '../helpers/apiCall';
-import { rotateAroundAxis, toFdVector, toPoint } from '../helpers/geometryMath';
-import { vertex } from '../helpers/meshData';
-import { NamedArguments } from '../helpers/NamedArguments';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
+import { cross, dot, DVec3, normalized } from '@/utils/DVec3';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildBoxMesh } from '@/core/geometry/builders/rectangularMeshes';
+import { buildTaperedTubeMesh } from '@/core/geometry/builders/circularMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { rotateAroundAxis, toFdVector, toPoint } from '@/core/geometry/helpers/geometryMath';
+import { vertex } from '@/core/geometry/helpers/meshData';
+import { NamedArguments } from '@/core/geometry/helpers/NamedArguments';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 export const vascoApiNames = [
   'makeVascoStraight',

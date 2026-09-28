@@ -1,4 +1,4 @@
-import type { FontSpec, TextElideMode, TextMeasurer } from '../types/text';
+import type { FontSpec, TextElideMode, TextMeasurer } from '@/types/text';
 
 export const kDefaultFontFamily = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 

@@ -1,5 +1,5 @@
-import { sdkCanonicalType, sdkTypeDefinition } from '../SdkDefinitions';
-import { isIdentifier, isSymbol, TokKind, type Token } from './tokens';
+import { sdkCanonicalType, sdkTypeDefinition } from '@/core/runtime/SdkDefinitions';
+import { isIdentifier, isSymbol, TokKind, type Token } from '@/core/runtime/helpers/tokens';
 
 export interface ParsedType {
   type: string;

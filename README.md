@@ -20,6 +20,8 @@ Run `make` to list the other commands: build, test, lint, format and validate.
 
 More detail: [docs/](docs/) describes the app's behavior.
 
+How the code is organized, which imports are allowed and where new code goes: [docs/architecture.md](docs/architecture.md).
+
 ## OBJ import and export
 
 Use **Import OBJ** in the header to preview a local `.obj` file. Import replaces

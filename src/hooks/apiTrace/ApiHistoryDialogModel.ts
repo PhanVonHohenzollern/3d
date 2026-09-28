@@ -1,9 +1,9 @@
-import { apiParameterMetadataForCall } from '../../core/runtime/ApiMetadata';
-import type { RuntimeArgumentTrace, RuntimeResult } from '../../core/runtime/RuntimeTypes';
-import { historyWindowTitle } from '../../helpers/apiHistory';
-import { Observable } from '../observable/Observable';
-import { TreeWidget } from '../treeWidget/TreeWidget';
-import { TreeWidgetItem } from '../treeWidget/TreeWidgetItem';
+import { apiParameterMetadataForCall } from '@/core/runtime/ApiMetadata';
+import type { RuntimeArgumentTrace, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { historyWindowTitle } from '@/helpers/apiHistory';
+import { Observable } from '@/hooks/observable/Observable';
+import { TreeWidget } from '@/hooks/treeWidget/TreeWidget';
+import { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
 import {
   addHistoryParameter,
   HistoryColumn,
@@ -12,7 +12,7 @@ import {
   kHistoryHeaderLabels,
   kHistorySourceLineRole,
   updateHistoryArraySummary,
-} from './historyItems';
+} from '@/hooks/apiTrace/historyItems';
 
 let nextDialogId = 1;
 

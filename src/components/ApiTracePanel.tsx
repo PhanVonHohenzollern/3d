@@ -1,9 +1,9 @@
-import { useApiTracePanel } from '../hooks/useApiTracePanel';
-import type { ApiTracePanelProps } from '../types/panels';
-import { preventDefault } from '../utils/events';
-import { ApiHistoryDialog } from './ApiHistoryDialog';
-import { TreeView } from './TreeView';
-import { ToolButton } from './ui/ToolButton';
+import { useApiTracePanel } from '@/hooks/useApiTracePanel';
+import type { ApiTracePanelProps } from '@/types/panels';
+import { preventDefault } from '@/utils/events';
+import { ApiHistoryDialog } from '@/components/ApiHistoryDialog';
+import { TreeView } from '@/components/TreeView';
+import { ToolButton } from '@/components/ui/ToolButton';
 
 export function ApiTracePanel(props: ApiTracePanelProps) {
   const { tree, dialog, clearFocus } = useApiTracePanel(props);

@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import { OBJ_MAX_BYTES, parseObj } from '../core/formats/obj';
-import type { MainWindow } from './mainWindow/MainWindow';
+import { OBJ_MAX_BYTES, parseObj } from '@/core/formats/obj';
+import type { MainWindow } from '@/hooks/mainWindow/MainWindow';
 
 export function useModelFiles(mainWindow: MainWindow) {
   const inputRef = useRef<HTMLInputElement>(null);

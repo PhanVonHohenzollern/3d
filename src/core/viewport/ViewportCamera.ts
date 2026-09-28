@@ -1,6 +1,6 @@
-import { QMatrix4x4 } from '../../utils/Matrix4x4';
-import { clamp, radians } from '../../utils/math';
-import { QPointF, QVector3D, QVector4D, type QPoint } from '../../utils/Vector3D';
+import { QMatrix4x4 } from '@/utils/Matrix4x4';
+import { clamp, radians } from '@/utils/math';
+import { QPointF, QVector3D, QVector4D, type QPoint } from '@/utils/Vector3D';
 
 export interface ScreenRay {
   nearPoint: QVector3D;

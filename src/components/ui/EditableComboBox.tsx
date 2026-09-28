@@ -1,7 +1,7 @@
-import { useEditableComboBox } from '../../hooks/useEditableComboBox';
-import { cn } from '../../utils/cn';
-import { preventDefault } from '../../utils/events';
-import { LineEdit } from './LineEdit';
+import { useEditableComboBox } from '@/hooks/useEditableComboBox';
+import { cn } from '@/utils/cn';
+import { preventDefault } from '@/utils/events';
+import { LineEdit } from '@/components/ui/LineEdit';
 import { useId, type KeyboardEvent } from 'react';
 
 interface EditableComboBoxProps {

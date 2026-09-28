@@ -1,8 +1,8 @@
 import type { Ref } from 'react';
-import type { Viewport3DHandle, Viewport3DProps } from '../types/viewport';
-import { useViewportEngine } from './useViewportEngine';
-import { useViewportPointer } from './useViewportPointer';
-import { useViewportSurface, type ViewportSurfaceRefs } from './useViewportSurface';
+import type { Viewport3DHandle, Viewport3DProps } from '@/types/viewport';
+import { useViewportEngine } from '@/hooks/useViewportEngine';
+import { useViewportPointer } from '@/hooks/useViewportPointer';
+import { useViewportSurface, type ViewportSurfaceRefs } from '@/hooks/useViewportSurface';
 
 export function useViewport3D(
   ref: Ref<Viewport3DHandle> | undefined,

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Dock, DockName } from './mainWindow';
+import type { Dock, DockName } from '@/types/mainWindow';
 
 export interface DockTab extends Dock {
   disabled?: boolean;

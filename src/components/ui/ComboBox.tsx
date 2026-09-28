@@ -1,6 +1,6 @@
 import type { SelectHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
-import { NativeSelect } from './native-select';
+import { NativeSelect } from '@/components/ui/native-select';
 
 export function ComboBox({ className, size: _size, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (

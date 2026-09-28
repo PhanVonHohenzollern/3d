@@ -1,9 +1,9 @@
-import { runtimeError } from '../../../utils/cpp';
-import { ExprParser } from '../interpreter/ExprParser';
-import { Lexer } from '../interpreter/Lexer';
-import { RuntimeState } from '../interpreter/RuntimeState';
-import { runtimeTruthy } from '../RuntimeValue';
-import { parseCallArguments, TokKind, tokensToExpression, type Token } from './tokens';
+import { runtimeError } from '@/utils/cpp';
+import { ExprParser } from '@/core/runtime/interpreter/ExprParser';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
+import { RuntimeState } from '@/core/runtime/interpreter/RuntimeState';
+import { runtimeTruthy } from '@/core/runtime/RuntimeValue';
+import { parseCallArguments, TokKind, tokensToExpression, type Token } from '@/core/runtime/helpers/tokens';
 
 interface Macro {
   parameters?: string[];

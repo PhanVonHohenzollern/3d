@@ -1,4 +1,4 @@
-import { FdPoint3d } from '../FdMath';
+import { FdPoint3d } from '@/core/runtime/FdMath';
 
 export function lineIntersection(
   p1: FdPoint3d,

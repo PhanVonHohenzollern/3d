@@ -1,22 +1,18 @@
-import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '../../core/runtime/RuntimeTypes';
-import { GeometryRuntime, type RuntimeExecutionOptions } from '../../core/runtime/GeometryRuntime';
-import {
-  isInsulationQuery,
-  kInsulationQueries,
-  type InsulationQuery,
-} from '../../core/runtime/helpers/insulationQueries';
+import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { GeometryRuntime, type RuntimeExecutionOptions } from '@/core/runtime/GeometryRuntime';
+import { isInsulationQuery, kInsulationQueries, type InsulationQuery } from '@/core/runtime/helpers/insulationQueries';
 import {
   definitionId,
   neutralValueForType,
   parameterRowTexts,
   parameterSeed,
   refinedParameterValue,
-} from '../../helpers/parameters';
-import { adjacentCell, rowForKey } from '../../helpers/tableNavigation';
-import type { ParameterEditor, ParameterPanelHandle, ParameterRow } from '../../types/panels';
-import { isMacPlatform } from '../../utils/platform';
-import { Observable } from '../observable/Observable';
-import { parseParameterTable } from '../../helpers/parameterTable';
+} from '@/helpers/parameters';
+import { adjacentCell, rowForKey } from '@/helpers/tableNavigation';
+import type { ParameterEditor, ParameterPanelHandle, ParameterRow } from '@/types/panels';
+import { isMacPlatform } from '@/utils/platform';
+import { Observable } from '@/hooks/observable/Observable';
+import { parseParameterTable } from '@/helpers/parameterTable';
 
 export const kParameterValueColumn = 3;
 export const kParameterHeaders = ['Parameter', 'Type', 'Variable', 'Value', 'Line'];

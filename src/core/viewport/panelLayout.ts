@@ -1,5 +1,5 @@
-import type { DebugLabelPanelsLayout } from '../../types/viewportEngine';
-import { QRect } from '../../utils/Rect';
+import type { DebugLabelPanelsLayout } from '@/types/viewportEngine';
+import { QRect } from '@/utils/Rect';
 
 const kSelectionButtonWidth = 96;
 const kSelectionButtonHeight = 32;

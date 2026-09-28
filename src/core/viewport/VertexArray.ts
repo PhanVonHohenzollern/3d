@@ -1,4 +1,4 @@
-import { QVector3D } from '../../utils/Vector3D';
+import { QVector3D } from '@/utils/Vector3D';
 
 export const kVertexFloats = 9;
 export const kVertexBytes = kVertexFloats * 4;

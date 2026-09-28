@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { RuntimeParameterRequest, RuntimeResult } from '../../src/core/runtime/RuntimeTypes';
-import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
-import { ParameterPanelModel } from '../../src/hooks/parameterPanel/ParameterPanelModel';
-import { parameterTableCells, parameterTableText } from '../../src/helpers/parameterTable';
-import { parameterGridLayout } from '../../src/helpers/parameters';
-import { GeometryRuntime } from '../../src/core/runtime/GeometryRuntime';
+import type { RuntimeParameterRequest, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { emptyRuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { ParameterPanelModel } from '@/hooks/parameterPanel/ParameterPanelModel';
+import { parameterTableCells, parameterTableText } from '@/helpers/parameterTable';
+import { parameterGridLayout } from '@/helpers/parameters';
+import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
 
 function request(overrides: Partial<RuntimeParameterRequest>): RuntimeParameterRequest {
   return {

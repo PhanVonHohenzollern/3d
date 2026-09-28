@@ -1,4 +1,4 @@
-import type { ApiSignatureMetadata } from './ApiMetadata';
+import type { ApiSignatureMetadata } from '@/core/runtime/ApiMetadata';
 
 const signature = (name: string, sourceHeader: string, parameters: [string, string][]): ApiSignatureMetadata => ({
   name,

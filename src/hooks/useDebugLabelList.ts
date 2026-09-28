@@ -7,12 +7,12 @@ import {
   type RefObject,
   type UIEvent,
 } from 'react';
-import type { DebugLabelPanel } from '../core/viewport/DebugLabelPanel';
-import { isDomMiddleButton, modifiersFromEvent, mouseButtonFromDom, mouseButtonsFromDom } from '../helpers/qtInput';
-import { capturePointer } from '../utils/dom';
-import { preventDefault } from '../utils/events';
-import { cssColor } from '../utils/painting';
-import { cssFont } from '../utils/textMetrics';
+import type { DebugLabelPanel } from '@/core/viewport/DebugLabelPanel';
+import { isDomMiddleButton, modifiersFromEvent, mouseButtonFromDom, mouseButtonsFromDom } from '@/helpers/qtInput';
+import { capturePointer } from '@/utils/dom';
+import { preventDefault } from '@/utils/events';
+import { cssColor } from '@/utils/painting';
+import { cssFont } from '@/utils/textMetrics';
 
 type ListPointerEvent = PointerEvent<HTMLDivElement>;
 

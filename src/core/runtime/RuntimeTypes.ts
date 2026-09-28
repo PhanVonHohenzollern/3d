@@ -1,4 +1,4 @@
-import type { RuntimeValue } from './RuntimeValue';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
 
 export interface RuntimeVariable {
   name: string;

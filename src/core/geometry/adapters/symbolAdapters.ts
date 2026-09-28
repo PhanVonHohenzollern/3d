@@ -1,12 +1,12 @@
-import { cross, DVec3, length, normalized } from '../../../utils/DVec3';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import { isArray, type RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildPolygonFaceMesh } from '../builders/rectangularMeshes';
-import { warningFor } from '../helpers/apiCall';
-import { basisFromUp, stableBasis, toPoint, toVec } from '../helpers/geometryMath';
-import { vertex } from '../helpers/meshData';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
+import { cross, DVec3, length, normalized } from '@/utils/DVec3';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { isArray, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildPolygonFaceMesh } from '@/core/geometry/builders/rectangularMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { basisFromUp, stableBasis, toPoint, toVec } from '@/core/geometry/helpers/geometryMath';
+import { vertex } from '@/core/geometry/helpers/meshData';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 // Symbols are narrow ribbons in the preview's triangle-only renderer. Their
 // centre lines retain SDK coordinates; stroke width is a display property.

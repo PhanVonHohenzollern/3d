@@ -1,7 +1,7 @@
-import { stdClamp } from '../../../utils/cppStd';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import type { PreviewColor } from '../previewScene';
-import { asInt, asNumber, ref } from './valueDecoding';
+import { stdClamp } from '@/utils/cppStd';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import type { PreviewColor } from '@/core/geometry/previewScene';
+import { asInt, asNumber, ref } from '@/core/geometry/helpers/valueDecoding';
 
 function colorComponent(v: number): number {
   return Math.fround(stdClamp(v / 255.0, 0.0, 1.0));

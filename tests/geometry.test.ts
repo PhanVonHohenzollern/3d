@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { adapterMap, supportedPreviewApiNames } from '../src/core/geometry/adapters/apiAdapters';
-import { buildConnectorPreview } from '../src/core/geometry/ConnectorPreview';
-import { PreviewGeometryEngine } from '../src/core/geometry/PreviewGeometryEngine';
-import type { PreviewMesh } from '../src/core/geometry/previewScene';
-import { apiSignatureMetadataForCall } from '../src/core/runtime/ApiMetadata';
-import { GeometryRuntime } from '../src/core/runtime/GeometryRuntime';
-import { RuntimeArray } from '../src/core/runtime/RuntimeValue';
-import { what } from '../src/utils/cpp';
-import { cross, dot, DVec3 } from '../src/utils/DVec3';
-import { decodeResult, encodeConnector, encodeScene, type Json } from './support/codec';
-import { expectSameJson } from './support/compare';
-import { expectFiniteScene } from './support/finiteScene';
-import { connectorDefinition, isLiteral, literalEvaluator } from './support/connectors';
-import { expectedOutput } from './support/expected';
-import { listFixtures } from './support/fixtures';
+import { adapterMap, supportedPreviewApiNames } from '@/core/geometry/adapters/apiAdapters';
+import { buildConnectorPreview } from '@/core/geometry/ConnectorPreview';
+import { PreviewGeometryEngine } from '@/core/geometry/PreviewGeometryEngine';
+import type { PreviewMesh } from '@/core/geometry/previewScene';
+import { apiSignatureMetadataForCall } from '@/core/runtime/ApiMetadata';
+import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { RuntimeArray } from '@/core/runtime/RuntimeValue';
+import { what } from '@/utils/cpp';
+import { cross, dot, DVec3 } from '@/utils/DVec3';
+import { decodeResult, encodeConnector, encodeScene, type Json } from '@tests/support/codec';
+import { expectSameJson } from '@tests/support/compare';
+import { expectFiniteScene } from '@tests/support/finiteScene';
+import { connectorDefinition, isLiteral, literalEvaluator } from '@tests/support/connectors';
+import { expectedOutput } from '@tests/support/expected';
+import { listFixtures } from '@tests/support/fixtures';
 
 describe('rectangular connector flanges', () => {
   const bounds = (mesh: PreviewMesh) =>

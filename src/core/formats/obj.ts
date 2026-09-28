@@ -1,5 +1,5 @@
 import earcut from 'earcut';
-import { defaultPreviewColor, type PreviewGeometryScene, type PreviewMesh } from '../geometry/previewScene';
+import { defaultPreviewColor, type PreviewGeometryScene, type PreviewMesh } from '@/core/geometry/previewScene';
 
 export const OBJ_MAX_BYTES = 20 * 1024 * 1024;
 const MAX_TRIANGLES = 200_000;

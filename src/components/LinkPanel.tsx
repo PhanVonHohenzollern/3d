@@ -1,9 +1,9 @@
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { useLinkPanel } from '../hooks/useLinkPanel';
-import type { LinkPanelProps } from '../types/panels';
-import { LinkForm } from './LinkForm';
-import { LinkTable } from './LinkTable';
-import { Button } from './ui/button';
+import { useLinkPanel } from '@/hooks/useLinkPanel';
+import type { LinkPanelProps } from '@/types/panels';
+import { LinkForm } from '@/components/LinkForm';
+import { LinkTable } from '@/components/LinkTable';
+import { Button } from '@/components/ui/button';
 
 export function LinkPanel(props: LinkPanelProps) {
   const {

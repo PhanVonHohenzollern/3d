@@ -1,4 +1,4 @@
-import type { Dock, WindowGeometry } from '../types/mainWindow';
+import type { Dock, WindowGeometry } from '@/types/mainWindow';
 
 export const kDocks: readonly Dock[] = [
   { name: 'VariablesDock', title: 'Variables' },

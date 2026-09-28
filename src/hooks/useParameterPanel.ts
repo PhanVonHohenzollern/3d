@@ -1,13 +1,13 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import type { ParameterPanelProps } from '../types/panels';
+import type { ParameterPanelProps } from '@/types/panels';
 import {
   isInsulationEnabledKey,
   kParameterValueColumn,
   ParameterPanelModel,
-} from './parameterPanel/ParameterPanelModel';
-import { useObservable } from './useObservable';
-import { parameterTableCells, parameterTableText } from '../helpers/parameterTable';
-import { parameterGridLayout } from '../helpers/parameters';
+} from '@/hooks/parameterPanel/ParameterPanelModel';
+import { useObservable } from '@/hooks/useObservable';
+import { parameterTableCells, parameterTableText } from '@/helpers/parameterTable';
+import { parameterGridLayout } from '@/helpers/parameters';
 
 interface TableDraft {
   text: string;

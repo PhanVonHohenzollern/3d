@@ -1,12 +1,12 @@
 import earcut from 'earcut';
-import { cross, dot, DVec3, length, normalized } from '../../../utils/DVec3';
-import { FdBowlFace, FdBowlInfo } from '../../runtime/FdBowlData';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { warningFor } from '../helpers/apiCall';
-import { stableBasis, toVec } from '../helpers/geometryMath';
-import { vertex } from '../helpers/meshData';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene, PreviewMesh } from '../previewScene';
+import { cross, dot, DVec3, length, normalized } from '@/utils/DVec3';
+import { FdBowlFace, FdBowlInfo } from '@/core/runtime/FdBowlData';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { stableBasis, toVec } from '@/core/geometry/helpers/geometryMath';
+import { vertex } from '@/core/geometry/helpers/meshData';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene, PreviewMesh } from '@/core/geometry/previewScene';
 
 function contour(face: FdBowlFace, steps: number): DVec3[] {
   const corners = face.corners;

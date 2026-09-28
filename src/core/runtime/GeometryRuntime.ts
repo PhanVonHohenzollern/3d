@@ -1,21 +1,21 @@
-import { doubleToInt64, runtimeError, stdException, trim } from '../../utils/cpp';
-import { FdVector3d } from './FdMath';
-import { parseMacroDefinition } from './helpers/macros';
-import { scanGetValParameters } from './helpers/parameters';
-import { preprocess } from './helpers/preprocessor';
-import { collectVariables } from './helpers/runtimeResult';
-import { ExprParser } from './interpreter/ExprParser';
-import { Lexer } from './interpreter/Lexer';
-import { ProgramParser } from './interpreter/ProgramParser';
-import { RuntimeExecutor } from './interpreter/RuntimeExecutor';
-import { RuntimeState } from './interpreter/RuntimeState';
-import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from './RuntimeTypes';
-import { runtimeDeepCopy, runtimeNumber } from './RuntimeValue';
-import { kSdkConstants } from './SdkDefinitions';
+import { doubleToInt64, runtimeError, stdException, trim } from '@/utils/cpp';
+import { FdVector3d } from '@/core/runtime/FdMath';
+import { parseMacroDefinition } from '@/core/runtime/helpers/macros';
+import { scanGetValParameters } from '@/core/runtime/helpers/parameters';
+import { preprocess } from '@/core/runtime/helpers/preprocessor';
+import { collectVariables } from '@/core/runtime/helpers/runtimeResult';
+import { ExprParser } from '@/core/runtime/interpreter/ExprParser';
+import { Lexer } from '@/core/runtime/interpreter/Lexer';
+import { ProgramParser } from '@/core/runtime/interpreter/ProgramParser';
+import { RuntimeExecutor } from '@/core/runtime/interpreter/RuntimeExecutor';
+import { RuntimeState } from '@/core/runtime/interpreter/RuntimeState';
+import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { runtimeDeepCopy, runtimeNumber } from '@/core/runtime/RuntimeValue';
+import { kSdkConstants } from '@/core/runtime/SdkDefinitions';
 
-export type * from './RuntimeTypes';
-export type { RuntimeFunctionMacro } from './helpers/macros';
-export { runtimeSourceHistory } from './helpers/runtimeResult';
+export type * from '@/core/runtime/RuntimeTypes';
+export type { RuntimeFunctionMacro } from '@/core/runtime/helpers/macros';
+export { runtimeSourceHistory } from '@/core/runtime/helpers/runtimeResult';
 
 export class GeometryRuntime {
   private readonly m_state = new RuntimeState();

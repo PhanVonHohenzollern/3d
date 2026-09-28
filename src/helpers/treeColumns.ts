@@ -1,4 +1,4 @@
-import type { TreeCellView } from '../types/treeView';
+import type { TreeCellView } from '@/types/treeView';
 
 const kCellPadding = 12;
 

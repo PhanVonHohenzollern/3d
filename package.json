@@ -11,11 +11,12 @@
     "test": "vitest run",
     "update-expected": "vitest run tests/update-expected.test.ts",
     "lint": "eslint . --max-warnings 0",
+    "lint:boundaries": "eslint -c eslint.boundaries.config.js src",
     "lint:fix": "eslint . --fix",
     "format": "npm run lint:fix && prettier --write .",
     "format:check": "prettier --check .",
     "test:ci": "vitest run",
-    "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test:ci"
+    "validate": "npm run lint && npm run lint:boundaries && npm run format:check && npm run typecheck && npm run test:ci"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -48,6 +49,8 @@
     "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.12.0",

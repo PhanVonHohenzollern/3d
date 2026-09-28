@@ -1,10 +1,10 @@
-import { DVec3 } from '../../../utils/DVec3';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { warningFor } from '../helpers/apiCall';
-import { NamedArguments } from '../helpers/NamedArguments';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
-import { appendStroke } from './symbolAdapters';
+import { DVec3 } from '@/utils/DVec3';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { NamedArguments } from '@/core/geometry/helpers/NamedArguments';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
+import { appendStroke } from '@/core/geometry/adapters/symbolAdapters';
 
 export const patternApiNames = ['makeKFSymbolCurved', 'makeKFSymbolFlat', 'makeRectHoles', 'makeRoundedRectHoles'];
 

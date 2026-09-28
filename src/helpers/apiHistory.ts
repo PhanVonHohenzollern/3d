@@ -1,6 +1,6 @@
-import { runtimeSourceHistory } from '../core/runtime/GeometryRuntime';
-import type { RuntimeResult, RuntimeValueSource } from '../core/runtime/RuntimeTypes';
-import { isUnset, runtimeValueToCompactString, type RuntimeValue } from '../core/runtime/RuntimeValue';
+import { runtimeSourceHistory } from '@/core/runtime/GeometryRuntime';
+import type { RuntimeResult, RuntimeValueSource } from '@/core/runtime/RuntimeTypes';
+import { isUnset, runtimeValueToCompactString, type RuntimeValue } from '@/core/runtime/RuntimeValue';
 
 export function historyValueText(value: RuntimeValue): string {
   return isUnset(value) ? '\u2014' : runtimeValueToCompactString(value);

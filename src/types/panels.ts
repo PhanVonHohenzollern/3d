@@ -1,6 +1,6 @@
 import type { Ref } from 'react';
-import type { ConnectorExpressionEvaluator, ConnectorPreview } from '../core/geometry/ConnectorPreview';
-import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '../core/runtime/RuntimeTypes';
+import type { ConnectorExpressionEvaluator, ConnectorPreview } from '@/core/geometry/ConnectorPreview';
+import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '@/core/runtime/RuntimeTypes';
 
 export interface VariablePanelHandle {
   setRuntimeResult(result: RuntimeResult, currentLine: number): void;

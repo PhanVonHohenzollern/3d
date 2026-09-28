@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { GeometryRuntime } from '../src/core/runtime/GeometryRuntime';
-import { PreviewGeometryEngine } from '../src/core/geometry/PreviewGeometryEngine';
-import { preprocess } from '../src/core/runtime/helpers/preprocessor';
+import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { PreviewGeometryEngine } from '@/core/geometry/PreviewGeometryEngine';
+import { preprocess } from '@/core/runtime/helpers/preprocessor';
 import {
   declaredFunctionNames,
   mainFunctionName,
   removeFunctionSource,
   sourceFunctions,
   validFunctionCode,
-} from '../src/helpers/functions';
-import { FunctionWorkspace } from '../src/hooks/mainWindow/FunctionWorkspace';
-import { RuntimeStdVector } from '../src/core/runtime/RuntimeValue';
+} from '@/helpers/functions';
+import { FunctionWorkspace } from '@/hooks/mainWindow/FunctionWorkspace';
+import { RuntimeStdVector } from '@/core/runtime/RuntimeValue';
 
 describe('vendor C++ compatibility regressions', () => {
   const conditionalSource = [

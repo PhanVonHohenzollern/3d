@@ -1,6 +1,6 @@
-import { RuntimeArray, runtimeDefaultValueForType } from '../RuntimeValue';
-import { runtimeError } from '../../../utils/cpp';
-import { isSymbol, sliceTokens, splitTopLevel, type Token } from './tokens';
+import { RuntimeArray, runtimeDefaultValueForType } from '@/core/runtime/RuntimeValue';
+import { runtimeError } from '@/utils/cpp';
+import { isSymbol, sliceTokens, splitTopLevel, type Token } from '@/core/runtime/helpers/tokens';
 
 export function createArray(elementType: string, dims: readonly number[], level = 0): RuntimeArray {
   if (

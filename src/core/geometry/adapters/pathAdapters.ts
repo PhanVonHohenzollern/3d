@@ -1,15 +1,15 @@
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import type { RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildSectionTubeMesh } from '../builders/circularMeshes';
-import { buildPolygonFaceMesh } from '../builders/rectangularMeshes';
-import { warningFor } from '../helpers/apiCall';
-import { sdkPerpVector } from '../helpers/geometryMath';
-import { pointArray } from '../helpers/valueDecoding';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
-import { appendTube } from './tubeAdapters';
-import { cross, dot, DVec3, normalized } from '../../../utils/DVec3';
-import { vertex } from '../helpers/meshData';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import type { RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildSectionTubeMesh } from '@/core/geometry/builders/circularMeshes';
+import { buildPolygonFaceMesh } from '@/core/geometry/builders/rectangularMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { sdkPerpVector } from '@/core/geometry/helpers/geometryMath';
+import { pointArray } from '@/core/geometry/helpers/valueDecoding';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
+import { appendTube } from '@/core/geometry/adapters/tubeAdapters';
+import { cross, dot, DVec3, normalized } from '@/utils/DVec3';
+import { vertex } from '@/core/geometry/helpers/meshData';
 
 export function appendRotatablePlane(
   scene: PreviewGeometryScene,

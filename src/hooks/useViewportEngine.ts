@@ -1,7 +1,7 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type Ref } from 'react';
-import { ViewportEngine } from '../core/viewport/ViewportEngine';
-import { createViewport3DHandle } from '../helpers/viewportHandle';
-import type { Viewport3DHandle, Viewport3DProps } from '../types/viewport';
+import { ViewportEngine } from '@/core/viewport/ViewportEngine';
+import { createViewport3DHandle } from '@/helpers/viewportHandle';
+import type { Viewport3DHandle, Viewport3DProps } from '@/types/viewport';
 
 export function useViewportEngine(ref: Ref<Viewport3DHandle> | undefined, props: Viewport3DProps): ViewportEngine {
   const [engine] = useState(() => new ViewportEngine());

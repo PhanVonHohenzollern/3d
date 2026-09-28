@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { DebugItem } from '../../src/core/viewport/DebugItem';
-import { appendVectorArrow } from '../../src/core/viewport/debugItems';
-import { pickDebugItemAt, pickMeshAlongRay } from '../../src/core/viewport/picking';
-import { VertexArray } from '../../src/core/viewport/VertexArray';
-import type { ViewportEngine } from '../../src/core/viewport/ViewportEngine';
-import type { PreviewMesh } from '../../src/core/geometry/PreviewGeometryEngine';
-import { QPointF, QVector3D } from '../../src/utils/Vector3D';
-import { boxMesh, createEngine, project, updateCamera, vectorItem } from './helpers';
+import type { DebugItem } from '@/core/viewport/DebugItem';
+import { appendVectorArrow } from '@/core/viewport/debugItems';
+import { pickDebugItemAt, pickMeshAlongRay } from '@/core/viewport/picking';
+import { VertexArray } from '@/core/viewport/VertexArray';
+import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
+import type { PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
+import { QPointF, QVector3D } from '@/utils/Vector3D';
+import { boxMesh, createEngine, project, updateCamera, vectorItem } from '@tests/renderer/helpers';
 
 const everything = () => true;
 

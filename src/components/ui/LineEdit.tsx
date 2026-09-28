@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, Ref } from 'react';
 import { cn } from '@/lib/utils';
-import { Input } from './input';
+import { Input } from '@/components/ui/input';
 
 interface LineEditProps extends InputHTMLAttributes<HTMLInputElement> {
   ref?: Ref<HTMLInputElement>;

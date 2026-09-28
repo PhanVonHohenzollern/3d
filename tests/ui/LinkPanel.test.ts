@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { ConnectorPreview } from '../../src/core/geometry/ConnectorPreview';
-import type { RuntimeParameterRequest } from '../../src/core/runtime/RuntimeTypes';
-import { emptyRuntimeResult } from '../../src/core/runtime/RuntimeTypes';
-import { LinkPanelModel } from '../../src/hooks/linkPanel/LinkPanelModel';
+import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
+import type { RuntimeParameterRequest } from '@/core/runtime/RuntimeTypes';
+import { emptyRuntimeResult } from '@/core/runtime/RuntimeTypes';
+import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
 
 const evaluate = (expression: string) => {
   const value = Number(expression);

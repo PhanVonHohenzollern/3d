@@ -1,14 +1,14 @@
-import { cross, DVec3, normalized } from '../../../utils/DVec3';
-import { FdBowlInfo } from '../../runtime/FdBowlData';
-import { RuntimeArray, type RuntimeValue } from '../../runtime/RuntimeValue';
-import { buildBoxMesh, buildPolygonFaceMesh } from '../builders/rectangularMeshes';
-import { warningFor } from '../helpers/apiCall';
-import { rotateAroundAxis, toFdVector, toPoint } from '../helpers/geometryMath';
-import { NamedArguments } from '../helpers/NamedArguments';
-import type { MeshBuildContext } from '../MeshBuildContext';
-import type { PreviewGeometryScene } from '../previewScene';
-import { appendBowl } from './bowlAdapters';
-import { appendStroke } from './symbolAdapters';
+import { cross, DVec3, normalized } from '@/utils/DVec3';
+import { FdBowlInfo } from '@/core/runtime/FdBowlData';
+import { RuntimeArray, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { buildBoxMesh, buildPolygonFaceMesh } from '@/core/geometry/builders/rectangularMeshes';
+import { warningFor } from '@/core/geometry/helpers/apiCall';
+import { rotateAroundAxis, toFdVector, toPoint } from '@/core/geometry/helpers/geometryMath';
+import { NamedArguments } from '@/core/geometry/helpers/NamedArguments';
+import type { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import type { PreviewGeometryScene } from '@/core/geometry/previewScene';
+import { appendBowl } from '@/core/geometry/adapters/bowlAdapters';
+import { appendStroke } from '@/core/geometry/adapters/symbolAdapters';
 
 export const derivedApiNames = [
   'makeBend',

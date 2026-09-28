@@ -1,6 +1,13 @@
-import { runtimeError } from '../../../utils/cpp';
-import { FdBowlInfo, FdBowlFace, type BowlValue } from '../FdBowlData';
-import { isArray, isPoint, isVector, runtimeNumber, runtimeTruthy, type RuntimeValue } from '../RuntimeValue';
+import { runtimeError } from '@/utils/cpp';
+import { FdBowlInfo, FdBowlFace, type BowlValue } from '@/core/runtime/FdBowlData';
+import {
+  isArray,
+  isPoint,
+  isVector,
+  runtimeNumber,
+  runtimeTruthy,
+  type RuntimeValue,
+} from '@/core/runtime/RuntimeValue';
 
 export function callBowlMethod(value: BowlValue, method: string, args: readonly RuntimeValue[]): RuntimeValue {
   const n = (i: number) => runtimeNumber(args[i]);

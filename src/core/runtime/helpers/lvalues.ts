@@ -1,7 +1,7 @@
-import { runtimeError } from '../../../utils/cpp';
-import { FdPoint3d, FdVector3d } from '../FdMath';
-import { FdBowlCorner } from '../FdBowlData';
-import { memberValue } from './pointVectorMembers';
+import { runtimeError } from '@/utils/cpp';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { FdBowlCorner } from '@/core/runtime/FdBowlData';
+import { memberValue } from '@/core/runtime/helpers/pointVectorMembers';
 import {
   isPoint,
   isVector,
@@ -14,7 +14,7 @@ import {
   stdVectorElementType,
   type RuntimeArray,
   type RuntimeValue,
-} from '../RuntimeValue';
+} from '@/core/runtime/RuntimeValue';
 
 export interface RuntimeValueSlot {
   get(): RuntimeValue;

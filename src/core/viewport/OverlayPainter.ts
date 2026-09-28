@@ -1,9 +1,9 @@
-import type { QColor, QPen } from '../../types/painting';
-import type { FontSpec, TextMeasurer } from '../../types/text';
-import { cssColor, qColor, qPen } from '../../utils/painting';
-import type { QRectF } from '../../utils/Rect';
-import { cssFont } from '../../utils/textMetrics';
-import type { QPointF } from '../../utils/Vector3D';
+import type { QColor, QPen } from '@/types/painting';
+import type { FontSpec, TextMeasurer } from '@/types/text';
+import { cssColor, qColor, qPen } from '@/utils/painting';
+import type { QRectF } from '@/utils/Rect';
+import { cssFont } from '@/utils/textMetrics';
+import type { QPointF } from '@/utils/Vector3D';
 
 interface PainterState {
   pen: QPen | null;

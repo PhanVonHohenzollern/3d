@@ -1,10 +1,18 @@
-import { trim } from '../../../utils/cpp';
-import type { Statement } from '../interpreter/Statement';
-import type { RuntimeApiCall, RuntimeExecutionOptions } from '../RuntimeTypes';
-import { sdkCanonicalType } from '../SdkDefinitions';
-import { runtimeTypeName, type RuntimeValue } from '../RuntimeValue';
-import { parseRuntimeType } from './typeNames';
-import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, tokensToExpression, type Token } from './tokens';
+import { trim } from '@/utils/cpp';
+import type { Statement } from '@/core/runtime/interpreter/Statement';
+import type { RuntimeApiCall, RuntimeExecutionOptions } from '@/core/runtime/RuntimeTypes';
+import { sdkCanonicalType } from '@/core/runtime/SdkDefinitions';
+import { runtimeTypeName, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+import { parseRuntimeType } from '@/core/runtime/helpers/typeNames';
+import {
+  isIdentifier,
+  isSymbol,
+  sliceTokens,
+  splitTopLevel,
+  TokKind,
+  tokensToExpression,
+  type Token,
+} from '@/core/runtime/helpers/tokens';
 
 const kParameterQualifiers: readonly string[] = [
   'const',

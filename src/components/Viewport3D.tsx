@@ -1,8 +1,8 @@
 import { useRef, type Ref } from 'react';
-import { useViewport3D } from '../hooks/useViewport3D';
-import type { Viewport3DHandle, Viewport3DProps } from '../types/viewport';
-import { DebugLabelList } from './DebugLabelList';
-import { SelectionModeButton } from './SelectionModeButton';
+import { useViewport3D } from '@/hooks/useViewport3D';
+import type { Viewport3DHandle, Viewport3DProps } from '@/types/viewport';
+import { DebugLabelList } from '@/components/DebugLabelList';
+import { SelectionModeButton } from '@/components/SelectionModeButton';
 
 export function Viewport3D({ ref, ...props }: Viewport3DProps & { ref?: Ref<Viewport3DHandle> }) {
   const hostRef = useRef<HTMLDivElement>(null);

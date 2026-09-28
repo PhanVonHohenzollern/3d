@@ -1,11 +1,11 @@
-import { stod, stoll } from '../../../utils/cpp';
+import { stod, stoll } from '@/utils/cpp';
 import {
   apiSignatureMetadataForCall,
   type ApiParameterMetadata,
   type ApiSignatureMetadata,
-} from '../../runtime/ApiMetadata';
-import type { RuntimeApiCall } from '../../runtime/RuntimeTypes';
-import { runtimeDeepCopy, runtimeDefaultValueForType, type RuntimeValue } from '../../runtime/RuntimeValue';
+} from '@/core/runtime/ApiMetadata';
+import type { RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
+import { runtimeDeepCopy, runtimeDefaultValueForType, type RuntimeValue } from '@/core/runtime/RuntimeValue';
 
 export function isGeometryCallName(name: string): boolean {
   return name.startsWith('make') || name.startsWith('add') || name.startsWith('draw');

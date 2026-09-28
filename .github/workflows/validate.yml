@@ -29,6 +29,9 @@ jobs:
       - name: ESLint
         run: npm run lint
 
+      - name: Import boundaries (warnings only)
+        run: npm run lint:boundaries
+
       - name: Prettier
         run: npm run format:check
 

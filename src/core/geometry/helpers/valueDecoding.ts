@@ -1,6 +1,6 @@
-import { llroundToInt } from '../../../utils/cppStd';
-import { FdPoint3d, FdVector3d } from '../../runtime/FdMath';
-import { RuntimeArray, type RuntimeValue } from '../../runtime/RuntimeValue';
+import { llroundToInt } from '@/utils/cppStd';
+import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { RuntimeArray, type RuntimeValue } from '@/core/runtime/RuntimeValue';
 
 export interface Ref<T> {
   v: T;

@@ -1,6 +1,6 @@
-import type { FontSpec, TextMeasurer } from '../../types/text';
-import type { DebugLabelEntry, DebugLabelRowLayout } from '../../types/viewportEngine';
-import { elidedText, horizontalAdvance } from '../../utils/textMetrics';
+import type { FontSpec, TextMeasurer } from '@/types/text';
+import type { DebugLabelEntry, DebugLabelRowLayout } from '@/types/viewportEngine';
+import { elidedText, horizontalAdvance } from '@/utils/textMetrics';
 
 const kContentLeft = 17;
 const kContentMargins = 24;

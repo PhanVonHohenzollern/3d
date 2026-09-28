@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { PreviewMesh } from '../../src/core/geometry/PreviewGeometryEngine';
-import { QVector3D } from '../../src/utils/Vector3D';
-import { kVertexFloats } from '../../src/core/viewport/VertexArray';
-import { expandLineQuads, kLineQuadFloats } from '../../src/core/viewport/lineQuads';
-import { buildGeometryVertices, buildGeometryWireVertices } from '../../src/core/viewport/geometryVertices';
-import { boxMesh, scene } from './helpers';
+import type { PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
+import { QVector3D } from '@/utils/Vector3D';
+import { kVertexFloats } from '@/core/viewport/VertexArray';
+import { expandLineQuads, kLineQuadFloats } from '@/core/viewport/lineQuads';
+import { buildGeometryVertices, buildGeometryWireVertices } from '@/core/viewport/geometryVertices';
+import { boxMesh, scene } from '@tests/renderer/helpers';
 
 function normalAt(data: Float32Array, vertex: number): QVector3D {
   const o = vertex * kVertexFloats;

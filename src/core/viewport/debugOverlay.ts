@@ -1,10 +1,10 @@
-import { Qt, qColor, qPen } from '../../utils/painting';
-import type { QRect } from '../../utils/Rect';
-import { QPointF, type QVector3D } from '../../utils/Vector3D';
-import type { DebugItem } from './DebugItem';
-import { kOverviewPointName } from './debugItems';
-import type { OverlayPainter } from './OverlayPainter';
-import type { VertexArray } from './VertexArray';
+import { Qt, qColor, qPen } from '@/utils/painting';
+import type { QRect } from '@/utils/Rect';
+import { QPointF, type QVector3D } from '@/utils/Vector3D';
+import type { DebugItem } from '@/core/viewport/DebugItem';
+import { kOverviewPointName } from '@/core/viewport/debugItems';
+import type { OverlayPainter } from '@/core/viewport/OverlayPainter';
+import type { VertexArray } from '@/core/viewport/VertexArray';
 
 export interface DebugOverlayScene {
   items: readonly DebugItem[];

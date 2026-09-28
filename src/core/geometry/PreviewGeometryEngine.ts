@@ -1,13 +1,17 @@
-import { identityMatrix, multiply, type DMat4 } from '../../utils/dmat4';
-import { apiSignatureMetadataForCall } from '../runtime/ApiMetadata';
-import type { RuntimeApiCall, RuntimeResult } from '../runtime/RuntimeTypes';
-import { appendCompositeApiMeshes, appendPrimitiveApiMeshes, supportedPreviewApiNames } from './adapters/apiAdapters';
-import { effectiveArguments, isGeometryCallName, warningFor } from './helpers/apiCall';
-import { meshColorUpdate } from './helpers/colors';
-import { applyTransform, meshTransformDelta } from './helpers/meshTransform';
-import { asNumber, ref } from './helpers/valueDecoding';
-import { MeshBuildContext } from './MeshBuildContext';
-import { defaultPreviewColor, type PreviewColor, type PreviewGeometryScene } from './previewScene';
+import { identityMatrix, multiply, type DMat4 } from '@/utils/dmat4';
+import { apiSignatureMetadataForCall } from '@/core/runtime/ApiMetadata';
+import type { RuntimeApiCall, RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import {
+  appendCompositeApiMeshes,
+  appendPrimitiveApiMeshes,
+  supportedPreviewApiNames,
+} from '@/core/geometry/adapters/apiAdapters';
+import { effectiveArguments, isGeometryCallName, warningFor } from '@/core/geometry/helpers/apiCall';
+import { meshColorUpdate } from '@/core/geometry/helpers/colors';
+import { applyTransform, meshTransformDelta } from '@/core/geometry/helpers/meshTransform';
+import { asNumber, ref } from '@/core/geometry/helpers/valueDecoding';
+import { MeshBuildContext } from '@/core/geometry/MeshBuildContext';
+import { defaultPreviewColor, type PreviewColor, type PreviewGeometryScene } from '@/core/geometry/previewScene';
 
 export {
   defaultPreviewColor,
@@ -15,7 +19,7 @@ export {
   type PreviewGeometryScene,
   type PreviewMesh,
   type PreviewMeshVertex,
-} from './previewScene';
+} from '@/core/geometry/previewScene';
 
 const adapterWarningHeaders = new Set([
   'PnGeometry3d.h',
