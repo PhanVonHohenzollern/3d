@@ -1,11 +1,11 @@
-import { isFunctionParameterKey, parameterSlotCount } from '@/entities/parameter';
-import { writeObj } from '@engine/formats';
+import { parameterSlotCount } from '@/entities/parameter';
+import { canExportModel, exportedObjText, type ImportedModel } from '@/features/model-files';
 import type { InspectorCounts } from '@/types/dockArea';
 import type { ConnectorPreview } from '@engine/geometry';
-import { PreviewGeometryEngine, type PreviewGeometryScene } from '@engine/geometry';
+import type { PreviewGeometryScene } from '@engine/geometry';
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime';
-import { GeometryRuntime } from '@engine/runtime';
 import { emptyRuntimeResult, type RuntimeResult } from '@engine/runtime';
+import { PreviewSession, type EditorExecutionFeedback, type PreviewMode } from '@/features/run-preview';
 import { isApiDebugItemId } from '@/entities/api-call';
 import {
   closestTarget,
@@ -15,9 +15,11 @@ import {
   textInputSelector,
 } from '@/shared/lib/qt';
 import { pointDeclaration, unusedPreviewPointName } from '@/helpers/viewportPoints';
-import type { CodeEditorHandle, EditorExecutionFeedback } from '@/types/editor';
-import type { ActionListItem, DockName, Menu, PreviewMode } from '@/types/mainWindow';
-import type { ApiTracePanelHandle, LinkPanelHandle, ParameterPanelHandle, VariablePanelHandle } from '@/types/panels';
+import type { CodeEditorHandle } from '@/types/editor';
+import type { ActionListItem, DockName, Menu } from '@/types/mainWindow';
+import type { ApiTracePanelHandle, VariablePanelHandle } from '@/types/panels';
+import type { LinkPanelHandle } from '@/features/edit-connector';
+import type { ParameterPanelHandle } from '@/features/edit-parameters';
 import type { Vec3, Viewport3DHandle } from '@/types/viewport';
 import { what } from '@engine/runtime';
 import { Observable } from '@/shared/lib/observable';
@@ -25,6 +27,7 @@ import { Action } from '@/shared/lib/action';
 import { SingleShotTimer } from '@/shared/lib/SingleShotTimer';
 import { StatusBarModel } from '@/hooks/mainWindow/StatusBarModel';
 import { FunctionWorkspace } from '@/entities/source-function';
+import { FunctionTabsController } from '@/features/manage-functions';
 
 export class MainWindow extends Observable {
   #editor: CodeEditorHandle | null = null;
@@ -45,6 +48,7 @@ export class MainWindow extends Observable {
   };
   readonly bindParameters = (handle: ParameterPanelHandle | null): void => {
     this.#parameters = handle;
+    handle?.setAvailability((parameters) => this.session.activeParameterKeys(parameters));
   };
   readonly bindApiTrace = (handle: ApiTracePanelHandle | null): void => {
     this.#apiTrace = handle;
@@ -78,57 +82,62 @@ export class MainWindow extends Observable {
   }
 
   readonly m_previewTimer = new SingleShotTimer(220, () => this.runPreview());
-  readonly m_runtime = new GeometryRuntime();
-  readonly m_geometryEngine = new PreviewGeometryEngine();
-  m_geometryScene: PreviewGeometryScene = { meshes: [], warnings: [] };
-  previewMode: PreviewMode = 'debug';
-  buildNumber = 0;
-  #buildSequence = 0;
-  previewDirty = false;
-  #builtSource: string | null = null;
-  #builtProgram: ReturnType<FunctionWorkspace['program']> | undefined;
-  #builtParameters: ReadonlyMap<string, string> | undefined;
-  #previewProgram: ReturnType<FunctionWorkspace['program']> | undefined;
+  readonly session = new PreviewSession();
   #switchingEditor = false;
   readonly functions = new FunctionWorkspace();
-  readonly #tabBuilds = new Map<
-    string,
-    {
-      source: string;
-      program: ReturnType<FunctionWorkspace['program']>;
-      number: number;
-      parameters: ReadonlyMap<string, string>;
-    }
-  >();
-  #codeDirty = false;
-  executionFeedback: EditorExecutionFeedback = { source: '', diagnostics: [] };
+  readonly functionTabs = new FunctionTabsController(
+    this.functions,
+    () => this.m_editor,
+    () => this.m_parameters,
+  );
+
+  get m_runtime() {
+    return this.session.runtime;
+  }
+
+  get m_geometryScene(): PreviewGeometryScene {
+    return this.session.scene;
+  }
+
+  get m_lastResult(): RuntimeResult {
+    return this.session.lastResult;
+  }
+
+  get m_currentPreviewLine(): number {
+    return this.session.currentLine;
+  }
+
+  get previewMode(): PreviewMode {
+    return this.session.mode;
+  }
+
+  get buildNumber(): number {
+    return this.session.buildNumber;
+  }
+
+  get previewDirty(): boolean {
+    return this.session.previewDirty;
+  }
+
+  get executionFeedback(): EditorExecutionFeedback {
+    return this.session.feedback;
+  }
 
   get debugBlocked(): boolean {
-    return this.previewMode === 'build' && this.#codeDirty;
+    return this.session.debugBlocked;
   }
 
   get previewStatus(): string {
-    if (this.previewMode === 'debug') return 'Debug · live preview';
-    const errors =
-      this.executionFeedback.diagnostics.length + (this.executionFeedback.externalDiagnostics?.length ?? 0);
-    const pending = this.#codeDirty
-      ? 'code changes pending — press Build'
-      : 'parameter changes pending — press OK in Parameters';
-
-    return `Build #${this.buildNumber} · ${this.previewDirty ? pending : errors ? `${errors} error(s)` : `${this.m_geometryScene.meshes.length} mesh(es)`}`;
+    return this.session.previewStatus;
   }
 
-  importedObj: { name: string; scene: PreviewGeometryScene } | null = null;
+  importedObj: ImportedModel | null = null;
   #connectorPreviews: readonly ConnectorPreview[] = [];
   #selectedConnectorId = -1;
   #showGeometryAction: Action | null = null;
 
   get canExportObj(): boolean {
-    return (
-      (this.importedObj?.scene.meshes.length ??
-        this.m_geometryScene.meshes.length +
-          this.#connectorPreviews.reduce((sum, preview) => sum + preview.meshes.length, 0)) > 0
-    );
+    return canExportModel(this.importedObj, this.m_geometryScene, this.#connectorPreviews);
   }
 
   replacePreviewWithObj(scene: PreviewGeometryScene, name: string): void {
@@ -158,17 +167,10 @@ export class MainWindow extends Observable {
   exportObj(): string {
     if (!this.importedObj) this.runPreview();
 
-    return writeObj(
-      this.importedObj?.scene ?? {
-        meshes: [...this.m_geometryScene.meshes, ...this.#connectorPreviews.flatMap((preview) => preview.meshes)],
-        warnings: [],
-      },
-    );
+    return exportedObjText(this.importedObj, this.m_geometryScene, this.#connectorPreviews);
   }
 
   inspectorCounts: InspectorCounts = { VariablesDock: 0, ParametersDock: 0, ApiTraceDock: 0 };
-  m_lastResult: RuntimeResult = emptyRuntimeResult();
-  m_currentPreviewLine = 0;
   m_navigatingToTrace = false;
   m_browsingTrace = false;
 
@@ -180,6 +182,7 @@ export class MainWindow extends Observable {
 
   constructor() {
     super();
+    this.#connectFunctionTabs();
     this.createDockPanels();
     this.createActions();
   }
@@ -213,19 +216,9 @@ export class MainWindow extends Observable {
 
       return;
     }
-    this.buildNumber = ++this.#buildSequence;
+    this.session.beginBuild();
     this.updatePreview(source.split('\n').length, source, program);
-    this.#builtSource = source;
-    this.#builtProgram = program;
-    this.#builtParameters = this.m_parameters.overrides();
-    this.#tabBuilds.set(this.functions.active, {
-      source,
-      program,
-      number: this.buildNumber,
-      parameters: this.#builtParameters,
-    });
-    this.#codeDirty = false;
-    this.previewDirty = false;
+    this.session.recordBuild(this.functions.active, source, program, this.m_parameters.overrides());
     this.changed();
   };
 
@@ -237,7 +230,7 @@ export class MainWindow extends Observable {
 
   private activatePreviewMode(mode: PreviewMode): void {
     this.m_previewTimer.stop();
-    this.previewMode = mode;
+    this.session.setMode(mode);
     this.importedObj = null;
     this.m_browsingTrace = false;
     this.m_apiTrace.clearApiFocus();
@@ -249,11 +242,8 @@ export class MainWindow extends Observable {
     if (this.#switchingEditor) return;
     this.functions.edit(this.m_editor.toPlainText());
     this.m_editor.setTraceSourceLines(new Set());
-    this.#codeDirty =
-      this.m_editor.toPlainText() !== this.#builtSource ||
-      (!!this.#builtProgram &&
-        this.functions.program(this.m_editor.toPlainText(), false).source !== this.#builtProgram.source);
-    this.previewDirty = true;
+    const text = this.m_editor.toPlainText();
+    this.session.markEdited(text, () => this.functions.program(text, false).source);
     this.changed();
     this.schedulePreview();
   };
@@ -267,76 +257,23 @@ export class MainWindow extends Observable {
   };
 
   readonly onParametersChanged = (): void => {
-    this.previewDirty = true;
+    this.session.markParametersChanged();
     this.changed();
     this.runPreview();
   };
 
   readonly applyParameters = this.buildPreview;
 
-  readonly addFunction = (name: string): boolean => {
-    this.m_parameters.commitEditor();
-    this.functions.edit(this.m_editor.toPlainText());
-    if (!this.functions.add(name)) {
-      this.changed();
-
-      return false;
-    }
-    this.showFunctionEditor();
-
-    return true;
-  };
-
-  // The Add Function dialog shows its own error; this keeps it from outliving the dialog.
-  readonly clearFunctionError = (): void => {
-    if (!this.functions.error) return;
-    this.functions.clearError();
-    this.changed();
-  };
-
-  readonly selectFunction = (name: string): void => {
-    if (name === this.functions.active || (name && !this.functions.names.includes(name))) return;
-    this.m_parameters.commitEditor();
-    this.functions.edit(this.m_editor.toPlainText());
-    this.functions.select(name);
-    this.showFunctionEditor();
-  };
-
-  readonly saveFunction = (): void => {
-    this.functions.edit(this.m_editor.toPlainText());
-    if (this.functions.save()) this.showFunctionEditor();
-    this.changed();
-  };
-
-  readonly cancelFunction = (): void => {
-    const name = this.functions.active;
-    this.functions.cancel();
-    this.#tabBuilds.delete(name);
-    this.showFunctionEditor();
-  };
-
-  readonly attachFunction = (): void => {
-    this.functions.edit(this.m_editor.toPlainText());
-    if (this.functions.attach()) this.statusBar().showMessage('Function attached to the main code.', 2600);
-    this.changed();
-  };
-
-  readonly deleteFunction = (): void => {
-    if (!this.functions.active) return;
-    this.m_parameters.commitEditor();
-    const name = this.functions.removeActive();
-    if (!name) return;
-    this.m_previewTimer.stop();
-    this.#tabBuilds.delete(name);
-    for (const built of this.#tabBuilds.values())
-      built.parameters = new Map([...built.parameters].filter(([key]) => !isFunctionParameterKey(key, name)));
-    this.m_parameters.forgetFunction?.(name);
-    this.showFunctionEditor();
-    this.statusBar().showMessage(`Function ${name} deleted.`, 2600);
-  };
+  readonly addFunction = (name: string): boolean => this.functionTabs.add(name);
+  readonly clearFunctionError = (): void => this.functionTabs.clearError();
+  readonly selectFunction = (name: string): void => this.functionTabs.select(name);
+  readonly saveFunction = (): void => this.functionTabs.save();
+  readonly cancelFunction = (): void => this.functionTabs.cancel();
+  readonly attachFunction = (): void => this.functionTabs.attach();
+  readonly deleteFunction = (): void => this.functionTabs.remove();
 
   get canEditSubParameters(): boolean {
-    return !!this.functions.active && this.functions.parameterFunctions.length > 0;
+    return this.functionTabs.canEditInputs;
   }
 
   readonly setFunctionInput = (
@@ -345,23 +282,23 @@ export class MainWindow extends Observable {
     initial: string[],
     index: number,
     value: string,
-  ): void => {
-    if (!this.canEditSubParameters) return;
-    this.functions.setInput(name, parameter, initial, index, value);
-    this.onParametersChanged();
-  };
+  ): void => this.functionTabs.setInput(name, parameter, initial, index, value);
+  readonly selectFunctionInputs = (name: string): void => this.functionTabs.selectInputs(name);
+  readonly applyFunctionInputs = (name: string): void => this.functionTabs.applyInputs(name);
 
-  readonly selectFunctionInputs = (name: string): void => {
-    if (!this.canEditSubParameters) return;
-    this.functions.selectInputTab(name);
-    this.changed();
-  };
-
-  readonly applyFunctionInputs = (name: string): void => {
-    if (!this.canEditSubParameters || !this.functions.parameterFunctions.some((fn) => fn.name === name)) return;
-    this.selectFunction(name);
-    this.applyParameters();
-  };
+  #connectFunctionTabs(): void {
+    const tabs = this.functionTabs;
+    tabs.editorSwitched.connect(() => this.showFunctionEditor());
+    tabs.stateChanged.connect(() => this.changed());
+    tabs.draftCancelled.connect((name) => this.session.forgetBuild(name));
+    tabs.functionDeleted.connect((name) => {
+      this.m_previewTimer.stop();
+      this.session.forgetFunction(name);
+    });
+    tabs.inputsChanged.connect(() => this.onParametersChanged());
+    tabs.applyRequested.connect(() => this.applyParameters());
+    tabs.statusMessage.connect((text) => this.statusBar().showMessage(text, 2600));
+  }
 
   private showFunctionEditor(): void {
     this.m_previewTimer.stop();
@@ -377,35 +314,22 @@ export class MainWindow extends Observable {
     this.m_apiTrace.clearApiFocus();
     this.m_editor.setTraceSourceLines(new Set());
     this.functions.selectInputTab(this.functions.active);
-    this.m_lastResult = emptyRuntimeResult();
-    this.m_geometryScene = { meshes: [], warnings: [] };
-    this.executionFeedback = { source: this.functions.source(), diagnostics: [] };
+    this.session.clear(this.functions.source());
     this.m_viewport.setGeometryScene(this.m_geometryScene);
     this.m_viewport.setRuntimeResult(this.m_lastResult);
     this.m_variables.setRuntimeResult(this.m_lastResult, 1);
     this.m_apiTrace.setRuntimeResult(this.m_lastResult);
-    const built = this.#tabBuilds.get(this.functions.active);
-    this.#builtSource = built?.source ?? null;
-    this.#builtProgram = built?.program;
-    this.#builtParameters = built?.parameters;
     const currentProgram = this.functions.program(this.functions.source(), false);
-    this.#codeDirty =
-      !!built && (this.functions.source() !== built.source || currentProgram.source !== built.program.source);
-    this.previewDirty = this.#codeDirty;
+    const built = this.session.restoreTab(this.functions.active, this.functions.source(), currentProgram);
     if (this.previewMode === 'build') {
       if (built) {
-        this.buildNumber = built.number;
+        this.session.showBuild(built);
         this.updatePreview(built.source.split('\n').length, built.source, built.program, built.parameters);
-        const current = [...this.m_parameters.overrides()].sort(([a], [b]) => a.localeCompare(b));
-        const previous = [...built.parameters].sort(([a], [b]) => a.localeCompare(b));
-        this.previewDirty ||= JSON.stringify(current) !== JSON.stringify(previous);
-        this.previewDirty ||=
-          JSON.stringify([...(currentProgram.options.arguments ?? [])]) !==
-          JSON.stringify([...(built.program.options.arguments ?? [])]);
+        this.session.markDriftSince(built, this.m_parameters.overrides(), currentProgram);
       } else this.buildPreview();
     } else this.runPreview();
     const main = this.functions.inline[0];
-    this.m_parameters.selectTab?.(
+    this.m_parameters.selectTab(
       this.functions.active || (main && currentProgram.options.functionScopes?.get(main.signature)) || main?.name || '',
     );
     if (!this.canEditSubParameters && this.#raisedDock === 'SubParametersDock') this.#raisedDock = 'ParametersDock';
@@ -484,8 +408,9 @@ export class MainWindow extends Observable {
   };
 
   navigateToSource(line: number, lines: ReadonlySet<number>): void {
-    if (line > this.executionFeedback.source.split('\n').length && this.#previewProgram) {
-      const location = this.#previewProgram.locations.findLast((entry) => line >= entry.start && line <= entry.end);
+    const previewProgram = this.session.program;
+    if (line > this.executionFeedback.source.split('\n').length && previewProgram) {
+      const location = previewProgram.locations.findLast((entry) => line >= entry.start && line <= entry.end);
       if (location) {
         const localLine = line - location.start + location.localStart;
         const localLines = new Set(
@@ -716,54 +641,28 @@ export class MainWindow extends Observable {
       return;
     }
     this.functions.clearError();
-    this.#previewProgram = program;
-    const parameterDefinitions = this.m_runtime
-      .discoverParameters(program.source, program.options)
-      .filter((definition) => !definition.functionName || !this.functions.isDeleted(definition.functionName));
-    this.m_parameters.setDefinitions(parameterDefinitions, program.source, program.options);
+    const parameterDefinitions = this.session.discoverParameters(program, (name) => this.functions.isDeleted(name));
+    this.m_parameters.setDefinitions(parameterDefinitions);
 
-    this.m_runtime.setParameters(parameters ?? this.m_parameters.overrides());
-    let result: RuntimeResult;
-    try {
-      result = this.m_runtime.executeUpToLine(program.source, line, this.previewMode === 'build', program.options);
-    } catch (e) {
-      this.executionFeedback = { source, diagnostics: [{ line, message: what(e) }] };
+    const outcome = this.session.execute(program, source, line, parameters ?? this.m_parameters.overrides());
+    if ('error' in outcome) {
       this.changed();
-      this.statusBar().showMessage(`Line ${line}: preview stopped: ${what(e)}`, 4000, 'error');
+      this.statusBar().showMessage(`Line ${line}: preview stopped: ${outcome.error}`, 4000, 'error');
 
       return;
     }
-    const sourceLines = source.split('\n').length;
-    this.executionFeedback = {
-      source,
-      diagnostics: result.diagnostics.filter((d) => d.line <= sourceLines),
-      externalDiagnostics: result.diagnostics
-        .filter((d) => d.line > sourceLines)
-        .map((d) => {
-          const location = program.locations.findLast((entry) => d.line >= entry.start && d.line <= entry.end);
-
-          return {
-            name: location?.name || 'Main',
-            line: location ? d.line - location.start + location.localStart : d.line,
-            sourceLine: d.line,
-            message: d.message,
-          };
-        }),
-    };
+    const { result } = outcome;
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
       ParametersDock: parameterDefinitions.reduce((count, definition) => count + parameterSlotCount(definition), 0),
       ApiTraceDock: result.apiCalls.length,
     };
     this.changed();
-    this.m_lastResult = result;
-    this.m_currentPreviewLine = line;
 
     this.m_variables.setRuntimeResult(result, line);
     this.m_apiTrace.setRuntimeResult(result);
     this.m_parameters.updateRuntimeResult(result);
 
-    this.m_geometryScene = this.m_geometryEngine.build(result);
     if (!this.importedObj) {
       this.m_viewport.setGeometryScene(this.m_geometryScene);
       this.m_viewport.setRuntimeResult(result);

@@ -1,6 +1,5 @@
 import type { Ref } from 'react';
-import type { ConnectorExpressionEvaluator, ConnectorPreview } from '@engine/geometry';
-import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '@engine/runtime';
+import type { RuntimeResult } from '@engine/runtime';
 
 export interface VariablePanelHandle {
   setRuntimeResult(result: RuntimeResult, currentLine: number): void;
@@ -11,27 +10,6 @@ export interface VariablePanelHandle {
 export interface VariablePanelProps {
   onSelectionChanged?: (name: string) => void;
   ref?: Ref<VariablePanelHandle>;
-}
-
-export interface ParameterPanelHandle {
-  setPlaceholderData(): void;
-  setDefinitions(
-    definitions: readonly RuntimeParameterRequest[],
-    source?: string,
-    options?: RuntimeExecutionOptions,
-  ): void;
-  updateRuntimeResult(result: RuntimeResult): void;
-  values(): Map<string, string>;
-  overrides(): Map<string, string>;
-  commitEditor(): void;
-  selectTab?(id: string): void;
-  forgetFunction?(name: string): void;
-}
-
-export interface ParameterPanelProps {
-  onChanged?: () => void;
-  onApply?: () => void;
-  ref?: Ref<ParameterPanelHandle>;
 }
 
 export interface ApiTracePanelHandle {
@@ -53,36 +31,4 @@ export interface ApiTracePanelProps {
   onSourceActivated?: (line: number) => void;
   onHistorySourceActivated?: (line: number) => void;
   ref?: Ref<ApiTracePanelHandle>;
-}
-
-export type PreviewChangedCallback = (
-  previews: readonly ConnectorPreview[],
-  selectedId: number,
-  tested: boolean,
-) => void;
-
-export interface LinkPanelHandle {
-  updateRuntimeResult(result: RuntimeResult): void;
-  selectConnector(id: number): void;
-  exitPreview(): void;
-}
-
-export interface LinkPanelProps {
-  expressionEvaluator?: ConnectorExpressionEvaluator;
-  onPreviewChanged?: PreviewChangedCallback;
-  ref?: Ref<LinkPanelHandle>;
-}
-
-export interface LinkTableRow {
-  id: number;
-  texts: string[];
-  buttonText: string;
-}
-
-export type SizeField = 'diameter' | 'aSize' | 'bSize';
-
-export interface ScrollRequest {
-  row: number;
-  serial: number;
-  center: boolean;
 }

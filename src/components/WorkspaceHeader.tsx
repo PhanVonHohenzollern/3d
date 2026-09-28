@@ -1,5 +1,5 @@
 import type { WorkspaceHeaderProps } from '@/types/modelFiles';
-import { ModelFileControls } from '@/components/ModelFileControls';
+import { ModelFileControls } from '@/features/model-files';
 import { Button } from '@/shared/ui/button';
 import { Box, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';

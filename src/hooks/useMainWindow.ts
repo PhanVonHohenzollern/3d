@@ -1,5 +1,5 @@
-import type { FunctionEditorActions, FunctionEditorState } from '@/components/FunctionEditor';
-import { useModelFiles } from '@/hooks/useModelFiles';
+import type { FunctionEditorActions, FunctionEditorState } from '@/features/manage-functions';
+import { useModelFiles } from '@/features/model-files';
 import { useEffect, useMemo, useState } from 'react';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';
 import { useObservable } from '@/shared/lib/observable';
@@ -7,7 +7,12 @@ import { useObservable } from '@/shared/lib/observable';
 export function useMainWindow() {
   const [mainWindow] = useState(() => new MainWindow());
   useObservable(mainWindow);
-  const files = useModelFiles(mainWindow);
+  const files = useModelFiles({
+    canExport: mainWindow.canExportObj,
+    importedName: mainWindow.importedObj?.name ?? null,
+    showImported: (model) => mainWindow.replacePreviewWithObj(model.scene, model.name),
+    exportText: () => mainWindow.exportObj(),
+  });
   const workspace = mainWindow.functions;
   const parameterFunctions = workspace.parameterFunctions;
   const functionActions = useMemo<FunctionEditorActions>(

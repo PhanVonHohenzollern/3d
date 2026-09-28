@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { RuntimeParameterRequest, RuntimeResult } from '@engine/runtime/RuntimeTypes';
-import { emptyRuntimeResult } from '@engine/runtime/RuntimeTypes';
-import { ParameterPanelModel } from '@/hooks/parameterPanel/ParameterPanelModel';
+import { emptyRuntimeResult, parameterKey } from '@engine/runtime/RuntimeTypes';
+import { ParameterPanelModel } from '@/features/edit-parameters';
 import { parameterTableCells, parameterTableText } from '@/entities/parameter';
 import { parameterGridLayout } from '@/entities/parameter';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
@@ -23,6 +23,19 @@ function resultWith(requests: RuntimeParameterRequest[]): RuntimeResult {
   return { ...emptyRuntimeResult(), parameterRequests: requests };
 }
 
+// Answers availability the way the whole program does, like PreviewSession.activeParameterKeys.
+function availabilityFor(source: string) {
+  const runtime = new GeometryRuntime();
+
+  return (parameters: ReadonlyMap<string, string>) => {
+    runtime.setParameters(parameters);
+
+    return new Set(
+      runtime.executeUpToLine(source, source.split('\n').length, true).parameterRequests.map(parameterKey),
+    );
+  };
+}
+
 function editValue(model: ParameterPanelModel, row: number, text: string): void {
   model.mouseDoubleClick(row, 3);
   model.editorTextEdited(text);
@@ -41,7 +54,8 @@ describe('ParameterPanel', () => {
       'void makeSDK() { double H=50; get_val("H", H); }',
     ].join('\n');
     const model = new ParameterPanelModel();
-    model.setDefinitions(new GeometryRuntime().discoverParameters(source), source);
+    model.setAvailability(availabilityFor(source));
+    model.setDefinitions(new GeometryRuntime().discoverParameters(source));
 
     const row = (key: string) => model.rows.find((item) => item.key === key)!;
 
@@ -90,6 +104,7 @@ if (ASF) { double H=30; get_val("H", H); }
     const runtime = new GeometryRuntime();
     const model = new ParameterPanelModel();
     const definitions = runtime.discoverParameters(source);
+    model.setAvailability(availabilityFor(source));
 
     const run = () => {
       runtime.setParameters(model.overrides());
@@ -100,7 +115,7 @@ if (ASF) { double H=30; get_val("H", H); }
 
     const row = (key: string) => model.rows.find((item) => item.key === `element::${key}`)!;
 
-    model.setDefinitions(definitions, source);
+    model.setDefinitions(definitions);
     run();
     expect(row('ASS').texts[3]).toBe('false');
     expect(row('ASF').texts[3]).toBe('0');
@@ -110,13 +125,13 @@ if (ASF) { double H=30; get_val("H", H); }
     expect(runtime.evaluateNumericExpression('ASS')).toBe(0);
     expect(runtime.evaluateNumericExpression('ASF')).toBe(0);
     model.setCheckbox('element::ASS', true);
-    model.setDefinitions(definitions, source);
+    model.setDefinitions(definitions);
     run();
     expect(row('ASS').texts[3]).toBe('true');
     expect(row('D').disabled).toBe(false);
     expect(runtime.evaluateNumericExpression('ASS')).toBe(1);
     expect(model.importTable('ASF\n1')).toBe(true);
-    model.setDefinitions(definitions, source);
+    model.setDefinitions(definitions);
     run();
     expect(row('H').disabled).toBe(false);
     expect(runtime.evaluateNumericExpression('ASF')).toBe(1);
@@ -131,7 +146,7 @@ if (ASF) { double H=30; get_val("H", H); }
     const runtime = new GeometryRuntime();
     const model = new ParameterPanelModel();
     const changed = vi.fn();
-    model.setChangedCallback(changed);
+    model.valuesChanged.connect(changed);
     model.setDefinitions(runtime.discoverParameters('double size = 10; if (getExtInsSize(size)) {}'));
     expect(model.rows.map((row) => row.texts[0])).toEqual(['getExtInsSize', 'size']);
     expect(model.rows[0].checkbox).toBe(true);
@@ -238,7 +253,7 @@ if (ASF) { double H=30; get_val("H", H); }
   it('previews and edits a pasted table without changing active values until Apply', () => {
     const model = new ParameterPanelModel();
     const changed = vi.fn();
-    model.setChangedCallback(changed);
+    model.valuesChanged.connect(changed);
     model.setDefinitions([request({ name: 'A', variableName: 'a', defaultValue: '5' })]);
     model.importTable('A\n10\n20');
     changed.mockClear();
@@ -271,7 +286,7 @@ if (ASF) { double H=30; get_val("H", H); }
   it('pastes Excel rows and applies a complete row with one change notification', () => {
     const model = new ParameterPanelModel();
     const changed = vi.fn();
-    model.setChangedCallback(changed);
+    model.valuesChanged.connect(changed);
     model.setDefinitions([
       request({ name: 'A', variableName: 'A' }),
       request({ name: 'Dw', variableName: 'Dw' }),
@@ -305,7 +320,7 @@ if (ASF) { double H=30; get_val("H", H); }
     );
     expect(model.values().get('d')).toBe('11.5');
     expect(model.values().get('Label')).toBe('Line 1\nLine 2');
-    expect(model.pasteMessage).toContain('Ignored: Comment');
+    expect(model.pasteMessage).toContain('Ignored columns: Comment');
     model.selectDataSet(1);
     expect(Object.fromEntries(model.values())).toEqual({ D: '650', d: '11.5', Label: 'Fan "B"' });
   });
@@ -355,7 +370,7 @@ if (ASF) { double H=30; get_val("H", H); }
   it('keeps user-edited values sticky while untouched source defaults follow the code', () => {
     const model = new ParameterPanelModel();
     const changed = vi.fn();
-    model.setChangedCallback(changed);
+    model.valuesChanged.connect(changed);
     model.setDefinitions([
       request({ name: 'A', defaultValue: '5' }),
       request({ name: 'B', defaultValue: '1', variableName: 'b' }),
@@ -377,7 +392,7 @@ if (ASF) { double H=30; get_val("H", H); }
   it('only reports real edits (QTableWidgetItem::setData ignores unchanged values)', () => {
     const model = new ParameterPanelModel();
     const changed = vi.fn();
-    model.setChangedCallback(changed);
+    model.valuesChanged.connect(changed);
     model.setDefinitions([request({ name: 'A', defaultValue: '5' })]);
     editValue(model, 0, '5');
     expect(changed).not.toHaveBeenCalled();
@@ -442,7 +457,7 @@ describe('ParameterPanel reset to source', () => {
   it('restores current source defaults and lets later source changes apply again', () => {
     const model = new ParameterPanelModel();
     const changed = vi.fn();
-    model.setChangedCallback(changed);
+    model.valuesChanged.connect(changed);
     model.setDefinitions([request({ defaultValue: '5' })]);
     editValue(model, 0, '12');
     model.setDefinitions([request({ defaultValue: '8' })]);

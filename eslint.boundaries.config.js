@@ -52,6 +52,11 @@ const slicePublicApi = allSlices.map(({ layer, slice }) => ({
 
 const legacyFolders = [
   {
+    target: './src/features',
+    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/utils'],
+    message: 'features/ must not import app code (components, hooks, helpers, types, core, utils).',
+  },
+  {
     target: './src/entities',
     from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/utils'],
     message: 'entities/ must not import app code (components, hooks, helpers, types, core, utils).',

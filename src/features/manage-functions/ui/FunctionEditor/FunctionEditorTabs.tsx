@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
+import { useFunctionEditor } from '@/features/manage-functions/ui/FunctionEditor/FunctionEditorContext';
 import { Button } from '@/shared/ui/button';
 
 type FunctionEditorTabProps = {

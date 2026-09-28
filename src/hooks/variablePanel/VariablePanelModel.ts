@@ -2,7 +2,8 @@ import type { RuntimeResult } from '@engine/runtime';
 import { rowForKey } from '@/shared/ui/table-view';
 import { variableRow, variableSummary } from '@/entities/variable';
 import type { VariableRow } from '@/entities/variable';
-import type { ScrollRequest, VariablePanelHandle } from '@/types/panels';
+import type { VariablePanelHandle } from '@/types/panels';
+import type { ScrollRequest } from '@/shared/ui/table-view';
 import { Observable } from '@/shared/lib/observable';
 
 export class VariablePanelModel extends Observable implements VariablePanelHandle {

@@ -1,3 +1,4 @@
+import { linkPanelMinimumHeight } from '@/features/edit-connector';
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { clampDockHeight, kDocks } from '@/helpers/layout';
 import type { DockName } from '@/types/mainWindow';
@@ -14,9 +15,7 @@ export function useDockArea(
   const startDrag = usePointerDrag();
   const [areaHeight, setAreaHeight] = useState(window.innerHeight);
   const [areaWidth, setAreaWidth] = useState(window.innerWidth);
-  // Match the Link form's 4 / 2 / 1 column layout, including the dock insets.
-  const linkMinimum = areaWidth >= 990 ? 280 : areaWidth >= 550 ? 380 : 560;
-  const minimum = raised === 'LinkDock' ? linkMinimum : clampDockHeight(0, areaHeight);
+  const minimum = raised === 'LinkDock' ? linkPanelMinimumHeight(areaWidth) : clampDockHeight(0, areaHeight);
   const maximum = Math.max(minimum, clampDockHeight(Infinity, areaHeight));
   const visibleHeight = Math.min(Math.max(dockHeight, minimum), maximum);
 

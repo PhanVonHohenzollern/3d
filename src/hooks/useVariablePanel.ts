@@ -1,7 +1,8 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { eventModifiers } from '@/shared/lib/qt';
 import { isInTableHeader, tableRowOf } from '@/shared/ui/table-view';
-import type { ScrollRequest, VariablePanelProps } from '@/types/panels';
+import type { VariablePanelProps } from '@/types/panels';
+import type { ScrollRequest } from '@/shared/ui/table-view';
 import { isOnScrollbar } from '@/shared/lib/dom';
 import { useObservable } from '@/shared/lib/observable';
 import { useScrollSelectionIntoView } from '@/shared/lib/react';

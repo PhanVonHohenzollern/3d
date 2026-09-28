@@ -1,9 +1,10 @@
 import { parseObj, writeObj } from '@engine/formats/obj';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
-import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
+import { LinkPanelModel } from '@/features/edit-connector';
 import { MainWindow } from '@/hooks/mainWindow/MainWindow';
-import { ParameterPanelModel } from '@/hooks/parameterPanel/ParameterPanelModel';
+import { GeometryRuntime } from '@engine/runtime';
+import { ParameterPanelModel } from '@/features/edit-parameters';
 import { VariablePanelModel } from '@/hooks/variablePanel/VariablePanelModel';
 import type { CodeEditorHandle } from '@/types/editor';
 import type { Viewport3DHandle } from '@/types/viewport';
@@ -162,7 +163,7 @@ function createMainWindow() {
   editor.onTextChanged = mw.onEditorTextChanged;
   editor.onCursorPositionChanged = mw.onEditorCursorPositionChanged;
   variables.setSelectionChangedCallback(mw.onVariableSelectionChanged);
-  parameters.setChangedCallback(mw.onParametersChanged);
+  parameters.valuesChanged.connect(mw.onParametersChanged);
   apiTrace.setSelectionChangedCallback(mw.onApiTraceSelectionChanged);
   apiTrace.setSourceActivatedCallback(mw.onApiTraceSourceActivated);
   apiTrace.setFunctionActivatedCallback(mw.onApiTraceFunctionActivated);
@@ -1223,6 +1224,22 @@ return H;
     mw.buildPreview();
     expect(mw.executionFeedback.diagnostics).toEqual([]);
     expect(mw.m_runtime.evaluateNumericExpression('width')).toBe(12);
+    mw.dispose();
+  });
+
+  it('runs the program once per Build, including the Parameter panel availability check', () => {
+    const { mw, editor } = createMainWindow();
+    mw.start();
+    editor.type(kSource, 1);
+    const runs = vi.spyOn(GeometryRuntime.prototype, 'executeUpToLine');
+    try {
+      mw.buildPreview();
+      expect(runs).toHaveBeenCalledTimes(1);
+      expect(mw.m_geometryScene.meshes).toHaveLength(1);
+      expect(mw.m_runtime.evaluateNumericExpression('after')).toBe(1);
+    } finally {
+      runs.mockRestore();
+    }
     mw.dispose();
   });
 

@@ -7,5 +7,10 @@ export {
   parameterSeed,
   refinedParameterValue,
 } from '@/entities/parameter/lib/parameters';
-export { parameterTableCells, parameterTableText, parseParameterTable } from '@/entities/parameter/lib/table';
+export {
+  parameterTableCells,
+  parameterTableText,
+  parseParameterTable,
+  tableImportSummary,
+} from '@/entities/parameter/lib/table';
 export type { ParameterEditor, ParameterRow } from '@/entities/parameter/model/types';

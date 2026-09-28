@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ConnectorPreview } from '@engine/geometry/ConnectorPreview';
 import type { RuntimeParameterRequest } from '@engine/runtime/RuntimeTypes';
 import { emptyRuntimeResult } from '@engine/runtime/RuntimeTypes';
-import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
+import { LinkPanelModel } from '@/features/edit-connector';
 
 const evaluate = (expression: string) => {
   const value = Number(expression);

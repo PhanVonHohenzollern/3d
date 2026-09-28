@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { LinkFormProps } from '@/types/linkForm';
+import type { LinkFormProps } from '@/features/edit-connector/ui/types';
 import { cn } from '@/shared/lib/cn';
 import { ComboBox } from '@/shared/ui/ComboBox';
 import { EditableComboBox } from '@/shared/ui/editable-combo-box';
@@ -8,13 +8,13 @@ import { LineEdit } from '@/shared/ui/LineEdit';
 import { PushButton } from '@/shared/ui/PushButton';
 import { Button } from '@/shared/ui/button';
 
-export function LinkForm({ nameRef, ...props }: LinkFormProps) {
+export const LinkForm = ({ disabled, nameRef, identity, size, position, rotation, status }: LinkFormProps) => {
   const id = useId();
 
   return (
     <div className="@container/link-form flex h-full min-h-0 w-full flex-1 flex-col bg-base">
       <fieldset
-        disabled={props.disabled}
+        disabled={disabled}
         aria-label="Connector settings"
         className="group/form m-2 grid shrink-0 grid-cols-1 gap-x-5 gap-y-3 rounded-md border border-line p-3 @min-[520px]/link-form:grid-cols-2 @min-[960px]/link-form:grid-cols-4 [&_input]:h-7 [&_select[data-size=sm]]:h-7"
       >
@@ -25,18 +25,18 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
             <LineEdit
               id={`${id}-name`}
               ref={nameRef}
-              value={props.name}
-              onChange={props.onNameChange}
-              aria-invalid={!!props.fieldErrors.name}
-              title={props.fieldErrors.name}
+              value={identity.name}
+              onChange={identity.onNameChange}
+              aria-invalid={!!identity.nameError}
+              title={identity.nameError}
             />
             <FormLabel htmlFor={`${id}-point`}>Point variable</FormLabel>
             <LineEdit
               id={`${id}-point`}
-              value={props.point}
-              onChange={props.onPointChange}
-              onBlur={props.onPointBlur}
-              onKeyDown={props.onPointKeyDown}
+              value={identity.point}
+              onChange={identity.onPointChange}
+              onBlur={identity.onPointBlur}
+              onKeyDown={identity.onPointKeyDown}
             />
           </div>
         </fieldset>
@@ -46,28 +46,28 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
             <FormLabel htmlFor={`${id}-type`}>Type</FormLabel>
             <ComboBox
               id={`${id}-type`}
-              value={props.typeIndex}
-              onChange={props.onTypeChange}
-              aria-invalid={!!props.fieldErrors.type}
+              value={size.typeIndex}
+              onChange={size.onTypeChange}
+              aria-invalid={!!size.errors.type}
             >
-              {props.typeOptions.map((type, index) => (
+              {size.typeOptions.map((type, index) => (
                 <option key={type} value={index}>
                   {type}
                 </option>
               ))}
             </ComboBox>
-            {props.circular ? (
+            {size.circular ? (
               <>
                 <FormLabel>Diameter</FormLabel>
                 <EditableComboBox
                   compact
                   label="Diameter"
-                  value={props.sizeTexts.diameter}
-                  items={props.parameterNames}
-                  disabled={props.disabled}
-                  placeholder={props.sizePlaceholder}
-                  onTextChanged={props.sizeTextChanged('diameter')}
-                  invalid={!!props.fieldErrors.diameter}
+                  value={size.texts.diameter}
+                  items={size.parameterNames}
+                  disabled={disabled}
+                  placeholder={size.placeholder}
+                  onTextChanged={size.onTextChanged('diameter')}
+                  invalid={!!size.errors.diameter}
                 />
               </>
             ) : (
@@ -78,12 +78,12 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
                     <EditableComboBox
                       compact
                       label={index === 0 ? 'A dimension' : 'B dimension'}
-                      value={props.sizeTexts[field]}
-                      items={props.parameterNames}
-                      disabled={props.disabled}
-                      placeholder={props.sizePlaceholder}
-                      onTextChanged={props.sizeTextChanged(field)}
-                      invalid={!!props.fieldErrors[field]}
+                      value={size.texts[field]}
+                      items={size.parameterNames}
+                      disabled={disabled}
+                      placeholder={size.placeholder}
+                      onTextChanged={size.onTextChanged(field)}
+                      invalid={!!size.errors[field]}
                     />
                   </div>
                 ))}
@@ -94,7 +94,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
         <fieldset className="min-w-0">
           <legend className="mb-2 text-xs font-semibold">Position</legend>
           <div className="grid grid-cols-3 gap-2">
-            {props.positionFields.map((field, index) => (
+            {position.map((field, index) => (
               <div key={field.label} className="min-w-0 space-y-1.5">
                 <FormLabel htmlFor={`${id}-position-${index}`}>{field.label}</FormLabel>
                 <LineEdit
@@ -113,7 +113,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
           <div className="space-y-1.5">
             <FormLabel>Orientation</FormLabel>
             <div role="group" aria-label="Orientation" className="grid grid-cols-6 gap-1">
-              {props.orientations.map((option) => (
+              {rotation.orientations.map((option) => (
                 <Button
                   key={option.label}
                   type="button"
@@ -129,7 +129,7 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {props.angleFields.map((field, index) => (
+            {rotation.angles.map((field, index) => (
               <div key={field.label} className="min-w-0 space-y-1.5">
                 <FormLabel htmlFor={`${id}-angle-${index}`} title={field.label}>
                   {field.label.replace(' (deg)', '°')}
@@ -149,23 +149,23 @@ export function LinkForm({ nameRef, ...props }: LinkFormProps) {
       </fieldset>
       <div className="mt-auto flex shrink-0 items-center gap-3 border-t border-line bg-base px-3 py-1.5">
         <div
-          role={props.statusIsError ? 'alert' : 'status'}
+          role={status.isError ? 'alert' : 'status'}
           className={cn(
             'min-w-0 flex-1 text-[11px] break-words text-muted-foreground select-text',
-            props.statusIsError && 'text-error',
+            status.isError && 'text-error',
           )}
         >
-          {props.feedback}
+          {status.feedback}
         </div>
         <PushButton
           variant="primary"
           sizeClassName="h-7 min-w-16 shrink-0 px-3"
-          disabled={props.disabled}
-          onClick={props.test}
+          disabled={disabled}
+          onClick={status.test}
         >
           Make
         </PushButton>
       </div>
     </div>
   );
-}
+};
