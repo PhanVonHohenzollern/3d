@@ -10,6 +10,7 @@ import { what } from '../src/utils/cpp';
 import { cross, dot, DVec3 } from '../src/utils/DVec3';
 import { decodeResult, encodeConnector, encodeScene, type Json } from './support/codec';
 import { expectSameJson } from './support/compare';
+import { expectFiniteScene } from './support/finiteScene';
 import { connectorDefinition, isLiteral, literalEvaluator } from './support/connectors';
 import { expectedOutput } from './support/expected';
 import { listFixtures } from './support/fixtures';
@@ -233,12 +234,63 @@ describe('preview adapter registry', () => {
   });
 });
 
+describe('tube-to-tube intersections', () => {
+  const frame = 'FdPoint3d p(0,0,0); FdVector3d n(0,0,1), up(0,1,0);';
+
+  const build = (code: string) => new PreviewGeometryEngine().build(new GeometryRuntime().executeUpToLine(code, 999));
+
+  it.each([
+    [
+      'a short position array',
+      'double pos[1] = {100}; double ang[3] = {90,0,0};',
+      'makeTubeToTubeIntersection: interTubePosition needs 2 numbers',
+    ],
+    [
+      'a scalar angle',
+      'double pos[2] = {100,0}; double ang = 90;',
+      'makeTubeToTubeIntersection: angles needs 1 number',
+    ],
+  ])('warns instead of drawing nothing for %s', (_, declarations, warning) => {
+    const scene = build(
+      `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
+        ` bool opt[2] = {false,false}; ${declarations}` +
+        ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
+    );
+    expect(scene.meshes).toEqual([]);
+    expect(scene.warnings).toEqual([`line 1 ${warning}`]);
+  });
+
+  it('warns when makeTubeToTubeIntersection2 gets a short branch array', () => {
+    const scene = build(
+      `${frame} double td[2] = {100,300}; double it[2] = {50,200}; double an[2] = {90,0};` +
+        ' makeTubeToTubeIntersection2(p, n, up, td, it, an, 8, false);',
+    );
+    expect(scene.warnings).toEqual(['line 1 makeTubeToTubeIntersection2: interTubeData needs 4 numbers']);
+  });
+
+  it('still accepts an angle array that only sets the first angle', () => {
+    const scene = build(
+      `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
+        ' bool opt[2] = {false,false}; double pos[2] = {100,0}; double ang[1] = {90};' +
+        ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
+    );
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    expectFiniteScene(scene);
+  });
+});
+
+// These fixtures pass NaN or infinity on purpose: the preview must reproduce the desktop's
+// non-finite meshes for non-finite input. Anywhere else a non-finite vertex is an adapter bug.
+const kNonFiniteInputFixtures = new Set(['geometry/nan_inputs.cpp']);
+
 for (const fixture of listFixtures()) {
   describe(fixture.name, () => {
     it('preview geometry and literal connectors match', () => {
       expectedOutput(fixture).runs.forEach((run: Json) => {
         const scene = new PreviewGeometryEngine().build(decodeResult(run.result));
         expectSameJson({ line: run.line, scene: run.scene }, { line: run.line, scene: encodeScene(scene) });
+        if (!kNonFiniteInputFixtures.has(fixture.name)) expectFiniteScene(scene);
 
         fixture.connectors.forEach((directive, index) => {
           const fields = [
