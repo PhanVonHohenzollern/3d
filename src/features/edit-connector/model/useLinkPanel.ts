@@ -19,7 +19,7 @@ import {
 import { isInElement, isInTableHeader, tableCellOf } from '@/shared/ui/table-view';
 import type { SizeField } from '@/entities/connector';
 import type { LinkFormProps } from '@/features/edit-connector/ui/types';
-import type { LinkPanelProps } from '@/types/panels';
+import type { LinkPanelProps } from '@/features/edit-connector/model/types';
 import { LinkPanelModel } from '@/features/edit-connector/model/LinkPanelModel';
 import { useObservable } from '@/shared/lib/observable';
 

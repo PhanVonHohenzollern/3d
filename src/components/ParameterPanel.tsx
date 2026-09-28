@@ -1,6 +1,6 @@
 import { Plus, RotateCcw } from 'lucide-react';
 import { useParameterPanel } from '@/features/edit-parameters';
-import type { ParameterPanelProps } from '@/types/panels';
+import type { ParameterPanelProps } from '@/features/edit-parameters';
 import { Button } from '@/shared/ui/button';
 import { EditableComboBox } from '@/shared/ui/editable-combo-box';
 import { ParameterTableDialog } from '@/features/edit-parameters';

@@ -21,3 +21,9 @@ export interface CellProps {
   padding?: 'text' | 'none' | 'widget';
   children: ReactNode;
 }
+
+export interface ScrollRequest {
+  row: number;
+  serial: number;
+  center: boolean;
+}

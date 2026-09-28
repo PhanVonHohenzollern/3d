@@ -65,7 +65,7 @@ At the start of the migration (branch `chore/p1-guardrails`), `lint:boundaries` 
 - 4 are `types/` importing from `hooks/` (`Action`, `TreeWidget`, `TreeWidgetItem`).
 - The engine already imports nothing from app code.
 
-After P2 (`shared/` layer): 3 warnings, all the viewport importing the API-call helpers that move to `entities/api-call` in GPW-23. After GPW-23: 0 warnings. `shared/` imports no app code, and `lint:boundaries` now warns if it does.
+After P2 (`shared/` layer): 3 warnings, all the viewport importing the API-call helpers that move to `entities/api-call` in GPW-23. After GPW-23: 0 warnings. After P5, `lint:boundaries` also warns when `features/` imports app code; none does, and no feature imports another. `shared/` imports no app code, and `lint:boundaries` now warns if it does.
 
 ## Where does new code go?
 
@@ -162,17 +162,18 @@ Old location → new location, with the ticket that moves it. Each ticket update
 
 `src/lib/` is gone (GPW-17). Every remaining file in `src/types/`, `src/helpers/` and `src/utils/` belongs to a feature, widget or page that P5 and P6 create, so it moves with that ticket. GPW-37 deletes the empty folders.
 
-| File                                                                                                                     | Moves to                    | Ticket         |
-| ------------------------------------------------------------------------------------------------------------------------ | --------------------------- | -------------- |
-| `src/types/panels.ts` (panel handle and props types)                                                                     | the panel widgets           | GPW-33         |
-| `src/types/linkForm.ts`, `src/types/linkTable.ts`                                                                        | the Link feature and widget | GPW-31, GPW-33 |
-| `src/types/modelFiles.ts`                                                                                                | `features/model-files`      | GPW-32         |
-| `src/types/editor.ts`                                                                                                    | `widgets/code-editor`       | GPW-34         |
-| `src/types/viewport.ts`, `src/types/viewportEngine.ts`, `src/helpers/viewportHandle.ts`, `src/helpers/viewportPoints.ts` | `widgets/viewport`          | GPW-34         |
-| `src/utils/{Vector3D,Matrix4x4,Rect,Bounds3D,geometry,math}.ts`                                                          | `widgets/viewport`          | GPW-34         |
-| `src/types/toolbar.ts`, `src/types/mainWindow.ts`                                                                        | `widgets/workspace-header`  | GPW-34         |
-| `src/types/dockArea.ts`, `src/helpers/layout.ts` (dock list and height)                                                  | the dock shell              | GPW-35         |
-| `src/types/statusBar.ts`                                                                                                 | `pages/workspace`           | GPW-36         |
+| File                                                                                                                     | Moves to                                                                      | Ticket         |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- | -------------- |
+| `src/types/panels.ts`: Parameter and Link panel handle/props types, `ScrollRequest`                                      | `features/edit-parameters`, `features/edit-connector`, `shared/ui/table-view` | P5 (done)      |
+| `src/types/panels.ts`: Variable and API Trace panel handle/props types                                                   | the panel widgets                                                             | GPW-33         |
+| `src/types/linkForm.ts`, `src/types/linkTable.ts`                                                                        | the Link feature and widget                                                   | GPW-31, GPW-33 |
+| `src/types/modelFiles.ts`                                                                                                | `features/model-files`                                                        | GPW-32         |
+| `src/types/editor.ts`                                                                                                    | `widgets/code-editor`                                                         | GPW-34         |
+| `src/types/viewport.ts`, `src/types/viewportEngine.ts`, `src/helpers/viewportHandle.ts`, `src/helpers/viewportPoints.ts` | `widgets/viewport`                                                            | GPW-34         |
+| `src/utils/{Vector3D,Matrix4x4,Rect,Bounds3D,geometry,math}.ts`                                                          | `widgets/viewport`                                                            | GPW-34         |
+| `src/types/toolbar.ts`, `src/types/mainWindow.ts`                                                                        | `widgets/workspace-header`                                                    | GPW-34         |
+| `src/types/dockArea.ts`, `src/helpers/layout.ts` (dock list and height)                                                  | the dock shell                                                                | GPW-35         |
+| `src/types/statusBar.ts`                                                                                                 | `pages/workspace`                                                             | GPW-36         |
 
 ## Open decisions
 

@@ -10,7 +10,7 @@ import {
 } from '@/entities/parameter';
 import { adjacentCell, rowForKey } from '@/shared/ui/table-view';
 import type { ParameterEditor, ParameterRow } from '@/entities/parameter';
-import type { ParameterAvailability, ParameterPanelHandle } from '@/types/panels';
+import type { ParameterAvailability, ParameterPanelHandle } from '@/features/edit-parameters/model/types';
 import { isMacPlatform } from '@/shared/lib/platform';
 import { Observable, Signal } from '@/shared/lib/observable';
 import { parseParameterTable, tableImportSummary } from '@/entities/parameter';

@@ -1,5 +1,5 @@
 import type { KeyboardEvent, MouseEvent, Ref } from 'react';
-import type { LinkTableRow } from '@/types/panels';
+import type { LinkTableRow } from '@/features/edit-connector';
 import type { ContainerPagination } from '@/shared/ui/pagination';
 
 export interface LinkTableProps {

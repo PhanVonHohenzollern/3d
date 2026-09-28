@@ -1,5 +1,5 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
-import type { ParameterPanelProps } from '@/types/panels';
+import type { ParameterPanelProps } from '@/features/edit-parameters/model/types';
 import {
   isInsulationEnabledKey,
   kParameterValueColumn,
