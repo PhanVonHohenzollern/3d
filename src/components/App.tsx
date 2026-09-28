@@ -15,7 +15,7 @@ import { Splitter } from '@/components/Splitter';
 import { ToolBar } from '@/components/ToolBar';
 import { VariablePanel } from '@/components/VariablePanel';
 import { Viewport3D } from '@/components/Viewport3D';
-import { FunctionEditorFooter, FunctionEditorTabs } from '@/components/FunctionEditorTools';
+import { FunctionEditor } from '@/components/FunctionEditor';
 import { SubParameterPanel } from '@/components/SubParameterPanel';
 
 export function App() {
@@ -89,10 +89,21 @@ export function App() {
                   </Button>
                 </div>
               </PanelHeader>
-              <FunctionEditorTabs {...mainWindow.functions} />
-              <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
-                <CodeEditor {...mainWindow.editor} footer={<FunctionEditorFooter {...mainWindow.functions} />} />
-              </div>
+              <FunctionEditor.Provider state={mainWindow.functions.state} actions={mainWindow.functions.actions}>
+                <FunctionEditor.Tabs />
+                <FunctionEditor.Error />
+                <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
+                  <CodeEditor
+                    {...mainWindow.editor}
+                    footer={
+                      <>
+                        <FunctionEditor.Actions />
+                        <FunctionEditor.AddDialog />
+                      </>
+                    }
+                  />
+                </div>
+              </FunctionEditor.Provider>
             </section>
             <div className="flex h-full min-w-0 flex-col">
               <div ref={mainAreaRef} className="flex min-h-0 flex-1 flex-col">
