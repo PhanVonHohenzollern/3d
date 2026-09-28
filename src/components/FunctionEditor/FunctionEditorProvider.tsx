@@ -1,4 +1,4 @@
-import { useMemo, type FC, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   FunctionEditorContext,
   type FunctionEditorActions,
@@ -12,10 +12,10 @@ type FunctionEditorProviderProps = {
   state: FunctionEditorState;
 };
 
-const FunctionEditorProvider: FC<FunctionEditorProviderProps> = ({ actions, children, state }) => {
+const FunctionEditorProvider = ({ actions, children, state }: FunctionEditorProviderProps) => {
   const value = useMemo<FunctionEditorContextValue>(() => ({ actions, state }), [actions, state]);
 
-  return <FunctionEditorContext.Provider value={value}>{children}</FunctionEditorContext.Provider>;
+  return <FunctionEditorContext value={value}>{children}</FunctionEditorContext>;
 };
 
 export { FunctionEditorProvider };

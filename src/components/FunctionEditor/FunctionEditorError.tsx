@@ -1,7 +1,6 @@
-import type { FC } from 'react';
 import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
 
-const FunctionEditorError: FC = () => {
+const FunctionEditorError = () => {
   const { state } = useFunctionEditor();
 
   if (!state.error) return null;

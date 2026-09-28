@@ -1,4 +1,4 @@
-import { useCallback, type FC } from 'react';
+import { useCallback } from 'react';
 import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
 import { Button } from '@/components/ui/button';
 
@@ -6,7 +6,7 @@ type FunctionEditorTabProps = {
   name: string;
 };
 
-const FunctionEditorTab: FC<FunctionEditorTabProps> = ({ name }) => {
+const FunctionEditorTab = ({ name }: FunctionEditorTabProps) => {
   const { actions, state } = useFunctionEditor();
   const selected = state.active === name;
 
@@ -26,7 +26,7 @@ const FunctionEditorTab: FC<FunctionEditorTabProps> = ({ name }) => {
   );
 };
 
-const FunctionEditorTabs: FC = () => {
+const FunctionEditorTabs = () => {
   const { state } = useFunctionEditor();
 
   if (state.names.length === 0) return null;

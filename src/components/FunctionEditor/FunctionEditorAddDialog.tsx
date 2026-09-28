@@ -1,10 +1,10 @@
-import { useCallback, useState, type ChangeEvent, type FC, type FormEvent } from 'react';
+import { useCallback, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Dialog } from 'radix-ui';
 import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-const FunctionEditorAddDialog: FC = () => {
+const FunctionEditorAddDialog = () => {
   const { actions, state } = useFunctionEditor();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');

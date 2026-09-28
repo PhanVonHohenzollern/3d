@@ -1,8 +1,7 @@
-import type { FC } from 'react';
 import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
 import { Button } from '@/components/ui/button';
 
-const FunctionEditorActions: FC = () => {
+const FunctionEditorActions = () => {
   const { actions, state } = useFunctionEditor();
 
   if (!state.active) return null;
