@@ -143,6 +143,26 @@ describe('C++ declarations and values', () => {
     expect(result.variables.map((variable) => variable.name)).toContain('cube');
   });
 
+  it('applies bowl methods to the stored object through arrays, members and references', () => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      [
+        'FdBowlInfo infos[2]; infos[0].setCornersNum(7);',
+        'int changed = infos[0].getCornersNum(); int untouched = infos[1].getCornersNum();',
+        'infos[0].getFace(1).setCovered(true); bool covered = infos[0].getFace(1).isCovered();',
+        'FdBowlInfo copy = infos[0]; copy.setCornersNum(3); int original = infos[0].getCornersNum();',
+        'std::vector<FdBowlInfo> list; list.push_back(copy); list.front().setCornersNum(9); int front = list[0].getCornersNum();',
+      ].join('\n'),
+      999,
+      true,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(
+      ['changed', 'untouched', 'covered', 'original', 'front'].map((name) => runtime.evaluateNumericExpression(name)),
+    ).toEqual([7, 4, 1, 7, 9]);
+    expect(result.variableChanges.some((change) => change.name === 'infos[0]' && change.line === 1)).toBe(true);
+  });
+
   it('rejects a >> that closes more template levels than were opened', () => {
     const result = new GeometryRuntime().executeUpToLine('std::vector<double>> bad;', 999, true);
     expect(result.diagnostics).toHaveLength(1);

@@ -327,7 +327,7 @@ export class ExprParser {
           const elementReference = value instanceof RuntimeStdVector && (member === 'front' || member === 'back');
           const args = this.parseArguments();
           if (!this.m_evaluate) value = 0n;
-          else if (reference && kMutatingMethods.includes(member) && this.m_state.mutateValue)
+          else if (reference && this.m_state.mutateValue && (kMutatingMethods.includes(member) || isBowlValue(value)))
             value = this.m_state.mutateValue(reference, member, args, this.m_tokens[start].line);
           else value = callMethod(value, member, args);
           if (elementReference && reference) reference = [...reference, ...this.m_tokens.slice(start, this.m_pos)];
@@ -401,9 +401,7 @@ export class ExprParser {
       ? this.parseNamedCall(name, token.line)
       : !this.m_evaluate
         ? 0n
-        : isBowlValue(this.m_state.m_values.get(name))
-          ? this.m_state.m_values.get(name)
-          : this.m_state.lookupValue(name);
+        : this.m_state.lookupValue(name);
 
     return this.parsePostfix(value, callable ? undefined : [token]);
   }
