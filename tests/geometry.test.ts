@@ -234,6 +234,25 @@ describe('preview adapter registry', () => {
   });
 });
 
+describe('vasco transitions', () => {
+  it('shades the rectangle-to-round walls with outward normals across the loft', () => {
+    const result = new GeometryRuntime().executeUpToLine(
+      'FdPoint3d p(0,0,0); double diam[2] = {80,80}; double len[4] = {200,0,0,0};\n' +
+        'makeVascoTransition(p, vx, vz, 120, 100, diam, 0, len, 4);',
+      999,
+    );
+    const [mesh] = new PreviewGeometryEngine().build(result).meshes;
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+    for (const v of mesh.vertices) {
+      const normal = new DVec3(v.nx, v.ny, v.nz);
+      const radial = new DVec3(0, v.y, v.z);
+      // The loft runs along +x: a wall normal points away from that axis and mostly across it.
+      expect(dot(normal, radial)).toBeGreaterThan(0);
+      expect(Math.abs(normal.x)).toBeLessThan(0.5);
+    }
+  });
+});
+
 describe('tube-to-tube intersections', () => {
   const frame = 'FdPoint3d p(0,0,0); FdVector3d n(0,0,1), up(0,1,0);';
 
