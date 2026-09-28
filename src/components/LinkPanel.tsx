@@ -3,7 +3,7 @@ import { useLinkPanel } from '@/hooks/useLinkPanel';
 import type { LinkPanelProps } from '@/types/panels';
 import { LinkForm } from '@/components/LinkForm';
 import { LinkTable } from '@/components/LinkTable';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/ui/button';
 
 export function LinkPanel(props: LinkPanelProps) {
   const {

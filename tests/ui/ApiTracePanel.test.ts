@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyRuntimeResult } from '@/core/runtime/RuntimeTypes';
 import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
 import { TraceColumn } from '@/hooks/apiTrace/traceItems';
-import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import type { TreeWidgetItem } from '@/shared/ui/tree';
 import type { Modifiers } from '@/types/qt';
 import { traceResult } from '@tests/ui/traceFixture';
 

@@ -1,8 +1,8 @@
 import { useCallback, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Dialog } from 'radix-ui';
 import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
 
 const FunctionEditorAddDialog = () => {
   const { actions, state } = useFunctionEditor();

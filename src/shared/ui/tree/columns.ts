@@ -1,4 +1,4 @@
-import type { TreeCellView } from '@/types/treeView';
+import type { TreeCellView } from '@/shared/ui/tree/types';
 
 const kCellPadding = 12;
 
@@ -14,3 +14,5 @@ export function resizeToContentsWidth(
 
   return Math.ceil(width);
 }
+
+export const kTreeIndentation = 20;

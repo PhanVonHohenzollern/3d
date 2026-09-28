@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { containerPageSize } from '@/helpers/pagination';
-import type { ContainerPagination, PaginationOptions } from '@/types/pagination';
+import { containerPageSize } from '@/shared/ui/pagination/pagination';
+import type { ContainerPagination, PaginationOptions } from '@/shared/ui/pagination/types';
 
 export function useContainerPagination<T>(items: readonly T[], options: PaginationOptions): ContainerPagination<T> {
   const containerRef = useRef<HTMLDivElement>(null);

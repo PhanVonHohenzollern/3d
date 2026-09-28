@@ -1,5 +1,5 @@
 import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
-import { rowForKey } from '@/helpers/tableNavigation';
+import { rowForKey } from '@/shared/ui/table-view';
 import { variableRow, variableSummary } from '@/helpers/variables';
 import type { ScrollRequest, VariablePanelHandle, VariableRow } from '@/types/panels';
 import { Observable } from '@/hooks/observable/Observable';

@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { PaginationControlsProps } from '@/types/pagination';
-import { Button } from '@/components/ui/button';
+import type { PaginationControlsProps } from '@/shared/ui/pagination/types';
+import { Button } from '@/shared/ui/button';
 
 export function PaginationControls({ page, pageCount, total, start, end, onPageChange }: PaginationControlsProps) {
   if (pageCount <= 1) return null;

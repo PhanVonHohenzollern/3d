@@ -1,5 +1,5 @@
 import type { ChildIndicatorPolicy } from '@/types/qt';
-import type { TreeWidget } from '@/hooks/treeWidget/TreeWidget';
+import type { TreeWidget } from '@/shared/ui/tree/TreeWidget';
 
 const kInvisibleRoot = Symbol('invisibleRootItem');
 let nextItemId = 1;

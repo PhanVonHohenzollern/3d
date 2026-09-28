@@ -1,8 +1,8 @@
 import type { SelectionCommand, Modifiers } from '@/types/qt';
-import type { TreeKeyEvent, TreeMouseEvent, VisibleTreeRow } from '@/types/treeView';
+import type { TreeKeyEvent, TreeMouseEvent, VisibleTreeRow } from '@/shared/ui/tree/types';
 import { Observable } from '@/hooks/observable/Observable';
 import { Signal } from '@/hooks/treeWidget/Signal';
-import { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import { TreeWidgetItem } from '@/shared/ui/tree/TreeWidgetItem';
 
 export const UserRole = 0x0100;
 

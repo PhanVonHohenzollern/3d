@@ -1,4 +1,4 @@
-import { useContainerPagination } from '@/hooks/useContainerPagination';
+import { useContainerPagination } from '@/shared/ui/pagination';
 import {
   useImperativeHandle,
   useLayoutEffect,
@@ -16,7 +16,7 @@ import {
   kOrientationLabels,
   kSizePlaceholder,
 } from '@/helpers/link';
-import { isInElement, isInTableHeader, tableCellOf } from '@/helpers/tableEvents';
+import { isInElement, isInTableHeader, tableCellOf } from '@/shared/ui/table-view';
 import type { LinkPanelProps, SizeField } from '@/types/panels';
 import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';
 import { useObservable } from '@/hooks/useObservable';

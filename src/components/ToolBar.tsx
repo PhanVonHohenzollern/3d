@@ -4,8 +4,8 @@ import type { Action } from '@/hooks/mainWindow/Action';
 import type { ToolBarProps, ToolBarButtonProps } from '@/types/toolbar';
 import { cn } from '@/lib/utils';
 import { preventDefault } from '@/utils/events';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/shared/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip';
 
 const presentation: Record<string, { label: string; icon: LucideIcon; description: string }> = {
   'Show Geometry': { label: 'Geometry', icon: Box, description: 'Show or hide generated geometry.' },

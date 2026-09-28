@@ -1,5 +1,5 @@
-import { Table, TableHead, TableCell } from '@/components/ui/table';
-import type { CellProps, HeaderCellProps, TableViewProps } from '@/types/table';
+import { Table, TableHead, TableCell } from '@/shared/ui/table';
+import type { CellProps, HeaderCellProps, TableViewProps } from '@/shared/ui/table-view/types';
 import { cn } from '@/lib/utils';
 
 export function TableView({

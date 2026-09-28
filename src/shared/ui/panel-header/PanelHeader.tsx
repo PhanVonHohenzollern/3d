@@ -1,4 +1,4 @@
-import type { PanelHeaderProps } from '@/types/panelHeader';
+import type { PanelHeaderProps } from '@/shared/ui/panel-header/types';
 
 export function PanelHeader({ icon: Icon, title, children }: PanelHeaderProps) {
   return (

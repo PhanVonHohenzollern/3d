@@ -1,4 +1,4 @@
-import { Label } from '@/components/ui/label';
+import { Label } from '@/shared/ui/label';
 import type { LabelHTMLAttributes } from 'react';
 
 export function FormLabel({ children, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {

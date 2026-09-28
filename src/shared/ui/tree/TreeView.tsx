@@ -1,5 +1,5 @@
-import { useTreeView } from '@/hooks/useTreeView';
-import type { TreeViewProps } from '@/types/treeView';
+import { useTreeView } from '@/shared/ui/tree/useTreeView';
+import type { TreeViewProps } from '@/shared/ui/tree/types';
 import { cn } from '@/utils/cn';
 
 export function TreeView({ tree, variant = 'default' }: TreeViewProps) {

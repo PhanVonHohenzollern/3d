@@ -15,10 +15,3 @@ export interface Menu {
   title: string;
   items: readonly ActionListItem[];
 }
-
-export interface WindowGeometry {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}

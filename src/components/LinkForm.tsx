@@ -1,12 +1,12 @@
 import { useId } from 'react';
 import type { LinkFormProps } from '@/types/linkForm';
 import { cn } from '@/utils/cn';
-import { ComboBox } from '@/components/ui/ComboBox';
-import { EditableComboBox } from '@/components/ui/EditableComboBox';
-import { FormLabel } from '@/components/ui/FormLabel';
-import { LineEdit } from '@/components/ui/LineEdit';
-import { PushButton } from '@/components/ui/PushButton';
-import { Button } from '@/components/ui/button';
+import { ComboBox } from '@/shared/ui/ComboBox';
+import { EditableComboBox } from '@/shared/ui/editable-combo-box';
+import { FormLabel } from '@/shared/ui/FormLabel';
+import { LineEdit } from '@/shared/ui/LineEdit';
+import { PushButton } from '@/shared/ui/PushButton';
+import { Button } from '@/shared/ui/button';
 
 export function LinkForm({ nameRef, ...props }: LinkFormProps) {
   const id = useId();

@@ -1,7 +1,7 @@
-import { useSplitter } from '@/hooks/useSplitter';
-import type { SplitterProps } from '@/types/layout';
+import { useSplitter } from '@/shared/ui/splitter/useSplitter';
+import type { SplitterProps } from '@/shared/ui/splitter/types';
 import { cn } from '@/utils/cn';
-import { ResizeHandle } from '@/components/ResizeHandle';
+import { ResizeHandle } from '@/shared/ui/splitter/ResizeHandle';
 
 export function Splitter({ className, children, label, ...options }: SplitterProps) {
   const { containerRef, paneStyles, horizontal, onHandlePointerDown, onHandleKeyDown, value, min, max } =

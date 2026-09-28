@@ -1,5 +1,9 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
-import { initialFloatingGeometry, movedFloatingGeometry, resizedFloatingGeometry } from '@/helpers/layout';
+import {
+  initialFloatingGeometry,
+  movedFloatingGeometry,
+  resizedFloatingGeometry,
+} from '@/shared/ui/floating-window/geometry';
 import { usePointerDrag } from '@/hooks/usePointerDrag';
 
 export function useFloatingWindow(raiseSerial: number, onClose: () => void) {

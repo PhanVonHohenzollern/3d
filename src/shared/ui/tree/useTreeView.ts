@@ -1,12 +1,12 @@
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import { eventModifiers } from '@/helpers/keyboard';
-import { kTreeIndentation } from '@/helpers/layout';
-import { resizeToContentsWidth } from '@/helpers/treeColumns';
-import type { TreeColumnView, TreeMouseEvent, TreeRowView } from '@/types/treeView';
+import { kTreeIndentation } from '@/shared/ui/tree/columns';
+import { resizeToContentsWidth } from '@/shared/ui/tree/columns';
+import type { TreeColumnView, TreeMouseEvent, TreeRowView } from '@/shared/ui/tree/types';
 import { textWidth } from '@/utils/measureText';
 import { isOnScrollbar } from '@/utils/dom';
-import type { TreeWidget } from '@/hooks/treeWidget/TreeWidget';
-import type { TreeWidgetItem } from '@/hooks/treeWidget/TreeWidgetItem';
+import type { TreeWidget } from '@/shared/ui/tree/TreeWidget';
+import type { TreeWidgetItem } from '@/shared/ui/tree/TreeWidgetItem';
 import { usePointerDrag } from '@/hooks/usePointerDrag';
 import { useObservable } from '@/hooks/useObservable';
 import { useScrollSelectionIntoView } from '@/hooks/useScrollSelectionIntoView';

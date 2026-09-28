@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useFloatingWindow } from '@/hooks/useFloatingWindow';
+import { useFloatingWindow } from '@/shared/ui/floating-window/useFloatingWindow';
 
 interface FloatingWindowProps {
   title: string;

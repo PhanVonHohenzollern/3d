@@ -1,5 +1,5 @@
 import { useFunctionEditor } from '@/components/FunctionEditor/FunctionEditorContext';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/ui/button';
 
 const FunctionEditorActions = () => {
   const { actions, state } = useFunctionEditor();

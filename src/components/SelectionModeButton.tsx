@@ -1,8 +1,8 @@
 import { Box, CircleDot, MoveUpRight } from 'lucide-react';
 import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
 import { useSelectionModeButton } from '@/hooks/useSelectionModeButton';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/shared/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/ui/tooltip';
 
 interface SelectionModeButtonProps {
   engine: ViewportEngine;

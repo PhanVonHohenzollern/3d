@@ -1,6 +1,6 @@
 import { Download, Upload } from 'lucide-react';
 import type { ModelFileControlsProps } from '@/types/modelFiles';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/shared/ui/button';
 
 export function ModelFileControls({
   inputRef,
