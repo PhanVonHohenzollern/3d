@@ -232,6 +232,14 @@ describe('preview adapter registry', () => {
     expect(scene.meshes).toHaveLength(2);
     expect(supportedPreviewApiNames().filter((name) => name === 'make_line')).toHaveLength(1);
   });
+
+  it('keeps every API in no_adapter.cpp without an adapter, so that fixture still draws nothing', () => {
+    const [fixture] = listFixtures('geometry').filter((item) => item.name === 'geometry/no_adapter.cpp');
+    const result = new GeometryRuntime().executeUpToLine(fixture.code, 999);
+    const supported = new Set(supportedPreviewApiNames());
+    expect(result.apiCalls.map((call) => call.name).filter((name) => supported.has(name))).toEqual([]);
+    expect(new PreviewGeometryEngine().build(result).meshes).toEqual([]);
+  });
 });
 
 describe('vasco transitions', () => {
