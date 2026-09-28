@@ -15,6 +15,7 @@ import { StatementKind, type Statement } from '../interpreter/Statement';
 import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '../RuntimeTypes';
 import { isScalarTypeToken, normalizedScalarType } from './typeNames';
 import { functionParameters, functionScope } from './functionSignatures';
+import { isInsulationQuery, kInsulationQueries } from './insulationQueries';
 import { isIdentifier, isSymbol, sliceTokens, splitTopLevel, TokKind, tokensToExpression, type Token } from './tokens';
 
 function neutralParameterValue(type: string): string {
@@ -179,7 +180,7 @@ export function scanGetValParameters(code: string, options?: RuntimeExecutionOpt
       const existing = out.find(
         (item) =>
           item.name === request.name &&
-          (request.sourceFunction === 'getExtInsSize' || item.variableName === request.variableName) &&
+          (isInsulationQuery(request.sourceFunction) || item.variableName === request.variableName) &&
           item.functionName === request.functionName,
       );
       if (existing) continue;
@@ -206,7 +207,7 @@ export function scanGetValParameters(code: string, options?: RuntimeExecutionOpt
           (item) =>
             item.name === request.name &&
             item.functionName === request.functionName &&
-            (request.sourceFunction === 'getExtInsSize' || item.variableName === request.variableName),
+            (isInsulationQuery(request.sourceFunction) || item.variableName === request.variableName),
         )
       )
         out.push(request);
@@ -274,28 +275,30 @@ function scanParameterTokens(
   }
 
   // Insulation is an optional numeric query: the UI supplies its value only when enabled.
-  for (let i = 0; i + 3 < tokens.length; ++i) {
-    if (
-      !isIdentifier(tokens[i], 'getExtInsSize') ||
-      !isSymbol(tokens[i + 1], '(') ||
-      tokens[i + 2].kind !== TokKind.Identifier ||
-      !isSymbol(tokens[i + 3], ')')
-    )
-      continue;
-    if (['.', '->', '::'].includes(tokens[i - 1]?.text)) continue;
-    const variableName = tokens[i + 2].text;
-    const defaultValue = declarations.get(variableName)?.defaultValue ?? '0';
-    out.push({
-      name: 'getExtInsSize',
-      type: 'double',
-      defaultValue,
-      currentValue: defaultValue,
-      sourceFunction: 'getExtInsSize',
-      variableName,
-      line: tokens[i].line,
-    });
-    break;
-  }
+  // One request per query per statement; walk() removes repeats across statements.
+  for (const query of kInsulationQueries)
+    for (let i = 0; i + 3 < tokens.length; ++i) {
+      if (
+        !isIdentifier(tokens[i], query) ||
+        !isSymbol(tokens[i + 1], '(') ||
+        tokens[i + 2].kind !== TokKind.Identifier ||
+        !isSymbol(tokens[i + 3], ')')
+      )
+        continue;
+      if (['.', '->', '::'].includes(tokens[i - 1]?.text)) continue;
+      const variableName = tokens[i + 2].text;
+      const defaultValue = declarations.get(variableName)?.defaultValue ?? '0';
+      out.push({
+        name: query,
+        type: 'double',
+        defaultValue,
+        currentValue: defaultValue,
+        sourceFunction: query,
+        variableName,
+        line: tokens[i].line,
+      });
+      break;
+    }
 
   return out;
 }

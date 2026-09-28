@@ -4,6 +4,7 @@ import type { ConnectorPreview } from '../../core/geometry/ConnectorPreview';
 import { PreviewGeometryEngine, type PreviewGeometryScene } from '../../core/geometry/PreviewGeometryEngine';
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '../../core/runtime/DebugAnchorResolver';
 import { GeometryRuntime } from '../../core/runtime/GeometryRuntime';
+import { isInsulationQuery } from '../../core/runtime/helpers/insulationQueries';
 import { emptyRuntimeResult, type RuntimeResult } from '../../core/runtime/RuntimeTypes';
 import { isApiDebugItemId } from '../../helpers/debugItems';
 import {
@@ -751,7 +752,7 @@ export class MainWindow extends Observable {
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
       ParametersDock: parameterDefinitions.reduce(
-        (count, definition) => count + (definition.sourceFunction === 'getExtInsSize' ? 2 : 1),
+        (count, definition) => count + (isInsulationQuery(definition.sourceFunction) ? 2 : 1),
         0,
       ),
       ApiTraceDock: result.apiCalls.length,

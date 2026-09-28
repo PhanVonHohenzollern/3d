@@ -3,6 +3,7 @@ import { FdPoint3d, FdVector3d } from '../FdMath';
 import { isBowlValue } from '../FdBowlData';
 import { builtinFunction } from '../helpers/builtinFunctions';
 import { createArray } from '../helpers/arrays';
+import { isInsulationQuery } from '../helpers/insulationQueries';
 import { kMutatingMethods } from '../helpers/mutatingMethods';
 import type { RuntimeFunctionMacro } from '../helpers/macros';
 import { callMethod, indexValue, memberValue } from '../helpers/pointVectorMembers';
@@ -388,7 +389,7 @@ export class ExprParser {
       return this.m_evaluate ? createArray(parsed.type, dims) : 0n;
     }
     if (
-      (name === 'getExtInsSize' || name === 'getIntInsSize') &&
+      isInsulationQuery(name) &&
       this.current().text === '(' &&
       this.current(1).kind === TokKind.Identifier &&
       this.current(2).text === ')'
