@@ -1,10 +1,10 @@
+import { isFunctionParameterKey, parameterSlotCount } from '@/entities/parameter';
 import { writeObj } from '@engine/formats';
 import type { InspectorCounts } from '@/types/dockArea';
 import type { ConnectorPreview } from '@engine/geometry';
 import { PreviewGeometryEngine, type PreviewGeometryScene } from '@engine/geometry';
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime';
 import { GeometryRuntime } from '@engine/runtime';
-import { isInsulationQuery } from '@engine/runtime';
 import { emptyRuntimeResult, type RuntimeResult } from '@engine/runtime';
 import { isApiDebugItemId } from '@/helpers/debugItems';
 import {
@@ -330,7 +330,7 @@ export class MainWindow extends Observable {
     this.m_previewTimer.stop();
     this.#tabBuilds.delete(name);
     for (const built of this.#tabBuilds.values())
-      built.parameters = new Map([...built.parameters].filter(([key]) => !key.startsWith(`${name}::`)));
+      built.parameters = new Map([...built.parameters].filter(([key]) => !isFunctionParameterKey(key, name)));
     this.m_parameters.forgetFunction?.(name);
     this.showFunctionEditor();
     this.statusBar().showMessage(`Function ${name} deleted.`, 2600);
@@ -753,10 +753,7 @@ export class MainWindow extends Observable {
     };
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
-      ParametersDock: parameterDefinitions.reduce(
-        (count, definition) => count + (isInsulationQuery(definition.sourceFunction) ? 2 : 1),
-        0,
-      ),
+      ParametersDock: parameterDefinitions.reduce((count, definition) => count + parameterSlotCount(definition), 0),
       ApiTraceDock: result.apiCalls.length,
     };
     this.changed();

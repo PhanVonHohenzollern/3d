@@ -1,3 +1,4 @@
+import { isFunctionParameterKey } from '@/entities/parameter';
 import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '@engine/runtime';
 import { GeometryRuntime, type RuntimeExecutionOptions } from '@engine/runtime';
 import { isInsulationQuery, kInsulationQueries, type InsulationQuery } from '@engine/runtime';
@@ -7,12 +8,13 @@ import {
   parameterRowTexts,
   parameterSeed,
   refinedParameterValue,
-} from '@/helpers/parameters';
+} from '@/entities/parameter';
 import { adjacentCell, rowForKey } from '@/shared/ui/table-view';
-import type { ParameterEditor, ParameterPanelHandle, ParameterRow } from '@/types/panels';
+import type { ParameterEditor, ParameterRow } from '@/entities/parameter';
+import type { ParameterPanelHandle } from '@/types/panels';
 import { isMacPlatform } from '@/shared/lib/platform';
 import { Observable } from '@/shared/lib/observable';
-import { parseParameterTable } from '@/helpers/parameterTable';
+import { parseParameterTable } from '@/entities/parameter';
 
 export const kParameterValueColumn = 3;
 export const kParameterHeaders = ['Parameter', 'Type', 'Variable', 'Value', 'Line'];
@@ -216,9 +218,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   forgetFunction(name: string): void {
-    const prefix = `${name}::`;
     for (const key of this.#values.keys()) {
-      if (!key.startsWith(prefix)) continue;
+      if (!isFunctionParameterKey(key, name)) continue;
       this.#values.delete(key);
       this.#userEditedKeys.delete(key);
       this.#activeKeys?.delete(key);
