@@ -64,8 +64,8 @@ export default defineConfig([
       'import-x/resolver-next': [createTypeScriptImportResolver()],
     },
     rules: {
-      'import-x/no-restricted-paths': ['warn', { zones }],
-      'import-x/no-cycle': ['warn', { ignoreExternal: true }],
+      'import-x/no-restricted-paths': ['error', { zones }],
+      'import-x/no-cycle': ['error', { ignoreExternal: true }],
     },
   },
 ]);

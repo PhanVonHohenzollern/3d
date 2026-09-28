@@ -51,11 +51,11 @@ Four more rules:
 | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | Every import starts with `@` (rule 1)                                               | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
 | Engine through its packages (rule 4); the engine imports no app or test code        | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
-| Layer direction, public API, no cross-slice imports (rules 2–3 and the table above) | `npm run lint:boundaries` (`import-x/no-restricted-paths` in `eslint.boundaries.config.js`) | warning  |
-| No import cycles                                                                    | `npm run lint:boundaries` (`import-x/no-cycle`)                                             | warning  |
+| Layer direction, public API, no cross-slice imports (rules 2–3 and the table above) | `npm run lint:boundaries` (`import-x/no-restricted-paths` in `eslint.boundaries.config.js`) | error    |
+| No import cycles                                                                    | `npm run lint:boundaries` (`import-x/no-cycle`)                                             | error    |
 | Folder structure inside a slice (segment names, an `index.ts` per slice)            | code review                                                                                 | —        |
 
-`lint:boundaries` reads the slice folders on every run, so a new slice is checked as soon as it exists. It runs in `npm run validate` and in CI but only warns during the migration; GPW-38 turns it into errors. It is a separate config so `npm run lint` keeps allowing zero warnings.
+`lint:boundaries` reads the slice folders on every run, so a new slice is checked as soon as it exists. It runs in `npm run validate` and in CI, and any finding fails the run (GPW-38). It is a separate config because resolving every import for these rules is slower than the rest of `npm run lint`.
 
 `no-cycle` only sees runtime imports: it skips `import type`. The four cycles known at the start of the migration all go through a type-only import, so they are not reported. GPW-15 and GPW-45 remove them.
 
@@ -65,7 +65,7 @@ At the start of the migration (branch `chore/p1-guardrails`), `lint:boundaries` 
 - 4 are `types/` importing from `hooks/` (`Action`, `TreeWidget`, `TreeWidgetItem`).
 - The engine already imports nothing from app code.
 
-After P2 (`shared/` layer): 3 warnings, all the viewport importing the API-call helpers that move to `entities/api-call` in GPW-23. After GPW-23: 0 warnings. After P5, `lint:boundaries` also warns when `features/` imports app code; none does, and no feature imports another. `shared/` imports no app code, and `lint:boundaries` now warns if it does.
+After P2 (`shared/` layer): 3 warnings, all the viewport importing the API-call helpers that move to `entities/api-call` in GPW-23. After GPW-23: 0 warnings. After P5, `lint:boundaries` also warns when `features/` imports app code; none does, and no feature imports another. `shared/` imports no app code, and `lint:boundaries` now warns if it does. After P6 the old folders are gone, the rules report nothing, and GPW-38 made them errors.
 
 ## Where does new code go?
 
