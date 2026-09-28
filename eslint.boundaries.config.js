@@ -78,6 +78,11 @@ const engineIndependence = [
 
 const legacyFolders = [
   {
+    target: './src/shared',
+    from: ['./src/components', './src/hooks', './src/helpers', './src/types', './src/core', './src/lib'],
+    message: 'shared/ must not import app code (components, hooks, helpers, types, core).',
+  },
+  {
     target: './src/utils',
     from: ['./src/components', './src/hooks', './src/helpers', './src/core'],
     message: 'utils/ must stay generic: no app or engine imports.',

@@ -64,6 +64,8 @@ At the start of the migration (branch `chore/p1-guardrails`), `lint:boundaries` 
 - 4 are `types/` importing from `hooks/` (`Action`, `TreeWidget`, `TreeWidgetItem`).
 - The engine already imports nothing from app code.
 
+After P2 (`shared/` layer): 3 warnings, all the viewport importing the API-call helpers that move to `entities/api-call` in GPW-23. `shared/` imports no app code, and `lint:boundaries` now warns if it does.
+
 ## Where does new code go?
 
 Ask these in order and stop at the first yes:
