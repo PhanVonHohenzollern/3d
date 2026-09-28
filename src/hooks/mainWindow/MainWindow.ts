@@ -1,6 +1,6 @@
 import { parameterSlotCount } from '@/entities/parameter';
 import { canExportModel, exportedObjText, type ImportedModel } from '@/features/model-files';
-import type { InspectorCounts } from '@/types/dockArea';
+import type { DockName, InspectorCounts } from '@/pages/workspace';
 import type { ConnectorPreview } from '@engine/geometry';
 import type { PreviewGeometryScene } from '@engine/geometry';
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime';
@@ -10,7 +10,6 @@ import { isApiDebugItemId } from '@/entities/api-call';
 import { closestTarget, floatingWindowSelector, matchesKeySequence, textInputSelector } from '@/shared/lib/qt';
 import { pointDeclaration, unusedPreviewPointName } from '@/widgets/viewport';
 import type { CodeEditorHandle } from '@/widgets/code-editor';
-import type { DockName } from '@/types/mainWindow';
 import { createWorkspaceActions, type ActionListItem } from '@/widgets/workspace-header';
 import type { ApiTracePanelHandle } from '@/widgets/api-trace-panel';
 import type { VariablePanelHandle } from '@/widgets/variable-panel';
@@ -457,8 +456,9 @@ export class MainWindow extends Observable {
     this.#raisedDock = 'ParametersDock';
   }
 
+  // Sub-Parameter stays raised while its function tab loses its inputs, and shows again when they return.
   raisedDock(): DockName {
-    return this.#raisedDock;
+    return this.#raisedDock === 'SubParametersDock' && !this.canEditSubParameters ? 'ParametersDock' : this.#raisedDock;
   }
 
   readonly raiseDock = (name: DockName): void => {

@@ -344,6 +344,11 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     mw.setFunctionInput('helper', 'A', ['1'], 0, '12');
     mw.applyFunctionInputs('helper');
     expect(mw.m_runtime.evaluateNumericExpression('result')).toBe(12);
+    editor.type('void helper() { double result=1; }', 1);
+    expect(mw.canEditSubParameters).toBe(false);
+    expect(mw.raisedDock()).toBe('ParametersDock');
+    editor.type('void helper(double A=1) { double result=A; }', 1);
+    expect(mw.raisedDock()).toBe('SubParametersDock');
     mw.selectFunction('');
     expect(mw.canEditSubParameters).toBe(false);
     expect(mw.raisedDock()).toBe('ParametersDock');

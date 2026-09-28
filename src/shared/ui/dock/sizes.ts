@@ -1,12 +1,4 @@
-import type { Dock } from '@/types/mainWindow';
 import { kSplitterHandleSize } from '@/shared/ui/splitter';
-
-export const kDocks: readonly Dock[] = [
-  { name: 'VariablesDock', title: 'Variables' },
-  { name: 'ParametersDock', title: 'Parameters' },
-  { name: 'ApiTraceDock', title: 'API Trace' },
-  { name: 'LinkDock', title: 'Link' },
-];
 
 const kMinimumDockHeight = 200;
 const kMinimumCentralHeight = 252;

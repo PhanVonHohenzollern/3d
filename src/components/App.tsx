@@ -1,12 +1,12 @@
 import { Button } from '@/shared/ui/button';
 import { Box, CodeXml } from 'lucide-react';
 import { useCompactLayout } from '@/shared/lib/react';
-import { useDockArea } from '@/hooks/useDockArea';
+import { useDockHeight } from '@/shared/ui/dock';
 import { useMainWindow } from '@/hooks/useMainWindow';
 import { useTheme } from '@/hooks/useTheme';
 import { ApiTracePanel } from '@/widgets/api-trace-panel';
 import { CodeEditor } from '@/widgets/code-editor';
-import { DockArea } from '@/components/DockArea';
+import { InspectorDock, inspectorMinimumHeight } from '@/pages/workspace';
 import { LinkPanel } from '@/widgets/link-panel';
 import { PanelHeader } from '@/shared/ui/panel-header';
 import { WorkspaceHeader } from '@/widgets/workspace-header';
@@ -24,13 +24,9 @@ export function App() {
   const mainWindow = useMainWindow();
   const { theme, toggleTheme } = useTheme();
   const compact = useCompactLayout();
-  const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum, title, tabs } =
-    useDockArea(
-      mainWindow.raisedDock,
-      mainWindow.raiseDock,
-      mainWindow.subParameters.enabled,
-      mainWindow.subParameters.enabled,
-    );
+  const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum } = useDockHeight(
+    inspectorMinimumHeight(mainWindow.raisedDock),
+  );
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
@@ -135,11 +131,12 @@ export function App() {
                   </section>
                 ) : null}
                 <div className={mainWindow.importedObj ? 'hidden' : 'contents'}>
-                  <DockArea
-                    counts={mainWindow.inspectorCounts}
+                  <InspectorDock
                     height={dockHeight}
-                    title={title}
-                    tabs={tabs}
+                    raised={mainWindow.raisedDock}
+                    onRaise={mainWindow.raiseDock}
+                    showSubParameters={mainWindow.subParameters.enabled}
+                    counts={mainWindow.inspectorCounts}
                     panels={{
                       VariablesDock: <VariablePanel {...mainWindow.variables} />,
                       ParametersDock: <ParameterPanel {...mainWindow.parameters} />,

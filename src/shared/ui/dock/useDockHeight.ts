@@ -1,21 +1,16 @@
-import { linkPanelMinimumHeight } from '@/features/edit-connector';
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { clampDockHeight, kDocks } from '@/helpers/layout';
-import type { DockName } from '@/types/mainWindow';
+import { clampDockHeight } from '@/shared/ui/dock/sizes';
 import { usePointerDrag } from '@/shared/lib/react';
 
-export function useDockArea(
-  raised: DockName,
-  raise: (name: DockName) => void,
-  showSubParameters = false,
-  enableSubParameters = false,
-) {
+// The height of a dock under a resizable area. minimumHeight lets the raised tab ask for more room
+// on narrow screens.
+export function useDockHeight(minimumHeight?: (areaWidth: number) => number) {
   const mainAreaRef = useRef<HTMLDivElement>(null);
   const [dockHeight, setDockHeight] = useState(() => Math.min(360, Math.round(window.innerHeight * 0.36)));
   const startDrag = usePointerDrag();
   const [areaHeight, setAreaHeight] = useState(window.innerHeight);
   const [areaWidth, setAreaWidth] = useState(window.innerWidth);
-  const minimum = raised === 'LinkDock' ? linkPanelMinimumHeight(areaWidth) : clampDockHeight(0, areaHeight);
+  const minimum = minimumHeight ? minimumHeight(areaWidth) : clampDockHeight(0, areaHeight);
   const maximum = Math.max(minimum, clampDockHeight(Infinity, areaHeight));
   const visibleHeight = Math.min(Math.max(dockHeight, minimum), maximum);
 
@@ -53,21 +48,6 @@ export function useDockArea(
     );
   };
 
-  const docks = showSubParameters
-    ? [...kDocks, { name: 'SubParametersDock' as const, title: 'Sub-Parameter' }]
-    : kDocks;
-  const active =
-    (!showSubParameters || !enableSubParameters) && raised === 'SubParametersDock' ? 'ParametersDock' : raised;
-  const tabs = docks.map((dock) => ({
-    ...dock,
-    disabled: dock.name === 'SubParametersDock' && !enableSubParameters,
-    selected: dock.name === active,
-    raise: () => {
-      if (dock.name !== 'SubParametersDock' || enableSubParameters) raise(dock.name);
-    },
-  }));
-  const title = tabs.find((tab) => tab.selected)?.title ?? '';
-
   return {
     mainAreaRef,
     dockHeight: visibleHeight,
@@ -75,7 +55,5 @@ export function useDockArea(
     onSeparatorKeyDown,
     minimum,
     maximum,
-    title,
-    tabs,
   };
 }
