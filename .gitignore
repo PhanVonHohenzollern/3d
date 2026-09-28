@@ -7,5 +7,4 @@ CLAUDE.md
 # Keep project notes local; README files remain tracked.
 *.[mM][dD]
 ![rR][eE][aA][dD][mM][eE].[mM][dD]
-# Shared architecture rules, enforced by lint:boundaries and lint:fsd.
 !docs/architecture.md

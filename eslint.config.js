@@ -34,7 +34,6 @@ export default defineConfig([
     plugins: { '@stylistic': stylistic },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      // Project code is imported by relative path only; no aliases are configured (docs/architecture.md).
       'no-restricted-imports': [
         'error',
         {
