@@ -1,6 +1,6 @@
-import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
-import type { PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
-import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import type { ConnectorPreview } from '@engine/geometry';
+import type { PreviewGeometryScene } from '@engine/geometry';
+import type { RuntimeResult } from '@engine/runtime';
 
 export interface Vec3 {
   x: number;

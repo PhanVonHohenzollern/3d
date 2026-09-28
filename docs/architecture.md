@@ -40,19 +40,20 @@ A layer imports only from layers below it:
 
 Four more rules:
 
-1. **Every import starts with `@`.** Import project code through its alias: `@/…` for `src/`, `@tests/…` for `tests/`, and `@engine/…` for `engine/` once it exists (GPW-19). This applies to files in the same folder too. Relative (`./`, `../`) and absolute (`src/…`, `/…`) imports fail `npm run lint`.
+1. **Every import starts with `@`.** Import project code through its alias: `@/…` for `src/`, `@tests/…` for `tests/`, and `@engine/…` for `engine/`. This applies to files in the same folder too. Relative (`./`, `../`) and absolute (`src/…`, `/…`) imports fail `npm run lint`.
 2. **Public API only.** Every slice (`features/run-preview`, `entities/parameter`, …) and every engine package has an `index.ts`. From outside the slice, import that file, never a file inside it: `@/entities/parameter`, not `@/entities/parameter/model/key`.
 3. **No imports between slices on the same layer.** One feature does not import another feature, and one widget does not import another widget. Composition happens one layer up: the page places both widgets. If two entities really need each other, use an FSD `@x` file (`entities/api-call/@x/variable.ts`) so the dependency is explicit, and add an `except` entry for it in `eslint.boundaries.config.js`.
 4. **Engine through its packages.** App code imports `@engine/runtime`, `@engine/geometry`, `@engine/formats` or `@engine/math`, never a deeper path.
 
 ### How the rules are checked
 
-| Rule                                                                                                     | Checked by                                                                                  | Mode now |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| Every import starts with `@` (rule 1)                                                                    | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
-| Layer direction, public API, no cross-slice imports, engine independence (rules 2–4 and the table above) | `npm run lint:boundaries` (`import-x/no-restricted-paths` in `eslint.boundaries.config.js`) | warning  |
-| No import cycles                                                                                         | `npm run lint:boundaries` (`import-x/no-cycle`)                                             | warning  |
-| Folder structure inside a slice (segment names, an `index.ts` per slice)                                 | code review                                                                                 | —        |
+| Rule                                                                                | Checked by                                                                                  | Mode now |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| Every import starts with `@` (rule 1)                                               | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
+| Engine through its packages (rule 4); the engine imports no app or test code        | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
+| Layer direction, public API, no cross-slice imports (rules 2–3 and the table above) | `npm run lint:boundaries` (`import-x/no-restricted-paths` in `eslint.boundaries.config.js`) | warning  |
+| No import cycles                                                                    | `npm run lint:boundaries` (`import-x/no-cycle`)                                             | warning  |
+| Folder structure inside a slice (segment names, an `index.ts` per slice)            | code review                                                                                 | —        |
 
 `lint:boundaries` reads the slice folders on every run, so a new slice is checked as soon as it exists. It runs in `npm run validate` and in CI but only warns during the migration; GPW-38 turns it into errors. It is a separate config so `npm run lint` keeps allowing zero warnings.
 
@@ -134,7 +135,9 @@ Old location → new location, with the ticket that moves it. Each ticket update
 | `src/core/viewport/glProgram.ts`                                                                                                                                     | `src/shared/lib/webgl/`                                                                                                  | GPW-18 (done) |
 | `src/core/viewport/{VertexArray,lineQuads,shaders,panelLayout}.ts` (this viewport's vertex format, shaders and label layout)                                         | `src/widgets/viewport/`                                                                                                  | GPW-34        |
 | `src/hooks/useTheme.ts` (stores the app's theme choice)                                                                                                              | `src/app/`                                                                                                               | GPW-37        |
-| `src/core/runtime`, `src/core/geometry`, `src/core/formats`, `src/utils/{cpp,cppStd,DVec3,dmat4}.ts`                                                                 | `engine/runtime`, `engine/geometry`, `engine/formats`                                                                    | GPW-19        |
+| `src/core/runtime`, `src/core/geometry`, `src/core/formats`                                                                                                          | `engine/runtime`, `engine/geometry`, `engine/formats`, each with an `index.ts`                                           | GPW-19 (done) |
+| `src/utils/{cpp,cppStd}.ts`                                                                                                                                          | `engine/runtime/cpp/` (`what()` and number formatting are exported from `@engine/runtime`)                               | GPW-19 (done) |
+| `src/utils/{DVec3,dmat4}.ts`                                                                                                                                         | `engine/math/`                                                                                                           | GPW-19 (done) |
 | `src/helpers/functions.ts` (C++ parsing part), runtime source scanners                                                                                               | `engine/runtime/analysis/`                                                                                               | GPW-20        |
 | `src/utils/{DVec3,Vector3D,Matrix4x4,dmat4}.ts`                                                                                                                      | `engine/math/`                                                                                                           | GPW-21        |
 | parameter types and helpers                                                                                                                                          | `src/entities/parameter/`                                                                                                | GPW-22        |

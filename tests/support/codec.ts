@@ -1,14 +1,14 @@
-import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
+import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import type {
   RuntimeApiCall,
   RuntimeArgumentTrace,
   RuntimeParameterRequest,
   RuntimeResult,
   RuntimeValueSource,
-} from '@/core/runtime/RuntimeTypes';
-import { RuntimeArray, runtimeTypeName, runtimeValueToString, type RuntimeValue } from '@/core/runtime/RuntimeValue';
-import type { PreviewGeometryScene, PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
-import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
+} from '@engine/runtime/RuntimeTypes';
+import { RuntimeArray, runtimeTypeName, runtimeValueToString, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { PreviewGeometryScene, PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
+import type { ConnectorPreview } from '@engine/geometry/ConnectorPreview';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type Json = any;

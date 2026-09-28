@@ -1,4 +1,4 @@
-import type { ConnectorDefinition } from '@/core/geometry/ConnectorPreview';
+import type { ConnectorDefinition } from '@engine/geometry/ConnectorPreview';
 import type { ConnectorDirective } from '@tests/support/fixtures';
 
 export function connectorDefinition(d: ConnectorDirective): ConnectorDefinition {

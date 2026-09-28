@@ -1,4 +1,4 @@
-import { parseObj, writeObj } from '@/core/formats/obj';
+import { parseObj, writeObj } from '@engine/formats/obj';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTracePanelModel } from '@/hooks/apiTrace/ApiTracePanelModel';
 import { LinkPanelModel } from '@/hooks/linkPanel/LinkPanelModel';

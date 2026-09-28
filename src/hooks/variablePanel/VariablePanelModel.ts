@@ -1,4 +1,4 @@
-import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import type { RuntimeResult } from '@engine/runtime';
 import { rowForKey } from '@/shared/ui/table-view';
 import { variableRow, variableSummary } from '@/helpers/variables';
 import type { ScrollRequest, VariablePanelHandle, VariableRow } from '@/types/panels';

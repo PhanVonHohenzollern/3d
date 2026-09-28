@@ -5,10 +5,10 @@ import {
   validFunctionCode,
   type SourceFunction,
 } from '@/helpers/functions';
-import type { RuntimeExecutionOptions } from '@/core/runtime/GeometryRuntime';
-import type { RuntimeApiCall } from '@/core/runtime/RuntimeTypes';
-import { Lexer } from '@/core/runtime/interpreter/Lexer';
-import { parameterSignatureType } from '@/core/runtime/helpers/functionSignatures';
+import type { RuntimeExecutionOptions } from '@engine/runtime';
+import type { RuntimeApiCall } from '@engine/runtime';
+import { Lexer } from '@engine/runtime';
+import { parameterSignatureType } from '@engine/runtime';
 
 export interface FunctionProgram {
   source: string;

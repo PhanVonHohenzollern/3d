@@ -1,14 +1,14 @@
-import { apiParameterMetadataForCall, type ApiParameterMetadata } from '@/core/runtime/ApiMetadata';
-import { apiParameterRole } from '@/core/runtime/ApiSemantics';
-import { runtimeSourceHistory } from '@/core/runtime/GeometryRuntime';
+import { apiParameterMetadataForCall, type ApiParameterMetadata } from '@engine/runtime';
+import { apiParameterRole } from '@engine/runtime';
+import { runtimeSourceHistory } from '@engine/runtime';
 import {
   emptyRuntimeResult,
   type RuntimeApiCall,
   type RuntimeArgumentTrace,
   type RuntimeResult,
   type RuntimeValueSource,
-} from '@/core/runtime/RuntimeTypes';
-import { isArray, isPoint, isVector, type RuntimeValue } from '@/core/runtime/RuntimeValue';
+} from '@engine/runtime';
+import { isArray, isPoint, isVector, type RuntimeValue } from '@engine/runtime';
 import { apiDebugItemId } from '@/helpers/debugItems';
 import {
   changeExpression,

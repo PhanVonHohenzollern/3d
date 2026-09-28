@@ -4,7 +4,7 @@ import { appendVectorArrow } from '@/core/viewport/debugItems';
 import { pickDebugItemAt, pickMeshAlongRay } from '@/core/viewport/picking';
 import { VertexArray } from '@/core/viewport/VertexArray';
 import type { ViewportEngine } from '@/core/viewport/ViewportEngine';
-import type { PreviewMesh } from '@/core/geometry/PreviewGeometryEngine';
+import type { PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
 import { QPointF, QVector3D } from '@/utils/Vector3D';
 import { boxMesh, createEngine, project, updateCamera, vectorItem } from '@tests/renderer/helpers';
 

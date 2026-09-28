@@ -5,8 +5,8 @@ import {
   type ConnectorDefinition,
   type ConnectorExpressionEvaluator,
   type ConnectorPreview,
-} from '@/core/geometry/ConnectorPreview';
-import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
+} from '@engine/geometry';
+import type { RuntimeResult } from '@engine/runtime';
 import {
   connectorGeometryChanged,
   connectorStatusText,
@@ -22,7 +22,7 @@ import {
 import { rowForKey } from '@/shared/ui/table-view';
 import type { LinkPanelHandle, LinkTableRow, PreviewChangedCallback, ScrollRequest, SizeField } from '@/types/panels';
 import { sameItems } from '@/shared/lib/arrays';
-import { what } from '@/utils/cpp';
+import { what } from '@engine/runtime';
 import { Observable } from '@/shared/lib/observable';
 
 interface Entry {

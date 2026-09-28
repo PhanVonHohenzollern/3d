@@ -5,8 +5,8 @@ import { Qt, qColor, qPen } from '@/shared/lib/painting';
 import { QRectF } from '@/utils/Rect';
 import { fontHeight, horizontalAdvance } from '@/shared/lib/text';
 import { QVector3D, type QPointF } from '@/utils/Vector3D';
-import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
-import type { FdPoint3d } from '@/core/runtime/FdMath';
+import type { ConnectorPreview } from '@engine/geometry';
+import type { FdPoint3d } from '@engine/runtime';
 import type { OverlayPainter } from '@/core/viewport/OverlayPainter';
 import type { VertexArray } from '@/core/viewport/VertexArray';
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { encodeParameterRequest, encodeResult } from '@tests/support/codec';
 import { expectSameJson } from '@tests/support/compare';
 import { evaluations, sourceHistories } from '@tests/support/dump';

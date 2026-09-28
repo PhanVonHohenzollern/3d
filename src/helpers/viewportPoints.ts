@@ -1,5 +1,5 @@
 import type { Vec3 } from '@/types/viewport';
-import { formatFixed } from '@/utils/cpp';
+import { formatFixed } from '@engine/runtime';
 import { escapeRegExp } from '@/shared/lib/regexp';
 
 export function formatCoordinate(value: number): string {

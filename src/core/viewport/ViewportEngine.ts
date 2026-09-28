@@ -20,9 +20,9 @@ import { QRect, QRectF } from '@/utils/Rect';
 import { setsEqual } from '@/shared/lib/sets';
 import { approximateTextMeasurer, fontWithPointSize, kDefaultFontFamily, pointSizeToPixels } from '@/shared/lib/text';
 import { QPoint, QPointF, QVector3D } from '@/utils/Vector3D';
-import type { ConnectorPreview } from '@/core/geometry/ConnectorPreview';
-import type { PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
-import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
+import type { ConnectorPreview } from '@engine/geometry';
+import type { PreviewGeometryScene } from '@engine/geometry';
+import type { RuntimeResult } from '@engine/runtime';
 import {
   appendConnectorVertices,
   connectorSceneScale,

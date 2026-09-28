@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@tests': fileURLToPath(new URL('./tests', import.meta.url)),
+      '@engine': fileURLToPath(new URL('./engine', import.meta.url)),
     },
   },
   plugins: [react(), tailwindcss()],

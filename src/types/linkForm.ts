@@ -1,5 +1,5 @@
 import type { ChangeEvent, KeyboardEvent, Ref } from 'react';
-import type { ConnectorType } from '@/core/geometry/ConnectorPreview';
+import type { ConnectorType } from '@engine/geometry';
 import type { SizeField } from '@/types/panels';
 
 export interface LinkOrientationOption {

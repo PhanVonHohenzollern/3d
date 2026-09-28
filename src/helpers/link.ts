@@ -3,9 +3,9 @@ import {
   type ConnectorDefinition,
   type ConnectorPreview,
   type ConnectorType,
-} from '@/core/geometry/ConnectorPreview';
-import type { RuntimeResult } from '@/core/runtime/RuntimeTypes';
-import { formatGeneral } from '@/utils/cpp';
+} from '@engine/geometry';
+import type { RuntimeResult } from '@engine/runtime';
+import { formatGeneral } from '@engine/runtime';
 import { sameItems } from '@/shared/lib/arrays';
 
 export const kConnectorTypes: readonly ConnectorType[] = ['Circular', 'Rectangular'];

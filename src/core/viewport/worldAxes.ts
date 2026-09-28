@@ -5,7 +5,7 @@ import { qColor } from '@/shared/lib/painting';
 import { QRectF } from '@/utils/Rect';
 import { fontHeightF } from '@/shared/lib/text';
 import { QPointF, QVector3D, QVector4D } from '@/utils/Vector3D';
-import { connectorOrientations, previewOrientationDirection } from '@/core/geometry/ConnectorPreview';
+import { connectorOrientations, previewOrientationDirection } from '@engine/geometry';
 import type { OverlayPainter } from '@/core/viewport/OverlayPainter';
 import { VertexArray } from '@/core/viewport/VertexArray';
 

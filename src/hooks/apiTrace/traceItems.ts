@@ -5,7 +5,7 @@ import {
   runtimeTypeName,
   runtimeValueToCompactString,
   type RuntimeValue,
-} from '@/core/runtime/RuntimeValue';
+} from '@engine/runtime';
 import { UserRole } from '@/shared/ui/tree';
 import type { TreeWidgetItem } from '@/shared/ui/tree';
 

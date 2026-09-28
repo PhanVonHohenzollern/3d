@@ -1,4 +1,4 @@
-import type { PreviewGeometryScene } from '@/core/geometry/PreviewGeometryEngine';
+import type { PreviewGeometryScene } from '@engine/geometry';
 import type { GeometryRange } from '@/types/viewportEngine';
 import { isValidIndex } from '@/utils/math';
 import { QVector3D } from '@/utils/Vector3D';

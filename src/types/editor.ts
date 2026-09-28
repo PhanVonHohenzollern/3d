@@ -1,5 +1,5 @@
 import type { Ref, ReactNode } from 'react';
-import type { RuntimeDiagnostic } from '@/core/runtime/RuntimeTypes';
+import type { RuntimeDiagnostic } from '@engine/runtime';
 
 export interface EditorExecutionFeedback {
   source: string;

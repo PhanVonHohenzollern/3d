@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildConnectorPreview, defaultConnectorDefinition } from '@/core/geometry/ConnectorPreview';
-import { PreviewGeometryEngine } from '@/core/geometry/PreviewGeometryEngine';
-import { GeometryRuntime } from '@/core/runtime/GeometryRuntime';
+import { buildConnectorPreview, defaultConnectorDefinition } from '@engine/geometry/ConnectorPreview';
+import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
+import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { appendConnectorVertices } from '@/core/viewport/connectorOverlay';
 import { pickMeshAlongRay } from '@/core/viewport/picking';
 import { VertexArray } from '@/core/viewport/VertexArray';
