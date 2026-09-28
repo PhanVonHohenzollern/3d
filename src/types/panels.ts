@@ -8,13 +8,6 @@ export interface VariablePanelHandle {
   selectedVariable(): string;
 }
 
-export interface VariableRow {
-  name: string;
-  type: string;
-  value: string;
-  changed: string;
-}
-
 export interface VariablePanelProps {
   onSelectionChanged?: (name: string) => void;
   ref?: Ref<VariablePanelHandle>;
@@ -33,21 +26,6 @@ export interface ParameterPanelHandle {
   commitEditor(): void;
   selectTab?(id: string): void;
   forgetFunction?(name: string): void;
-}
-
-export interface ParameterRow {
-  functionName?: string;
-  key: string;
-  line: number;
-  texts: string[];
-  checkbox?: boolean;
-  disabled?: boolean;
-}
-
-export interface ParameterEditor {
-  row: number;
-  text: string;
-  serial: number;
 }
 
 export interface ParameterPanelProps {

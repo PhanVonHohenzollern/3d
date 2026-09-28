@@ -1,6 +1,6 @@
 import { apiParameterMetadataForCall } from '@engine/runtime';
 import type { RuntimeArgumentTrace, RuntimeResult } from '@engine/runtime';
-import { historyWindowTitle } from '@/helpers/apiHistory';
+import { historyWindowTitle } from '@/entities/api-call';
 import { Observable } from '@/shared/lib/observable';
 import { TreeWidget } from '@/shared/ui/tree';
 import { TreeWidgetItem } from '@/shared/ui/tree';
@@ -12,7 +12,7 @@ import {
   kHistoryHeaderLabels,
   kHistorySourceLineRole,
   updateHistoryArraySummary,
-} from '@/hooks/apiTrace/historyItems';
+} from '@/entities/api-call';
 
 let nextDialogId = 1;
 

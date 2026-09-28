@@ -5,7 +5,7 @@ import { qColor } from '@/shared/lib/painting';
 import { LeftButton, NoModifier, RightButton } from '@/shared/lib/qt';
 import { elidedText } from '@/shared/lib/text';
 import { debugLabelPanelsLayout } from '@/core/viewport/panelLayout';
-import { debugValueText } from '@/helpers/debugValueText';
+import { debugValueText } from '@/entities/api-call';
 import { fixedMeasurer } from '@tests/renderer/helpers';
 
 const ROW = 24;

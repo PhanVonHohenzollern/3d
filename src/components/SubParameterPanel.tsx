@@ -1,4 +1,4 @@
-import type { SourceFunction, FunctionInput } from '@/helpers/functions';
+import type { SourceFunction, FunctionInput } from '@/entities/source-function';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 

@@ -10,7 +10,7 @@ import type { Viewport3DHandle } from '@/types/viewport';
 import { createViewport3DHandle } from '@/helpers/viewportHandle';
 import { QVector3D } from '@/utils/Vector3D';
 import { boxMesh, click, createEngine, project, scene } from '@tests/renderer/helpers';
-import { declaredFunctionNames, removeFunctionSource, sourceFunctions } from '@/helpers/functions';
+import { declaredFunctionNames, removeFunctionSource, sourceFunctions } from '@/entities/source-function';
 
 class FakeEditor implements CodeEditorHandle {
   text = '';
@@ -334,7 +334,7 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     expect(mw.raisedDock()).toBe('ParametersDock');
     mw.setFunctionInput('helper', 'A', ['1'], 0, '99');
     mw.applyFunctionInputs('helper');
-    expect(mw.functions.inputs.has('helper')).toBe(false);
+    expect(mw.functions.hasInputs('helper')).toBe(false);
     expect(mw.functions.active).toBe('');
     mw.selectFunction('helper');
     expect(mw.canEditSubParameters).toBe(true);
@@ -379,9 +379,9 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     expect(mw.functions.active).toBe('');
     expect(editor.text.trim()).toBe(main);
     expect(mw.functions.names).toEqual([]);
-    expect(mw.functions.saved.has('helper')).toBe(false);
-    expect(mw.functions.drafts.has('helper')).toBe(false);
-    expect(mw.functions.inputs.has('helper')).toBe(false);
+    expect(mw.functions.hasSaved('helper')).toBe(false);
+    expect(mw.functions.hasDraft('helper')).toBe(false);
+    expect(mw.functions.hasInputs('helper')).toBe(false);
     expect(parameters.values().has('helper::D')).toBe(false);
     expect(parameters.tabs.map((tab) => tab.id)).toEqual(['element']);
     expect(parameters.values().get('element::D')).toBe('100');
@@ -398,7 +398,7 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     parameters.selectTab('helper');
     expect(parameters.values().get('helper::D')).toBe('20');
     expect(parameters.dataSets).toEqual([]);
-    expect(mw.functions.inputs.has('helper')).toBe(false);
+    expect(mw.functions.hasInputs('helper')).toBe(false);
     mw.dispose();
   });
 
@@ -448,7 +448,7 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     expect(mw.m_runtime.evaluateNumericExpression('value')).toBe(36);
     mw.deleteFunction();
     expect(mw.functions.names).toEqual([]);
-    expect(mw.functions.saved.has('helper')).toBe(false);
+    expect(mw.functions.hasSaved('helper')).toBe(false);
     expect(editor.text).toBe(main);
     mw.dispose();
   });

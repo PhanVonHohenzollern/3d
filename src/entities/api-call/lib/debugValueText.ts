@@ -1,4 +1,3 @@
-import type { Vec3 } from '@/types/viewport';
 import { formatFixed } from '@engine/runtime';
 
 function coordinateText(value: number): string {
@@ -9,6 +8,6 @@ function coordinateText(value: number): string {
   return text === '-0' ? '0' : text;
 }
 
-export function debugValueText(p: Vec3): string {
+export function debugValueText(p: { x: number; y: number; z: number }): string {
   return `(${coordinateText(p.x)}, ${coordinateText(p.y)}, ${coordinateText(p.z)})`;
 }

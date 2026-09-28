@@ -6,8 +6,8 @@ import {
   ParameterPanelModel,
 } from '@/hooks/parameterPanel/ParameterPanelModel';
 import { useObservable } from '@/shared/lib/observable';
-import { parameterTableCells, parameterTableText } from '@/helpers/parameterTable';
-import { parameterGridLayout } from '@/helpers/parameters';
+import { parameterTableCells, parameterTableText } from '@/entities/parameter';
+import { parameterGridLayout } from '@/entities/parameter';
 
 interface TableDraft {
   text: string;

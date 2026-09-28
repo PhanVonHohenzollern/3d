@@ -1,4 +1,4 @@
-import { debugValueText } from '@/helpers/debugValueText';
+import { debugValueText } from '@/entities/api-call';
 import type { TextMeasurer } from '@/shared/lib/text';
 import type { ConnectorVertexRanges } from '@/types/viewportEngine';
 import { Qt, qColor, qPen } from '@/shared/lib/painting';

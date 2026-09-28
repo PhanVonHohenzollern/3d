@@ -18,7 +18,7 @@ import {
   orientationIndex,
   pointNameError,
   uniquePointName,
-} from '@/helpers/link';
+} from '@/entities/connector';
 import { rowForKey } from '@/shared/ui/table-view';
 import type { LinkPanelHandle, LinkTableRow, PreviewChangedCallback, ScrollRequest, SizeField } from '@/types/panels';
 import { sameItems } from '@/shared/lib/arrays';

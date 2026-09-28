@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { earlierChanges } from '@/helpers/apiHistory';
-import { directSource, displayExpression } from '@/helpers/traceFormatting';
+import { earlierChanges } from '@/entities/api-call';
+import { directSource, displayExpression } from '@/entities/api-call';
 import { ApiHistoryDialogModel } from '@/hooks/apiTrace/ApiHistoryDialogModel';
-import { HistoryColumn } from '@/hooks/apiTrace/historyItems';
+import { HistoryColumn } from '@/entities/api-call';
 import type { TreeWidgetItem } from '@/shared/ui/tree';
 import { p, traceResult } from '@tests/ui/traceFixture';
 
