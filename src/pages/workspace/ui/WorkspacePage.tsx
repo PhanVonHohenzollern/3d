@@ -2,11 +2,12 @@ import { Button } from '@/shared/ui/button';
 import { Box, CodeXml } from 'lucide-react';
 import { useCompactLayout } from '@/shared/lib/react';
 import { useDockHeight } from '@/shared/ui/dock';
-import { useMainWindow } from '@/hooks/useMainWindow';
+import { useWorkspace } from '@/pages/workspace/model/useWorkspace';
 import { useTheme } from '@/hooks/useTheme';
 import { ApiTracePanel } from '@/widgets/api-trace-panel';
 import { CodeEditor } from '@/widgets/code-editor';
-import { InspectorDock, inspectorMinimumHeight } from '@/pages/workspace';
+import { inspectorMinimumHeight } from '@/pages/workspace/config/docks';
+import { InspectorDock } from '@/pages/workspace/ui/InspectorDock';
 import { LinkPanel } from '@/widgets/link-panel';
 import { PanelHeader } from '@/shared/ui/panel-header';
 import { WorkspaceHeader } from '@/widgets/workspace-header';
@@ -20,28 +21,28 @@ import { FunctionEditor } from '@/features/manage-functions';
 import { PreviewModeToggle } from '@/features/run-preview';
 import { SubParameterPanel } from '@/features/manage-functions';
 
-export function App() {
-  const mainWindow = useMainWindow();
+export function WorkspacePage() {
+  const workspace = useWorkspace();
   const { theme, toggleTheme } = useTheme();
   const compact = useCompactLayout();
   const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum } = useDockHeight(
-    inspectorMinimumHeight(mainWindow.raisedDock),
+    inspectorMinimumHeight(workspace.raisedDock),
   );
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
-      <WorkspaceHeader files={mainWindow.files.controls} theme={theme} onToggleTheme={toggleTheme} />
-      {mainWindow.files.message && (
+      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={toggleTheme} />
+      {workspace.files.message && (
         <div
-          role={mainWindow.files.error ? 'alert' : 'status'}
+          role={workspace.files.error ? 'alert' : 'status'}
           className="flex items-center gap-2 border-b border-line bg-base px-3 py-2 text-xs"
         >
           <span
-            className={mainWindow.files.error ? 'min-w-0 flex-1 text-error' : 'min-w-0 flex-1 text-muted-foreground'}
+            className={workspace.files.error ? 'min-w-0 flex-1 text-error' : 'min-w-0 flex-1 text-muted-foreground'}
           >
-            {mainWindow.files.message}
+            {workspace.files.message}
           </span>
-          <Button variant="ghost" size="sm" onClick={mainWindow.files.dismissMessage}>
+          <Button variant="ghost" size="sm" onClick={workspace.files.dismissMessage}>
             Dismiss
           </Button>
         </div>
@@ -63,18 +64,18 @@ export function App() {
                   C++
                 </span>
                 <PreviewModeToggle
-                  mode={mainWindow.previewMode}
-                  debugBlocked={mainWindow.debugBlocked}
-                  onBuild={mainWindow.buildPreview}
-                  onDebug={mainWindow.debugPreview}
+                  mode={workspace.previewMode}
+                  debugBlocked={workspace.debugBlocked}
+                  onBuild={workspace.buildPreview}
+                  onDebug={workspace.debugPreview}
                 />
               </PanelHeader>
-              <FunctionEditor.Provider state={mainWindow.functions.state} actions={mainWindow.functions.actions}>
+              <FunctionEditor.Provider state={workspace.functions.state} actions={workspace.functions.actions}>
                 <FunctionEditor.Tabs />
                 <FunctionEditor.Error />
                 <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
                   <CodeEditor
-                    {...mainWindow.editor}
+                    {...workspace.editor}
                     footer={
                       <>
                         <FunctionEditor.Actions />
@@ -92,16 +93,16 @@ export function App() {
                   className="workspace-panel @container/preview flex min-h-0 flex-1 flex-col overflow-hidden border border-line bg-base shadow-xs"
                 >
                   <PanelHeader icon={Box} title="3D Viewport">
-                    <ToolBar items={mainWindow.toolbarItems} />
+                    <ToolBar items={workspace.toolbarItems} />
                   </PanelHeader>
                   <div className="workspace-surface relative min-h-0 flex-1 overflow-hidden bg-viewport">
-                    <Viewport3D {...mainWindow.viewport} />
-                    {mainWindow.importedObj && (
+                    <Viewport3D {...workspace.viewport} />
+                    {workspace.importedObj && (
                       <div className="absolute top-2 right-2 left-2 flex items-center gap-2 rounded-md border border-line bg-base/95 p-2 text-xs">
-                        <span className="min-w-0 flex-1 truncate" title={mainWindow.importedObj.name}>
-                          OBJ preview · {mainWindow.importedObj.name}
+                        <span className="min-w-0 flex-1 truncate" title={workspace.importedObj.name}>
+                          OBJ preview · {workspace.importedObj.name}
                         </span>
-                        <Button size="sm" variant="outline" onClick={mainWindow.returnToCodePreview}>
+                        <Button size="sm" variant="outline" onClick={workspace.returnToCodePreview}>
                           Return to code
                         </Button>
                       </div>
@@ -117,7 +118,7 @@ export function App() {
                   onPointerDown={onSeparatorPointerDown}
                   onKeyDown={onSeparatorKeyDown}
                 />
-                {mainWindow.importedObj ? (
+                {workspace.importedObj ? (
                   <section
                     aria-label="Imported model inspector"
                     style={{ height: dockHeight }}
@@ -125,24 +126,24 @@ export function App() {
                   >
                     <p className="font-medium">Imported OBJ model</p>
                     <p className="text-muted-foreground">OBJ contains mesh geometry, not editable C++ parameters.</p>
-                    <Button size="sm" variant="outline" onClick={mainWindow.returnToCodePreview}>
+                    <Button size="sm" variant="outline" onClick={workspace.returnToCodePreview}>
                       Return to code preview
                     </Button>
                   </section>
                 ) : null}
-                <div className={mainWindow.importedObj ? 'hidden' : 'contents'}>
+                <div className={workspace.importedObj ? 'hidden' : 'contents'}>
                   <InspectorDock
                     height={dockHeight}
-                    raised={mainWindow.raisedDock}
-                    onRaise={mainWindow.raiseDock}
-                    showSubParameters={mainWindow.subParameters.enabled}
-                    counts={mainWindow.inspectorCounts}
+                    raised={workspace.raisedDock}
+                    onRaise={workspace.raiseDock}
+                    showSubParameters={workspace.subParameters.enabled}
+                    counts={workspace.inspectorCounts}
                     panels={{
-                      VariablesDock: <VariablePanel {...mainWindow.variables} />,
-                      ParametersDock: <ParameterPanel {...mainWindow.parameters} />,
-                      ApiTraceDock: <ApiTracePanel {...mainWindow.apiTrace} />,
-                      LinkDock: <LinkPanel {...mainWindow.links} />,
-                      SubParametersDock: <SubParameterPanel {...mainWindow.subParameters} />,
+                      VariablesDock: <VariablePanel {...workspace.variables} />,
+                      ParametersDock: <ParameterPanel {...workspace.parameters} />,
+                      ApiTraceDock: <ApiTracePanel {...workspace.apiTrace} />,
+                      LinkDock: <LinkPanel {...workspace.links} />,
+                      SubParametersDock: <SubParameterPanel {...workspace.subParameters} />,
                     }}
                   />
                 </div>

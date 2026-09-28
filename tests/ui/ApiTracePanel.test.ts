@@ -13,9 +13,9 @@ const shift: Modifiers = { shift: true, control: false };
 function createPanel() {
   const model = new ApiTracePanelModel();
   const events: string[] = [];
-  model.setSelectionChangedCallback((apiIndex) => events.push(`selection:${apiIndex}`));
-  model.setSourceActivatedCallback((line) => events.push(`source:${line}`));
-  model.setHistorySourceActivatedCallback((line) => events.push(`history:${line}`));
+  model.selectionChanged.connect((apiIndex) => events.push(`selection:${apiIndex}`));
+  model.sourceActivated.connect((line) => events.push(`source:${line}`));
+  model.historySourceActivated.connect((line) => events.push(`history:${line}`));
 
   return { model, tree: model.m_tree, events };
 }
@@ -43,7 +43,7 @@ function toggleBranch(model: ApiTracePanelModel, item: TreeWidgetItem) {
 describe('ApiTracePanel row model', () => {
   it('opens a user-function row on double-click while keeping parameter history available', () => {
     const { model, tree, events } = createPanel();
-    model.setFunctionActivatedCallback((index) => events.push(`function:${index}`));
+    model.functionActivated.connect((index) => events.push(`function:${index}`));
     model.setRuntimeResult(traceResult());
     const api = tree.topLevelItem(0);
     doubleClick(model, api);
@@ -202,7 +202,8 @@ describe('ApiTracePanel row model', () => {
     doubleClick(model, api.child(0));
     expect(model.historyDialog()).toBe(dialog);
 
-    doubleClick(model, api.child(4));
+    toggleBranch(model, api.child(4));
+    doubleClick(model, api.child(4).child(0));
     expect(model.historyDialog()?.apiIndex()).toBe(1);
     expect(dialog?.isOpen()).toBe(false);
 

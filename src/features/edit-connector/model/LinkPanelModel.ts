@@ -21,11 +21,11 @@ import {
 } from '@/entities/connector';
 import { rowForKey } from '@/shared/ui/table-view';
 import type { SizeField } from '@/entities/connector';
-import type { LinkPanelHandle, LinkTableRow, PreviewChangedCallback } from '@/features/edit-connector/model/types';
+import type { LinkPanelHandle, LinkTableRow } from '@/features/edit-connector/model/types';
 import type { ScrollRequest } from '@/shared/ui/table-view';
 import { sameItems } from '@/shared/lib/arrays';
 import { what } from '@engine/runtime';
-import { Observable } from '@/shared/lib/observable';
+import { Observable, Signal } from '@/shared/lib/observable';
 
 interface Entry {
   definition: ConnectorDefinition;
@@ -62,7 +62,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   #nextId = 1;
   #loading = false;
   #evaluate: ConnectorExpressionEvaluator | null = null;
-  #previewChanged: PreviewChangedCallback | null = null;
+  readonly previewChanged = new Signal<[previews: readonly ConnectorPreview[], selectedId: number, tested: boolean]>();
 
   constructor() {
     super();
@@ -72,10 +72,6 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
 
   setExpressionEvaluator(evaluate: ConnectorExpressionEvaluator | null): void {
     this.#evaluate = evaluate;
-  }
-
-  setPreviewChangedCallback(callback: PreviewChangedCallback | null): void {
-    this.#previewChanged = callback;
   }
 
   definitions(): ConnectorDefinition[] {
@@ -326,12 +322,11 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   }
 
   publish(tested = false): void {
-    if (!this.#previewChanged) return;
     const previews: ConnectorPreview[] = [];
     for (const entry of this.#entries) if (entry.shown && entry.preview) previews.push(entry.preview);
     const row = this.currentRow;
     const id = row >= 0 && row < this.#entries.length ? this.#entries[row].definition.id : -1;
-    this.#previewChanged(previews, id, tested);
+    this.previewChanged.emit(previews, id, tested);
   }
 
   showStatus(): void {

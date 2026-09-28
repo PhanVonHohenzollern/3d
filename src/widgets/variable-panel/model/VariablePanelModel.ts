@@ -4,7 +4,7 @@ import { variableRow, variableSummary } from '@/entities/variable';
 import type { VariableRow } from '@/entities/variable';
 import type { VariablePanelHandle } from '@/widgets/variable-panel/model/types';
 import type { ScrollRequest } from '@/shared/ui/table-view';
-import { Observable } from '@/shared/lib/observable';
+import { Observable, Signal } from '@/shared/lib/observable';
 
 export class VariablePanelModel extends Observable implements VariablePanelHandle {
   summary = '';
@@ -13,7 +13,7 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
   scrollRequest: ScrollRequest | null = null;
   #scrollSerial = 0;
   #selectedName = '';
-  #selectionChangedCallback: ((name: string) => void) | null = null;
+  readonly selectionChanged = new Signal<[name: string]>();
   #signalsBlocked = false;
   #pressedRow = -1;
 
@@ -35,10 +35,6 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
     }
     this.#blockSignals(blocked);
     this.changed();
-  }
-
-  setSelectionChangedCallback(callback: ((name: string) => void) | null): void {
-    this.#selectionChangedCallback = callback;
   }
 
   selectVariable(name: string): void {
@@ -86,11 +82,11 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
     const nameItem = this.rows[this.selectedRow];
     if (!nameItem) return;
     this.#selectedName = nameItem.name;
-    if (this.#selectionChangedCallback) this.#selectionChangedCallback(this.#selectedName);
+    this.selectionChanged.emit(this.#selectedName);
   }
 
   #itemClicked(row: number): void {
-    if (this.#selectionChangedCallback) this.#selectionChangedCallback(this.rows[row].name);
+    this.selectionChanged.emit(this.rows[row].name);
   }
 
   mousePress(row: number, control: boolean): void {

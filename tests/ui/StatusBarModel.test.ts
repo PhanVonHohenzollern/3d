@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { StatusBarModel } from '@/hooks/mainWindow/StatusBarModel';
+import { StatusBarModel } from '@/pages/workspace/model/StatusBarModel';
 
 afterEach(() => vi.useRealTimers());
 

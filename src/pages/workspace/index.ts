@@ -1,3 +1,2 @@
-export { InspectorDock } from '@/pages/workspace/ui/InspectorDock';
-export { inspectorMinimumHeight } from '@/pages/workspace/config/docks';
-export type { DockName, InspectorCounts } from '@/pages/workspace/model/types';
+export { WorkspaceModel } from '@/pages/workspace/model/WorkspaceModel';
+export { WorkspacePage } from '@/pages/workspace/ui/WorkspacePage';

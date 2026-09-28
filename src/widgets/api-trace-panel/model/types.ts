@@ -1,5 +1,5 @@
-import type { Ref } from 'react';
 import type { RuntimeResult } from '@engine/runtime';
+import type { ApiTracePanelModel } from '@/widgets/api-trace-panel/model/ApiTracePanelModel';
 
 export interface ApiTracePanelHandle {
   setPlaceholderData(): void;
@@ -15,9 +15,5 @@ export interface ApiTracePanelHandle {
 }
 
 export interface ApiTracePanelProps {
-  onSelectionChanged?: (apiIndex: number) => void;
-  onFunctionActivated?: (apiIndex: number) => void;
-  onSourceActivated?: (line: number) => void;
-  onHistorySourceActivated?: (line: number) => void;
-  ref?: Ref<ApiTracePanelHandle>;
+  model: ApiTracePanelModel;
 }

@@ -1,4 +1,4 @@
-import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useRef, type KeyboardEvent, type MouseEvent } from 'react';
 import { eventModifiers } from '@/shared/lib/qt';
 import { isInTableHeader, tableRowOf } from '@/shared/ui/table-view';
 import type { VariablePanelProps } from '@/widgets/variable-panel/model/types';
@@ -6,7 +6,6 @@ import type { ScrollRequest } from '@/shared/ui/table-view';
 import { isOnScrollbar } from '@/shared/lib/dom';
 import { useObservable } from '@/shared/lib/observable';
 import { useScrollSelectionIntoView } from '@/shared/lib/react';
-import { VariablePanelModel } from '@/widgets/variable-panel/model/VariablePanelModel';
 
 // Scroll this inspector only, keeping the selected row below its sticky header.
 function scrollToSelectedVariable(table: HTMLElement, request: ScrollRequest): void {
@@ -19,15 +18,9 @@ function scrollToSelectedVariable(table: HTMLElement, request: ScrollRequest): v
   else if (bottom > table.scrollTop + table.clientHeight) table.scrollTop = bottom - table.clientHeight;
 }
 
-export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps) {
-  const [model] = useState(() => new VariablePanelModel());
+export function useVariablePanel({ model }: VariablePanelProps) {
   useObservable(model);
   const tableRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    model.setSelectionChangedCallback(onSelectionChanged ?? null);
-  }, [model, onSelectionChanged]);
-  useImperativeHandle(ref, () => model, [model]);
 
   useScrollSelectionIntoView(tableRef, model.scrollRequest, scrollToSelectedVariable);
 

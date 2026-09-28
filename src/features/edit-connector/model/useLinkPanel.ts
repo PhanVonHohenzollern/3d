@@ -1,13 +1,5 @@
 import { useContainerPagination } from '@/shared/ui/pagination';
-import {
-  useImperativeHandle,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type KeyboardEvent,
-  type MouseEvent,
-} from 'react';
+import { useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import {
   kAngleLabels,
   kAxisLabels,
@@ -20,21 +12,13 @@ import { isInElement, isInTableHeader, tableCellOf } from '@/shared/ui/table-vie
 import type { SizeField } from '@/entities/connector';
 import type { LinkFormProps } from '@/features/edit-connector/ui/types';
 import type { LinkPanelProps } from '@/features/edit-connector/model/types';
-import { LinkPanelModel } from '@/features/edit-connector/model/LinkPanelModel';
 import { useObservable } from '@/shared/lib/observable';
 
-export function useLinkPanel({ expressionEvaluator, onPreviewChanged, ref }: LinkPanelProps) {
-  const [model] = useState(() => new LinkPanelModel());
+export function useLinkPanel({ model }: LinkPanelProps) {
   useObservable(model);
   const tableRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
-
-  useLayoutEffect(() => {
-    model.setExpressionEvaluator(expressionEvaluator ?? null);
-    model.setPreviewChangedCallback(onPreviewChanged ?? null);
-  }, [model, expressionEvaluator, onPreviewChanged]);
-  useImperativeHandle(ref, () => model, [model]);
 
   const focusNameSerial = model.focusNameSerial;
   useLayoutEffect(() => {

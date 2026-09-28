@@ -12,7 +12,7 @@ import { isArray, isPoint, isVector, type RuntimeValue } from '@engine/runtime';
 import { apiDebugItemId } from '@/entities/api-call';
 import { changeExpression, directSource, displayExpression, metadataTypeText, otherInputs } from '@/entities/api-call';
 import type { ApiTracePanelHandle } from '@/widgets/api-trace-panel/model/types';
-import { Observable } from '@/shared/lib/observable';
+import { Observable, Signal } from '@/shared/lib/observable';
 import { TreeWidget, UserRole } from '@/shared/ui/tree';
 import { TreeWidgetItem } from '@/shared/ui/tree';
 import { ApiHistoryDialogModel } from '@/widgets/api-trace-panel/model/ApiHistoryDialogModel';
@@ -37,12 +37,12 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
   #historyDialog: ApiHistoryDialogModel | null = null;
   #selectedApiIndex = -1;
   #meshApiIndex = -1;
-  #selectionChangedCallback: ((apiIndex: number) => void) | null = null;
-  #functionActivatedCallback: ((apiIndex: number) => void) | null = null;
+  readonly selectionChanged = new Signal<[apiIndex: number]>();
+  readonly functionActivated = new Signal<[apiIndex: number]>();
   #runtimeResult: RuntimeResult = emptyRuntimeResult();
   readonly #pendingTraceRows = new Map<TreeWidgetItem, () => void>();
-  #sourceActivatedCallback: ((line: number) => void) | null = null;
-  #historySourceActivatedCallback: ((line: number) => void) | null = null;
+  readonly sourceActivated = new Signal<[line: number]>();
+  readonly historySourceActivated = new Signal<[line: number]>();
 
   constructor() {
     super();
@@ -62,21 +62,20 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     tree.itemExpanded.connect((item) => {
       this.#populateTrace(item);
       updateArraySummary(item);
-      if (this.#selectionChangedCallback) this.#selectionChangedCallback(this.#selectedApiIndex);
+      this.selectionChanged.emit(this.#selectedApiIndex);
     });
     tree.itemCollapsed.connect((item) => updateArraySummary(item));
     tree.itemClicked.connect((item) => {
       const line = item.dataInt(0, kSourceLineRole);
-      if (line > 0 && this.#sourceActivatedCallback) this.#sourceActivatedCallback(line);
+      if (line > 0) this.sourceActivated.emit(line);
     });
     tree.itemDoubleClicked.connect((item) => {
       const apiIndex = item.dataInt(0, UserRole);
       if (
         this.#runtimeResult.apiCalls[apiIndex]?.userFunctionCall &&
-        item.dataString(0, kNodeKeyRole) === `api:${apiIndex}` &&
-        this.#functionActivatedCallback
+        item.dataString(0, kNodeKeyRole) === `api:${apiIndex}`
       )
-        this.#functionActivatedCallback(apiIndex);
+        this.functionActivated.emit(apiIndex);
       else this.#showApiHistory(apiIndex);
     });
     tree.itemSelectionChanged.connect(() => {
@@ -85,7 +84,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
       if (current && current.isSelected()) this.#selectedApiIndex = current.dataInt(0, UserRole);
       else if (selected.length) this.#selectedApiIndex = selected[0].dataInt(0, UserRole);
       this.#updateSelectionAppearance();
-      if (this.#selectionChangedCallback) this.#selectionChangedCallback(this.#selectedApiIndex);
+      this.selectionChanged.emit(this.#selectedApiIndex);
     });
   }
 
@@ -251,7 +250,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     this.#updateSelectionAppearance();
     tree.blockSignals(blocked);
     this.changed();
-    if (this.#selectionChangedCallback) this.#selectionChangedCallback(this.#selectedApiIndex);
+    this.selectionChanged.emit(this.#selectedApiIndex);
   }
 
   #populateTrace(item: TreeWidgetItem): void {
@@ -322,7 +321,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     if (!this.#historyDialog) {
       const dialog = new ApiHistoryDialogModel(this.#runtimeResult, apiIndex);
       dialog.setSourceActivatedCallback((line) => {
-        if (this.#historySourceActivatedCallback) this.#historySourceActivatedCallback(line);
+        this.historySourceActivated.emit(line);
       });
       dialog.onClosed(() => {
         if (this.#historyDialog === dialog) this.#historyDialog = null;
@@ -332,22 +331,6 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     }
     this.#historyDialog.showAndRaise();
     this.changed();
-  }
-
-  setSelectionChangedCallback(callback: ((apiIndex: number) => void) | null): void {
-    this.#selectionChangedCallback = callback;
-  }
-
-  setSourceActivatedCallback(callback: ((line: number) => void) | null): void {
-    this.#sourceActivatedCallback = callback;
-  }
-
-  setFunctionActivatedCallback(callback: ((apiIndex: number) => void) | null): void {
-    this.#functionActivatedCallback = callback;
-  }
-
-  setHistorySourceActivatedCallback(callback: ((line: number) => void) | null): void {
-    this.#historySourceActivatedCallback = callback;
   }
 
   selectMeshApiCall(apiIndex: number): void {
@@ -376,7 +359,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     this.#updateSelectionAppearance();
     tree.scrollToItem(call);
     this.changed();
-    if (this.#selectionChangedCallback) this.#selectionChangedCallback(apiIndex);
+    this.selectionChanged.emit(apiIndex);
     tree.blockSignals(blocked);
   }
 
@@ -414,9 +397,9 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     }
     this.#updateSelectionAppearance();
     this.changed();
-    if (this.#selectionChangedCallback) this.#selectionChangedCallback(this.#selectedApiIndex);
+    this.selectionChanged.emit(this.#selectedApiIndex);
     const line = current ? current.dataInt(0, kSourceLineRole) : 0;
-    if (line > 0 && this.#sourceActivatedCallback) this.#sourceActivatedCallback(line);
+    if (line > 0) this.sourceActivated.emit(line);
     tree.blockSignals(blocked);
   }
 
@@ -480,7 +463,7 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     this.#selectedApiIndex = -1;
     this.#updateSelectionAppearance();
     this.changed();
-    if (this.#selectionChangedCallback) this.#selectionChangedCallback(-1);
+    this.selectionChanged.emit(-1);
     tree.blockSignals(blocked);
   }
 
