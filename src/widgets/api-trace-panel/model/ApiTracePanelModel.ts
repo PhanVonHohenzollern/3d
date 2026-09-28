@@ -11,7 +11,6 @@ import {
 import { isArray, isPoint, isVector, type RuntimeValue } from '@engine/runtime';
 import { apiDebugItemId } from '@/entities/api-call';
 import { changeExpression, directSource, displayExpression, metadataTypeText, otherInputs } from '@/entities/api-call';
-import type { ApiTracePanelHandle } from '@/widgets/api-trace-panel/model/types';
 import { Observable, Signal } from '@/shared/lib/observable';
 import { TreeWidget, UserRole } from '@/shared/ui/tree';
 import { TreeWidgetItem } from '@/shared/ui/tree';
@@ -29,6 +28,19 @@ import {
   updateArraySummary,
 } from '@/entities/api-call';
 import { TraceTree } from '@/entities/api-call';
+
+export interface ApiTracePanelHandle {
+  setPlaceholderData(): void;
+  setRuntimeResult(result: RuntimeResult): void;
+  selectMeshApiCall(apiIndex: number): void;
+  meshApiCall(): number;
+  selectDebugItems(names: ReadonlySet<string>): void;
+  clearApiFocus(): void;
+  selectedApiCall(): number;
+  selectedDebugItems(): Set<string>;
+  selectedApiCalls(): Set<number>;
+  selectedSourceLines(): Set<number>;
+}
 
 const { Number: NumberColumn, Name, Type, Expression, Value, X, Z, Role, Line, ColumnCount } = TraceColumn;
 

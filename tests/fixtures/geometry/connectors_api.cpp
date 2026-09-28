@@ -9,7 +9,7 @@ makeConnector(c, vz, vx, 60, 30, 75);
 makeConnector(c, vz, vx, 60, 30, 0);
 makeConnector(c, vz, vx, 60, 30, -10);
 makeConnector(c, vy, FdVector3d(1, 0, 1), 20, 10, CONNECTOR_WIDTH * 2);
-// Unsupported inputs: no mesh; reported as a preview adapter gap.
+// Invalid inputs: no mesh; each warns with the argument or dimension at fault.
 makeConnector(c, vx * 0, 100, 50);
 makeConnector(c, vx, 0, 50);
 makeConnector(c, vx, 100, -1);

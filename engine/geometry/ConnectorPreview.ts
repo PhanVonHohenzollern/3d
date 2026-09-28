@@ -1,8 +1,10 @@
+import { resolveApiSignature } from '@engine/runtime/ApiMetadata';
 import { CppException, what } from '@engine/runtime/cpp/cpp';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import { emptyApiCall, emptyRuntimeResult } from '@engine/runtime/RuntimeTypes';
 import { RuntimeArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { PreviewGeometryEngine, type PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
+import { deg } from '@engine/geometry/helpers/geometryMath';
 
 export type ConnectorType = 'Circular' | 'Rectangular';
 export type ConnectorOrientation = 'XPositive' | 'XNegative' | 'YPositive' | 'YNegative' | 'ZPositive' | 'ZNegative';
@@ -119,7 +121,7 @@ export function buildConnectorPreview(
   const axes = [new FdVector3d(1, 0, 0), new FdVector3d(0, 1, 0), new FdVector3d(0, 0, 1)];
   const angleNames = ['a (degrees)', 'b (degrees)', 'gamma (degrees)'];
   for (let i = 0; i < axes.length; ++i) {
-    const angle = (field(definition.angles[i], angleNames[i]) * Math.PI) / 180.0;
+    const angle = deg(field(definition.angles[i], angleNames[i]));
     result.direction = result.direction.rotateBy(angle, axes[i]);
     result.up = result.up.rotateBy(angle, axes[i]);
   }
@@ -149,6 +151,7 @@ export function buildConnectorPreview(
       0.0,
     ];
   }
+  call.signature = resolveApiSignature(call);
   const runtime = emptyRuntimeResult();
   runtime.apiCalls.push(call);
   const geometry = new PreviewGeometryEngine().build(runtime);

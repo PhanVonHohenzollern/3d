@@ -7,6 +7,10 @@ export class FdBowlCorner {
   trType = 2;
   truncated = false;
 
+  get typeName(): 'FdBowlCorner' {
+    return 'FdBowlCorner';
+  }
+
   clone(): FdBowlCorner {
     const copy = new FdBowlCorner();
     Object.assign(copy, this, { radii: [...this.radii] });
@@ -29,6 +33,10 @@ export class FdBowlFace {
   resize(count: number): void {
     if (!Number.isInteger(count) || count < 0 || count > 4096) throw runtimeError('invalid bowl corner count');
     this.corners = Array.from({ length: count }, () => new FdBowlCorner());
+  }
+
+  get typeName(): 'FdBowlFace' {
+    return 'FdBowlFace';
   }
 
   clone(): FdBowlFace {
@@ -91,6 +99,10 @@ export class FdBowlInfo {
     return this.faces[index];
   }
 
+  get typeName(): 'FdBowlInfo' {
+    return 'FdBowlInfo';
+  }
+
   clone(): FdBowlInfo {
     const copy = new FdBowlInfo(this.corners, this.complexityR, this.complexityV);
     copy.faces = [this.faces[0].clone(), this.faces[1].clone()];
@@ -101,6 +113,3 @@ export class FdBowlInfo {
 }
 
 export type BowlValue = FdBowlInfo | FdBowlFace | FdBowlCorner;
-
-export const isBowlValue = (value: unknown): value is BowlValue =>
-  value instanceof FdBowlInfo || value instanceof FdBowlFace || value instanceof FdBowlCorner;

@@ -1,5 +1,5 @@
 // A source helper may reuse an SDK name. The C++ primitive adapters match by
-// name only (and effectiveArguments fills metadata defaults), so a helper named
+// name only (and effectiveApiArguments fills metadata defaults), so a helper named
 // like a primitive still produces that primitive's mesh; composite adapters
 // and the missing-adapter warning skip helper calls.
 FdPoint3d p0(0, 0, 0);

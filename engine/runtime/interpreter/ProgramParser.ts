@@ -6,6 +6,7 @@ import {
   splitTopLevel,
   TokKind,
   type Token,
+  scanTopLevel,
 } from '@engine/runtime/helpers/tokens';
 import { Statement, StatementKind } from '@engine/runtime/interpreter/Statement';
 
@@ -48,13 +49,11 @@ export class ProgramParser {
     if (!isSymbol(this.current(), '(')) throw runtimeError("expected '('");
     this.advance();
     const start = this.m_pos;
-    let depth = 1;
-    while (!this.atEnd() && depth > 0) {
-      if (isSymbol(this.current(), '(')) ++depth;
-      else if (isSymbol(this.current(), ')')) --depth;
-      if (depth === 0) break;
-      this.advance();
-    }
+    this.m_pos = scanTopLevel(
+      this.m_tokens,
+      start,
+      (t, _p, depth) => t.kind === TokKind.End || (depth < 0 && isSymbol(t, ')')),
+    );
     const end = this.m_pos;
     if (isSymbol(this.current(), ')')) this.advance();
 
@@ -68,37 +67,34 @@ export class ProgramParser {
       ['else', 'while', 'do', 'switch', 'case', 'default'].some((name) => isIdentifier(this.current(), name))
     )
       return false;
-    let paren = 0,
-      bracket = 0;
     let sawParen = false;
-    for (let p = this.m_pos; p < this.m_tokens.length; ++p) {
-      const t = this.m_tokens[p];
-      if (t.kind === TokKind.End) return false;
-      if (isSymbol(t, '(')) {
-        ++paren;
-        sawParen = true;
-      } else if (isSymbol(t, ')')) --paren;
-      else if (isSymbol(t, '[')) ++bracket;
-      else if (isSymbol(t, ']')) --bracket;
-      else if (paren === 0 && bracket === 0 && isSymbol(t, ';')) return false;
-      else if (paren === 0 && bracket === 0 && isSymbol(t, '{')) return sawParen;
-    }
+    let result = false;
+    scanTopLevel(this.m_tokens, this.m_pos, (t, _p, depth) => {
+      if (t.kind === TokKind.End) return true;
+      if (isSymbol(t, '(')) sawParen = true;
+      if (depth !== 0) return false;
+      if (isSymbol(t, ';')) return true;
+      if (isSymbol(t, '{')) {
+        result = sawParen;
 
-    return false;
+        return true;
+      }
+    });
+
+    return result;
   }
 
   private parseFunction(): Statement {
     const fn = new Statement(StatementKind.Function, this.current().line);
     const start = this.m_pos;
     let lparen = this.m_pos;
-    let depth = 0;
-    while (!this.atEnd()) {
-      if (isSymbol(this.current(), '(') && depth === 0) lparen = this.m_pos;
-      if (isSymbol(this.current(), '(')) ++depth;
-      else if (isSymbol(this.current(), ')')) --depth;
-      if (depth === 0 && isSymbol(this.current(), '{')) break;
-      this.advance();
-    }
+    this.m_pos = scanTopLevel(this.m_tokens, this.m_pos, (t, p, depth) => {
+      if (t.kind === TokKind.End) return true;
+      if (depth !== 0) return false;
+      if (isSymbol(t, '(')) lparen = p;
+
+      return isSymbol(t, '{');
+    });
     fn.signature = sliceTokens(this.m_tokens, start, this.m_pos);
     for (let i = lparen; i > start; --i) {
       if (this.m_tokens[i - 1].kind === TokKind.Identifier) {
@@ -231,29 +227,20 @@ export class ProgramParser {
   private parseSimple(): Statement | null {
     const startLine = this.current().line;
     const start = this.m_pos;
-    let paren = 0,
-      bracket = 0,
-      brace = 0;
-    while (!this.atEnd()) {
-      const t = this.current();
-      if (isSymbol(t, '(')) ++paren;
-      else if (isSymbol(t, ')')) --paren;
-      else if (isSymbol(t, '[')) ++bracket;
-      else if (isSymbol(t, ']')) --bracket;
-      else if (isSymbol(t, '{')) ++brace;
-      else if (isSymbol(t, '}')) {
-        if (brace === 0) break;
-        --brace;
-      }
-      if (paren === 0 && bracket === 0 && brace === 0 && isSymbol(t, ';')) {
-        const s = new Statement(StatementKind.Simple, startLine);
-        s.endLine = t.line;
-        s.tokens = sliceTokens(this.m_tokens, start, this.m_pos);
-        this.advance();
-
-        return s;
-      }
+    // Up to the ';' that ends it, or the '}' that ends the enclosing block (no statement).
+    this.m_pos = scanTopLevel(
+      this.m_tokens,
+      start,
+      (t, _p, depth) => t.kind === TokKind.End || (depth < 0 && isSymbol(t, '}')) || (depth === 0 && isSymbol(t, ';')),
+    );
+    const t = this.current();
+    if (isSymbol(t, ';')) {
+      const s = new Statement(StatementKind.Simple, startLine);
+      s.endLine = t.line;
+      s.tokens = sliceTokens(this.m_tokens, start, this.m_pos);
       this.advance();
+
+      return s;
     }
 
     return null;

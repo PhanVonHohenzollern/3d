@@ -7,6 +7,11 @@ export class FdVector3d {
     readonly z = 0,
   ) {}
 
+  // The SDK type name the interpreter reports for this value.
+  get typeName(): 'FdVector3d' {
+    return 'FdVector3d';
+  }
+
   add(v: FdVector3d): FdVector3d {
     return new FdVector3d(this.x + v.x, this.y + v.y, this.z + v.z);
   }
@@ -92,6 +97,11 @@ export class FdPoint3d {
     readonly y = 0,
     readonly z = 0,
   ) {}
+
+  // The SDK type name the interpreter reports for this value.
+  get typeName(): 'FdPoint3d' {
+    return 'FdPoint3d';
+  }
 
   add(v: FdVector3d): FdPoint3d {
     return new FdPoint3d(this.x + v.x, this.y + v.y, this.z + v.z);

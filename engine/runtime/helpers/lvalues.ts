@@ -1,15 +1,14 @@
 import { runtimeError } from '@engine/runtime/cpp/cpp';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { FdBowlCorner } from '@engine/runtime/FdBowlData';
-import { memberValue } from '@engine/runtime/helpers/pointVectorMembers';
+import { memberValue } from '@engine/runtime/helpers/valueMethods';
+import { valueTypeNamed, valueTypeOf } from '@engine/runtime/values/registry';
 import {
   isPoint,
   isVector,
+  kValueOps,
   runtimeCoerceToType,
   runtimeDeepCopy,
   runtimeNumber,
-  runtimeInteger,
-  runtimeTruthy,
   runtimeTypeName,
   stdVectorElementType,
   type RuntimeArray,
@@ -41,23 +40,24 @@ export const arraySlot = (array: RuntimeArray, index: number): RuntimeValueSlot 
   },
 });
 
-/** Public fields of the SDK's FdBowlCorner struct, including nested lvalues. */
-export function bowlCornerSlot(corner: FdBowlCorner, member: string): RuntimeValueSlot {
+// A field of an SDK struct value (corner.vertex, corner.radii), including nested lvalues.
+export function memberSlot(value: RuntimeValue, member: string): RuntimeValueSlot {
   // Validate even when the field is used only as an assignment target.
-  memberValue(corner, member);
+  memberValue(value, member);
+  const field = valueTypeOf(value)?.members[member];
 
   return {
-    get: () => memberValue(corner, member),
-    set: (value) => {
-      if (member === 'vertex') corner.vertex = runtimeCoerceToType(value, 'FdPoint3d') as FdPoint3d;
-      else if (member === 'trType') corner.trType = Number(runtimeInteger(value));
-      else if (member === 'truncated') corner.truncated = runtimeTruthy(value);
-      else throw runtimeError('array member radii requires an element index');
+    get: () => memberValue(value, member),
+    set: (next) => {
+      if (!field?.set) throw runtimeError(`array member ${member} requires an element index`);
+      field.set(value, next, kValueOps);
     },
   };
 }
 
-const kCoercedTypes: readonly string[] = ['double', 'int', 'bool', 'FdPoint3d', 'FdVector3d', 'string'];
+// A stored value keeps its type: assignments convert into scalars, std::vector and the value types
+// that define a conversion (FdPoint3d, FdVector3d).
+const kCoercedScalars: readonly string[] = ['double', 'int', 'bool', 'string'];
 
 export function readLValue(ref: LValueRef): RuntimeValue {
   const current = ref.slot.get();
@@ -73,7 +73,7 @@ export function writeLValue(ref: LValueRef, value: RuntimeValue): void {
   if (ref.member === '') {
     const type = runtimeTypeName(ref.slot.get());
     ref.slot.set(
-      kCoercedTypes.includes(type) || stdVectorElementType(type)
+      kCoercedScalars.includes(type) || stdVectorElementType(type) || valueTypeNamed(type)?.coerce
         ? runtimeCoerceToType(value, type)
         : runtimeDeepCopy(value),
     );

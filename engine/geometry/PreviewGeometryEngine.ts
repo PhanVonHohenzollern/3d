@@ -1,12 +1,13 @@
 import { identityMatrix, multiply, type DMat4 } from '@engine/math/dmat4';
-import { apiSignatureMetadataForCall } from '@engine/runtime/ApiMetadata';
+import { effectiveApiArguments } from '@engine/runtime/ApiMetadata';
 import type { RuntimeApiCall, RuntimeResult } from '@engine/runtime/RuntimeTypes';
 import {
   appendCompositeApiMeshes,
   appendPrimitiveApiMeshes,
+  kCompositeGeometryHeaders,
   supportedPreviewApiNames,
 } from '@engine/geometry/adapters/apiAdapters';
-import { effectiveArguments, isGeometryCallName, warningFor } from '@engine/geometry/helpers/apiCall';
+import { isGeometryCallName, warningFor } from '@engine/geometry/helpers/apiCall';
 import { meshColorUpdate } from '@engine/geometry/helpers/colors';
 import { applyTransform, meshTransformDelta } from '@engine/geometry/helpers/meshTransform';
 import { asNumber, ref } from '@engine/geometry/helpers/valueDecoding';
@@ -21,22 +22,14 @@ export {
   type PreviewMeshVertex,
 } from '@engine/geometry/previewScene';
 
-const adapterWarningHeaders = new Set([
-  'PnGeometry3d.h',
-  'GeoCache3dInt.h',
-  'SymbolsInt.h',
-  'GrillsInt.h',
-  'TubularPrimitivesInt.h',
-  'RectangularPrimitivesInt.h',
-  'VascoPrimitivesInt.h',
-  'BowlPrimitivesInt.h',
-]);
+// Calls from these headers get a warning when no adapter draws them.
+const adapterWarningHeaders = new Set([...kCompositeGeometryHeaders, 'PnGeometry3d.h']);
 
 function missingAdapterWarning(call: RuntimeApiCall): string | null {
   if (call.userFunctionCall) return null;
   if (supportedPreviewApiNames().includes(call.name))
     return warningFor(call, 'invalid arguments or unsupported overload for this preview adapter');
-  const sig = apiSignatureMetadataForCall(call);
+  const sig = call.signature;
   if (!sig || !adapterWarningHeaders.has(sig.sourceHeader) || !isGeometryCallName(call.name)) return null;
 
   return warningFor(call, 'preview adapter not implemented; no substitute mesh was generated');
@@ -54,7 +47,7 @@ export class PreviewGeometryEngine {
     for (let apiIndex = 0; apiIndex < result.apiCalls.length; ++apiIndex) {
       const call = result.apiCalls[apiIndex];
       if (call.userFunctionCall) continue;
-      const args = effectiveArguments(call);
+      const args = effectiveApiArguments(call);
 
       if (call.name === 'preTransformMesh' || call.name === 'postTransformMesh') {
         const delta = meshTransformDelta(args);

@@ -1,47 +1,32 @@
 import { stdMax } from '@engine/runtime/cpp/cppStd';
 import { DVec3, normalized } from '@engine/math/DVec3';
-import { apiSignatureMetadataForCall, type ApiSignatureMetadata } from '@engine/runtime/ApiMetadata';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import { isArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { buildBoxMesh, buildConnectorFlangeMesh } from '@engine/geometry/builders/rectangularMeshes';
-import { parameterIndex, warningFor } from '@engine/geometry/helpers/apiCall';
+import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { sdkPerpVector, toFdVector, toVec, validDirection } from '@engine/geometry/helpers/geometryMath';
-import {
-  asBool,
-  asInt,
-  asNumber,
-  boolArray,
-  numberArray,
-  pointArray,
-  ref,
-  vectorArray,
-} from '@engine/geometry/helpers/valueDecoding';
+import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
 const noConnector = 5;
+const defaultConnectorWidth = 30.0;
 
-function argumentIndex(sig: ApiSignatureMetadata | null, args: RuntimeValue[], name: string): number {
-  const index = parameterIndex(sig, name);
-
-  return index >= 0 && index < args.length ? index : -1;
+// Whether a value is one the SDK's bool, int and double parameters accept.
+function isScalar(value: RuntimeValue): value is number | bigint | boolean {
+  return typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean';
 }
 
-function suppliedVectors(args: RuntimeValue[], index: number, count: number): FdVector3d[] | null {
-  const supplied: FdVector3d[] = [];
-  if (!vectorArray(args[index], supplied) || supplied.length < count + 1) return null;
+function sectionVectors(a: NamedArguments, name: string, count: number): FdVector3d[] {
+  const vectors = a.vectorArray(name);
+  if (vectors.length < count + 1) throw new Error(`makeBox ${name} must contain count+1 entries`);
 
-  return supplied.slice(0, count + 1);
+  return vectors.slice(0, count + 1);
 }
 
-function sectionNormals(
-  sig: ApiSignatureMetadata | null,
-  args: RuntimeValue[],
-  count: number,
-  centers: FdPoint3d[],
-): FdVector3d[] | null {
-  const vectorsIndex = argumentIndex(sig, args, 'vectors');
-  if (vectorsIndex >= 0) return suppliedVectors(args, vectorsIndex, count);
+function sectionNormals(a: NamedArguments, count: number, centers: FdPoint3d[]): FdVector3d[] {
+  if (a.has('vectors')) return sectionVectors(a, 'vectors', count);
   const normals: FdVector3d[] = [];
   for (let i = 0; i <= count; ++i) {
     let dir = new DVec3();
@@ -53,132 +38,92 @@ function sectionNormals(
   return normals;
 }
 
-function sectionUpVectors(
-  sig: ApiSignatureMetadata | null,
-  args: RuntimeValue[],
-  count: number,
-  normals: FdVector3d[],
-): FdVector3d[] | null {
-  const upIndex = argumentIndex(sig, args, 'upVectors');
-  if (upIndex >= 0) return suppliedVectors(args, upIndex, count);
+function sectionUpVectors(a: NamedArguments, count: number, normals: FdVector3d[]): FdVector3d[] {
+  if (a.has('upVectors')) return sectionVectors(a, 'upVectors', count);
 
   return normals.map(sdkPerpVector);
 }
 
-function sectionDimensions(
-  sig: ApiSignatureMetadata | null,
-  args: RuntimeValue[],
-  count: number,
-  arrayName: string,
-  scalarName: string,
-): number[] | null {
-  let index = parameterIndex(sig, arrayName);
-  if (index < 0) index = parameterIndex(sig, scalarName);
-  if (index < 0 || index >= args.length) return null;
-  const values: number[] = [];
-  if (numberArray(args[index], values)) return values.length >= count + 1 ? values : null;
-  const scalar = ref(0.0);
-  if (!asNumber(args[index], scalar)) return null;
+// One value per section, or a single value shared by every section.
+function sectionDimensions(a: NamedArguments, count: number, arrayName: string, scalarName: string): number[] {
+  const name = a.has(arrayName) ? arrayName : scalarName;
+  const value = a.get(name);
+  if (isScalar(value)) return new Array<number>(count + 1).fill(a.real(name));
+  if (!isArray(value)) throw new Error(`${name} must be a number or a number array`);
+  const values = a.realArray(name);
+  if (values.length < count + 1) throw new Error('makeBox width/height arguments are invalid');
 
-  return new Array<number>(count + 1).fill(scalar.v);
+  return values;
 }
 
-function visibleSides(sig: ApiSignatureMetadata | null, args: RuntimeValue[], count: number): boolean[] | null {
+function visibleSides(a: NamedArguments, count: number): boolean[] {
   const sides = new Array<boolean>(stdMax(0, count) * 4).fill(true);
-  const sidesIndex = argumentIndex(sig, args, 'sides');
-  if (sidesIndex < 0) return sides;
-  const supplied: boolean[] = [];
-  if (!boolArray(args[sidesIndex], supplied)) return null;
+  if (!a.has('sides')) return sides;
+  const supplied = a.flagArray('sides');
   for (let i = 0; i < sides.length && i < supplied.length; ++i) sides[i] = supplied[i];
 
   return sides;
 }
 
-function endCaps(sig: ApiSignatureMetadata | null, args: RuntimeValue[]): { beginning: boolean; endCap: boolean } {
-  const beginning = ref(false),
-    endCap = ref(false);
-  const beginIndex =
-    parameterIndex(sig, 'begining') >= 0 ? parameterIndex(sig, 'begining') : parameterIndex(sig, 'begin');
-  const endIndex = parameterIndex(sig, 'end');
-  if (beginIndex >= 0 && beginIndex < args.length) asBool(args[beginIndex], beginning);
-  if (endIndex >= 0 && endIndex < args.length) asBool(args[endIndex], endCap);
+function endCaps(a: NamedArguments): { beginning: boolean; endCap: boolean } {
+  const beginName = a.has('begining') ? 'begining' : 'begin';
 
-  return { beginning: beginning.v, endCap: endCap.v };
+  return { beginning: a.optionalFlag(beginName, false), endCap: a.optionalFlag('end', false) };
 }
 
-function connectorSettings(
-  sig: ApiSignatureMetadata | null,
-  args: RuntimeValue[],
-): { side1: number; side2: number; width: number } {
-  const side1 = ref(noConnector),
-    side2 = ref(noConnector);
-  let width = 30.0;
-  const connectorsIndex = argumentIndex(sig, args, 'connectors');
-  if (connectorsIndex >= 0) {
-    const enabled = ref(false);
-    if (asBool(args[connectorsIndex], enabled) && enabled.v) side1.v = side2.v = 0;
-  }
-  const connectorIndex = argumentIndex(sig, args, 'connector');
-  if (connectorIndex >= 0) {
-    const flags: boolean[] = [];
-    if (boolArray(args[connectorIndex], flags)) {
-      if (flags.length !== 0 && flags[0]) side1.v = 0;
-      if (flags.length > 1 && flags[1]) side2.v = 0;
-    } else {
-      const enabled = ref(false);
-      if (asBool(args[connectorIndex], enabled) && enabled.v) side1.v = side2.v = 0;
-    }
-  }
-  const side1Index = argumentIndex(sig, args, 'connector1Side');
-  const side2Index = argumentIndex(sig, args, 'connector2Side');
-  const widthIndex = argumentIndex(sig, args, 'connectorWidth');
-  if (side1Index >= 0) asInt(args[side1Index], side1);
-  if (side2Index >= 0) asInt(args[side2Index], side2);
-  if (widthIndex >= 0) {
-    const w = ref(0.0);
-    if (asNumber(args[widthIndex], w)) width = stdMax(0.0, w.v);
-  }
+// `connector` is either one flag per end or a single flag for both.
+function connectorFlags(a: NamedArguments): boolean[] {
+  const value = a.get('connector');
+  if (isArray(value) && value.elements.every(isScalar)) return a.flagArray('connector');
+  const both = a.optionalFlag('connector', false);
 
-  return { side1: side1.v, side2: side2.v, width };
+  return [both, both];
 }
 
-export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
-  const call = context.call;
+function connectorSettings(a: NamedArguments): { side1: number; side2: number; width: number } {
+  let side1 = noConnector,
+    side2 = noConnector;
+  if (a.optionalFlag('connectors', false)) side1 = side2 = 0;
+  const [first = false, second = false] = connectorFlags(a);
+  if (first) side1 = 0;
+  if (second) side2 = 0;
 
-  const warn = (reason: string) => {
-    scene.warnings.push(warningFor(call, reason));
-
-    return true;
+  return {
+    side1: a.optionalInt('connector1Side', side1),
+    side2: a.optionalInt('connector2Side', side2),
+    width: stdMax(0.0, a.optionalReal('connectorWidth', defaultConnectorWidth)),
   };
+}
 
-  const sig = apiSignatureMetadataForCall(call);
-  const countRef = ref(0);
-  const centers: FdPoint3d[] = [];
-  if (args.length < 2 || !asInt(args[0], countRef) || !pointArray(args[1], centers))
-    return warn('invalid makeBox count/centralPoints');
-  const count = countRef.v;
-  if (count < 0 || centers.length < count + 1) return warn('makeBox centralPoints must contain count+1 sections');
+function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): void {
+  const a = new NamedArguments(context, args);
+  const count = a.int('count');
+  const centers = a.pointArray('centralPoints');
+  if (count < 0 || centers.length < count + 1) throw new Error('makeBox centralPoints must contain count+1 sections');
 
-  const normals = sectionNormals(sig, args, count, centers);
-  if (!normals) return warn('makeBox vectors must contain count+1 entries');
-  if (!normals.every(validDirection)) return warn('makeBox section vector is zero');
+  const normals = sectionNormals(a, count, centers);
+  if (!normals.every(validDirection)) throw new Error('makeBox section vector is zero');
+  const upVectors = sectionUpVectors(a, count, normals);
+  const widths = sectionDimensions(a, count, 'tabWidth', 'width');
+  const heights = sectionDimensions(a, count, 'tabHeight', 'height');
+  const sides = visibleSides(a, count);
 
-  const upVectors = sectionUpVectors(sig, args, count, normals);
-  if (!upVectors) return warn('makeBox upVectors must contain count+1 entries');
-
-  const widths = sectionDimensions(sig, args, count, 'tabWidth', 'width');
-  const heights = widths && sectionDimensions(sig, args, count, 'tabHeight', 'height');
-  if (!widths || !heights) return warn('makeBox width/height arguments are invalid');
-
-  const sides = visibleSides(sig, args, count);
-  if (!sides) return warn('makeBox sides argument is invalid');
-
-  const { beginning, endCap } = endCaps(sig, args);
+  const { beginning, endCap } = endCaps(a);
   scene.meshes.push(
-    buildBoxMesh(context, count, centers, normals, upVectors, widths, heights, sides, beginning, endCap),
+    buildBoxMesh(context, {
+      count,
+      centers,
+      normals,
+      upVectors,
+      widths,
+      heights,
+      visibleSides: sides,
+      beginCap: beginning,
+      endCap,
+    }),
   );
 
-  const connectors = connectorSettings(sig, args);
+  const connectors = connectorSettings(a);
 
   const appendConnector = (section: number, side: number, directionSign: number) => {
     if (side === noConnector) return;
@@ -199,6 +144,11 @@ export function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext
 
   appendConnector(0, connectors.side1, -1.0);
   appendConnector(count, connectors.side2, 1.0);
-
-  return true;
 }
+
+const box = withAdapterErrors('invalid makeBox arguments', appendBox);
+
+export const boxAdapters: AdapterTable = {
+  makeBox: box,
+  makeBoxFromPlanes: box,
+};

@@ -1,207 +1,133 @@
 import { llroundToInt } from '@engine/runtime/cpp/cppStd';
 import { length, normalized } from '@engine/math/DVec3';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { FdPoint3d } from '@engine/runtime/FdMath';
 import { buildFacettedCylinderMesh } from '@engine/geometry/builders/circularMeshes';
 import {
   buildConnectorFlangeMesh,
   buildPolygonFaceMesh,
   buildRectFaceMesh,
 } from '@engine/geometry/builders/rectangularMeshes';
-import { warningFor } from '@engine/geometry/helpers/apiCall';
+import { namedAdapter } from '@engine/geometry/helpers/adapterErrors';
 import { kEps, sdkPerpVector, toPoint, toVec, validDirection } from '@engine/geometry/helpers/geometryMath';
 import { pushNonEmptyMesh } from '@engine/geometry/helpers/meshData';
-import { asBool, asNumber, asPoint, asVector, pointArray, ref } from '@engine/geometry/helpers/valueDecoding';
+import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
-import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
+import type { PreviewGeometryScene, PreviewMesh } from '@engine/geometry/previewScene';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-export function appendFacettedCylinder(
+// The frame width a connector gets unless the call supplies a positive connectorWidth.
+const kDefaultConnectorWidth = 30.0;
+
+function appendFacettedCylinder(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const start = a.point('startPoint'),
+    end = a.point('endPointD');
+  const up = a.fdVector('upVectorD');
+  const diameter = a.real('diam'),
+    startAngle = a.real('startAngle'),
+    endAngle = a.real('endAngle');
+  const complexity = llroundToInt(a.real('i'));
+  const front = a.flag('front'),
+    back = a.flag('back');
+  if (diameter <= 0.0 || complexity < 1 || length(toVec(end).sub(toVec(start))) <= kEps)
+    throw new Error('invalid facetted-cylinder dimensions');
+  scene.meshes.push(
+    buildFacettedCylinderMesh(context, start, end, up, diameter, startAngle, endAngle, complexity, front, back),
+  );
+}
+
+// makeScrew2's SW is the wrench size across the hexagon's flats; it is widened to the corner diameter.
+function appendScrew(
   scene: PreviewGeometryScene,
   context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
-  if (args.length !== 9) return false;
-  const call = context.call;
-  const start = ref(new FdPoint3d()),
-    end = ref(new FdPoint3d());
-  const up = ref(new FdVector3d());
-  const diameter = ref(0.0),
-    startAngle = ref(0.0),
-    endAngle = ref(0.0),
-    complexityD = ref(0.0);
-  const front = ref(false),
-    back = ref(false);
-  if (
-    !asPoint(args[0], start) ||
-    !asPoint(args[1], end) ||
-    !asVector(args[2], up) ||
-    !asNumber(args[3], diameter) ||
-    !asNumber(args[4], startAngle) ||
-    !asNumber(args[5], endAngle) ||
-    !asNumber(args[6], complexityD) ||
-    !asBool(args[7], front) ||
-    !asBool(args[8], back)
-  ) {
-    scene.warnings.push(warningFor(call, 'invalid facetted-cylinder arguments'));
-
-    return true;
-  }
-  const complexity = llroundToInt(complexityD.v);
-  if (diameter.v <= 0.0 || complexity < 1 || length(toVec(end.v).sub(toVec(start.v))) <= kEps) {
-    scene.warnings.push(warningFor(call, 'invalid facetted-cylinder dimensions'));
-
-    return true;
-  }
-  scene.meshes.push(
-    buildFacettedCylinderMesh(
-      context,
-      start.v,
-      end.v,
-      up.v,
-      diameter.v,
-      startAngle.v,
-      endAngle.v,
-      complexity,
-      front.v,
-      back.v,
-    ),
-  );
-
-  return true;
+  a: NamedArguments,
+  hexAcrossCorners: boolean,
+): void {
+  const start = a.point('cp');
+  const direction = a.fdVector('vector'),
+    up = a.fdVector('upVector');
+  let diameter = a.real(hexAcrossCorners ? 'SW' : 'd1');
+  const screwLength = a.real('length');
+  const back = a.flag('back'),
+    front = a.flag('front');
+  if (!validDirection(direction) || diameter <= 0.0 || Math.abs(screwLength) <= kEps)
+    throw new Error('invalid screw dimensions/vector');
+  if (hexAcrossCorners) diameter /= Math.cos(Math.PI / 6);
+  const dir = normalized(toVec(direction));
+  const end = toPoint(toVec(start).add(dir.mul(screwLength)));
+  scene.meshes.push(buildFacettedCylinderMesh(context, start, end, up, diameter, 0.0, 360.0, 6, front, back));
 }
 
-export function appendScrew(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
-  if (args.length !== 6 && args.length !== 7) return false;
-  const call = context.call;
-  const start = ref(new FdPoint3d());
-  const direction = ref(new FdVector3d()),
-    up = ref(new FdVector3d());
-  const diameter = ref(0.0),
-    screwLength = ref(0.0);
-  const back = ref(false),
-    front = ref(true);
-  if (
-    !asPoint(args[0], start) ||
-    !asVector(args[1], direction) ||
-    !asVector(args[2], up) ||
-    !asNumber(args[3], diameter) ||
-    !asNumber(args[4], screwLength) ||
-    !asBool(args[5], back) ||
-    (args.length === 7 && !asBool(args[6], front))
-  ) {
-    scene.warnings.push(warningFor(call, 'invalid screw arguments'));
-
-    return true;
-  }
-  if (!validDirection(direction.v) || diameter.v <= 0.0 || Math.abs(screwLength.v) <= kEps) {
-    scene.warnings.push(warningFor(call, 'invalid screw dimensions/vector'));
-
-    return true;
-  }
-  if (context.call.name === 'makeScrew2') diameter.v /= Math.cos(Math.PI / 6);
-  const dir = normalized(toVec(direction.v));
-  const end = toPoint(toVec(start.v).add(dir.mul(screwLength.v)));
-  scene.meshes.push(buildFacettedCylinderMesh(context, start.v, end, up.v, diameter.v, 0.0, 360.0, 6, front.v, back.v));
-
-  return true;
+function appendRectFace(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const center = a.point('center');
+  const normal = a.fdVector('normal'),
+    up = a.fdVector('upVect');
+  const height = a.real('height'),
+    width = a.real('width');
+  if (!validDirection(normal) || !validDirection(up) || height <= 0.0 || width <= 0.0)
+    throw new Error('invalid rect-face dimensions/vectors');
+  scene.meshes.push(buildRectFaceMesh(context, center, normal, up, height, width));
 }
 
-export function appendRectFace(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
-  if (args.length !== 5) return false;
-  const call = context.call;
-  const center = ref(new FdPoint3d());
-  const normal = ref(new FdVector3d()),
-    up = ref(new FdVector3d());
-  const height = ref(0.0),
-    width = ref(0.0);
-  if (
-    !asPoint(args[0], center) ||
-    !asVector(args[1], normal) ||
-    !asVector(args[2], up) ||
-    !asNumber(args[3], height) ||
-    !asNumber(args[4], width)
-  ) {
-    scene.warnings.push(warningFor(call, 'invalid rect-face arguments'));
-
-    return true;
-  }
-  if (!validDirection(normal.v) || !validDirection(up.v) || height.v <= 0.0 || width.v <= 0.0) {
-    scene.warnings.push(warningFor(call, 'invalid rect-face dimensions/vectors'));
-
-    return true;
-  }
-  scene.meshes.push(buildRectFaceMesh(context, center.v, normal.v, up.v, height.v, width.v));
-
-  return true;
+function appendPlane(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  pushNonEmptyMesh(scene, planeMesh(context, a));
 }
 
-export function appendPlane(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
-  const planePoints: FdPoint3d[] = [];
-  if (args.length !== 0 && pointArray(args[0], planePoints) && planePoints.length >= 4) {
-    pushNonEmptyMesh(scene, buildPolygonFaceMesh(context, planePoints.slice(0, 4)));
+// The overloads: a points[4] array, four corner points p1..p4, or a centred H x L rectangle.
+function planeMesh(context: MeshBuildContext, a: NamedArguments): PreviewMesh {
+  if (a.has('points')) {
+    const points = a.pointArray('points');
+    if (points.length < 4) throw new Error('points must contain four FdPoint3d');
 
-    return true;
+    return buildPolygonFaceMesh(context, points.slice(0, 4));
   }
-  if (args.length >= 4) {
-    const p1 = ref(new FdPoint3d()),
-      p2 = ref(new FdPoint3d()),
-      p3 = ref(new FdPoint3d()),
-      p4 = ref(new FdPoint3d());
-    if (asPoint(args[0], p1) && asPoint(args[1], p2) && asPoint(args[2], p3) && asPoint(args[3], p4)) {
-      pushNonEmptyMesh(scene, buildPolygonFaceMesh(context, [p1.v, p2.v, p3.v, p4.v]));
+  if (a.has('p1')) {
+    const corners: FdPoint3d[] = ['p1', 'p2', 'p3', 'p4'].map((name) => a.point(name));
 
-      return true;
-    }
+    return buildPolygonFaceMesh(context, corners);
   }
-  if (args.length >= 5) {
-    const cp = ref(new FdPoint3d());
-    const normal = ref(new FdVector3d()),
-      up = ref(new FdVector3d());
-    const h = ref(0.0),
-      l = ref(0.0);
-    if (
-      asPoint(args[0], cp) &&
-      asVector(args[1], normal) &&
-      asVector(args[2], up) &&
-      asNumber(args[3], h) &&
-      asNumber(args[4], l) &&
-      validDirection(normal.v) &&
-      validDirection(up.v) &&
-      h.v > 0.0 &&
-      l.v > 0.0
-    ) {
-      pushNonEmptyMesh(scene, buildRectFaceMesh(context, cp.v, normal.v, up.v, h.v, l.v));
+  const center = a.point('cp');
+  const normal = a.fdVector('normal'),
+    up = a.fdVector('upVector');
+  const height = a.real('H'),
+    planeLength = a.real('L');
+  if (!validDirection(normal) || !validDirection(up) || height <= 0.0 || planeLength <= 0.0)
+    throw new Error('invalid plane dimensions/vectors');
 
-      return true;
-    }
-  }
-
-  return false;
+  return buildRectFaceMesh(context, center, normal, up, height, planeLength);
 }
 
-export function appendConnector(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]): boolean {
-  const center = ref(new FdPoint3d());
-  const normal = ref(new FdVector3d());
-  if (args.length < 4 || !asPoint(args[0], center) || !asVector(args[1], normal)) return false;
+// connectorWidth only replaces the default frame width when it is a positive number; any other
+// value previews with the default rather than failing the call.
+function connectorFrameWidth(a: NamedArguments): number {
+  const width = a.optionalReal('connectorWidth', kDefaultConnectorWidth);
 
-  const up = ref(new FdVector3d());
-  const width = ref(0.0),
-    height = ref(0.0);
-  let frameWidth = 30.0;
-  if (args.length >= 5 && asVector(args[2], up)) {
-    if (!asNumber(args[3], width) || !asNumber(args[4], height)) return false;
-    if (args.length >= 6) {
-      const supplied = ref(0.0);
-      if (asNumber(args[5], supplied) && supplied.v > 0.0) frameWidth = supplied.v;
-    }
-  } else {
-    if (!asNumber(args[2], width) || !asNumber(args[3], height)) return false;
-    up.v = sdkPerpVector(normal.v);
-  }
-  if (!validDirection(normal.v) || !validDirection(up.v) || width.v <= 0.0 || height.v <= 0.0) return false;
+  return width > 0.0 ? width : kDefaultConnectorWidth;
+}
 
-  const connector = buildConnectorFlangeMesh(context, center.v, normal.v, up.v, width.v, height.v, frameWidth, 0, 1.0);
+// Without an upVector the connector is oriented by the SDK's perpendicular to its normal.
+function appendConnector(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const center = a.point('centralPoint');
+  const normal = a.fdVector('vector');
+  const withUpVector = a.has('upVector');
+  const up = withUpVector ? a.fdVector('upVector') : sdkPerpVector(normal);
+  const width = a.real('width'),
+    height = a.real('height');
+  const frameWidth = withUpVector ? connectorFrameWidth(a) : kDefaultConnectorWidth;
+  if (!validDirection(normal) || !validDirection(up) || width <= 0.0 || height <= 0.0)
+    throw new Error('invalid connector dimensions/vectors');
+
+  const connector = buildConnectorFlangeMesh(context, center, normal, up, width, height, frameWidth, 0, 1.0);
   pushNonEmptyMesh(scene, connector);
-
-  return true;
 }
+
+export const rectangularPrimitiveAdapters: AdapterTable = {
+  makeFacettedCylinder: namedAdapter('invalid facetted-cylinder arguments', appendFacettedCylinder),
+  makeRectFace: namedAdapter('invalid rect-face arguments', appendRectFace),
+  makeScrew: namedAdapter('invalid screw arguments', (scene, context, a) => appendScrew(scene, context, a, false)),
+  makeScrew2: namedAdapter('invalid screw arguments', (scene, context, a) => appendScrew(scene, context, a, true)),
+};
+
+export const rectangularCompositeAdapters: AdapterTable = {
+  makePlane: namedAdapter('invalid plane arguments', appendPlane),
+  makeConnector: namedAdapter('invalid connector arguments', appendConnector),
+};

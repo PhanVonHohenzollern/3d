@@ -1,3 +1,4 @@
+import { resolveApiSignature } from '@engine/runtime/ApiMetadata';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import type {
   RuntimeApiCall,
@@ -176,7 +177,7 @@ const decodeTrace = (t: Json): RuntimeArgumentTrace => ({
 });
 
 export function decodeApiCall(c: Json): RuntimeApiCall {
-  return {
+  const call: RuntimeApiCall = {
     line: c.line,
     parentApiIndex: c.parentApiIndex,
     userFunctionCall: c.userFunctionCall,
@@ -187,7 +188,11 @@ export function decodeApiCall(c: Json): RuntimeApiCall {
     formalParameterTypes: [...c.formalParameterTypes],
     display: c.display,
     argumentTraces: c.argumentTraces.map(decodeTrace),
+    signature: null,
   };
+  call.signature = resolveApiSignature(call);
+
+  return call;
 }
 
 export function decodeResult(r: Json): RuntimeResult {

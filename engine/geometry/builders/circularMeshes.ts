@@ -8,6 +8,7 @@ import {
   rotateAroundAxis,
   stableBasis,
   toVec,
+  deg,
 } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
@@ -176,7 +177,7 @@ export function buildFacettedCylinderMesh(
     const center = ring === 0 ? p0 : p1;
     for (let i = 0; i < ringCount; ++i) {
       const t = closedSweep ? i / facetCount : i / facetCount;
-      const angle = ((startAngleDeg + sweepDeg * t) * Math.PI) / 180.0;
+      const angle = deg(startAngleDeg + sweepDeg * t);
       const radial = u.mul(Math.cos(angle)).add(v.mul(Math.sin(angle)));
       mesh.vertices.push(vertex(center.add(radial.mul(radius)), radial));
     }
@@ -291,7 +292,7 @@ export function buildTorusSectionMesh(
   const sweepSegments = stdClamp(stdMax(1, segmentation), 1, 1024);
   const closed = Math.abs(sweepAngleDeg) >= 359.999;
   const sweepPoints = closed ? sweepSegments : sweepSegments + 1;
-  const sweep = (sweepAngleDeg * Math.PI) / 180.0;
+  const sweep = deg(sweepAngleDeg);
   const tubeRadius = Math.abs(diameter) * 0.5;
   const c0 = toVec(center);
 
@@ -352,10 +353,10 @@ export function buildSpheroidSectionMesh(
   const rC = Math.abs(diameters[2]) * 0.5;
   const latSteps = stdClamp(stdMax(1, complexity[0]), 1, 512);
   const lonSteps = stdClamp(stdMax(1, complexity[1]), 1, 1024);
-  const lat0 = (latAngles[0] * Math.PI) / 180.0;
-  const lat1 = (latAngles[1] * Math.PI) / 180.0;
-  const lon0 = (longAngles[0] * Math.PI) / 180.0;
-  const lon1 = (longAngles[1] * Math.PI) / 180.0;
+  const lat0 = deg(latAngles[0]);
+  const lat1 = deg(latAngles[1]);
+  const lon0 = deg(longAngles[0]);
+  const lon1 = deg(longAngles[1]);
 
   for (let i = 0; i <= latSteps; ++i) {
     const u = i / latSteps;

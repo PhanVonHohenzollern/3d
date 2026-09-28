@@ -99,18 +99,32 @@ export function buildRectFaceMesh(
   return mesh;
 }
 
-export function buildBoxMesh(
-  context: MeshBuildContext,
-  count: number,
-  centers: FdPoint3d[],
-  normals: FdVector3d[],
-  upVectors: FdVector3d[],
-  widths: number[],
-  heights: number[],
-  sides: boolean[],
-  beginning: boolean,
-  endCap: boolean,
-): PreviewMesh {
+// A rectangular duct through count + 1 sections. `visibleSides` holds four flags per segment
+// (all sides are drawn when it is empty); the caps close the first and last section.
+export interface BoxSections {
+  count: number;
+  centers: FdPoint3d[];
+  normals: FdVector3d[];
+  upVectors: FdVector3d[];
+  widths: number[];
+  heights: number[];
+  visibleSides?: boolean[];
+  beginCap?: boolean;
+  endCap?: boolean;
+}
+
+export function buildBoxMesh(context: MeshBuildContext, box: BoxSections): PreviewMesh {
+  const {
+    count,
+    centers,
+    normals,
+    upVectors,
+    widths,
+    heights,
+    visibleSides: sides = [],
+    beginCap: beginning = false,
+    endCap = false,
+  } = box;
   const mesh = context.createMesh();
 
   const sections = count + 1;

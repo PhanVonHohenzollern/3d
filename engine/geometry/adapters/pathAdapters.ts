@@ -1,62 +1,39 @@
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { cross, dot, DVec3, normalized } from '@engine/math/DVec3';
 import { buildSectionTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
-import { warningFor } from '@engine/geometry/helpers/apiCall';
-import { sdkPerpVector } from '@engine/geometry/helpers/geometryMath';
-import { pointArray } from '@engine/geometry/helpers/valueDecoding';
+import { appendSectionTube } from '@engine/geometry/builders/sectionTubes';
+import { namedAdapter } from '@engine/geometry/helpers/adapterErrors';
+import { deg, sdkPerpVector } from '@engine/geometry/helpers/geometryMath';
+import { vertex } from '@engine/geometry/helpers/meshData';
+import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
-import { appendTube } from '@engine/geometry/adapters/tubeAdapters';
-import { cross, dot, DVec3, normalized } from '@engine/math/DVec3';
-import { vertex } from '@engine/geometry/helpers/meshData';
+import type { AdapterTable } from '@engine/geometry/adapters/types';
 
-export function appendRotatablePlane(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
-  const points: FdPoint3d[] = [];
-  if (
-    !pointArray(args[0], points) ||
-    points.length < 4 ||
-    !(args[1] instanceof FdVector3d) ||
-    !(args[2] instanceof FdPoint3d)
-  )
-    return false;
-  const axis = args[1],
-    center = args[2],
-    angle = (Number(args[3]) * Math.PI) / 180;
-  if (!axis.length() || !Number.isFinite(angle)) {
-    scene.warnings.push(warningFor(context.call, 'invalid plane rotation'));
+// The makeTube parameters that makeTruncatedTube starts with, in the shared builder's order.
 
-    return true;
-  }
+function appendRotatablePlane(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const points = a.pointArray('points');
+  if (points.length < 4) throw new Error('points must contain four points');
+  const axis = a.fdVector('rotAxisVector'),
+    center = a.point('rotPoint'),
+    angle = deg(a.real('alpha'));
+  if (!axis.length() || !Number.isFinite(angle)) throw new Error('invalid plane rotation');
   scene.meshes.push(
     buildPolygonFaceMesh(
       context,
       points.slice(0, 4).map((p) => p.rotateBy(angle, axis, center)),
     ),
   );
-
-  return true;
 }
 
-export function appendElbowedTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
-  const points: FdPoint3d[] = [];
-  const diameter = Number(args[1]),
-    complexity = Number(args[2]),
-    count = Number(args[3]);
-  if (!pointArray(args[0], points)) return false;
-  if (diameter <= 0 || complexity < 1 || count < 1 || count >= points.length || !Number.isInteger(count)) {
-    scene.warnings.push(warningFor(context.call, 'invalid elbowed tube dimensions/count'));
-
-    return true;
-  }
+function appendElbowedTube(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const points = a.pointArray('centerPoints');
+  const diameter = a.real('diam'),
+    complexity = a.real('n'),
+    count = a.real('numOfSegs');
+  if (diameter <= 0 || complexity < 1 || count < 1 || count >= points.length || !Number.isInteger(count))
+    throw new Error('invalid elbowed tube dimensions/count');
   const normals = points.slice(0, count + 1).map((p, i) =>
     i === 0
       ? points[1].sub(p).normal()
@@ -68,11 +45,7 @@ export function appendElbowedTube(
             .add(points[i + 1].sub(p).normal())
             .normal(),
   );
-  if (normals.some((n) => n.length() === 0)) {
-    scene.warnings.push(warningFor(context.call, 'coincident points or reversing elbow path'));
-
-    return true;
-  }
+  if (normals.some((n) => n.length() === 0)) throw new Error('coincident points or reversing elbow path');
   scene.meshes.push(
     buildSectionTubeMesh(
       context,
@@ -85,26 +58,17 @@ export function appendElbowedTube(
       false,
     ),
   );
-
-  return true;
 }
 
-export function appendTruncatedTube(
-  scene: PreviewGeometryScene,
-  context: MeshBuildContext,
-  args: RuntimeValue[],
-): boolean {
-  if (!(args[8] instanceof FdPoint3d) || !(args[9] instanceof FdVector3d)) return false;
-  const origin = new DVec3(args[8].x, args[8].y, args[8].z),
-    normal = normalized(new DVec3(args[9].x, args[9].y, args[9].z));
-  if (dot(normal, normal) < 1e-9) {
-    scene.warnings.push(warningFor(context.call, 'zero truncation normal'));
-
-    return true;
-  }
+// makeTube, clipped to the half space behind the plane through centerTr facing normalTr.
+function appendTruncatedTube(scene: PreviewGeometryScene, context: MeshBuildContext, a: NamedArguments): void {
+  const centerTr = a.point('centerTr'),
+    normalTr = a.fdVector('normalTr');
+  const origin = new DVec3(centerTr.x, centerTr.y, centerTr.z),
+    normal = normalized(new DVec3(normalTr.x, normalTr.y, normalTr.z));
+  if (dot(normal, normal) < 1e-9) throw new Error('zero truncation normal');
   const temporary: PreviewGeometryScene = { meshes: [], warnings: [] };
-  appendTube(temporary, context, args.slice(0, 8));
-  scene.warnings.push(...temporary.warnings);
+  appendSectionTube(temporary, context, a);
   const mesh = context.createMesh();
   for (const source of temporary.meshes)
     for (let k = 0; k < source.indices.length; k += 3) {
@@ -128,6 +92,10 @@ export function appendTruncatedTube(
       for (let j = 1; j + 1 < clipped.length; ++j) mesh.indices.push(start, start + j, start + j + 1);
     }
   if (mesh.indices.length) scene.meshes.push(mesh);
-
-  return true;
 }
+
+export const pathAdapters: AdapterTable = {
+  makeElbowedTube: namedAdapter('invalid elbowed tube', appendElbowedTube),
+  makeTruncatedTube: namedAdapter('invalid truncated tube', appendTruncatedTube),
+  makeRotatablePlane: namedAdapter('invalid rotatable plane', appendRotatablePlane),
+};

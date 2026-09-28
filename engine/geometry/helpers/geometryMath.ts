@@ -65,3 +65,47 @@ export function sdkPerpVector(direction: FdVector3d): FdVector3d {
 export function validDirection(v: FdVector3d): boolean {
   return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) > kEps;
 }
+
+export function deg(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+// The point at angle t (radians) on the ellipse around `center` with semi-axes a along u and b along v.
+export function ellipsePoint(center: DVec3, u: DVec3, v: DVec3, a: number, b: number, t: number): DVec3 {
+  return center.add(u.mul(a * Math.cos(t))).add(v.mul(b * Math.sin(t)));
+}
+
+export interface ArcSection {
+  t: number;
+  theta: number;
+  center: DVec3;
+  normal: DVec3;
+}
+
+// count + 1 sections along a circular bend: it starts `lead` along `normal` from `origin`, turns by
+// `angle` radians toward `turn`, with radius `along` in the normal direction and `across` toward
+// `turn`. Each section has its centre and the rotated normal.
+export function sweepAlongArc(
+  origin: DVec3,
+  normal: DVec3,
+  turn: DVec3,
+  lead: number,
+  along: number,
+  across: number,
+  angle: number,
+  count: number,
+): ArcSection[] {
+  const axis = normalized(cross(normal, turn));
+
+  return Array.from({ length: count + 1 }, (_, i) => {
+    const t = i / count,
+      theta = angle * t;
+
+    return {
+      t,
+      theta,
+      center: origin.add(normal.mul(lead + along * Math.sin(theta))).add(turn.mul(across * (1 - Math.cos(theta)))),
+      normal: rotateAroundAxis(normal, axis, theta),
+    };
+  });
+}

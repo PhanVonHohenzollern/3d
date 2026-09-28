@@ -1,7 +1,7 @@
 import { runtimeError } from '@engine/runtime/cpp/cpp';
-import { ExprParser } from '@engine/runtime/interpreter/ExprParser';
+import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
-import { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
+import { kNoVariables } from '@engine/runtime/interpreter/evalContext';
 import { runtimeTruthy } from '@engine/runtime/RuntimeValue';
 import { parseCallArguments, TokKind, tokensToExpression, type Token } from '@engine/runtime/helpers/tokens';
 
@@ -61,7 +61,7 @@ export function preprocess(code: string): { code: string; definitions: string[];
       token.kind === TokKind.Identifier ? { ...token, kind: TokKind.Number, text: '0', number: 0 } : token,
     );
 
-    return runtimeTruthy(new ExprParser(tokens, new RuntimeState()).parse());
+    return runtimeTruthy(evaluateExpression(tokens, kNoVariables));
   };
 
   const source = code

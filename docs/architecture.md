@@ -57,7 +57,7 @@ Four more rules:
 
 `lint:boundaries` reads the slice folders on every run, so a new slice is checked as soon as it exists. It runs in `npm run validate` and in CI, and any finding fails the run (GPW-38). It is a separate config because resolving every import for these rules is slower than the rest of `npm run lint`.
 
-`no-cycle` only sees runtime imports: it skips `import type`. The four cycles known at the start of the migration all go through a type-only import, so they are not reported. GPW-15 and GPW-45 remove them.
+`no-cycle` only sees runtime imports: it skips `import type`. The type-only cycles known at the start of the migration are gone (GPW-15, GPW-45): metadata interfaces live in `*.types.ts` files, panel handle types live with their models, and the expression parser depends on an `EvalContext` interface instead of `RuntimeState`. One type-only cycle is left on purpose: a `TreeWidgetItem` knows its `TreeWidget`.
 
 At the start of the migration (branch `chore/p1-guardrails`), `lint:boundaries` reported 10 warnings and no cycles:
 
@@ -108,10 +108,15 @@ A `use*` hook lives in the `model/` segment of the slice that owns its state. Cl
 - Each engine package exports its public API from `index.ts`. App code uses only that; engine tests may import internals.
 - The engine never imports from `src/`.
 - SDK knowledge is registered in tables, not spread through the interpreter:
-  - intrinsic functions (GPW-43)
-  - value types such as `FdBowlInfo` (GPW-44)
-  - preview adapters, one entry per API name (GPW-40)
-- Geometry reads resolved API calls from the runtime. It does not re-resolve overloads or fill in default arguments itself (GPW-39).
+  - intrinsic functions: `engine/runtime/intrinsics/` has one module per family (parameter and connector queries, insulation queries, point operations, line intersection, program control) and one registry that the executor, the expression parser and source scanning all read. `language` intrinsics such as `get_val` run before the program's own functions; `sdk` ones such as `setpt` run after them, so a helper with the same name replaces them. The expression parser has no side effects (GPW-43)
+  - value types: `engine/runtime/values/` has a `ValueType` per SDK type (`pointVector.ts`, `bowl.ts`) with its constructor, default, conversion, copy, description, methods and fields, listed in `registry.ts`. `values/core.ts` is the value model below the registry and `RuntimeValue.ts` the operations on top of it; mutating methods live in one table (`helpers/mutatingMethods.ts`) and `std::vector` front/back in `values/stdVector.ts` (GPW-44)
+  - preview adapters: each module in `engine/geometry/adapters/` exports an `AdapterTable` with one entry per API name, and `apiAdapters.ts` merges the tables and rejects a name registered twice. Adapters never branch on the API name; a variant is an option chosen in the table (GPW-40)
+- An adapter never imports another adapter (`npm run lint:boundaries`). Shared drawing code lives in `geometry/builders` (meshes: strokes, bowls, section tubes, boxes) and `geometry/helpers` (`withAdapterErrors`, `MeshSketch`/`FrameSketch`, `deg`, `ellipsePoint`, `sweepAlongArc`); display sizes and sampling caps are named in `geometry/config/previewConstants.ts` (GPW-41).
+- Adapters read arguments only through `NamedArguments`, by the parameter names of the call's resolved overload; strict readers (`point`, `fdVector`, `real`, `int`, `flag`, `pointArray`, …) require the SDK type, lenient ones (`vector`, `num`, `count`, …) accept what the SDK would convert, and `optionalFlag`/`optionalInt`/`optionalReal` give a fallback for optional settings. When an argument is wrong, the adapter throws an `Error` that names it; `withAdapterErrors` reports it as a warning on the call and the call counts as drawn. A call with no matching SDK overload never reaches an adapter: the engine warns that its arguments or overload are unsupported (GPW-42).
+- The interpreter: `RuntimeExecutor` picks the entry function and wires one `Execution` shared by `StatementExecutor`, `DeclarationEvaluator` and `FunctionCalls` (each under 400 lines). `RuntimeState` keeps its storage private; a program function call is a `pushFrame`/`popFrame` pair with a fresh `ControlFlow`, and every write that belongs in the variable history goes through `recordChange` (GPW-45).
+- Expressions are parsed once into a tree (`interpreter/expressions.ts`, cached per token array) and evaluated by `evaluator.ts`; a syntax error is an `error` node, so evaluation still runs what comes before it, as the old parse-while-evaluating interpreter did. Simple statements are classified once (`simpleStatements.ts`). Paths such as `a[i].front().x` are read by one function, `parsePathSteps`, for reads, assignments and source tracing, and bracket nesting by one walker, `scanTopLevel` (GPW-46).
+- The viewport: `ViewportEngine` is the public face the hooks and tests use, and wires the parts in `widgets/viewport/lib/render/`: `ViewportState` (what is shown and selected, and the visibility rules), `CameraController` (camera, scene scale, axes, fitting), `PickingService` (hit testing and Unite pick cycling), `OverlayLayer` (label panels, buttons, 2D drawing), `SceneRenderer` (the GL vertex buffer and draw calls), `ViewportInput` (drag, click, hover) and `SurfaceBinding` (canvases, GL context, frame scheduling). Colours, line widths and thresholds are named in `widgets/viewport/config/viewport.ts`. Each part is under 400 lines (GPW-47).
+- Geometry reads resolved API calls from the runtime. It reads the overload from `call.signature` and the arguments with defaults from `effectiveApiArguments`; it does not resolve overloads or fill in defaults itself (GPW-39).
 
 ## Migration map
 

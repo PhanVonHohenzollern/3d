@@ -12,6 +12,8 @@ import {
   TokKind,
   tokensToExpression,
   type Token,
+  balancedEnd,
+  scanTopLevel,
 } from '@engine/runtime/helpers/tokens';
 
 const kParameterQualifiers: readonly string[] = [
@@ -25,20 +27,9 @@ const kParameterQualifiers: readonly string[] = [
 ];
 
 export function signatureParameterList(signature: readonly Token[]): Token[] | null {
-  let lp = signature.length,
-    rp = signature.length;
-  let depth = 0;
-  for (let i = 0; i < signature.length; ++i) {
-    if (isSymbol(signature[i], '(')) {
-      if (depth++ === 0) lp = i;
-    } else if (isSymbol(signature[i], ')')) {
-      if (--depth === 0) {
-        rp = i;
-        break;
-      }
-    }
-  }
-  if (lp >= rp || rp > signature.length) return null;
+  const lp = scanTopLevel(signature, 0, (token, _i, depth) => depth === 0 && isSymbol(token, '('));
+  const rp = lp < signature.length ? balancedEnd(signature, lp) : signature.length;
+  if (lp >= rp) return null;
 
   return sliceTokens(signature, lp + 1, rp);
 }
@@ -127,20 +118,7 @@ export function functionArgumentRanks(fn: Statement, args: readonly RuntimeValue
 }
 
 export function parameterDefaultPos(param: readonly Token[]): number {
-  let paren = 0,
-    bracket = 0,
-    brace = 0;
-  for (let i = 0; i < param.length; ++i) {
-    if (isSymbol(param[i], '(')) ++paren;
-    else if (isSymbol(param[i], ')')) --paren;
-    else if (isSymbol(param[i], '[')) ++bracket;
-    else if (isSymbol(param[i], ']')) --bracket;
-    else if (isSymbol(param[i], '{')) ++brace;
-    else if (isSymbol(param[i], '}')) --brace;
-    else if (paren === 0 && bracket === 0 && brace === 0 && isSymbol(param[i], '=')) return i;
-  }
-
-  return param.length;
+  return scanTopLevel(param, 0, (t, _i, depth) => depth === 0 && isSymbol(t, '='));
 }
 
 export function parameterName(param: readonly Token[]): string {

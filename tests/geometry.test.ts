@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as apiMetadata from '@engine/runtime/ApiMetadata';
 import { adapterMap, supportedPreviewApiNames } from '@engine/geometry/adapters/apiAdapters';
 import { buildConnectorPreview } from '@engine/geometry/ConnectorPreview';
 import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
 import type { PreviewMesh } from '@engine/geometry/previewScene';
-import { apiSignatureMetadataForCall } from '@engine/runtime/ApiMetadata';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { RuntimeArray } from '@engine/runtime/RuntimeValue';
 import { what } from '@engine/runtime/cpp/cpp';
@@ -74,7 +74,7 @@ makeBox(1, fullPoints, normalVectors, upVectors, tabWidth, tabHeight, sides, fal
     expect(result.diagnostics).toEqual([]);
     expect(result.apiCalls).toHaveLength(4);
     for (const [i, call] of result.apiCalls.entries()) {
-      expect(apiSignatureMetadataForCall(call)?.parameters).toHaveLength(12);
+      expect(call.signature?.parameters).toHaveLength(12);
       const size = [200, 160, 160, 300][i];
       // Each API call must retain its arrays before the next chained assignment.
       for (const index of [4, 5]) expect((call.arguments[index] as RuntimeArray).elements).toEqual([size, size]);
@@ -159,7 +159,7 @@ makeBox(1, points, normals, ups, widths, heights, sides, edges, false, false, ${
       true,
     );
     expect(result.diagnostics).toEqual([]);
-    expect(apiSignatureMetadataForCall(result.apiCalls[0])?.parameters).toHaveLength(13);
+    expect(result.apiCalls[0].signature?.parameters).toHaveLength(13);
     const scene = new PreviewGeometryEngine().build(result);
     expect(scene.warnings).toEqual([]);
     const flanges = scene.meshes.filter((m) => m.apiName.endsWith('.connector'));
@@ -212,6 +212,36 @@ it('keeps external insulation dark red across color changes and restores colors 
   });
 });
 
+describe('API overload resolution', () => {
+  it('resolves each call once, in the runtime, and geometry reuses it', () => {
+    const source = [
+      'FdPoint3d a(0, 0, 0);',
+      'FdPoint3d b(0, 0, 10);',
+      'makeVerySimpleTube(a, b, 2, 12);',
+      'makeVerySimpleTube(b, a, 3);',
+      'makeDisc(a, FdVector3d(0, 0, 1), 4, 1, 16, false);',
+    ].join('\n');
+    const lookups = vi.spyOn(apiMetadata, 'resolveApiSignature');
+    try {
+      const runtime = new GeometryRuntime();
+      const result = runtime.executeUpToLine(source, 5, true);
+      expect(result.apiCalls).toHaveLength(3);
+      expect(lookups).toHaveBeenCalledTimes(3);
+      expect(result.apiCalls.map((call) => call.signature?.name)).toEqual([
+        'makeVerySimpleTube',
+        'makeVerySimpleTube',
+        'makeDisc',
+      ]);
+
+      const scene = new PreviewGeometryEngine().build(result);
+      expect(scene.meshes.length).toBeGreaterThan(0);
+      expect(lookups).toHaveBeenCalledTimes(3);
+    } finally {
+      lookups.mockRestore();
+    }
+  });
+});
+
 describe('preview adapter registry', () => {
   it('rejects an API name registered to two adapters', () => {
     const draw = () => true;
@@ -231,6 +261,16 @@ describe('preview adapter registry', () => {
     expect(scene.warnings).toEqual([]);
     expect(scene.meshes).toHaveLength(2);
     expect(supportedPreviewApiNames().filter((name) => name === 'make_line')).toHaveLength(1);
+  });
+
+  it('has an adapter for every PnGeometry.h make_* API', () => {
+    const supported = new Set(supportedPreviewApiNames());
+    const planar = apiMetadata
+      .allNativeApiSignatures()
+      .filter((signature) => signature.sourceHeader === 'PnGeometry.h' && signature.name.startsWith('make_'))
+      .map((signature) => signature.name);
+    expect(planar.length).toBeGreaterThan(30);
+    expect(planar.filter((name) => !supported.has(name))).toEqual([]);
   });
 
   it('keeps every API in no_adapter.cpp without an adapter, so that fixture still draws nothing', () => {
@@ -275,7 +315,7 @@ describe('tube-to-tube intersections', () => {
     [
       'a scalar angle',
       'double pos[2] = {100,0}; double ang = 90;',
-      'makeTubeToTubeIntersection: angles needs 1 number',
+      'makeTubeToTubeIntersection: angles must be a number array',
     ],
   ])('warns instead of drawing nothing for %s', (_, declarations, warning) => {
     const scene = build(
