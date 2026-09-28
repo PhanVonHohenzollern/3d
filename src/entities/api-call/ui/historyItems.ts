@@ -1,8 +1,8 @@
 import { runtimeSourceHistory } from '@engine/runtime';
 import type { RuntimeArgumentTrace, RuntimeResult } from '@engine/runtime';
 import { isArray, runtimeTypeName, type RuntimeValue } from '@engine/runtime';
-import { earlierChanges, historyValueText } from '@/helpers/apiHistory';
-import { compoundExpression, directSource, displayExpression } from '@/helpers/traceFormatting';
+import { earlierChanges, historyValueText } from '@/entities/api-call/lib/history';
+import { compoundExpression, directSource, displayExpression } from '@/entities/api-call/lib/traceFormatting';
 import { UserRole } from '@/shared/ui/tree';
 import { TreeWidgetItem } from '@/shared/ui/tree';
 

@@ -6,7 +6,7 @@ import { PreviewGeometryEngine, type PreviewGeometryScene } from '@engine/geomet
 import { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime';
 import { GeometryRuntime } from '@engine/runtime';
 import { emptyRuntimeResult, type RuntimeResult } from '@engine/runtime';
-import { isApiDebugItemId } from '@/helpers/debugItems';
+import { isApiDebugItemId } from '@/entities/api-call';
 import {
   closestTarget,
   floatingWindowSelector,

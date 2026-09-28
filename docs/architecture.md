@@ -65,7 +65,7 @@ At the start of the migration (branch `chore/p1-guardrails`), `lint:boundaries` 
 - 4 are `types/` importing from `hooks/` (`Action`, `TreeWidget`, `TreeWidgetItem`).
 - The engine already imports nothing from app code.
 
-After P2 (`shared/` layer): 3 warnings, all the viewport importing the API-call helpers that move to `entities/api-call` in GPW-23. `shared/` imports no app code, and `lint:boundaries` now warns if it does.
+After P2 (`shared/` layer): 3 warnings, all the viewport importing the API-call helpers that move to `entities/api-call` in GPW-23. After GPW-23: 0 warnings. `shared/` imports no app code, and `lint:boundaries` now warns if it does.
 
 ## Where does new code go?
 
@@ -143,7 +143,7 @@ Old location → new location, with the ticket that moves it. Each ticket update
 | `engine/runtime/helpers/preprocessor.ts`                                                                                                                             | `engine/runtime/interpreter/preprocessor.ts`                                                               | GPW-20 (done) |
 | `src/utils/{DVec3,dmat4}.ts` (the engine's model math)                                                                                                               | `engine/math/` (moved in GPW-19); not merged with the render math, see the open decisions below            | GPW-21 (done) |
 | `src/helpers/{parameters,parameterTable}.ts`, `ParameterRow`/`ParameterEditor` from `src/types/panels.ts`; new `isFunctionParameterKey` and `parameterSlotCount`     | `src/entities/parameter/{lib,model}/`                                                                      | GPW-22 (done) |
-| trace and history formatting, debug item ids                                                                                                                         | `src/entities/api-call/`                                                                                   | GPW-23        |
+| `src/helpers/{traceFormatting,apiHistory,debugItems,debugValueText}.ts`, `src/hooks/apiTrace/{traceItems,historyItems,TraceTree}.ts`                                 | `src/entities/api-call/{lib,ui}/`                                                                          | GPW-23 (done) |
 | `src/helpers/{variables,link}.ts`, link types                                                                                                                        | `src/entities/variable/`, `src/entities/connector/`                                                        | GPW-24        |
 | `src/hooks/mainWindow/FunctionWorkspace.ts`                                                                                                                          | `src/entities/source-function/`                                                                            | GPW-25        |
 | running the preview and the build cache (from `MainWindow`)                                                                                                          | `src/features/run-preview/`                                                                                | GPW-27        |

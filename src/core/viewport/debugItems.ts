@@ -1,5 +1,5 @@
-import { debugValueText } from '@/helpers/debugValueText';
-import { apiDebugItemId } from '@/helpers/debugItems';
+import { debugValueText } from '@/entities/api-call';
+import { apiDebugItemId } from '@/entities/api-call';
 import { clamp } from '@/utils/math';
 import { QVector3D } from '@/utils/Vector3D';
 import { apiParameterMetadataForCall, type ApiParameterMetadata } from '@engine/runtime';

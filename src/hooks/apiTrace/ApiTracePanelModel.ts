@@ -9,14 +9,8 @@ import {
   type RuntimeValueSource,
 } from '@engine/runtime';
 import { isArray, isPoint, isVector, type RuntimeValue } from '@engine/runtime';
-import { apiDebugItemId } from '@/helpers/debugItems';
-import {
-  changeExpression,
-  directSource,
-  displayExpression,
-  metadataTypeText,
-  otherInputs,
-} from '@/helpers/traceFormatting';
+import { apiDebugItemId } from '@/entities/api-call';
+import { changeExpression, directSource, displayExpression, metadataTypeText, otherInputs } from '@/entities/api-call';
 import type { ApiTracePanelHandle } from '@/types/panels';
 import { Observable } from '@/shared/lib/observable';
 import { TreeWidget, UserRole } from '@/shared/ui/tree';
@@ -33,8 +27,8 @@ import {
   setValue,
   TraceColumn,
   updateArraySummary,
-} from '@/hooks/apiTrace/traceItems';
-import { TraceTree } from '@/hooks/apiTrace/TraceTree';
+} from '@/entities/api-call';
+import { TraceTree } from '@/entities/api-call';
 
 const { Number: NumberColumn, Name, Type, Expression, Value, X, Z, Role, Line, ColumnCount } = TraceColumn;
 
