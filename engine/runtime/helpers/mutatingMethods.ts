@@ -11,8 +11,6 @@ import {
 } from '@engine/runtime/RuntimeValue';
 import { isSymbol, TokKind, type Token } from '@engine/runtime/helpers/tokens';
 
-export const kMutatingMethods: readonly string[] = ['rotateBy', 'normalize', 'mirror', 'set', 'push_back'];
-
 export function mutatingMethodDot(tokens: readonly Token[]): number {
   let bracket = 0,
     paren = 0;
@@ -34,12 +32,15 @@ export function mutatingMethodDot(tokens: readonly Token[]): number {
   return -1;
 }
 
-export function mutatedValue(
-  method: string,
+type Mutation = (
   target: RuntimeValue,
   args: readonly RuntimeValue[],
-): FdPoint3d | FdVector3d | RuntimeStdVector | null {
-  if (method === 'push_back') {
+) => FdPoint3d | FdVector3d | RuntimeStdVector | null;
+
+// Methods that replace the value they are called on (p.rotateBy(a, v) changes p). The only table of
+// them: a statement or expression calling one of these writes the result back to the variable.
+const kMutations: Readonly<Record<string, Mutation>> = {
+  push_back(target, args) {
     if (!(target instanceof RuntimeStdVector) || args.length !== 1)
       throw runtimeError('std::vector::push_back requires one element');
     if (target.elements.length >= 1000000) throw runtimeError('std::vector exceeds 1000000 elements');
@@ -48,8 +49,8 @@ export function mutatedValue(
     next.dimensions[0] = next.elements.length;
 
     return next;
-  }
-  if (method === 'rotateBy') {
+  },
+  rotateBy(target, args) {
     const axis = args[1];
     if (isPoint(target)) {
       if (args.length < 2 || args.length > 3 || !isVector(axis))
@@ -69,25 +70,40 @@ export function mutatedValue(
     }
 
     return null;
-  }
-  if (method === 'normalize') {
+  },
+  normalize(target) {
     if (!isVector(target)) throw runtimeError('normalize requires FdVector3d');
 
     return target.normalize();
-  }
-  if (method === 'mirror') {
+  },
+  mirror(target, args) {
     const normal = args[0];
     if (!isVector(target) || args.length !== 1 || !isVector(normal))
       throw runtimeError('mirror requires FdVector3d normal');
 
     return target.mirror(normal);
-  }
-  if (args.length !== 3) throw runtimeError('set requires x, y, z');
-  const x = runtimeNumber(args[0]),
-    y = runtimeNumber(args[1]),
-    z = runtimeNumber(args[2]);
-  if (isPoint(target)) return new FdPoint3d(x, y, z);
-  if (isVector(target)) return new FdVector3d(x, y, z);
+  },
+  set(target, args) {
+    if (args.length !== 3) throw runtimeError('set requires x, y, z');
+    const x = runtimeNumber(args[0]),
+      y = runtimeNumber(args[1]),
+      z = runtimeNumber(args[2]);
+    if (isPoint(target)) return new FdPoint3d(x, y, z);
+    if (isVector(target)) return new FdVector3d(x, y, z);
 
-  return null;
+    return null;
+  },
+};
+
+export function isMutatingMethod(method: string): boolean {
+  return Object.hasOwn(kMutations, method);
+}
+
+// The value after the method ran, or null when this type has no such mutating method.
+export function mutatedValue(
+  method: string,
+  target: RuntimeValue,
+  args: readonly RuntimeValue[],
+): FdPoint3d | FdVector3d | RuntimeStdVector | null {
+  return kMutations[method](target, args);
 }

@@ -1,8 +1,6 @@
 import { runtimeError, stdException } from '@engine/runtime/cpp/cpp';
 import { resolveApiSignature } from '@engine/runtime/ApiMetadata';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { FdBowlCorner, isBowlValue } from '@engine/runtime/FdBowlData';
-import { builtinFunction } from '@engine/runtime/helpers/builtinFunctions';
+import { FdVector3d } from '@engine/runtime/FdMath';
 import { createApiCall } from '@engine/runtime/helpers/apiCalls';
 import { braceListItems, createArray, inferArrayDimensions, isBraceList } from '@engine/runtime/helpers/arrays';
 import {
@@ -20,14 +18,16 @@ import {
 } from '@engine/runtime/helpers/functionSignatures';
 import {
   arraySlot,
-  bowlCornerSlot,
+  memberSlot,
   mapSlot,
   readLValue,
   writeLValue,
   type LValueRef,
 } from '@engine/runtime/helpers/lvalues';
-import { kMutatingMethods, mutatedValue, mutatingMethodDot } from '@engine/runtime/helpers/mutatingMethods';
-import { callMethod } from '@engine/runtime/helpers/pointVectorMembers';
+import { isMutatingMethod, mutatedValue, mutatingMethodDot } from '@engine/runtime/helpers/mutatingMethods';
+import { callMethod } from '@engine/runtime/helpers/valueMethods';
+import { valueTypeNamed, valueTypeOf } from '@engine/runtime/values/registry';
+import { isVectorEnd, vectorEndIndex } from '@engine/runtime/values/stdVector';
 import {
   findTopLevelAssignment,
   isIdentifier,
@@ -50,8 +50,8 @@ import {
   runtimeCoerceToType,
   runtimeDeepCopy,
   runtimeDefaultValueForType,
+  runtimeValueConstructor,
   runtimeInteger,
-  runtimeNumber,
   runtimeTruthy,
   runtimeTypeName,
   runtimeValueToCompactString,
@@ -102,7 +102,7 @@ export class RuntimeExecutor {
       // Bowl objects are changed in place by their own methods, so call them on the stored
       // object. The statement that contains the call records the change.
       const live = ref.member === '' ? ref.slot.get() : undefined;
-      if (isBowlValue(live)) return callMethod(live, method, args);
+      if (valueTypeOf(live)?.changedInPlace) return callMethod(live, method, args);
       const before = readLValue(ref),
         next = mutatedValue(method, before, args);
       if (!next) throw runtimeError('invalid mutating method target');
@@ -518,18 +518,10 @@ export class RuntimeExecutor {
 
       return new RuntimeStdVector(elementType, array.elements);
     }
-    if (type.startsWith('FdBowl'))
-      return builtinFunction(type)?.(inner.length ? args.map((arg) => this.evaluate(arg)) : []);
-    if (type === 'FdPoint3d' || type === 'FdVector3d') {
-      if (inner.length === 0) return runtimeDefaultValueForType(type);
-      if (args.length === 3) {
-        const x = runtimeNumber(this.evaluate(args[0]));
-        const y = runtimeNumber(this.evaluate(args[1]));
-        const z = runtimeNumber(this.evaluate(args[2]));
-
-        return type === 'FdPoint3d' ? new FdPoint3d(x, y, z) : new FdVector3d(x, y, z);
-      }
-    }
+    // An SDK value type: T v; T v(); T v(x, y, z); T v(other). Other argument counts fall through.
+    const construct = runtimeValueConstructor(type);
+    if (construct && (inner.length === 0 || args.length === 3 || valueTypeNamed(type)?.changedInPlace))
+      return construct(inner.length ? args.map((arg) => this.evaluate(arg)) : []);
     if (args.length === 1) return runtimeCoerceToType(this.evaluate(args[0]), type);
     throw runtimeError('unsupported direct initializer for ' + type);
   }
@@ -598,7 +590,7 @@ export class RuntimeExecutor {
       );
       // getFaceForInit returns a C++ reference. Keep the same face instance for
       // reference declarations, while ordinary bowl assignments remain copies.
-      if (decl.slice(0, p).some((token) => token.text === '&') && isBowlValue(value))
+      if (decl.slice(0, p).some((token) => token.text === '&') && valueTypeOf(value)?.changedInPlace)
         this.m_state.m_values.set(name, value);
     }
   }
@@ -634,18 +626,17 @@ export class RuntimeExecutor {
           throw runtimeError('expected member name after .');
         const member = tokens[p++].text;
         const current = slot.get();
-        if (current instanceof RuntimeStdVector && (member === 'front' || member === 'back')) {
+        if (isVectorEnd(current, member)) {
           if (tokens[p]?.text !== '(' || tokens[p + 1]?.text !== ')')
             throw runtimeError(`std::vector::${member} takes no arguments`);
-          if (current.elements.length === 0) throw runtimeError(`std::vector::${member} requires a non-empty vector`);
-          const index = member === 'front' ? 0 : current.elements.length - 1;
+          const index = vectorEndIndex(current, member);
           slot = arraySlot(current, index);
           path += `[${index}]`;
           p += 2;
           continue;
         }
-        if (current instanceof FdBowlCorner) {
-          slot = bowlCornerSlot(current, member);
+        if (valueTypeOf(current)?.hasFields) {
+          slot = memberSlot(current, member);
           path += '.' + member;
           continue;
         }
@@ -704,7 +695,7 @@ export class RuntimeExecutor {
     const dot = mutatingMethodDot(tokens);
     if (dot === -1) return false;
     const method = tokens[dot + 1].text;
-    if (!kMutatingMethods.includes(method)) return this.executeBowlMethod(tokens, sliceTokens(tokens, 0, dot), line);
+    if (!isMutatingMethod(method)) return this.executeBowlMethod(tokens, sliceTokens(tokens, 0, dot), line);
     const ref = this.resolveLValue(sliceTokens(tokens, 0, dot));
     if (ref.member !== '') throw runtimeError('method call on scalar member is invalid');
     const before = readLValue(ref);
@@ -738,7 +729,7 @@ export class RuntimeExecutor {
       return false;
     }
     const target = ref.member === '' ? ref.slot.get() : undefined;
-    if (!isBowlValue(target)) return false;
+    if (!valueTypeOf(target)?.changedInPlace) return false;
     const before = runtimeDeepCopy(target);
     this.evaluate(tokens);
     this.m_state.recordVariableChange(line, ref.path, 'method', tokensToExpression(tokens), before, ref.slot.get());

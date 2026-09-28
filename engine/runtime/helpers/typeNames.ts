@@ -1,5 +1,6 @@
 import { sdkCanonicalType, sdkTypeDefinition } from '@engine/runtime/SdkDefinitions';
 import { isIdentifier, isSymbol, TokKind, type Token } from '@engine/runtime/helpers/tokens';
+import { kValueTypeNames } from '@engine/runtime/values/registry';
 
 export interface ParsedType {
   type: string;
@@ -68,11 +69,7 @@ function parseTypeAt(tokens: readonly Token[], start: number): (ParsedType & { c
     else if (tokens[element.end]?.text === '>') pos = element.end + 1;
     else if (tokens[element.end]?.text === '>>') return { type, end: element.end + 1, closesEnclosing: true };
     else return null;
-  } else if (
-    !['auto', 'FdPoint3d', 'FdVector3d', 'FdBowlInfo', 'FdBowlFace', 'FdBowlCorner'].includes(type) &&
-    !sdkTypeDefinition(type) &&
-    !isScalarTypeName(type)
-  )
+  } else if (type !== 'auto' && !kValueTypeNames.includes(type) && !sdkTypeDefinition(type) && !isScalarTypeName(type))
     return null;
   skipQualifiers();
   if (sdkCanonicalType(type) === 'char' && pos < tokens.length && isSymbol(tokens[pos], '*')) {

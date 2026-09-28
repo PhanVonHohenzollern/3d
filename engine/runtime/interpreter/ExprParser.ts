@@ -1,11 +1,12 @@
 import { doubleToInt64, runtimeError } from '@engine/runtime/cpp/cpp';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { isBowlValue } from '@engine/runtime/FdBowlData';
 import { builtinFunction } from '@engine/runtime/helpers/builtinFunctions';
 import { createArray } from '@engine/runtime/helpers/arrays';
-import { kMutatingMethods } from '@engine/runtime/helpers/mutatingMethods';
+import { isMutatingMethod } from '@engine/runtime/helpers/mutatingMethods';
 import type { RuntimeFunctionMacro } from '@engine/runtime/helpers/macros';
-import { callMethod, indexValue, memberValue } from '@engine/runtime/helpers/pointVectorMembers';
+import { callMethod, indexValue, memberValue } from '@engine/runtime/helpers/valueMethods';
+import { valueTypeOf } from '@engine/runtime/values/registry';
+import { isVectorEnd } from '@engine/runtime/values/stdVector';
 import {
   makeToken,
   isIdentifier,
@@ -30,7 +31,6 @@ import {
   runtimeDeepCopy,
   runtimeInteger,
   runtimeTruthy,
-  RuntimeStdVector,
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
@@ -38,7 +38,7 @@ import type { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
 
 const kEndToken: Token = makeToken(TokKind.End, '', 0.0, 0);
 
-const kScopedConstants: ReadonlyMap<string, () => RuntimeValue> = new Map([
+const kScopedConstants: ReadonlyMap<string, () => RuntimeValue> = new Map<string, () => RuntimeValue>([
   ['FdVector3d::kXAxis', () => new FdVector3d(1, 0, 0)],
   ['FdVector3d::kYAxis', () => new FdVector3d(0, 1, 0)],
   ['FdVector3d::kZAxis', () => new FdVector3d(0, 0, 1)],
@@ -329,14 +329,18 @@ export class ExprParser {
         const member = this.current().text;
         ++this.m_pos;
         if (this.currentIs('(')) {
-          const elementReference = value instanceof RuntimeStdVector && (member === 'front' || member === 'back');
+          const elementReference = isVectorEnd(value, member);
           const args = this.parseArguments();
           if (!this.m_evaluate) value = 0n;
-          else if (reference && this.m_state.mutateValue && (kMutatingMethods.includes(member) || isBowlValue(value)))
+          else if (
+            reference &&
+            this.m_state.mutateValue &&
+            (isMutatingMethod(member) || valueTypeOf(value)?.changedInPlace)
+          )
             value = this.m_state.mutateValue(reference, member, args, this.m_tokens[start].line);
           else value = callMethod(value, member, args);
           if (elementReference && reference) reference = [...reference, ...this.m_tokens.slice(start, this.m_pos)];
-          else if (!kMutatingMethods.includes(member) || member === 'push_back') reference = undefined;
+          else if (!isMutatingMethod(member) || member === 'push_back') reference = undefined;
           if (member === 'push_back') value = undefined;
         } else {
           value = this.m_evaluate ? memberValue(value, member) : 0n;

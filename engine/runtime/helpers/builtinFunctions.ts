@@ -1,11 +1,10 @@
 import { cppPow, cppRound, runtimeError } from '@engine/runtime/cpp/cpp';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { FdBowlInfo, FdBowlFace, FdBowlCorner } from '@engine/runtime/FdBowlData';
 import {
   isString,
   isArray,
   runtimeCoerceToType,
   runtimeDefaultValueForType,
+  runtimeValueConstructor,
   runtimeNumber,
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
@@ -20,19 +19,6 @@ const numericConversion =
     if (args.length !== 1) throw runtimeError(name + ' conversion requires one argument');
 
     return runtimeCoerceToType(args[0], name);
-  };
-
-const pointOrVectorConstructor =
-  (name: 'FdPoint3d' | 'FdVector3d'): BuiltinFunction =>
-  (args) => {
-    if (args.length === 0) return name === 'FdPoint3d' ? new FdPoint3d() : new FdVector3d();
-    if (args.length === 1) return runtimeCoerceToType(args[0], name);
-    if (args.length !== 3) throw runtimeError(name + ' constructor requires 0, 1 or 3 arguments');
-    const x = runtimeNumber(args[0]),
-      y = runtimeNumber(args[1]),
-      z = runtimeNumber(args[2]);
-
-    return name === 'FdPoint3d' ? new FdPoint3d(x, y, z) : new FdVector3d(x, y, z);
   };
 
 const unary =
@@ -117,21 +103,9 @@ export function builtinFunction(name: string): BuiltinFunction | undefined {
 
       return index < 0 ? undefined : haystack.slice(index);
     };
-  if (name === 'asFdPoint3d' || name === 'AcGePoint3d') return pointOrVectorConstructor('FdPoint3d');
-  if (name === 'asFdVector3d' || name === 'AcGeVector3d') return pointOrVectorConstructor('FdVector3d');
-  if (name === 'FdBowlInfo')
-    return (args) =>
-      args[0] instanceof FdBowlInfo
-        ? args[0].clone()
-        : new FdBowlInfo(
-            args.length > 0 ? runtimeNumber(args[0]) : 4,
-            args.length > 1 ? runtimeNumber(args[1]) : 10,
-            args.length > 2 ? runtimeNumber(args[2]) : 10,
-          );
-  if (name === 'FdBowlFace') return (args) => (args[0] instanceof FdBowlFace ? args[0].clone() : new FdBowlFace());
-  if (name === 'FdBowlCorner') return () => new FdBowlCorner();
+  const valueConstructor = runtimeValueConstructor(name);
+  if (valueConstructor) return valueConstructor;
   if (isNumericType(name)) return numericConversion(name);
-  if (name === 'FdPoint3d' || name === 'FdVector3d') return pointOrVectorConstructor(name);
 
   return kMathFunctions.get(name);
 }
