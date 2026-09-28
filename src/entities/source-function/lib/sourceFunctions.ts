@@ -80,7 +80,20 @@ export function removeFunctionSource(source: string, name: string, signature?: s
   return source;
 }
 
-export function sourceFunctions(source: string): SourceFunction[] {
+const kParseCacheSize = 64;
+const parseCache = new Map<string, readonly SourceFunction[]>();
+
+export function sourceFunctions(source: string): readonly SourceFunction[] {
+  const cached = parseCache.get(source);
+  if (cached) return cached;
+  const parsed = Object.freeze(parseSourceFunctions(source).map((fn) => Object.freeze(fn)));
+  if (parseCache.size >= kParseCacheSize) parseCache.delete(parseCache.keys().next().value ?? '');
+  parseCache.set(source, parsed);
+
+  return parsed;
+}
+
+function parseSourceFunctions(source: string): SourceFunction[] {
   const functions: SourceFunction[] = [];
   const parseSource = maskPreprocessorLines(source);
   cppLanguage.parser.parse(parseSource).iterate({

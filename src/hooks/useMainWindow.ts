@@ -44,7 +44,7 @@ export function useMainWindow() {
         active: workspace.active,
         names: workspace.names,
         error: workspace.error,
-        unsaved: [...workspace.drafts.keys()].filter((name) => workspace.source(name) !== workspace.savedSource(name)),
+        unsaved: workspace.unsavedNames(),
       } satisfies FunctionEditorState,
       actions: functionActions,
     },

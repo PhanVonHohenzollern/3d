@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { cppLanguage } from '@codemirror/lang-cpp';
+import { describe, expect, it, vi } from 'vitest';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
 import { preprocess } from '@engine/runtime/interpreter/preprocessor';
@@ -8,8 +9,8 @@ import {
   removeFunctionSource,
   sourceFunctions,
   validFunctionCode,
-} from '@/helpers/functions';
-import { FunctionWorkspace } from '@/hooks/mainWindow/FunctionWorkspace';
+} from '@/entities/source-function';
+import { FunctionWorkspace } from '@/entities/source-function';
 import { RuntimeStdVector } from '@engine/runtime/RuntimeValue';
 
 describe('vendor C++ compatibility regressions', () => {
@@ -53,6 +54,21 @@ describe('vendor C++ compatibility regressions', () => {
     expect(result.diagnostics).toEqual([]);
     expect(runtime.evaluateNumericExpression('length')).toBe(50);
     expect(new PreviewGeometryEngine().build(result).meshes).toHaveLength(1);
+  });
+
+  it('parses each distinct source once and returns the same functions on repeat calls', () => {
+    const parse = vi.spyOn(cppLanguage.parser, 'parse');
+    try {
+      const source = 'void cachedHelper(double width = 3) { }';
+      const first = sourceFunctions(source);
+      expect(sourceFunctions(source)).toBe(first);
+      expect(parse).toHaveBeenCalledTimes(1);
+      expect(Object.isFrozen(first[0])).toBe(true);
+      sourceFunctions(source + '\n');
+      expect(parse).toHaveBeenCalledTimes(2);
+    } finally {
+      parse.mockRestore();
+    }
   });
 
   it('removes only the selected function and its declaration after conditional code', () => {

@@ -24,7 +24,7 @@ import { Observable } from '@/shared/lib/observable';
 import { Action } from '@/shared/lib/action';
 import { SingleShotTimer } from '@/shared/lib/SingleShotTimer';
 import { StatusBarModel } from '@/hooks/mainWindow/StatusBarModel';
-import { FunctionWorkspace } from '@/hooks/mainWindow/FunctionWorkspace';
+import { FunctionWorkspace } from '@/entities/source-function';
 
 export class MainWindow extends Observable {
   #editor: CodeEditorHandle | null = null;
@@ -208,7 +208,7 @@ export class MainWindow extends Observable {
     try {
       program = this.functions.program(source);
     } catch (error) {
-      this.functions.error = what(error);
+      this.functions.reportError(what(error));
       this.changed();
 
       return;
@@ -290,7 +290,7 @@ export class MainWindow extends Observable {
   // The Add Function dialog shows its own error; this keeps it from outliving the dialog.
   readonly clearFunctionError = (): void => {
     if (!this.functions.error) return;
-    this.functions.error = '';
+    this.functions.clearError();
     this.changed();
   };
 
@@ -298,8 +298,7 @@ export class MainWindow extends Observable {
     if (name === this.functions.active || (name && !this.functions.names.includes(name))) return;
     this.m_parameters.commitEditor();
     this.functions.edit(this.m_editor.toPlainText());
-    this.functions.active = name;
-    this.functions.error = '';
+    this.functions.select(name);
     this.showFunctionEditor();
   };
 
@@ -354,7 +353,7 @@ export class MainWindow extends Observable {
 
   readonly selectFunctionInputs = (name: string): void => {
     if (!this.canEditSubParameters) return;
-    this.functions.inputTab = name;
+    this.functions.selectInputTab(name);
     this.changed();
   };
 
@@ -377,7 +376,7 @@ export class MainWindow extends Observable {
     this.m_browsingTrace = false;
     this.m_apiTrace.clearApiFocus();
     this.m_editor.setTraceSourceLines(new Set());
-    this.functions.inputTab = this.functions.active;
+    this.functions.selectInputTab(this.functions.active);
     this.m_lastResult = emptyRuntimeResult();
     this.m_geometryScene = { meshes: [], warnings: [] };
     this.executionFeedback = { source: this.functions.source(), diagnostics: [] };
@@ -711,16 +710,16 @@ export class MainWindow extends Observable {
     try {
       program ??= this.functions.program(source);
     } catch (error) {
-      this.functions.error = what(error);
+      this.functions.reportError(what(error));
       this.changed();
 
       return;
     }
-    this.functions.error = '';
+    this.functions.clearError();
     this.#previewProgram = program;
     const parameterDefinitions = this.m_runtime
       .discoverParameters(program.source, program.options)
-      .filter((definition) => !definition.functionName || !this.functions.deleted.has(definition.functionName));
+      .filter((definition) => !definition.functionName || !this.functions.isDeleted(definition.functionName));
     this.m_parameters.setDefinitions(parameterDefinitions, program.source, program.options);
 
     this.m_runtime.setParameters(parameters ?? this.m_parameters.overrides());
