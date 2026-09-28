@@ -1,6 +1,10 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import type { ParameterPanelProps } from '@/types/panels';
-import { kParameterValueColumn, ParameterPanelModel } from '@/hooks/parameterPanel/ParameterPanelModel';
+import {
+  isInsulationEnabledKey,
+  kParameterValueColumn,
+  ParameterPanelModel,
+} from '@/hooks/parameterPanel/ParameterPanelModel';
 import { useObservable } from '@/hooks/useObservable';
 import { parameterTableCells, parameterTableText } from '@/helpers/parameterTable';
 import { parameterGridLayout } from '@/helpers/parameters';
@@ -149,7 +153,7 @@ export function useParameterPanel({ onChanged, ref }: ParameterPanelProps) {
       parameterNames: [
         ...new Set(
           model.rows
-            .filter((row) => (row.functionName ?? '') === model.activeTab && row.key !== 'getExtInsSize.enabled')
+            .filter((row) => (row.functionName ?? '') === model.activeTab && !isInsulationEnabledKey(row.key))
             .map((row) => row.texts[0]),
         ),
       ],

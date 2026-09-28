@@ -1,10 +1,22 @@
 import { useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { eventModifiers } from '@/helpers/keyboard';
 import { isInTableHeader, tableRowOf } from '@/helpers/tableEvents';
-import type { VariablePanelProps } from '@/types/panels';
+import type { ScrollRequest, VariablePanelProps } from '@/types/panels';
 import { isOnScrollbar } from '@/utils/dom';
 import { useObservable } from '@/hooks/useObservable';
+import { useScrollSelectionIntoView } from '@/hooks/useScrollSelectionIntoView';
 import { VariablePanelModel } from '@/hooks/variablePanel/VariablePanelModel';
+
+// Scroll this inspector only, keeping the selected row below its sticky header.
+function scrollToSelectedVariable(table: HTMLElement, request: ScrollRequest): void {
+  const row = table.querySelector<HTMLElement>(`tr[data-row="${request.row}"]`);
+  if (!row || !table.clientHeight) return;
+  const top = row.getBoundingClientRect().top - table.getBoundingClientRect().top + table.scrollTop;
+  const bottom = top + row.offsetHeight;
+  if (request.center) table.scrollTop = top - (table.clientHeight - row.offsetHeight) / 2;
+  else if (top < table.scrollTop + 28) table.scrollTop = top - 28;
+  else if (bottom > table.scrollTop + table.clientHeight) table.scrollTop = bottom - table.clientHeight;
+}
 
 export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps) {
   const [model] = useState(() => new VariablePanelModel());
@@ -16,28 +28,7 @@ export function useVariablePanel({ onSelectionChanged, ref }: VariablePanelProps
   }, [model, onSelectionChanged]);
   useImperativeHandle(ref, () => model, [model]);
 
-  const scrollRequest = model.scrollRequest;
-  useLayoutEffect(() => {
-    const table = tableRef.current;
-    if (!table || !scrollRequest) return;
-
-    const scrollToSelection = () => {
-      const row = table.querySelector<HTMLElement>(`tr[data-row="${scrollRequest.row}"]`);
-      if (!row || !table.clientHeight) return;
-      const top = row.getBoundingClientRect().top - table.getBoundingClientRect().top + table.scrollTop;
-      const bottom = top + row.offsetHeight;
-      // Scroll this inspector only, keeping the selected row below its sticky header.
-      if (scrollRequest.center) table.scrollTop = top - (table.clientHeight - row.offsetHeight) / 2;
-      else if (top < table.scrollTop + 28) table.scrollTop = top - 28;
-      else if (bottom > table.scrollTop + table.clientHeight) table.scrollTop = bottom - table.clientHeight;
-    };
-
-    scrollToSelection();
-    const observer = new ResizeObserver(scrollToSelection);
-    observer.observe(table);
-
-    return () => observer.disconnect();
-  }, [scrollRequest]);
+  useScrollSelectionIntoView(tableRef, model.scrollRequest, scrollToSelectedVariable);
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0 || isInTableHeader(event) || isOnScrollbar(event)) return;

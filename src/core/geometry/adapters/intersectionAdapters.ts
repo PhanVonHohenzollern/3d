@@ -27,7 +27,15 @@ interface Sample {
   normal: FdVector3d;
 }
 
-const numbers = (v: RuntimeValue): number[] => (isArray(v) ? v.elements.map(runtimeNumber) : []);
+// Reads an array argument that must supply at least `count` finite numbers. A short or scalar
+// argument used to turn into NaN positions, which drew nothing and warned about nothing.
+function numbers(v: RuntimeValue, count: number, label: string): number[] {
+  const values = isArray(v) ? v.elements.map(runtimeNumber) : [];
+  if (values.length < count || !values.slice(0, count).every(Number.isFinite))
+    throw new Error(`${label} needs ${count} number${count === 1 ? '' : 's'}`);
+
+  return values;
+}
 
 const defaultUp = (axis: FdVector3d): FdVector3d => {
   const ref = Math.abs(axis.z) < 0.9 ? new FdVector3d(0, 0, 1) : new FdVector3d(0, 1, 0);
@@ -140,9 +148,9 @@ export function appendTubeIntersection(
       half = false,
       onlyBranch = false;
     if (context.call.name === 'makeTubeToTubeIntersection2') {
-      const tube = numbers(args[index]),
-        inter = numbers(args[index + 1]),
-        angles = numbers(args[index + 2]);
+      const tube = numbers(args[index], 2, 'tubeData'),
+        inter = numbers(args[index + 1], 4, 'interTubeData'),
+        angles = numbers(args[index + 2], 0, 'angles');
       complexity = branchComplexity = runtimeNumber(args[index + 3]);
       half = runtimeTruthy(args[index + 4]);
       main = cylinder(start, normal, up, tube[0], tube[0], tube[1]);
@@ -152,11 +160,11 @@ export function appendTubeIntersection(
       const origin = start.add(main.axis.mul(inter[2])).add(main.side.mul(inter[3]));
       branch = cylinder(origin, direction, main.axis, inter[0], inter[0], inter[1]);
     } else {
-      const tube = numbers(args[index]),
-        position = numbers(args[index + 1]),
-        inter = numbers(args[index + 2]),
-        angles = numbers(args[index + 3]),
-        n = numbers(args[index + 4]);
+      const tube = numbers(args[index], 3, 'tubeParams'),
+        position = numbers(args[index + 1], 2, 'interTubePosition'),
+        inter = numbers(args[index + 2], 3, 'interTubeParams'),
+        angles = numbers(args[index + 3], 1, 'angles'),
+        n = numbers(args[index + 4], 2, 'complexities');
       const options = args[index + 5];
       onlyBranch = isArray(options) && runtimeTruthy(options.elements[2]);
       complexity = n[0];

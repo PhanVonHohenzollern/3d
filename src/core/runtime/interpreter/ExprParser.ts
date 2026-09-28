@@ -3,6 +3,7 @@ import { FdPoint3d, FdVector3d } from '@/core/runtime/FdMath';
 import { isBowlValue } from '@/core/runtime/FdBowlData';
 import { builtinFunction } from '@/core/runtime/helpers/builtinFunctions';
 import { createArray } from '@/core/runtime/helpers/arrays';
+import { isInsulationQuery } from '@/core/runtime/helpers/insulationQueries';
 import { kMutatingMethods } from '@/core/runtime/helpers/mutatingMethods';
 import type { RuntimeFunctionMacro } from '@/core/runtime/helpers/macros';
 import { callMethod, indexValue, memberValue } from '@/core/runtime/helpers/pointVectorMembers';
@@ -334,7 +335,7 @@ export class ExprParser {
           const elementReference = value instanceof RuntimeStdVector && (member === 'front' || member === 'back');
           const args = this.parseArguments();
           if (!this.m_evaluate) value = 0n;
-          else if (reference && kMutatingMethods.includes(member) && this.m_state.mutateValue)
+          else if (reference && this.m_state.mutateValue && (kMutatingMethods.includes(member) || isBowlValue(value)))
             value = this.m_state.mutateValue(reference, member, args, this.m_tokens[start].line);
           else value = callMethod(value, member, args);
           if (elementReference && reference) reference = [...reference, ...this.m_tokens.slice(start, this.m_pos)];
@@ -395,7 +396,7 @@ export class ExprParser {
       return this.m_evaluate ? createArray(parsed.type, dims) : 0n;
     }
     if (
-      (name === 'getExtInsSize' || name === 'getIntInsSize') &&
+      isInsulationQuery(name) &&
       this.current().text === '(' &&
       this.current(1).kind === TokKind.Identifier &&
       this.current(2).text === ')'
@@ -408,9 +409,7 @@ export class ExprParser {
       ? this.parseNamedCall(name, token.line)
       : !this.m_evaluate
         ? 0n
-        : isBowlValue(this.m_state.m_values.get(name))
-          ? this.m_state.m_values.get(name)
-          : this.m_state.lookupValue(name);
+        : this.m_state.lookupValue(name);
 
     return this.parsePostfix(value, callable ? undefined : [token]);
   }

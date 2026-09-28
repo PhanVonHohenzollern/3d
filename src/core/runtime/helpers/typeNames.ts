@@ -35,6 +35,14 @@ export function isNumericType(name: string): boolean {
 }
 
 export function parseRuntimeType(tokens: readonly Token[], start: number): ParsedType | null {
+  const parsed = parseTypeAt(tokens, start);
+
+  return parsed && !parsed.closesEnclosing ? { type: parsed.type, end: parsed.end } : null;
+}
+
+// The lexer reads `>>` as one token, so a nested `std::vector<std::vector<T>>` ends its inner list
+// with `>>`. closesEnclosing tells the enclosing vector that its own `>` was the second half.
+function parseTypeAt(tokens: readonly Token[], start: number): (ParsedType & { closesEnclosing: boolean }) | null {
   let pos = start;
 
   const skipQualifiers = () => {
@@ -53,10 +61,13 @@ export function parseRuntimeType(tokens: readonly Token[], start: number): Parse
     pos += 2;
   }
   if (type === 'std::vector' && tokens[pos]?.text === '<') {
-    const element = parseRuntimeType(tokens, pos + 1);
-    if (!element || tokens[element.end]?.text !== '>') return null;
+    const element = parseTypeAt(tokens, pos + 1);
+    if (!element) return null;
     type += '<' + sdkCanonicalType(element.type) + '>';
-    pos = element.end + 1;
+    if (element.closesEnclosing) pos = element.end;
+    else if (tokens[element.end]?.text === '>') pos = element.end + 1;
+    else if (tokens[element.end]?.text === '>>') return { type, end: element.end + 1, closesEnclosing: true };
+    else return null;
   } else if (
     !['auto', 'FdPoint3d', 'FdVector3d', 'FdBowlInfo', 'FdBowlFace', 'FdBowlCorner'].includes(type) &&
     !sdkTypeDefinition(type) &&
@@ -70,7 +81,7 @@ export function parseRuntimeType(tokens: readonly Token[], start: number): Parse
     skipQualifiers();
   }
 
-  return { type, end: pos };
+  return { type, end: pos, closesEnclosing: false };
 }
 
 export function isKnownSdkTypedef(tokens: readonly Token[]): boolean {

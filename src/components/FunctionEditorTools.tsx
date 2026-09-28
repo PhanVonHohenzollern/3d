@@ -9,6 +9,7 @@ export interface FunctionEditorToolsProps {
   unsaved: string[];
   error: string;
   add: (name: string) => boolean;
+  clearError: () => void;
   select: (name: string) => void;
   save: () => void;
   cancel: () => void;
@@ -52,7 +53,6 @@ export function FunctionEditorTabs(props: FunctionEditorToolsProps) {
 export function FunctionEditorFooter(props: FunctionEditorToolsProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
   if (props.active)
     return (
       <div className="flex basis-full items-center gap-1">
@@ -83,7 +83,7 @@ export function FunctionEditorFooter(props: FunctionEditorToolsProps) {
       onOpenChange={(value) => {
         setOpen(value);
         setName('');
-        setError('');
+        props.clearError();
       }}
     >
       <Dialog.Trigger asChild>
@@ -105,7 +105,6 @@ export function FunctionEditorFooter(props: FunctionEditorToolsProps) {
             onSubmit={(event) => {
               event.preventDefault();
               if (props.add(name)) setOpen(false);
-              else setError('Enter a unique tab name.');
             }}
           >
             <label className="mt-3 block text-xs">
@@ -114,12 +113,12 @@ export function FunctionEditorFooter(props: FunctionEditorToolsProps) {
                 className="mt-1"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                aria-invalid={!!error}
+                aria-invalid={!!props.error}
               />
             </label>
-            {error && (
+            {props.error && (
               <p role="alert" className="mt-2 text-xs text-error">
-                {props.error || error}
+                {props.error}
               </p>
             )}
             <div className="mt-4 flex justify-end gap-2">

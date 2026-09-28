@@ -29,6 +29,7 @@ import {
 } from '@/core/runtime/helpers/lvalues';
 import { parameterDisplayText, parameterTextToValue } from '@/core/runtime/helpers/parameters';
 import { kMutatingMethods, mutatedValue, mutatingMethodDot } from '@/core/runtime/helpers/mutatingMethods';
+import { callMethod } from '@/core/runtime/helpers/pointVectorMembers';
 import {
   findTopLevelAssignment,
   isIdentifier,
@@ -110,8 +111,12 @@ export class RuntimeExecutor {
   executeProgram(root: Statement): void {
     this.m_state.callFunction = (name, args, line) => this.executeCall(name, args, line, true);
     this.m_state.mutateValue = (target, method, args, line) => {
-      const ref = this.resolveLValue(target),
-        before = readLValue(ref),
+      const ref = this.resolveLValue(target);
+      // Bowl objects are changed in place by their own methods, so call them on the stored
+      // object. The statement that contains the call records the change.
+      const live = ref.member === '' ? ref.slot.get() : undefined;
+      if (isBowlValue(live)) return callMethod(live, method, args);
+      const before = readLValue(ref),
         next = mutatedValue(method, before, args);
       if (!next) throw runtimeError('invalid mutating method target');
       ref.slot.set(next);
@@ -709,25 +714,10 @@ export class RuntimeExecutor {
   }
 
   private executeMutatingMethod(tokens: readonly Token[], line: number): boolean {
-    const root = tokens[0]?.text;
-    if (isBowlValue(this.m_state.m_values.get(root)) && tokens[1]?.text === '.') {
-      const before = runtimeDeepCopy(this.m_state.m_values.get(root));
-      this.evaluate(tokens);
-      this.m_state.recordVariableChange(
-        line,
-        root,
-        'method',
-        tokensToExpression(tokens),
-        before,
-        this.m_state.m_values.get(root),
-      );
-
-      return true;
-    }
     const dot = mutatingMethodDot(tokens);
     if (dot === -1) return false;
     const method = tokens[dot + 1].text;
-    if (!kMutatingMethods.includes(method)) return false;
+    if (!kMutatingMethods.includes(method)) return this.executeBowlMethod(tokens, sliceTokens(tokens, 0, dot), line);
     const ref = this.resolveLValue(sliceTokens(tokens, 0, dot));
     if (ref.member !== '') throw runtimeError('method call on scalar member is invalid');
     const before = readLValue(ref);
@@ -745,6 +735,26 @@ export class RuntimeExecutor {
       readLValue(ref),
       sources,
     );
+
+    return true;
+  }
+
+  // A bowl method statement such as `info.setCovered(1)` or `infos[i].getFace(0).setCovered(1)`.
+  // The receiver can be any lvalue path; the call itself goes through mutateValue so it reaches
+  // the stored object rather than a copy.
+  private executeBowlMethod(tokens: readonly Token[], receiver: readonly Token[], line: number): boolean {
+    if (receiver[0]?.kind !== TokKind.Identifier || !this.m_state.m_values.has(receiver[0].text)) return false;
+    let ref: LValueRef;
+    try {
+      ref = this.resolveLValue(receiver);
+    } catch {
+      return false;
+    }
+    const target = ref.member === '' ? ref.slot.get() : undefined;
+    if (!isBowlValue(target)) return false;
+    const before = runtimeDeepCopy(target);
+    this.evaluate(tokens);
+    this.m_state.recordVariableChange(line, ref.path, 'method', tokensToExpression(tokens), before, ref.slot.get());
 
     return true;
   }
