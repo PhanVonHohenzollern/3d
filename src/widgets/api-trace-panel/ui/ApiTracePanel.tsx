@@ -13,7 +13,7 @@ export function ApiTracePanel(props: ApiTracePanelProps) {
       <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line px-2">
         <span
           className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
-          title="Select a call to highlight its geometry. Expand the arrow to inspect inputs."
+          title="Select to highlight geometry; expand for inputs"
         >
           Select a call · Expand to see inputs
         </span>

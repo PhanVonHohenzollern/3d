@@ -12,7 +12,7 @@ const FunctionEditorActions = () => {
         size="xs"
         variant="outline"
         className="mr-auto text-error"
-        title="Delete this function, its tab and its definition in Main"
+        title="Delete function, its tab and its code in Main"
         onClick={actions.current.remove}
       >
         Delete

@@ -14,7 +14,7 @@ export const PreviewModeToggle = ({ mode, debugBlocked, onBuild, onDebug }: Prev
       size="xs"
       variant={mode === 'build' ? 'default' : 'outline'}
       aria-pressed={mode === 'build'}
-      title="Build the full code and keep the preview until the next build"
+      title="Run all code; preview holds until next Build"
       onClick={onBuild}
     >
       Build
@@ -24,11 +24,7 @@ export const PreviewModeToggle = ({ mode, debugBlocked, onBuild, onDebug }: Prev
       variant={mode === 'debug' ? 'default' : 'outline'}
       aria-pressed={mode === 'debug'}
       disabled={debugBlocked}
-      title={
-        debugBlocked
-          ? 'Code changed — Build again to enable Debug'
-          : 'Debug to the current line and update the preview while editing'
-      }
+      title={debugBlocked ? 'Code changed · Build to enable Debug' : 'Run to the cursor line; preview follows edits'}
       onClick={onDebug}
     >
       Debug

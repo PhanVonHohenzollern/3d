@@ -32,8 +32,8 @@ export function SelectionModeButton({ engine }: SelectionModeButtonProps) {
         </TooltipTrigger>
         <TooltipContent side="top">
           {button.presentation === 'Separate'
-            ? 'Separate: focus the selected part. Click for Unite.'
-            : 'Unite: transparent meshes with points/vectors for the selected part. Click again at the same position to select objects behind it.'}
+            ? 'Selected part only · click for Unite'
+            : "See-through meshes · click a spot again to pick what's behind"}
         </TooltipContent>
       </Tooltip>
       <Tooltip>
@@ -56,8 +56,7 @@ export function SelectionModeButton({ engine }: SelectionModeButtonProps) {
           </Button>
         </TooltipTrigger>
         <TooltipContent side="top" align="start" sideOffset={8}>
-          Select {button.text === 'Mesh' ? 'meshes' : `${button.text.toLowerCase()}s`}. Click to cycle Point, Vector,
-          and Mesh.
+          Pick {button.text === 'Mesh' ? 'meshes' : `${button.text.toLowerCase()}s`} · click to cycle modes
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
