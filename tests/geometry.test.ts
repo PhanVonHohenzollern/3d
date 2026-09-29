@@ -7,7 +7,7 @@ import type { PreviewMesh } from '@engine/geometry/previewScene';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { RuntimeArray } from '@engine/runtime/RuntimeValue';
 import { what } from '@engine/runtime/cpp/cpp';
-import { cross, dot, DVec3 } from '@engine/math/DVec3';
+import { cross, dot, DVec3, length as vectorLength } from '@engine/math/DVec3';
 import { decodeResult, encodeConnector, encodeScene, type Json } from '@tests/support/codec';
 import { expectSameJson } from '@tests/support/compare';
 import { expectFiniteScene } from '@tests/support/finiteScene';
@@ -30,6 +30,50 @@ const triangleAreas = (mesh: PreviewMesh, normal: DVec3): number[] => {
 
 const signedArea = (mesh: PreviewMesh, normal: DVec3): number =>
   triangleAreas(mesh, normal).reduce((sum, area) => sum + area, 0);
+
+describe('makeBUTTV tube intersection boundary', () => {
+  it.each([56, 56.0001, -56, -56.0001])('builds both sides when the duct reaches the radius (%s)', (length) => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      `
+FdPoint3d start(0,0,16);
+double tube[3] = {112,112,32};
+double position[2] = {16,0};
+double duct[3] = {32,69.28,${length}};
+makeRectToTubeIntersection(start, -vz, -vx, tube, position, duct, 5);
+makeRectToTubeIntersection(start, -vz, vx, tube, position, duct, 5);`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(4);
+    expectFiniteScene(scene);
+    for (const mesh of scene.meshes) {
+      for (let i = 0; i < mesh.indices.length; i += 3) {
+        const [a, b, c] = mesh.indices.slice(i, i + 3).map((j) => {
+          const v = mesh.vertices[j];
+
+          return new DVec3(v.x, v.y, v.z);
+        });
+        expect(vectorLength(cross(b.sub(a), c.sub(a)))).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('still rejects a duct shorter than the radius', () => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `
+double tube[3]={112,112,32}, position[2]={16,0}, duct[3]={32,69.28,55.9999};
+makeRectToTubeIntersection(FdPoint3d(0,0,16), -vz, -vx, tube, position, duct, 5);`,
+      999,
+    );
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.meshes).toEqual([]);
+    expect(scene.warnings).toHaveLength(1);
+    expect(scene.warnings[0]).toContain('ductLength must reach diamB/2');
+  });
+});
 
 describe('makeEllipticalPlane', () => {
   const build = (source: string) => {

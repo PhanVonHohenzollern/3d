@@ -84,6 +84,7 @@ export class WorkspaceModel extends Observable {
     this.variables.selectionChanged.connect(selection.onVariableSelectionChanged);
     this.parameters.valuesChanged.connect(this.onParametersChanged);
     this.parameters.setAvailability((parameters) => this.session.activeParameterKeys(parameters));
+    this.session.parameterAvailabilityChanged.connect(() => this.parameters.refreshAvailability());
     this.apiTrace.selectionChanged.connect(selection.onApiTraceSelectionChanged);
     this.apiTrace.sourceActivated.connect(selection.onApiTraceSourceActivated);
     this.apiTrace.functionActivated.connect(selection.onApiTraceFunctionActivated);
@@ -106,6 +107,7 @@ export class WorkspaceModel extends Observable {
 
   dispose(): void {
     this.previewTimer.stop();
+    this.session.dispose();
   }
 
   get canExportObj(): boolean {

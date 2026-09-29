@@ -1,6 +1,6 @@
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
-import { ProgramParser } from '@engine/runtime/interpreter/ProgramParser';
-import { StatementKind, type Statement } from '@engine/runtime/interpreter/Statement';
+import { parseProgram } from '@engine/runtime/interpreter/ProgramParser';
+import { StatementKind, type Statement, type StatementVisitor } from '@engine/runtime/interpreter/Statement';
 import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '@engine/runtime/RuntimeTypes';
 import { isScalarTypeToken, normalizedScalarType } from '@engine/runtime/helpers/typeNames';
 import { functionParameters, functionScope } from '@engine/runtime/helpers/functionSignatures';
@@ -110,18 +110,24 @@ function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticPar
 }
 
 export function scanGetValParameters(code: string, options?: RuntimeExecutionOptions): RuntimeParameterRequest[] {
-  const tokens = new Lexer(code).scan();
   let root: Statement;
   try {
-    root = new ProgramParser(tokens).parse();
+    root = parseProgram(code);
   } catch {
+    const tokens = new Lexer(code).scan();
+
     return scanParameterTokens(tokens, scanScalarDeclarations(tokens));
   }
   const out: RuntimeParameterRequest[] = [];
   type Binding = StaticParameterDecl & { requests: RuntimeParameterRequest[] };
 
-  const walk = (s: Statement, bindings: Map<string, Binding>, functionName = ''): void => {
-    if (s.kind === StatementKind.Function) {
+  type Scope = { bindings: Map<string, Binding>; functionName: string };
+
+  const walk = (s: Statement, bindings: Map<string, Binding>, functionName = ''): void =>
+    s.accept(visitor, { bindings, functionName });
+
+  const visitor: StatementVisitor<void, Scope> = {
+    visitFunction(s, { bindings }) {
       const local = new Map(bindings);
       for (const parameter of functionParameters(s))
         for (const [name, declaration] of scanScalarDeclarations(parameter))
@@ -136,18 +142,25 @@ export function scanGetValParameters(code: string, options?: RuntimeExecutionOpt
             options,
           ),
         );
-
-      return;
-    }
-    if (s.kind === StatementKind.Block) {
+    },
+    visitBlock(s, { bindings, functionName }) {
       const local = new Map(bindings);
       for (const child of s.children)
         for (const [name, declaration] of scanScalarDeclarations(child.tokens))
           local.set(name, { ...declaration, requests: [] });
       for (const child of s.children) walk(child, local, functionName);
+    },
+    visitSimple: scanStatement,
+    visitIf: scanStatement,
+    visitFor: scanStatement,
+    visitWhile: scanStatement,
+    visitDo: scanStatement,
+    visitSwitch: scanStatement,
+    visitCase: scanStatement,
+    visitEmpty: scanStatement,
+  };
 
-      return;
-    }
+  function scanStatement(s: Statement, { bindings, functionName }: Scope): void {
     for (const [name, declaration] of scanScalarDeclarations(s.tokens))
       bindings.set(name, { ...declaration, requests: [] });
     for (const request of scanParameterTokens(s.tokens, bindings)) {
@@ -188,7 +201,7 @@ export function scanGetValParameters(code: string, options?: RuntimeExecutionOpt
         out.push(request);
     }
     for (const child of [s.thenBranch, s.elseBranch, s.body]) if (child) walk(child, new Map(bindings), functionName);
-  };
+  }
 
   walk(root, new Map());
 

@@ -14,6 +14,47 @@ import { FunctionWorkspace } from '@/entities/source-function';
 import { RuntimeArray, RuntimeStdVector } from '@engine/runtime/RuntimeValue';
 
 describe('vendor C++ compatibility regressions', () => {
+  it.each([';', '; /* empty declaration */ ;', '\n; // empty declaration\n;'])(
+    'keeps a qualified element with trailing %s in Main',
+    (suffix) => {
+      const source = `short CGeneralBlockCreator :: makeBUTTV() {
+      double DN = 32; get_val("DN", DN);
+      return 0;
+    }${suffix}`;
+      expect(mainFunctionName(source)).toBe('makeBUTTV');
+      const workspace = new FunctionWorkspace();
+      workspace.edit(source);
+      expect(workspace.names).toEqual([]);
+      const program = workspace.program();
+      const result = new GeometryRuntime().executeUpToLine(program.source, 999, true, program.options);
+      expect(result.diagnostics).toEqual([]);
+      expect(result.parameterRequests.map((p) => p.name)).toEqual(['DN']);
+      expect(mainFunctionName(source + '\nmakeBUTTV();')).toBeNull();
+    },
+  );
+
+  it('reuses parsed code without retaining parameter values, mutations, or future history', () => {
+    const source = `short element() {
+double height = 3; get_val("H", height);
+FdPoint3d p(0,0,0);
+p.z += height;
+makeFlatDisc(p, vz, 20, 5);
+p.z += 100;
+return 0;
+}`;
+    const runtime = new GeometryRuntime();
+    for (const height of [3, 9, 3]) {
+      runtime.setParameters(new Map([['H', String(height)]]));
+      const full = runtime.executeUpToLine(source, 999, true);
+      expect(full.diagnostics).toEqual([]);
+      expect(full.apiCalls[0].arguments[0]).toMatchObject({ z: height });
+      const partial = runtime.executeUpToLine(source, 5);
+      expect(partial.diagnostics).toEqual([]);
+      expect(partial.variables.find((v) => v.name === 'p')?.value).toMatchObject({ z: height });
+      expect(partial.variableChanges.every((change) => change.line <= 5)).toBe(true);
+    }
+  });
+
   it.each([
     ['centering', 'gear', 1, 1],
     ['centering', 'hand', 1, 0],

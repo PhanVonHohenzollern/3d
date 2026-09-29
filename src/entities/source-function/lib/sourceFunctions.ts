@@ -37,7 +37,12 @@ export function mainFunctionName(source: string): string | null {
     node;
     node = node.nextSibling
   )
-    if (node.name.endsWith('Statement') && node.name !== 'EmptyStatement') return null;
+    if (
+      node.name.endsWith('Statement') &&
+      node.name !== 'EmptyStatement' &&
+      containsCode(source.slice(node.from, node.to).replace(/;/g, ''))
+    )
+      return null;
 
   return sourceFunctions(source)[0]?.name ?? null;
 }

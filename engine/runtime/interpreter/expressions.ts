@@ -42,6 +42,47 @@ export type Expr = { failure: string | undefined } & (
 
 type Shape = Expr extends infer E ? (E extends Expr ? Omit<E, 'failure'> : never) : never;
 
+export type ExpressionNode<Kind extends Expr['kind']> = Extract<Expr, { kind: Kind }>;
+
+export type ExpressionVisitor<Result> = {
+  [Kind in Expr['kind'] as `visit${Capitalize<Kind>}`]: (node: ExpressionNode<Kind>) => Result;
+};
+
+export function visitExpression<Result>(expr: Expr, visitor: ExpressionVisitor<Result>): Result {
+  switch (expr.kind) {
+    case 'literal':
+      return visitor.visitLiteral(expr);
+    case 'constant':
+      return visitor.visitConstant(expr);
+    case 'name':
+      return visitor.visitName(expr);
+    case 'scoped':
+      return visitor.visitScoped(expr);
+    case 'call':
+      return visitor.visitCall(expr);
+    case 'unary':
+      return visitor.visitUnary(expr);
+    case 'update':
+      return visitor.visitUpdate(expr);
+    case 'cast':
+      return visitor.visitCast(expr);
+    case 'binary':
+      return visitor.visitBinary(expr);
+    case 'logical':
+      return visitor.visitLogical(expr);
+    case 'conditional':
+      return visitor.visitConditional(expr);
+    case 'sequence':
+      return visitor.visitSequence(expr);
+    case 'new':
+      return visitor.visitNew(expr);
+    case 'postfix':
+      return visitor.visitPostfix(expr);
+    case 'error':
+      return visitor.visitError(expr);
+  }
+}
+
 function node(shape: Shape, ...children: readonly (Expr | undefined)[]): Expr {
   const failure = shape.kind === 'error' ? shape.message : children.find((child) => child?.failure)?.failure;
 

@@ -16,7 +16,14 @@ import {
   subValues,
 } from '@engine/runtime/helpers/valueOperations';
 import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
-import { parseExpression, type Expr, type PostfixStep } from '@engine/runtime/interpreter/expressions';
+import {
+  parseExpression,
+  visitExpression,
+  type Expr,
+  type PostfixStep,
+  type ExpressionNode,
+  type ExpressionVisitor,
+} from '@engine/runtime/interpreter/expressions';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { runtimeCoerceToType, runtimeInteger, runtimeTruthy, type RuntimeValue } from '@engine/runtime/RuntimeValue';
 import { valueTypeOf } from '@engine/runtime/values/registry';
@@ -32,7 +39,7 @@ export function evaluateExpression(tokens: readonly Token[], context: EvalContex
 
 const kMacroTrees = new WeakMap<RuntimeFunctionMacro, readonly Token[]>();
 
-class Evaluator {
+class Evaluator implements ExpressionVisitor<RuntimeValue> {
   constructor(private readonly context: EvalContext) {}
 
   // `enabled` is false in a branch that does not run (the right side of a false `&&`): nothing is
@@ -43,54 +50,82 @@ class Evaluator {
 
       return 0n;
     }
-    switch (expr.kind) {
-      case 'literal':
-        return expr.value;
-      case 'constant':
-        return expr.make();
-      case 'error':
-        throw runtimeError(expr.message);
-      case 'name':
-      case 'scoped':
-      case 'postfix':
-        return this.postfix(expr);
-      case 'call':
-        return this.call(expr.name, expr.argGroups, expr.line);
-      case 'unary':
-        return this.unary(expr.op, this.evaluate(expr.operand));
-      case 'update':
-        if (!this.context.updateValue) throw runtimeError('increment/decrement requires an execution context');
 
-        return this.context.updateValue(this.updateTarget(expr.operand), expr.op, expr.prefix, expr.line);
-      case 'cast':
-        return runtimeCoerceToType(this.evaluate(expr.operand), expr.type);
-      case 'binary':
-        return binary(expr.op, this.evaluate(expr.left), this.evaluate(expr.right));
-      case 'logical': {
-        const left = runtimeTruthy(this.evaluate(expr.left));
-        const right = this.evaluate(expr.right, expr.op === '&&' ? left : !left);
+    return visitExpression(expr, this);
+  }
 
-        return expr.op === '&&' ? left && runtimeTruthy(right) : left || runtimeTruthy(right);
-      }
-      case 'conditional': {
-        const condition = runtimeTruthy(this.evaluate(expr.condition));
-        const yes = this.evaluate(expr.yes, condition);
-        const no = this.evaluate(expr.no, !condition);
+  visitLiteral(expr: ExpressionNode<'literal'>): RuntimeValue {
+    return expr.value;
+  }
 
-        return condition ? yes : no;
-      }
-      case 'sequence': {
-        let value: RuntimeValue;
-        for (const item of expr.items) value = this.evaluate(item);
+  visitConstant(expr: ExpressionNode<'constant'>): RuntimeValue {
+    return expr.make();
+  }
 
-        return value;
-      }
-      case 'new': {
-        const dims = expr.dims.map((dim) => Number(runtimeInteger(this.evaluate(dim))));
+  visitError(expr: ExpressionNode<'error'>): RuntimeValue {
+    throw runtimeError(expr.message);
+  }
 
-        return createArray(expr.type, dims);
-      }
-    }
+  visitName(expr: ExpressionNode<'name'>): RuntimeValue {
+    return this.postfix(expr);
+  }
+
+  visitScoped(expr: ExpressionNode<'scoped'>): RuntimeValue {
+    return this.postfix(expr);
+  }
+
+  visitPostfix(expr: ExpressionNode<'postfix'>): RuntimeValue {
+    return this.postfix(expr);
+  }
+
+  visitCall(expr: ExpressionNode<'call'>): RuntimeValue {
+    return this.call(expr.name, expr.argGroups, expr.line);
+  }
+
+  visitUnary(expr: ExpressionNode<'unary'>): RuntimeValue {
+    return this.unary(expr.op, this.evaluate(expr.operand));
+  }
+
+  visitUpdate(expr: ExpressionNode<'update'>): RuntimeValue {
+    if (!this.context.updateValue) throw runtimeError('increment/decrement requires an execution context');
+
+    return this.context.updateValue(this.updateTarget(expr.operand), expr.op, expr.prefix, expr.line);
+  }
+
+  visitCast(expr: ExpressionNode<'cast'>): RuntimeValue {
+    return runtimeCoerceToType(this.evaluate(expr.operand), expr.type);
+  }
+
+  visitBinary(expr: ExpressionNode<'binary'>): RuntimeValue {
+    return binary(expr.op, this.evaluate(expr.left), this.evaluate(expr.right));
+  }
+
+  visitLogical(expr: ExpressionNode<'logical'>): RuntimeValue {
+    const left = runtimeTruthy(this.evaluate(expr.left));
+    const right = this.evaluate(expr.right, expr.op === '&&' ? left : !left);
+
+    return expr.op === '&&' ? left && runtimeTruthy(right) : left || runtimeTruthy(right);
+  }
+
+  visitConditional(expr: ExpressionNode<'conditional'>): RuntimeValue {
+    const condition = runtimeTruthy(this.evaluate(expr.condition));
+    const yes = this.evaluate(expr.yes, condition);
+    const no = this.evaluate(expr.no, !condition);
+
+    return condition ? yes : no;
+  }
+
+  visitSequence(expr: ExpressionNode<'sequence'>): RuntimeValue {
+    let value: RuntimeValue;
+    for (const item of expr.items) value = this.evaluate(item);
+
+    return value;
+  }
+
+  visitNew(expr: ExpressionNode<'new'>): RuntimeValue {
+    const dims = expr.dims.map((dim) => Number(runtimeInteger(this.evaluate(dim))));
+
+    return createArray(expr.type, dims);
   }
 
   private unary(op: string, value: RuntimeValue): RuntimeValue {

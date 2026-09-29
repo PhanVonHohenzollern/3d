@@ -133,10 +133,10 @@ function appendRectToTubeIntersection(scene: PreviewGeometryScene, context: Mesh
     ductPosition[0] - halfWidth < -kEps ||
     ductPosition[0] + halfWidth > tubeParams[2] + kEps ||
     Math.abs(ductPosition[1]) + halfHeight > tubeParams[0] * 0.5 + kEps ||
-    Math.abs(ductParams[2]) <= tubeParams[1] * 0.5 + kEps
+    Math.abs(ductParams[2]) < tubeParams[1] * 0.5 - kEps
   )
     throw new Error(
-      'makeRectToTubeIntersection opening must lie within the main tube and ductLength must extend beyond diamB/2',
+      'makeRectToTubeIntersection opening must lie within the main tube and ductLength must reach diamB/2',
     );
   const [mainTube, duct] = buildRectTubeIntersectionMeshes(
     context,

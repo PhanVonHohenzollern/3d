@@ -44,7 +44,7 @@ makeRectToTubeIntersection(start, vz, tubeParams, ductPosition, ductParams, 1);
 makeRectToTubeIntersection(FdPoint3d(10, 20, 30), vy, tubeParams, centerPosition, edgeDuct, 5);
 // Invalid intersections.
 double outsidePosition[2] = {20, 0};
-double shortDuct[3] = {100, 80, 75};
+double shortDuct[3] = {100, 80, 74};
 double tooHigh[3] = {100, 250, 200};
 double zeroTube[3] = {0, 150, 600};
 makeRectToTubeIntersection(start, normal, up, tubeParams, outsidePosition, ductParams, 3);
