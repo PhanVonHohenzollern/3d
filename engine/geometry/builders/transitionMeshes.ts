@@ -1,3 +1,4 @@
+import earcut from 'earcut';
 import {
   stdClamp,
   stdMax,
