@@ -1,4 +1,4 @@
-import type { DVec3 } from '@engine/math/DVec3';
+import type { DVec3 } from '@engine/math';
 import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { appendStroke } from '@engine/geometry/builders/strokeMeshes';
 import { deg, toPoint } from '@engine/geometry/helpers/geometryMath';

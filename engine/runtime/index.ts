@@ -6,16 +6,31 @@ export {
   normalizedParameterType,
 } from '@engine/runtime/analysis/sourceFunctions';
 export type { FunctionDefinition, FunctionInput } from '@engine/runtime/analysis/sourceFunctions';
-export { allNativeApiSignatures, apiParameterMetadataForCall } from '@engine/runtime/ApiMetadata';
-export type { ApiParameterMetadata } from '@engine/runtime/ApiMetadata';
+export {
+  allNativeApiSignatures,
+  apiParameterMetadataForCall,
+  effectiveApiArguments,
+  resolveApiSignature,
+} from '@engine/runtime/ApiMetadata';
+export type { ApiParameterMetadata, ApiSignatureMetadata } from '@engine/runtime/ApiMetadata';
 export { apiParameterRole } from '@engine/runtime/ApiSemantics';
-export { formatFixed, formatGeneral, what } from '@engine/runtime/cpp/cpp';
+export { CppException, formatFixed, formatGeneral, what } from '@engine/runtime/cpp/cpp';
+export {
+  eraseUnique,
+  llroundToInt,
+  stdClamp,
+  stdMax,
+  stdMin,
+  stdSort4,
+  stdSort4Doubles,
+} from '@engine/runtime/cpp/cppStd';
 export { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/runtime/DebugAnchorResolver';
-export type { FdPoint3d } from '@engine/runtime/FdMath';
+export { FdBowlFace, FdBowlInfo } from '@engine/runtime/FdBowlData';
+export { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 export { GeometryRuntime, runtimeSourceHistory } from '@engine/runtime/GeometryRuntime';
 export { isInsulationQuery, kInsulationQueries } from '@engine/runtime/intrinsics';
 export type { InsulationQuery } from '@engine/runtime/intrinsics';
-export { emptyRuntimeResult, parameterKey } from '@engine/runtime/RuntimeTypes';
+export { emptyApiCall, emptyRuntimeResult, parameterKey } from '@engine/runtime/RuntimeTypes';
 export type {
   RuntimeApiCall,
   RuntimeArgumentTrace,
@@ -36,7 +51,9 @@ export {
   isString,
   isUnset,
   isVector,
+  RuntimeArray,
   runtimeNumber,
+  runtimeTruthy,
   runtimeTypeName,
   runtimeValueToCompactString,
   runtimeValueToString,

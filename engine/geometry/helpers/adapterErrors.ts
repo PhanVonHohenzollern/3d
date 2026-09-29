@@ -1,4 +1,4 @@
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { RuntimeValue } from '@engine/runtime';
 import type { ApiMeshAdapter } from '@engine/geometry/adapters/types';
 import { warningFor } from '@engine/geometry/helpers/apiCall';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';

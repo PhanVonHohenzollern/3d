@@ -1,6 +1,5 @@
-import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { isArray, runtimeNumber, runtimeTruthy, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { cross, DVec3, length, normalized } from '@engine/math';
+import { FdPoint3d, FdVector3d, isArray, runtimeNumber, runtimeTruthy, type RuntimeValue } from '@engine/runtime';
 import { basisFromUp, toVec } from '@engine/geometry/helpers/geometryMath';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import {

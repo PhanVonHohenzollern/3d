@@ -1,4 +1,4 @@
-import type { DVec3 } from '@engine/math/DVec3';
+import type { DVec3 } from '@engine/math';
 import type { PreviewGeometryScene, PreviewMesh, PreviewMeshVertex } from '@engine/geometry/previewScene';
 
 export const f32 = Math.fround;

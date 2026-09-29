@@ -1,6 +1,4 @@
-import { llroundToInt } from '@engine/runtime/cpp/cppStd';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { RuntimeArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { llroundToInt, FdPoint3d, FdVector3d, RuntimeArray, type RuntimeValue } from '@engine/runtime';
 
 export interface Ref<T> {
   v: T;

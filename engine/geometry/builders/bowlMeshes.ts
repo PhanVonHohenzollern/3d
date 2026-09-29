@@ -1,7 +1,6 @@
 import earcut from 'earcut';
-import { cross, dot, DVec3, length, normalized } from '@engine/math/DVec3';
-import { FdBowlFace, FdBowlInfo } from '@engine/runtime/FdBowlData';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { cross, dot, DVec3, length, normalized } from '@engine/math';
+import { FdBowlFace, FdBowlInfo, type RuntimeValue } from '@engine/runtime';
 import { warningFor } from '@engine/geometry/helpers/apiCall';
 import { stableBasis, toVec } from '@engine/geometry/helpers/geometryMath';
 import { vertex } from '@engine/geometry/helpers/meshData';

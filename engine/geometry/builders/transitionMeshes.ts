@@ -1,6 +1,14 @@
-import { stdClamp, stdMax, stdMin, stdSort4, stdSort4Doubles, eraseUnique } from '@engine/runtime/cpp/cppStd';
-import { cross, dot, DVec3, length, normalized } from '@engine/math/DVec3';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import {
+  stdClamp,
+  stdMax,
+  stdMin,
+  stdSort4,
+  stdSort4Doubles,
+  eraseUnique,
+  FdPoint3d,
+  FdVector3d,
+} from '@engine/runtime';
+import { cross, dot, DVec3, length, normalized } from '@engine/math';
 import { basisFromUp, circularFaceCount, kEps, toPoint, toVec } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';

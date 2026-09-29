@@ -1,4 +1,4 @@
-import { DVec3, length, normalized } from '@engine/math/DVec3';
+import { DVec3, length, normalized } from '@engine/math';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { basisFromUp, stableBasis } from '@engine/geometry/helpers/geometryMath';

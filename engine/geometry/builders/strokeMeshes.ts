@@ -1,4 +1,4 @@
-import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
+import { cross, DVec3, length, normalized } from '@engine/math';
 import { kStrokeHalfWidth } from '@engine/geometry/config/previewConstants';
 import { stableBasis } from '@engine/geometry/helpers/geometryMath';
 import { vertex } from '@engine/geometry/helpers/meshData';

@@ -1,5 +1,5 @@
-import { DVec3, length, normalized } from '@engine/math/DVec3';
-import { isArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { DVec3, length, normalized } from '@engine/math';
+import { isArray, type RuntimeValue } from '@engine/runtime';
 import { MeshSketch } from '@engine/geometry/helpers/sketch';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';

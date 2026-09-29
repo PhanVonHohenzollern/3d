@@ -1,4 +1,4 @@
-import { cross, normalized } from '@engine/math/DVec3';
+import { cross, normalized } from '@engine/math';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { rotateAroundAxis, deg } from '@engine/geometry/helpers/geometryMath';
 import { NamedArguments, type Frame } from '@engine/geometry/helpers/NamedArguments';
