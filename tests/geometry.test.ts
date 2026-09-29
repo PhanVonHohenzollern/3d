@@ -15,6 +15,22 @@ import { connectorDefinition, isLiteral, literalEvaluator } from '@tests/support
 import { expectedOutput } from '@tests/support/expected';
 import { listFixtures } from '@tests/support/fixtures';
 
+const kX = new DVec3(1, 0, 0);
+
+// The area of each triangle, positive when it faces `normal`.
+const triangleAreas = (mesh: PreviewMesh, normal: DVec3): number[] => {
+  const points = mesh.vertices.map((v) => new DVec3(v.x, v.y, v.z));
+
+  return Array.from({ length: mesh.indices.length / 3 }, (_, t) => {
+    const [a, b, c] = mesh.indices.slice(3 * t, 3 * t + 3).map((index) => points[index]);
+
+    return dot(cross(b.sub(a), c.sub(a)), normal) / 2;
+  });
+};
+
+const signedArea = (mesh: PreviewMesh, normal: DVec3): number =>
+  triangleAreas(mesh, normal).reduce((sum, area) => sum + area, 0);
+
 describe('makeEllipticalPlane', () => {
   const build = (source: string) => {
     const result = new GeometryRuntime().executeUpToLine(source, 999);
@@ -23,14 +39,12 @@ describe('makeEllipticalPlane', () => {
     return new PreviewGeometryEngine().build(result);
   };
 
-  it.each([5, 10])('keeps the hole and SDK bend orientation in the supplied makeDV example (n=%s)', (count) => {
+  it.each([5, 10])('keeps the hole and the SDK bend orientation (n=%s)', (count) => {
     const scene = build(`
-double B = 435, K = 30, BG_d = 7;
+double B = 435, BG_d = 7;
 FdPoint3d cP(0, 0, 0);
 cP.z += 0.5 * BG_d;
-FdPoint3d fullPoints[2] = { cP, cP };
-fullPoints[1].z += K;
-makeEllipticalPlane(fullPoints[0], vz, vx, 0.5 * (B - 50), 0.5 * B, ${count});`);
+makeEllipticalPlane(cP, vz, vx, 0.5 * (B - 50), 0.5 * B, ${count});`);
     expect(scene.warnings).toEqual([]);
     expect(scene.meshes).toHaveLength(1);
     const [mesh] = scene.meshes;
@@ -44,19 +58,12 @@ makeEllipticalPlane(fullPoints[0], vz, vx, 0.5 * (B - 50), 0.5 * B, ${count});`)
       expect([v.nx, v.ny, v.nz]).toEqual([1, 0, 0]);
       expect(Math.min(...[192.5, 217.5].map((r) => Math.abs(Math.hypot(v.y, v.z - 3.5) - r)))).toBeLessThan(0.0001);
     }
-    let area = 0;
-    for (let i = 0; i < mesh.indices.length; i += 3) {
-      const [a, b, c] = mesh.indices.slice(i, i + 3).map((index) => {
-        const v = mesh.vertices[index];
-
-        return new DVec3(v.x, v.y, v.z);
-      });
-      const triangleArea = cross(b.sub(a), c.sub(a)).x / 2;
-      expect(triangleArea).toBeGreaterThan(0);
-      area += triangleArea;
-    }
+    for (const area of triangleAreas(mesh, kX)) expect(area).toBeGreaterThan(0);
     // Area of the outer regular polygon minus the inner one; a filled fan fails this.
-    expect(area).toBeCloseTo((count / 2) * Math.sin((2 * Math.PI) / count) * (217.5 ** 2 - 192.5 ** 2), 1);
+    expect(signedArea(mesh, kX)).toBeCloseTo(
+      (count / 2) * Math.sin((2 * Math.PI) / count) * (217.5 ** 2 - 192.5 ** 2),
+      1,
+    );
   });
 
   it('uses the existing perpendicular-vector convention for the overload without upVector', () => {
@@ -99,17 +106,6 @@ describe('rectangular connector flanges', () => {
       Math.min(...mesh.vertices.map((v) => v[axis])),
       Math.max(...mesh.vertices.map((v) => v[axis])),
     ]);
-
-  const signedArea = (mesh: PreviewMesh, normal: DVec3) => {
-    let area = 0;
-    const points = mesh.vertices.map((v) => new DVec3(v.x, v.y, v.z));
-    for (let i = 0; i < mesh.indices.length; i += 3) {
-      const [a, b, c] = mesh.indices.slice(i, i + 3).map((index) => points[index]);
-      area += dot(cross(b.sub(a), c.sub(a)), normal) / 2;
-    }
-
-    return area;
-  };
 
   it('uses the same flat rim for the standalone makeConnector API', () => {
     const result = new GeometryRuntime().executeUpToLine('makeConnector(FdPoint3d(0,0,7), vz, vx, 100, 60, 10);', 999);

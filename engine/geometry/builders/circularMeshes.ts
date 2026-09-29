@@ -1,5 +1,5 @@
 import { stdClamp, stdMax, stdMin, llroundToInt } from '@engine/runtime/cpp/cppStd';
-import { cross, dot, length, normalized } from '@engine/math/DVec3';
+import { cross, dot, length, normalized, type DVec3 } from '@engine/math/DVec3';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 import {
   basisFromUp,
@@ -103,29 +103,36 @@ export function buildRingMesh(
   outerDiameter: number,
   segments: number,
 ): PreviewMesh {
-  const mesh = context.createMesh();
-
-  segments = circularFaceCount(segments);
-  const c = toVec(center);
   const n = normalized(toVec(normal));
-  const [u, v] = stableBasis(n);
   const ri = stdMin(Math.abs(innerDiameter), Math.abs(outerDiameter)) * 0.5;
   const ro = stdMax(Math.abs(innerDiameter), Math.abs(outerDiameter)) * 0.5;
 
+  return buildAnnulusMesh(context, toVec(center), n, stableBasis(n), ri, ro, circularFaceCount(segments));
+}
+
+// A flat ring facing `normal`: `segments` spokes, the first along u and turning towards v, each
+// with an inner and an outer vertex. Two triangles join each spoke to the next.
+export function buildAnnulusMesh(
+  context: MeshBuildContext,
+  center: DVec3,
+  normal: DVec3,
+  [u, v]: readonly [DVec3, DVec3],
+  innerRadius: number,
+  outerRadius: number,
+  segments: number,
+): PreviewMesh {
+  const mesh = context.createMesh();
   for (let i = 0; i < segments; ++i) {
     const angle = (2.0 * Math.PI * i) / segments;
     const radial = u.mul(Math.cos(angle)).add(v.mul(Math.sin(angle)));
-    mesh.vertices.push(vertex(c.add(radial.mul(ri)), n));
-    mesh.vertices.push(vertex(c.add(radial.mul(ro)), n));
+    mesh.vertices.push(vertex(center.add(radial.mul(innerRadius)), normal));
+    mesh.vertices.push(vertex(center.add(radial.mul(outerRadius)), normal));
   }
   for (let i = 0; i < segments; ++i) {
-    const j = (i + 1) % segments;
-    const i0 = 2 * i;
-    const o0 = i0 + 1;
-    const i1 = 2 * j;
-    const o1 = i1 + 1;
-    addTriangle(mesh, i0, o0, o1);
-    addTriangle(mesh, i0, o1, i1);
+    const inner = 2 * i;
+    const nextInner = 2 * ((i + 1) % segments);
+    addTriangle(mesh, inner, inner + 1, nextInner + 1);
+    addTriangle(mesh, inner, nextInner + 1, nextInner);
   }
 
   return mesh;
