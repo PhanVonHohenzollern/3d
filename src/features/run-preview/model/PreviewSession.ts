@@ -1,6 +1,11 @@
 import { isFunctionParameterKey } from '@/entities/parameter';
 import type { FunctionProgram } from '@/entities/source-function';
 import type { EditorExecutionFeedback, PreviewMode } from '@/features/run-preview/model/types';
+import type {
+  AvailabilityRequest,
+  AvailabilityResponse,
+} from '@/features/run-preview/model/parameterAvailability.worker';
+import { Signal } from '@/shared/lib/observable';
 import { PreviewGeometryEngine, type PreviewGeometryScene } from '@engine/geometry';
 import {
   emptyRuntimeResult,
@@ -39,13 +44,17 @@ function runKey(
   );
 }
 
-// Runs the C++ program and keeps what the preview shows: the result, the scene, the feedback for
-// the editor, the preview mode, and the Build cache per function tab. Nothing else runs the program.
+// Owns preview execution, editor feedback, and the Build cache per function tab.
 export class PreviewSession {
+  readonly parameterAvailabilityChanged = new Signal<[]>();
   #runtime = new GeometryRuntime();
   #spareRuntime = new GeometryRuntime();
   #spareRun: { key: string; result: RuntimeResult } | null = null;
-  readonly #activeKeys = new Map<string, ReadonlySet<string>>();
+  readonly #activeKeys = new Map<string, ReadonlySet<string> | null>();
+  #availabilityWorker: Worker | undefined;
+  #availabilityTimer: ReturnType<typeof setTimeout> | undefined;
+  #availabilityRequest: { id: number; key: string } | undefined;
+  #availabilitySequence = 0;
   readonly #engine = new PreviewGeometryEngine();
   #mode: PreviewMode = 'debug';
   #scene: PreviewGeometryScene = { meshes: [], warnings: [] };
@@ -113,7 +122,14 @@ export class PreviewSession {
   }
 
   setMode(mode: PreviewMode): void {
+    if (this.#mode !== mode) this.#cancelAvailability();
     this.#mode = mode;
+  }
+
+  dispose(): void {
+    this.#cancelAvailability();
+    this.#availabilityWorker?.terminate();
+    this.#availabilityWorker = undefined;
   }
 
   markParametersChanged(): void {
@@ -133,15 +149,22 @@ export class PreviewSession {
       .filter((definition) => !definition.functionName || !isDeleted(definition.functionName));
   }
 
-  // Which parameter keys the whole program asks for with these values; rows for the others are
-  // disabled. Runs the full program on the spare runtime, cached per program and values.
+  // Build edits check availability off the UI thread. Debug can reuse the spare execution.
   activeParameterKeys(parameters: ReadonlyMap<string, string>): ReadonlySet<string> | null {
     const program = this.#program;
     if (!program) return null;
     const lines = lineCount(program.source);
     const key = runKey(program, parameters, lines, true);
-    const cached = this.#activeKeys.get(key);
-    if (cached) return cached;
+    if (this.#activeKeys.has(key)) {
+      this.#cancelAvailability();
+
+      return this.#activeKeys.get(key) ?? null;
+    }
+    if (this.#mode === 'build') {
+      this.#scheduleAvailability(program, parameters, key);
+
+      return null;
+    }
     this.#spareRuntime.setParameters(parameters);
     const result = this.#spareRuntime.executeUpToLine(program.source, lines, true, program.options);
     this.#spareRun = { key, result };
@@ -151,11 +174,68 @@ export class PreviewSession {
 
   #rememberActiveKeys(key: string, result: RuntimeResult): ReadonlySet<string> {
     const keys = new Set(result.parameterRequests.map(parameterKey));
+    if (this.#availabilityRequest?.key === key) this.#cancelAvailability();
+    this.#cacheActiveKeys(key, keys);
+
+    return keys;
+  }
+
+  #cacheActiveKeys(key: string, keys: ReadonlySet<string> | null): void {
     if (this.#activeKeys.size >= kAvailabilityCacheSize)
       this.#activeKeys.delete(this.#activeKeys.keys().next().value ?? '');
     this.#activeKeys.set(key, keys);
+  }
 
-    return keys;
+  #cancelAvailability(): void {
+    clearTimeout(this.#availabilityTimer);
+    this.#availabilityTimer = undefined;
+    this.#availabilityRequest = undefined;
+  }
+
+  #scheduleAvailability(program: FunctionProgram, parameters: ReadonlyMap<string, string>, key: string): void {
+    if (this.#availabilityRequest?.key === key) return;
+    this.#cancelAvailability();
+    if (typeof Worker === 'undefined') return;
+    const id = ++this.#availabilitySequence;
+    this.#availabilityRequest = { id, key };
+    const request: AvailabilityRequest = {
+      id,
+      source: program.source,
+      options: program.options,
+      parameters: new Map(parameters),
+    };
+    this.#availabilityTimer = setTimeout(() => {
+      this.#availabilityTimer = undefined;
+      try {
+        if (!this.#availabilityWorker) {
+          this.#availabilityWorker = new Worker(new URL('./parameterAvailability.worker.ts', import.meta.url), {
+            type: 'module',
+          });
+          this.#availabilityWorker.onmessage = ({ data }: MessageEvent<AvailabilityResponse>) => {
+            const pending = this.#availabilityRequest;
+            if (!pending || data.id !== pending.id) return;
+            this.#availabilityRequest = undefined;
+            this.#cacheActiveKeys(pending.key, data.keys ? new Set(data.keys) : null);
+            this.parameterAvailabilityChanged.emit();
+          };
+          this.#availabilityWorker.onerror = () => this.#availabilityFailed();
+        }
+        this.#availabilityWorker.postMessage(request);
+      } catch {
+        this.#availabilityFailed();
+      }
+    }, 150);
+  }
+
+  #availabilityFailed(): void {
+    const pending = this.#availabilityRequest;
+    this.#cancelAvailability();
+    this.#availabilityWorker?.terminate();
+    this.#availabilityWorker = undefined;
+    if (pending) {
+      this.#cacheActiveKeys(pending.key, null);
+      this.parameterAvailabilityChanged.emit();
+    }
   }
 
   execute(
@@ -183,7 +263,10 @@ export class PreviewSession {
 
         return { error: what(e) };
       }
-      if (fullProgram && effectiveLine === lines) this.#rememberActiveKeys(key, result);
+      if (fullProgram && effectiveLine === lines) {
+        this.#rememberActiveKeys(key, result);
+        this.parameterAvailabilityChanged.emit();
+      }
     }
     const sourceLines = source.split('\n').length;
     this.#feedback = {

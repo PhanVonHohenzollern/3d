@@ -95,6 +95,19 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#activeKeys = keys ? new Set(keys) : null;
   }
 
+  refreshAvailability(): void {
+    this.#refreshAvailability();
+    for (const definition of this.#definitions) {
+      const key = parameterKey(definition);
+      const row = this.rows.find((item) => item.key === key);
+      if (!row) continue;
+      row.disabled = isInsulationQuery(definition.sourceFunction)
+        ? !this.#enabledInsulation.has(definition.sourceFunction)
+        : !!this.#activeKeys && !this.#activeKeys.has(key);
+    }
+    this.changed();
+  }
+
   #definitions: RuntimeParameterRequest[] = [];
   readonly #values = new Map<string, string>();
   readonly #userEditedKeys = new Set<string>();

@@ -5,7 +5,7 @@ import { preprocess } from '@engine/runtime/interpreter/preprocessor';
 import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
 import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
-import { ProgramParser } from '@engine/runtime/interpreter/ProgramParser';
+import { parseProgram } from '@engine/runtime/interpreter/ProgramParser';
 import { RuntimeExecutor } from '@engine/runtime/interpreter/RuntimeExecutor';
 import { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
 import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '@engine/runtime/RuntimeTypes';
@@ -32,7 +32,7 @@ export class GeometryRuntime {
     try {
       const processed = preprocess(code);
       this.importSourceMacros(processed.definitions.join('\n'));
-      const program = new ProgramParser(new Lexer(processed.code).scan()).parse();
+      const program = parseProgram(processed.code);
       const effectiveMaxLine = Math.min(Math.max(0, maxLine), code.split('\n').length);
       new RuntimeExecutor(state, effectiveMaxLine, fullProgram, options).executeProgram(program);
     } catch (e) {

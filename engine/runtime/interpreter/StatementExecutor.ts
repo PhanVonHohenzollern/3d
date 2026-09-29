@@ -15,7 +15,7 @@ import {
   simpleStatement,
 } from '@engine/runtime/interpreter/simpleStatements';
 import { kMaxIterations, type Execution } from '@engine/runtime/interpreter/execution';
-import { StatementKind, type Statement } from '@engine/runtime/interpreter/Statement';
+import { StatementKind, type Statement, type StatementVisitor } from '@engine/runtime/interpreter/Statement';
 import { languageIntrinsic } from '@engine/runtime/intrinsics';
 import {
   isArray,
@@ -29,7 +29,7 @@ import { valueTypeOf } from '@engine/runtime/values/registry';
 
 // Runs statements: blocks, control flow, simple statements (declarations, assignments, increments,
 // method calls, free calls) and the loop and switch bookkeeping.
-export class StatementExecutor {
+export class StatementExecutor implements StatementVisitor<void, boolean> {
   constructor(private readonly x: Execution) {}
 
   executeBody(s: Statement, skipFunctions = true): void {
@@ -51,43 +51,57 @@ export class StatementExecutor {
   executeNode(s: Statement, skipFunctions = true): void {
     if (this.x.flow.returned || this.x.flow.breaking || this.x.flow.continuing) return;
     if (this.x.callDepth === 0 && s.startLine > this.x.maxLine) return;
-    switch (s.kind) {
-      case StatementKind.Block:
-        this.x.state.pushScope();
-        try {
-          this.executeBody(s, skipFunctions);
-        } finally {
-          // Keep the active block's locals visible when debugging inside it.
-          if (this.x.callDepth > 0 || this.x.maxLine >= s.endLine) this.x.state.popScope();
-        }
-        break;
-      case StatementKind.Simple:
-        if (this.x.callDepth > 0 || s.endLine <= this.x.maxLine)
-          this.safeExecute(s, () => this.executeSimple(s.tokens, s.startLine));
-        break;
-      case StatementKind.If:
-        this.safeExecute(s, () => {
-          const branch = runtimeTruthy(this.x.evaluate(s.condition)) ? s.thenBranch : s.elseBranch;
-          if (branch) this.executeNode(branch);
-        });
-        break;
-      case StatementKind.For:
-        this.x.state.pushScope();
-        try {
-          this.safeExecute(s, () => this.executeFor(s));
-        } finally {
-          if (this.x.callDepth > 0 || this.x.maxLine >= s.endLine) this.x.state.popScope();
-        }
-        break;
-      case StatementKind.While:
-      case StatementKind.Do:
-        this.safeExecute(s, () => this.executeLoop(s));
-        break;
-      case StatementKind.Switch:
-        this.safeExecute(s, () => this.executeSwitch(s));
-        break;
+    s.accept(this, skipFunctions);
+  }
+
+  visitBlock(s: Statement, skipFunctions: boolean): void {
+    this.x.state.pushScope();
+    try {
+      this.executeBody(s, skipFunctions);
+    } finally {
+      // Keep the active block's locals visible when debugging inside it.
+      if (this.x.callDepth > 0 || this.x.maxLine >= s.endLine) this.x.state.popScope();
     }
   }
+
+  visitSimple(s: Statement): void {
+    if (this.x.callDepth > 0 || s.endLine <= this.x.maxLine)
+      this.safeExecute(s, () => this.executeSimple(s.tokens, s.startLine));
+  }
+
+  visitIf(s: Statement): void {
+    this.safeExecute(s, () => {
+      const branch = runtimeTruthy(this.x.evaluate(s.condition)) ? s.thenBranch : s.elseBranch;
+      if (branch) this.executeNode(branch);
+    });
+  }
+
+  visitFor(s: Statement): void {
+    this.x.state.pushScope();
+    try {
+      this.safeExecute(s, () => this.executeFor(s));
+    } finally {
+      if (this.x.callDepth > 0 || this.x.maxLine >= s.endLine) this.x.state.popScope();
+    }
+  }
+
+  visitWhile(s: Statement): void {
+    this.safeExecute(s, () => this.executeLoop(s));
+  }
+
+  visitDo(s: Statement): void {
+    this.visitWhile(s);
+  }
+
+  visitSwitch(s: Statement): void {
+    this.safeExecute(s, () => this.executeSwitch(s));
+  }
+
+  visitFunction(): void {}
+
+  visitEmpty(): void {}
+
+  visitCase(): void {}
 
   private executeFor(s: Statement): void {
     const range = splitTopLevel(s.forInit, ':');

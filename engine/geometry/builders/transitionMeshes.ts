@@ -260,13 +260,19 @@ export function buildRectTubeIntersectionMeshes(
 
   const wall = (a0: DVec3, b0: DVec3, c0: DVec3, d0: DVec3, n: DVec3) => {
     const index = duct.vertices.length;
-    for (const p of [a0, b0, c0, d0]) duct.vertices.push(vertex(p, n));
+    const points = [a0, b0, c0, d0];
+    for (const p of points) duct.vertices.push(vertex(p, n));
+
+    const triangle = (b: number, c: number) => {
+      if (length(cross(points[b].sub(a0), points[c].sub(a0))) > kEps) addTriangle(duct, index, index + b, index + c);
+    };
+
     if (dot(cross(b0.sub(a0), c0.sub(a0)), n) > 0) {
-      addTriangle(duct, index, index + 1, index + 2);
-      addTriangle(duct, index, index + 2, index + 3);
+      triangle(1, 2);
+      triangle(2, 3);
     } else {
-      addTriangle(duct, index, index + 2, index + 1);
-      addTriangle(duct, index, index + 3, index + 2);
+      triangle(2, 1);
+      triangle(3, 2);
     }
   };
 

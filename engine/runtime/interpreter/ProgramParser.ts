@@ -9,6 +9,19 @@ import {
   scanTopLevel,
 } from '@engine/runtime/helpers/tokens';
 import { Statement, StatementKind } from '@engine/runtime/interpreter/Statement';
+import { Lexer } from '@engine/runtime/interpreter/Lexer';
+
+const kPrograms = new Map<string, Statement>();
+
+export function parseProgram(code: string): Statement {
+  const cached = kPrograms.get(code);
+  if (cached) return cached;
+  const program = new ProgramParser(new Lexer(code).scan()).parse();
+  if (kPrograms.size >= 16) kPrograms.delete(kPrograms.keys().next().value ?? '');
+  kPrograms.set(code, program);
+
+  return program;
+}
 
 export class ProgramParser {
   private m_pos = 0;
