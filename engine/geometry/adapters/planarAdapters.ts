@@ -1,5 +1,5 @@
 import earcut from 'earcut';
-import { DVec3, length } from '@engine/math/DVec3';
+import { DVec3, length } from '@engine/math';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { vertex } from '@engine/geometry/helpers/meshData';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';

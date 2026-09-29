@@ -1,5 +1,5 @@
-import { cross, dot, DVec3, length, normalized } from '@engine/math/DVec3';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import { cross, dot, DVec3, length, normalized } from '@engine/math';
+import { FdPoint3d, FdVector3d } from '@engine/runtime';
 import { basisFromUp, kEps, stableBasis, toVec } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';

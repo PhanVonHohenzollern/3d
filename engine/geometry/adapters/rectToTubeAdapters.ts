@@ -1,5 +1,5 @@
-import { normalized } from '@engine/math/DVec3';
-import type { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import { normalized } from '@engine/math';
+import type { FdPoint3d, FdVector3d } from '@engine/runtime';
 import { buildSectionTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import {
   buildRectTubeIntersectionMeshes,

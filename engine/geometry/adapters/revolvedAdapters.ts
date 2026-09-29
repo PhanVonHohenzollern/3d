@@ -1,5 +1,5 @@
-import { normalized } from '@engine/math/DVec3';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { normalized } from '@engine/math';
+import type { RuntimeValue } from '@engine/runtime';
 import {
   buildCircleOutlineMesh,
   buildDiscMesh,

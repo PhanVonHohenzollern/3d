@@ -1,5 +1,4 @@
-import { stdClamp } from '@engine/runtime/cpp/cppStd';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { stdClamp, type RuntimeValue } from '@engine/runtime';
 import type { PreviewColor } from '@engine/geometry/previewScene';
 import { asInt, asNumber, ref } from '@engine/geometry/helpers/valueDecoding';
 

@@ -1,4 +1,4 @@
-import { FdBowlInfo } from '@engine/runtime/FdBowlData';
+import { FdBowlInfo } from '@engine/runtime';
 import { appendBowlMeshes } from '@engine/geometry/builders/bowlMeshes';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';

@@ -43,7 +43,7 @@ Four more rules:
 1. **Every import starts with `@`.** Import project code through its alias: `@/…` for `src/`, `@tests/…` for `tests/`, and `@engine/…` for `engine/`. This applies to files in the same folder too. Relative (`./`, `../`) and absolute (`src/…`, `/…`) imports fail `npm run lint`.
 2. **Public API only.** Every slice (`features/run-preview`, `entities/parameter`, …) and every engine package has an `index.ts`. From outside the slice, import that file, never a file inside it: `@/entities/parameter`, not `@/entities/parameter/model/key`.
 3. **No imports between slices on the same layer.** One feature does not import another feature, and one widget does not import another widget. Composition happens one layer up: the page places both widgets. If two entities really need each other, use an FSD `@x` file (`entities/api-call/@x/variable.ts`) so the dependency is explicit, and add an `except` entry for it in `eslint.boundaries.config.js`.
-4. **Engine through its packages.** App code imports `@engine/runtime`, `@engine/geometry`, `@engine/formats` or `@engine/math`, never a deeper path.
+4. **Engine through its packages.** App code imports `@engine/runtime`, `@engine/geometry`, `@engine/formats` or `@engine/math`, never a deeper path. The same holds between engine packages: `geometry` imports `@engine/runtime` and `@engine/math`, not their files. Inside one package, files import each other directly, since going through the package's own `index.ts` would create cycles.
 
 ### How the rules are checked
 
@@ -52,6 +52,7 @@ Four more rules:
 | Every import starts with `@` (rule 1)                                               | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
 | Engine through its packages (rule 4); the engine imports no app or test code        | `npm run lint` (`no-restricted-imports` in `eslint.config.js`)                              | error    |
 | Layer direction, public API, no cross-slice imports (rules 2–3 and the table above) | `npm run lint:boundaries` (`import-x/no-restricted-paths` in `eslint.boundaries.config.js`) | error    |
+| Engine packages import each other through `index.ts` (rule 4)                       | `npm run lint:boundaries` (`import-x/no-restricted-paths` in `eslint.boundaries.config.js`) | error    |
 | No import cycles                                                                    | `npm run lint:boundaries` (`import-x/no-cycle`)                                             | error    |
 | Folder structure inside a slice (segment names, an `index.ts` per slice)            | code review                                                                                 | —        |
 

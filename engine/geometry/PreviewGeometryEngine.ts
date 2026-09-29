@@ -1,6 +1,5 @@
-import { identityMatrix, multiply, type DMat4 } from '@engine/math/dmat4';
-import { effectiveApiArguments } from '@engine/runtime/ApiMetadata';
-import type { RuntimeApiCall, RuntimeResult } from '@engine/runtime/RuntimeTypes';
+import { identityMatrix, multiply, type DMat4 } from '@engine/math';
+import { effectiveApiArguments, type RuntimeApiCall, type RuntimeResult } from '@engine/runtime';
 import {
   appendCompositeApiMeshes,
   appendPrimitiveApiMeshes,

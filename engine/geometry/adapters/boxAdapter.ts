@@ -1,7 +1,5 @@
-import { stdMax } from '@engine/runtime/cpp/cppStd';
-import { DVec3, normalized } from '@engine/math/DVec3';
-import type { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { isArray, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { stdMax, isArray, type FdPoint3d, type FdVector3d, type RuntimeValue } from '@engine/runtime';
+import { DVec3, normalized } from '@engine/math';
 import { buildBoxMesh, buildConnectorFlangeMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { sdkPerpVector, toFdVector, toVec, validDirection } from '@engine/geometry/helpers/geometryMath';

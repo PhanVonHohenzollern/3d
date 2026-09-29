@@ -1,4 +1,4 @@
-import { stdMax } from '@engine/runtime/cpp/cppStd';
+import { stdMax } from '@engine/runtime';
 import { buildSectionTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import { sdkPerpVector } from '@engine/geometry/helpers/geometryMath';
 import type { NamedArguments } from '@engine/geometry/helpers/NamedArguments';

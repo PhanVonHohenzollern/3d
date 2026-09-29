@@ -1,6 +1,5 @@
-import { llroundToInt } from '@engine/runtime/cpp/cppStd';
-import { length, normalized } from '@engine/math/DVec3';
-import type { FdPoint3d } from '@engine/runtime/FdMath';
+import { llroundToInt, type FdPoint3d } from '@engine/runtime';
+import { length, normalized } from '@engine/math';
 import { buildFacettedCylinderMesh } from '@engine/geometry/builders/circularMeshes';
 import {
   buildConnectorFlangeMesh,

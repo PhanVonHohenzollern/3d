@@ -1,6 +1,5 @@
-import { stdClamp, stdMax, stdMin, llroundToInt } from '@engine/runtime/cpp/cppStd';
-import { cross, dot, length, normalized, type DVec3 } from '@engine/math/DVec3';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import { stdClamp, stdMax, stdMin, llroundToInt, FdPoint3d, FdVector3d } from '@engine/runtime';
+import { cross, dot, length, normalized, type DVec3 } from '@engine/math';
 import {
   basisFromUp,
   circularFaceCount,
