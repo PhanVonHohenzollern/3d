@@ -15,6 +15,84 @@ import { connectorDefinition, isLiteral, literalEvaluator } from '@tests/support
 import { expectedOutput } from '@tests/support/expected';
 import { listFixtures } from '@tests/support/fixtures';
 
+describe('makeEllipticalPlane', () => {
+  const build = (source: string) => {
+    const result = new GeometryRuntime().executeUpToLine(source, 999);
+    expect(result.diagnostics).toEqual([]);
+
+    return new PreviewGeometryEngine().build(result);
+  };
+
+  it.each([5, 10])('keeps the hole and SDK bend orientation in the supplied makeDV example (n=%s)', (count) => {
+    const scene = build(`
+double B = 435, K = 30, BG_d = 7;
+FdPoint3d cP(0, 0, 0);
+cP.z += 0.5 * BG_d;
+FdPoint3d fullPoints[2] = { cP, cP };
+fullPoints[1].z += K;
+makeEllipticalPlane(fullPoints[0], vz, vx, 0.5 * (B - 50), 0.5 * B, ${count});`);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(1);
+    const [mesh] = scene.meshes;
+    expect(mesh.vertices).toHaveLength(2 * count);
+    expect(mesh.indices).toHaveLength(6 * count);
+    // makeBend starts on -vector.crossProduct(upVector), around the supplied center.
+    expect(mesh.vertices[0]).toMatchObject({ x: 0, y: -192.5, z: 3.5 });
+    expect(mesh.vertices[1]).toMatchObject({ x: 0, y: -217.5, z: 3.5 });
+    for (const v of mesh.vertices) {
+      expect(v.x).toBe(0);
+      expect([v.nx, v.ny, v.nz]).toEqual([1, 0, 0]);
+      expect(Math.min(...[192.5, 217.5].map((r) => Math.abs(Math.hypot(v.y, v.z - 3.5) - r)))).toBeLessThan(0.0001);
+    }
+    let area = 0;
+    for (let i = 0; i < mesh.indices.length; i += 3) {
+      const [a, b, c] = mesh.indices.slice(i, i + 3).map((index) => {
+        const v = mesh.vertices[index];
+
+        return new DVec3(v.x, v.y, v.z);
+      });
+      const triangleArea = cross(b.sub(a), c.sub(a)).x / 2;
+      expect(triangleArea).toBeGreaterThan(0);
+      area += triangleArea;
+    }
+    // Area of the outer regular polygon minus the inner one; a filled fan fails this.
+    expect(area).toBeCloseTo((count / 2) * Math.sin((2 * Math.PI) / count) * (217.5 ** 2 - 192.5 ** 2), 1);
+  });
+
+  it('uses the existing perpendicular-vector convention for the overload without upVector', () => {
+    const scene = build(`
+FdPoint3d center(5, 1, 3);
+makeEllipticalPlane(center, vx, 40.5, 45.5, 4);
+makeEllipticalPlane(center, vx, vx.perpVector(), 40.5, 45.5, 4);`);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    expect(scene.meshes[0].vertices).toEqual(scene.meshes[1].vertices);
+    expect(scene.meshes[0].indices).toEqual(scene.meshes[1].indices);
+    expect(scene.meshes[0].vertices[0]).toMatchObject({ x: 5, y: 1, z: 43.5 });
+  });
+
+  it('keeps upVector as the plane normal even when vector has an out-of-plane component', () => {
+    const scene = build('makeEllipticalPlane(FdPoint3d(5,1,3), FdVector3d(2,0,1), FdVector3d(0,0,7), 2, 4, 4);');
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(1);
+    for (const v of scene.meshes[0].vertices) {
+      expect(v.z).toBe(3);
+      expect([v.nx, v.ny, v.nz]).toEqual([0, 0, 1]);
+    }
+  });
+
+  it.each([
+    ['vz, vx, 0, 4', 'R1 must be positive'],
+    ['vz, vx, 4, 4', 'R2 must be greater than R1'],
+    ['vz, vx, 5, 4', 'R2 must be greater than R1'],
+    ['vz, vz, 2, 4', 'vector and upVector must be nonzero and nonparallel'],
+  ])('rejects invalid geometry (%s)', (args, warning) => {
+    const scene = build(`makeEllipticalPlane(FdPoint3d(0,0,0), ${args}, 4);`);
+    expect(scene.meshes).toEqual([]);
+    expect(scene.warnings).toEqual([`line 1 makeEllipticalPlane: ${warning}`]);
+  });
+});
+
 describe('rectangular connector flanges', () => {
   const bounds = (mesh: PreviewMesh) =>
     (['x', 'y', 'z'] as const).map((axis) => [

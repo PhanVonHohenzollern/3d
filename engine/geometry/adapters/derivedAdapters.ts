@@ -1,9 +1,10 @@
-import { cross, DVec3, normalized } from '@engine/math/DVec3';
+import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
 import { FdBowlInfo } from '@engine/runtime/FdBowlData';
 import { RuntimeArray } from '@engine/runtime/RuntimeValue';
 import { buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { toFdVector, toPoint, deg, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
+import { toFdVector, toPoint, toVec, deg, sdkPerpVector, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
+import { addTriangle, vertex } from '@engine/geometry/helpers/meshData';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
@@ -54,22 +55,28 @@ function alizeFront({ scene, context, a }: DerivedSketch): void {
 }
 
 function ellipticalPlane({ scene, context, a }: DerivedSketch): void {
-  const f = a.frame();
+  const center = a.vector('centralPoint');
+  const direction = a.fdVector('vector');
+  const normal = normalized(toVec(a.has('upVector') ? a.fdVector('upVector') : sdkPerpVector(direction)));
+  const radial0 = normalized(cross(normal, toVec(direction)));
+  if (length(normal) < 1e-9 || length(radial0) < 1e-9)
+    throw new Error('vector and upVector must be nonzero and nonparallel');
+  const tangent = cross(normal, radial0);
   const r1 = a.positive('R1'),
     r2 = a.positive('R2'),
-    count = 4 * a.count('n');
-  scene.meshes.push(
-    buildPolygonFaceMesh(
-      context,
-      Array.from({ length: count }, (_, i) =>
-        toPoint(
-          f.center
-            .add(f.up.mul(r1 * Math.cos((2 * Math.PI * i) / count)))
-            .add(f.right.mul(r2 * Math.sin((2 * Math.PI * i) / count))),
-        ),
-      ),
-    ),
-  );
+    count = a.count('n');
+  if (r2 <= r1) throw new Error('R2 must be greater than R1');
+
+  const mesh = context.createMesh();
+  for (let i = 0; i < count; ++i) {
+    const angle = (2 * Math.PI * i) / count;
+    const radial = radial0.mul(Math.cos(angle)).add(tangent.mul(Math.sin(angle)));
+    mesh.vertices.push(vertex(center.add(radial.mul(r1)), normal), vertex(center.add(radial.mul(r2)), normal));
+    const next = 2 * ((i + 1) % count);
+    addTriangle(mesh, 2 * i, 2 * i + 1, next + 1);
+    addTriangle(mesh, 2 * i, next + 1, next);
+  }
+  scene.meshes.push(mesh);
 }
 
 // Dimensions describe the rim envelope. Shape proportions are inferred from the sanitary fixture
