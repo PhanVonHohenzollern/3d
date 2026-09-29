@@ -1,9 +1,10 @@
-import { cross, DVec3, normalized } from '@engine/math/DVec3';
+import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
 import { FdBowlInfo } from '@engine/runtime/FdBowlData';
 import { RuntimeArray } from '@engine/runtime/RuntimeValue';
+import { buildAnnulusMesh } from '@engine/geometry/builders/circularMeshes';
 import { buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { toFdVector, toPoint, deg, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
+import { toFdVector, toPoint, toVec, deg, sdkPerpVector, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
@@ -54,21 +55,19 @@ function alizeFront({ scene, context, a }: DerivedSketch): void {
 }
 
 function ellipticalPlane({ scene, context, a }: DerivedSketch): void {
-  const f = a.frame();
-  const r1 = a.positive('R1'),
-    r2 = a.positive('R2'),
-    count = 4 * a.count('n');
+  const center = a.vector('centralPoint');
+  const direction = a.fdVector('vector');
+  const normal = normalized(toVec(a.has('upVector') ? a.fdVector('upVector') : sdkPerpVector(direction)));
+  // The SDK's bend starts on upVector x vector (that is, -vector x upVector).
+  const start = normalized(cross(normal, toVec(direction)));
+  if (length(normal) < 1e-9 || length(start) < 1e-9)
+    throw new Error('vector and upVector must be nonzero and nonparallel');
+  const innerRadius = a.positive('R1'),
+    outerRadius = a.positive('R2'),
+    segments = a.count('n');
+  if (outerRadius <= innerRadius) throw new Error('R2 must be greater than R1');
   scene.meshes.push(
-    buildPolygonFaceMesh(
-      context,
-      Array.from({ length: count }, (_, i) =>
-        toPoint(
-          f.center
-            .add(f.up.mul(r1 * Math.cos((2 * Math.PI * i) / count)))
-            .add(f.right.mul(r2 * Math.sin((2 * Math.PI * i) / count))),
-        ),
-      ),
-    ),
+    buildAnnulusMesh(context, center, normal, [start, cross(normal, start)], innerRadius, outerRadius, segments),
   );
 }
 
