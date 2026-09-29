@@ -1,5 +1,4 @@
-import type { ApiSignatureMetadata } from '@engine/runtime/ApiMetadata';
-import type { RuntimeApiCall } from '@engine/runtime/RuntimeTypes';
+import type { ApiSignatureMetadata, RuntimeApiCall } from '@engine/runtime';
 
 export function isGeometryCallName(name: string): boolean {
   return name.startsWith('make') || name.startsWith('add') || name.startsWith('draw');

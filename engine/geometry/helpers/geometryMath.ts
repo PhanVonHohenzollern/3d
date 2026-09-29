@@ -1,6 +1,5 @@
-import { stdClamp, stdMax } from '@engine/runtime/cpp/cppStd';
-import { cross, dot, DVec3, length, normalized } from '@engine/math/DVec3';
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import { stdClamp, stdMax, FdPoint3d, FdVector3d } from '@engine/runtime';
+import { cross, dot, DVec3, length, normalized } from '@engine/math';
 
 export const kEps = 1e-9;
 

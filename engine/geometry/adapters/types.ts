@@ -1,4 +1,4 @@
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { RuntimeValue } from '@engine/runtime';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
 

@@ -1,4 +1,4 @@
-import type { RuntimeApiCall } from '@engine/runtime/RuntimeTypes';
+import type { RuntimeApiCall } from '@engine/runtime';
 import type { PreviewColor, PreviewMesh } from '@engine/geometry/previewScene';
 
 export class MeshBuildContext {

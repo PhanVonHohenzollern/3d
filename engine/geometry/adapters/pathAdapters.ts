@@ -1,4 +1,4 @@
-import { cross, dot, DVec3, normalized } from '@engine/math/DVec3';
+import { cross, dot, DVec3, normalized } from '@engine/math';
 import { buildSectionTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import { buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { appendSectionTube } from '@engine/geometry/builders/sectionTubes';

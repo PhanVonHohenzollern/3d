@@ -1,5 +1,4 @@
-import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
-import { isArray } from '@engine/runtime/RuntimeValue';
+import { FdPoint3d, FdVector3d, isArray } from '@engine/runtime';
 import { circularFaceCount, toVec, deg } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, pushNonEmptyMesh, vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';

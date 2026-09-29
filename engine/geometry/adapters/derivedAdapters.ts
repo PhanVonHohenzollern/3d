@@ -1,6 +1,5 @@
-import { cross, DVec3, length, normalized } from '@engine/math/DVec3';
-import { FdBowlInfo } from '@engine/runtime/FdBowlData';
-import { RuntimeArray } from '@engine/runtime/RuntimeValue';
+import { cross, DVec3, length, normalized } from '@engine/math';
+import { FdBowlInfo, RuntimeArray } from '@engine/runtime';
 import { buildAnnulusMesh } from '@engine/geometry/builders/circularMeshes';
 import { buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';

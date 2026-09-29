@@ -1,7 +1,5 @@
-import { rotationMatrix, transformDirection, transformPoint, translationMatrix, type DMat4 } from '@engine/math/dmat4';
-import { DVec3 } from '@engine/math/DVec3';
-import { FdVector3d } from '@engine/runtime/FdMath';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { rotationMatrix, transformDirection, transformPoint, translationMatrix, DVec3, type DMat4 } from '@engine/math';
+import { FdVector3d, type RuntimeValue } from '@engine/runtime';
 import type { PreviewMesh } from '@engine/geometry/previewScene';
 import { validDirection } from '@engine/geometry/helpers/geometryMath';
 import { f32 } from '@engine/geometry/helpers/meshData';

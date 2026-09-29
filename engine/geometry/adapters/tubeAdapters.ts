@@ -1,6 +1,5 @@
-import { stdMax } from '@engine/runtime/cpp/cppStd';
-import { DVec3, length, normalized } from '@engine/math/DVec3';
-import type { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import { stdMax, type FdPoint3d, type FdVector3d } from '@engine/runtime';
+import { DVec3, length, normalized } from '@engine/math';
 import { buildSectionTubeMesh, buildTaperedTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import { appendSectionTube } from '@engine/geometry/builders/sectionTubes';
 import { namedAdapter } from '@engine/geometry/helpers/adapterErrors';

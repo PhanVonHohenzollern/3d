@@ -1,4 +1,4 @@
-import { cross, dot, DVec3, normalized } from '@engine/math/DVec3';
+import { cross, dot, DVec3, normalized } from '@engine/math';
 import { buildBoxMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { buildTaperedTubeMesh } from '@engine/geometry/builders/circularMeshes';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';

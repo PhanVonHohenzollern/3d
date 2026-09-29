@@ -58,7 +58,16 @@ const engineRules = [
   },
 ];
 
-const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi, ...engineRules];
+const kEnginePackages = directories('engine');
+
+const enginePublicApi = kEnginePackages.map((name) => ({
+  target: kEnginePackages.filter((other) => other !== name).map((other) => `./engine/${other}`),
+  from: `./engine/${name}`,
+  except: ['./index.ts'],
+  message: `Import engine/${name} from another engine package through @engine/${name} only.`,
+}));
+
+const zones = [...layerDirection, ...noCrossSliceImports, ...slicePublicApi, ...engineRules, ...enginePublicApi];
 
 export default defineConfig([
   globalIgnores(['dist', 'engine/runtime/*.generated.ts']),
