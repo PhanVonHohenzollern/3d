@@ -14,6 +14,7 @@ export interface EvalContext {
   callFunction?(name: string, argGroups: readonly Token[][], line: number): RuntimeValue;
   // A mutating method on a named value, applied to the stored value.
   mutateValue?(target: readonly Token[], method: string, args: readonly RuntimeValue[], line: number): RuntimeValue;
+  updateValue?(target: readonly Token[], op: string, prefix: boolean, line: number): RuntimeValue;
 }
 
 // For expressions that may use no variables at all (preprocessor #if conditions).

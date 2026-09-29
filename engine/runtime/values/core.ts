@@ -89,7 +89,7 @@ export function runtimeTruthy(value: RuntimeValue): boolean {
   if (isBool(value)) return value;
   if (isDouble(value)) return value !== 0.0;
   if (isInt(value)) return value !== 0n;
-  if (isString(value)) return value !== '';
+  if (isString(value)) return true;
   if (isPoint(value) || isVector(value)) return true;
   if (isArray(value)) return true;
 

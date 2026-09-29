@@ -15,7 +15,7 @@ makeRectToTubeTransition(start, normal, up, shuffled, tubeStart, tubeDiams, 1);
 makeRectToTubeTransition(start, FdVector3d(1, 1, 0), vz, heightWidth, start + FdVector3d(1, 1, 0) * 150, tubeDiams, 2);
 makeRectToTubeTransition(start, vz, vy, heightWidth, FdPoint3d(20, 10, 250), backwards, 4);
 makeRectToTubeTransition(start, normal, up, corners, tubeStart, tubeDiams, projectComplexity);
-// Invalid transitions: warnings, no substitute geometry.
+// Zero-length tube keeps the transition; invalid arguments produce warnings.
 double shortDiams[2] = {120, 80};
 double zeroLength[3] = {120, 80, 0};
 double badHeightWidth[2] = {0, 140};

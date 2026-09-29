@@ -33,6 +33,8 @@ function acadIndexColor(index: number): PreviewColor {
 export type MeshColorUpdate = { color: PreviewColor } | { warning: string };
 
 export function meshColorUpdate(args: RuntimeValue[]): MeshColorUpdate {
+  if (args.some((value) => typeof value === 'number' && !Number.isFinite(value)))
+    return { warning: 'color arguments must be finite' };
   if (args.length === 3) {
     const r = ref(0.0),
       g = ref(0.0),

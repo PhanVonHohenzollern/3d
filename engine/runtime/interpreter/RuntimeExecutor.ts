@@ -49,6 +49,7 @@ export class RuntimeExecutor implements Execution {
       withBindings: (bindings, evaluate) => state.withBindings(bindings, evaluate),
       callFunction: (name, args, line) => this.call(name, args, line, true),
       mutateValue: (target, method, args, line) => this.#statements.mutateStoredValue(target, method, args, line),
+      updateValue: (target, op, prefix, line) => this.#statements.executeIncrement(op, target, line, prefix),
     };
     this.intrinsics = {
       state,

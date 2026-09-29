@@ -5,19 +5,29 @@ import {
   isInt,
   isString,
   RuntimeArray,
+  runtimeString,
+  runtimeTypeName,
   runtimeValueToCompactString,
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
 import { stdException, stod, stoll, trim } from '@engine/runtime/cpp/cpp';
+import { sdkCanonicalType } from '@engine/runtime/SdkDefinitions';
+
+const isCharacterBuffer = (value: RuntimeValue): value is RuntimeArray =>
+  isArray(value) && sdkCanonicalType(value.elementType) === 'char';
+
+export function parameterType(value: RuntimeValue): string {
+  return isCharacterBuffer(value) ? 'string' : runtimeTypeName(value);
+}
 
 export function parameterTextToValue(text: string, current: RuntimeValue): RuntimeValue {
-  if (isArray(current) && ['char', 'WCHAR', 'wchar_t'].includes(current.elementType)) {
+  if (isCharacterBuffer(current)) {
     const count = current.elements.length;
 
     return new RuntimeArray(
       current.elementType,
       current.dimensions,
-      Array.from({ length: count }, (_, i) => text[i] ?? '\0'),
+      Array.from({ length: count }, (_, i) => (i < count - 1 ? (text[i] ?? '\0') : '\0')),
     );
   }
   if (isString(current)) return text;
@@ -41,6 +51,7 @@ export function parameterTextToValue(text: string, current: RuntimeValue): Runti
 }
 
 export function parameterDisplayText(value: RuntimeValue): string {
+  if (isCharacterBuffer(value)) return runtimeString(value);
   const text = runtimeValueToCompactString(value);
 
   return isString(value) && text === '""' ? '' : text;

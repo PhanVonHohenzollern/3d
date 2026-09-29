@@ -58,6 +58,10 @@ class Evaluator {
         return this.call(expr.name, expr.argGroups, expr.line);
       case 'unary':
         return this.unary(expr.op, this.evaluate(expr.operand));
+      case 'update':
+        if (!this.context.updateValue) throw runtimeError('increment/decrement requires an execution context');
+
+        return this.context.updateValue(this.updateTarget(expr.operand), expr.op, expr.prefix, expr.line);
       case 'cast':
         return runtimeCoerceToType(this.evaluate(expr.operand), expr.type);
       case 'binary':
@@ -96,6 +100,23 @@ class Evaluator {
     return ~runtimeInteger(value);
   }
 
+  private updateTarget(expr: Expr): Token[] {
+    if (expr.kind === 'name') return [expr.token];
+    if (expr.kind === 'sequence' && expr.items.length === 1) return this.updateTarget(expr.items[0]);
+    if (expr.kind === 'postfix') {
+      const target = this.updateTarget(expr.base);
+      for (const step of expr.steps) {
+        if (step.kind === 'index')
+          target.push(...Lexer.scanExpression(`[${runtimeInteger(this.evaluate(step.index))}]`));
+        else if (step.kind === 'member') target.push(...step.source);
+        else throw runtimeError('increment/decrement requires an assignable value');
+      }
+
+      return target;
+    }
+    throw runtimeError('increment/decrement requires an assignable value');
+  }
+
   // A value followed by [index], .member and .method(args) steps. A path that starts at a variable
   // is a reference: mutating methods on it change the stored value.
   private postfix(expr: Expr): RuntimeValue {
@@ -111,8 +132,9 @@ class Evaluator {
     else value = this.evaluate(base);
     for (const step of steps) {
       if (step.kind === 'index') {
-        value = indexValue(value, runtimeInteger(this.evaluate(step.index)));
-        if (reference) reference = [...reference, ...step.source];
+        const index = runtimeInteger(this.evaluate(step.index));
+        value = indexValue(value, index);
+        if (reference) reference = [...reference, ...Lexer.scanExpression(`[${index}]`)];
       } else if (step.kind === 'member') {
         value = memberValue(value, step.name);
         if (reference) reference = [...reference, ...step.source];

@@ -1,6 +1,6 @@
-// Non-finite inputs (NaN from sqrt(-1), inf from overflow) pass several
-// adapter checks in the C++; the preview must reproduce the same meshes,
-// NaN colors and sort orders instead of guessing.
+// Reject non-finite meshes and report their calls. Invalid color/transform
+// updates must not poison subsequent geometry.
+
 double nan = sqrt(-1.0);
 double big = 1e308 * 10;
 FdPoint3d p0(0, 0, 0);

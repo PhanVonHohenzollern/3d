@@ -47,6 +47,47 @@ export function buildRectToEllipseTransitionMesh(
 
   stdSort4(polygon, (a, b) => Math.atan2(a.y, a.x) < Math.atan2(b.y, b.x));
 
+  if (
+    Math.abs(dot(tubeC.sub(rectC), n)) <= kEps &&
+    rectCorners.every((p) => Math.abs(dot(toVec(p).sub(rectC), n)) <= kEps)
+  ) {
+    const offset = tubeC.sub(rectC);
+    const ellipse = Array.from({ length: ringSegments }, (_, i) => {
+      const angle = (2 * Math.PI * i) / ringSegments;
+
+      return {
+        x: dot(offset, up) + diamA * 0.5 * Math.cos(angle),
+        y: dot(offset, side) + diamB * 0.5 * Math.sin(angle),
+      };
+    });
+
+    const contains = (outer: P2[], inner: P2[]) =>
+      inner.every((p) =>
+        outer.every((a, i) => {
+          const b = outer[(i + 1) % outer.length];
+
+          return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) >= -kEps;
+        }),
+      );
+
+    const contours = contains(polygon, ellipse)
+      ? [polygon, ellipse]
+      : contains(ellipse, polygon)
+        ? [ellipse, polygon]
+        : undefined;
+    if (contours) {
+      const points = contours.flat();
+      mesh.vertices = points.map((p) => vertex(rectC.add(up.mul(p.x)).add(side.mul(p.y)), n));
+      mesh.indices = earcut(
+        points.flatMap((p) => [p.x, p.y]),
+        [contours[0].length],
+        2,
+      );
+
+      return mesh;
+    }
+  }
+
   const rayToRectangle = (angle: number): DVec3 => {
     const d: P2 = { x: Math.cos(angle), y: Math.sin(angle) };
     let bestT = 1e100;

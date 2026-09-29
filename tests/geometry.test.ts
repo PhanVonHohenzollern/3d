@@ -421,9 +421,86 @@ describe('tube-to-tube intersections', () => {
   });
 });
 
-// These fixtures pass NaN or infinity on purpose: the preview must reproduce the desktop's
-// non-finite meshes for non-finite input. Anywhere else a non-finite vertex is an adapter bug.
-const kNonFiniteInputFixtures = new Set(['geometry/nan_inputs.cpp']);
+describe('CGeneral mesh regressions', () => {
+  it.each([0, 50])('keeps the rectangle-to-ellipse surface with zero tube length (offset=%s)', (offset) => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `
+double hw[2]={100,120}, tube[3]={60,40,0};
+makeRectToTubeTransition(FdPoint3d(), vz, vx, hw, FdPoint3d(0,0,${offset}), tube, 10);`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(1);
+    expect(scene.meshes[0].apiName).toBe('makeRectToTubeTransition.transition');
+    expect(scene.meshes[0].indices.length).toBeGreaterThan(0);
+    expectFiniteScene(scene);
+    expect(Math.max(...scene.meshes[0].vertices.map((v) => v.z))).toBe(offset);
+    if (offset === 0) {
+      let area = 0;
+      const mesh = scene.meshes[0];
+      for (let i = 0; i < mesh.indices.length; i += 3) {
+        const [a, b, c] = mesh.indices.slice(i, i + 3).map((index) => mesh.vertices[index]);
+        area += Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) / 2;
+      }
+      expect(area).toBeCloseTo(100 * 120 - (40 / 2) * Math.sin((2 * Math.PI) / 40) * 30 * 20, 2);
+    }
+  });
+
+  it('reports invalid SAN_GRILL coordinates without emitting NaN or hiding valid calls', () => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `
+double d=60, r=(d-10)/2, dd=d/20;
+double a=(5+1)*dd*sqrt(2.0), b=sqrt(r*r-a*a);
+makeSymbolicLine(FdPoint3d(a,b,0), FdPoint3d(a,-b,0));
+makeFlatDisc(FdPoint3d(), vz, 40, 2);`,
+      999,
+    );
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([
+      'line 4 makeSymbolicLine: mesh contains non-finite values or invalid indices; mesh omitted',
+    ]);
+    expect(scene.meshes.map((m) => m.apiName)).toEqual(['makeFlatDisc']);
+    expectFiniteScene(scene);
+  });
+
+  it('rejects a non-finite transform/color while retaining the previous valid state', () => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `
+preTransformMesh(FdVector3d(0,0,7));
+setMeshColor(255,0,0);
+preTransformMesh(sqrt(-1.0), vz);
+setMeshColor(sqrt(-1.0),128,255);
+makeFlatDisc(FdPoint3d(), vz, 40, 2);`,
+      999,
+    );
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([
+      'line 4 preTransformMesh: invalid mesh transform arguments',
+      'line 5 setMeshColor: color arguments must be finite',
+    ]);
+    expect(scene.meshes).toHaveLength(1);
+    expect(scene.meshes[0].color).toEqual({ r: 1, g: 0, b: 0 });
+    expect(scene.meshes[0].vertices.every((v) => v.z === 7)).toBe(true);
+    expectFiniteScene(scene);
+  });
+
+  it('continues to reject missing section diameters instead of inventing a last radius', () => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `
+FdPoint3d p[3]={FdPoint3d(),FdPoint3d(0,0,10),FdPoint3d(0,0,10)};
+double diams[2]={20,20};
+makeStraightTube(p, diams, 10, 2);`,
+      999,
+    );
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.meshes).toEqual([]);
+    expect(scene.warnings).toEqual([
+      'line 4 makeStraightTube: centerPoints and diams must contain numOfSegs+1 sections',
+    ]);
+  });
+});
 
 for (const fixture of listFixtures()) {
   describe(fixture.name, () => {
@@ -431,7 +508,7 @@ for (const fixture of listFixtures()) {
       expectedOutput(fixture).runs.forEach((run: Json) => {
         const scene = new PreviewGeometryEngine().build(decodeResult(run.result));
         expectSameJson({ line: run.line, scene: run.scene }, { line: run.line, scene: encodeScene(scene) });
-        if (!kNonFiniteInputFixtures.has(fixture.name)) expectFiniteScene(scene);
+        expectFiniteScene(scene);
 
         fixture.connectors.forEach((directive, index) => {
           const fields = [

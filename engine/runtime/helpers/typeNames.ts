@@ -57,6 +57,11 @@ function parseTypeAt(tokens: readonly Token[], start: number): (ParsedType & { c
   skipQualifiers();
   if (pos >= tokens.length || tokens[pos].kind !== TokKind.Identifier) return null;
   let type = tokens[pos++].text;
+  if (type === 'unsigned' || type === 'signed') {
+    type = ['int', 'short', 'long', 'char'].includes(tokens[pos]?.text) ? tokens[pos++].text : 'int';
+  }
+  if (type === 'long' && tokens[pos]?.text === 'long') ++pos;
+  if (['long', 'short'].includes(type) && tokens[pos]?.text === 'int') ++pos;
   while (pos + 1 < tokens.length && isSymbol(tokens[pos], '::') && tokens[pos + 1].kind === TokKind.Identifier) {
     type += '::' + tokens[pos + 1].text;
     pos += 2;

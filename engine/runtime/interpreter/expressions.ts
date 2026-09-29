@@ -29,6 +29,7 @@ export type Expr = { failure: string | undefined } & (
   | { kind: 'scoped'; name: string }
   | { kind: 'call'; name: string; argGroups: Token[][]; line: number }
   | { kind: 'unary'; op: string; operand: Expr }
+  | { kind: 'update'; op: string; operand: Expr; prefix: boolean; line: number }
   | { kind: 'cast'; type: string; operand: Expr }
   | { kind: 'binary'; op: string; left: Expr; right: Expr }
   | { kind: 'logical'; op: '&&' | '||'; left: Expr; right: Expr }
@@ -169,6 +170,12 @@ class ExpressionParser {
   }
 
   #unary(): Expr {
+    if (this.#currentIs('++', '--')) {
+      const token = this.tokens[this.#pos++];
+      const operand = this.#unary();
+
+      return node({ kind: 'update', op: token.text, operand, prefix: true, line: token.line }, operand);
+    }
     for (const op of ['!', '-', '~', '+'])
       if (this.#match(op)) {
         const operand = this.#unary();
@@ -339,6 +346,12 @@ class ExpressionParser {
     const chain = steps.length ? node({ kind: 'postfix', base, steps }, ...children) : base;
     if (error) return node({ kind: 'sequence', items: [chain, error] }, chain, error);
     if (children.some((child) => child.failure !== undefined)) this.#failed = true;
+
+    if (this.#currentIs('++', '--')) {
+      const token = this.tokens[this.#pos++];
+
+      return node({ kind: 'update', op: token.text, operand: chain, prefix: false, line: token.line }, chain);
+    }
 
     return chain;
   }
