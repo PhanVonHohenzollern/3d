@@ -12,7 +12,9 @@ import {
   requiredParameterCount,
   writableReferenceParameter,
 } from '@engine/runtime/helpers/functionSignatures';
-import { tokensToExpression, type Token } from '@engine/runtime/helpers/tokens';
+import { TokKind, tokensToExpression, type Token } from '@engine/runtime/helpers/tokens';
+import { readLValue, type LValueRef } from '@engine/runtime/helpers/lvalues';
+import { pathSteps } from '@engine/runtime/interpreter/paths';
 import { parseRuntimeType } from '@engine/runtime/helpers/typeNames';
 import { recordChange } from '@engine/runtime/interpreter/changes';
 import { freshControlFlow, kMaxFunctionCallDepth, type Execution } from '@engine/runtime/interpreter/execution';
@@ -39,10 +41,28 @@ export class FunctionCalls {
     }
     line = this.x.lineOrCaller(line);
     const args: RuntimeValue[] = [];
+    const references = new Map<number, LValueRef>();
+    const candidates = baseCall ? undefined : this.x.functions.get(name);
     let hasUnresolvedArgument = false;
     argGroups.forEach((group, i) => {
       try {
-        args.push(runtimeDeepCopy(this.x.evaluate(group)));
+        const path = pathSteps(group, 1);
+        const reference =
+          candidates?.some((fn) => {
+            const param = functionParameters(fn)[i];
+
+            return param && writableReferenceParameter(param);
+          }) &&
+          group[0]?.kind === TokKind.Identifier &&
+          this.x.state.hasVariable(group[0].text) &&
+          path.end === group.length &&
+          !path.error &&
+          path.steps.every((step) => step.kind !== 'call');
+        if (reference) {
+          const ref = this.x.resolveLValue(group);
+          references.set(i, ref);
+          args.push(readLValue(ref));
+        } else args.push(runtimeDeepCopy(this.x.evaluate(group)));
       } catch (e) {
         this.x.state.addDiagnostic(
           line,
@@ -59,7 +79,7 @@ export class FunctionCalls {
       call.userFunctionCall = true;
       populateFormalParameterMetadata(call, fn);
       const functionIndex = this.x.state.recordApiCall(call);
-      if (!hasUnresolvedArgument) return this.executeUserFunction(fn, args, argGroups, functionIndex);
+      if (!hasUnresolvedArgument) return this.executeUserFunction(fn, args, argGroups, functionIndex, references);
 
       return;
     }
@@ -134,6 +154,7 @@ export class FunctionCalls {
     args: readonly RuntimeValue[],
     argumentTokens: readonly Token[][],
     parentApiIndex: number,
+    references: ReadonlyMap<number, LValueRef>,
   ): RuntimeValue {
     if (this.x.callDepth >= kMaxFunctionCallDepth) throw runtimeError('C++ function call depth exceeded 64');
 
@@ -162,7 +183,8 @@ export class FunctionCalls {
     }
 
     const callLine = state.apiCall(parentApiIndex)?.line ?? fn.startLine;
-    for (const output of outputs) this.writeBackReference(fn, callLine, argumentTokens[output.index], output);
+    for (const output of outputs)
+      this.writeBackReference(fn, callLine, argumentTokens[output.index], output, references.get(output.index));
 
     return returned;
   }
@@ -184,11 +206,17 @@ export class FunctionCalls {
     return outputs;
   }
 
-  private writeBackReference(fn: Statement, callLine: number, target: readonly Token[], output: ReferenceOutput): void {
+  private writeBackReference(
+    fn: Statement,
+    callLine: number,
+    target: readonly Token[],
+    output: ReferenceOutput,
+    reference?: LValueRef,
+  ): void {
     try {
       recordChange(
         this.x.state,
-        this.x.resolveLValue(target),
+        reference ?? this.x.resolveLValue(target),
         {
           line: callLine,
           operation: 'reference write-back',

@@ -44,6 +44,7 @@ export class RuntimeState implements EvalContext {
   #values = new Map<string, RuntimeValue>();
   #variableIds = new Map<string, number>();
   #nextVariableId = 0;
+  #pointerIds = new Map<number, string>();
   #userVariableOrder: string[] = [];
   #diagnostics: RuntimeDiagnostic[] = [];
   #variableChanges: RuntimeVariableChange[] = [];
@@ -94,6 +95,7 @@ export class RuntimeState implements EvalContext {
     this.#values = new Map();
     this.#variableIds = new Map();
     this.#nextVariableId = 0;
+    this.#pointerIds.clear();
     this.#userVariableOrder = [];
     this.#diagnostics = [];
     this.#variableChanges = [];
@@ -148,6 +150,24 @@ export class RuntimeState implements EvalContext {
   // their object (FdBowlFace& face = info.getFaceForInit(0)).
   bindValue(name: string, value: RuntimeValue): void {
     this.#values.set(name, value);
+  }
+
+  bindPointer(name: string, value: RuntimeValue, type = this.pointerType(name) ?? ''): void {
+    const id = this.#variableIds.get(name);
+    if (id !== undefined) this.#pointerIds.set(id, type);
+    this.bindValue(name, value);
+  }
+
+  isPointer(name: string): boolean {
+    const id = this.#variableIds.get(name);
+
+    return id !== undefined && this.#pointerIds.has(id);
+  }
+
+  pointerType(name: string): string | undefined {
+    const id = this.#variableIds.get(name);
+
+    return id === undefined ? undefined : this.#pointerIds.get(id);
   }
 
   saveBinding(name: string): SavedBinding {
@@ -236,10 +256,12 @@ export class RuntimeState implements EvalContext {
     return snapshot;
   }
 
-  lookupValue(name: string): RuntimeValue {
+  lookupValue(name: string, copy = true): RuntimeValue {
     if (!this.#values.has(name)) throw runtimeError('unknown variable: ' + name);
 
-    return runtimeDeepCopy(this.#values.get(name));
+    const value = this.#values.get(name);
+
+    return copy ? runtimeDeepCopy(value) : value;
   }
 
   hasVariable(name: string): boolean {
@@ -353,6 +375,7 @@ export class RuntimeState implements EvalContext {
     before: RuntimeValue,
     after: RuntimeValue,
     sources: RuntimeValueSource[] = [],
+    includeAliases = true,
   ): void {
     if (line <= 0 || name === '') return;
     const root = rootName(name);
@@ -370,6 +393,20 @@ export class RuntimeState implements EvalContext {
     });
     this.#lastChangedLine.set(name, line);
     for (const parent of parentPaths(name)) this.#lastChangedLine.set(parent, line);
+    const value = this.#values.get(root);
+    if (includeAliases && isArray(value) && operation !== 'declare' && operation !== 'rebind')
+      for (const [alias, target] of this.#values)
+        if (alias !== root && target === value)
+          this.recordVariableChange(
+            line,
+            alias + name.slice(root.length),
+            operation,
+            expression,
+            before,
+            after,
+            sources,
+            false,
+          );
   }
 
   recordParameterRequest(request: RuntimeParameterRequest): void {

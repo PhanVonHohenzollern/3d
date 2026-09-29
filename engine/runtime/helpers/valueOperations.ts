@@ -80,6 +80,8 @@ export function negateValue(v: RuntimeValue): RuntimeValue {
 }
 
 export function equalValues(a: RuntimeValue, b: RuntimeValue): boolean {
+  if (a === undefined || b === undefined)
+    return (a === undefined || a === 0n || a === 0) && (b === undefined || b === 0n || b === 0);
   if (isNumeric(a) && isNumeric(b)) return runtimeNumber(a) === runtimeNumber(b);
   if (isString(a) && isString(b)) return a === b;
   if (isPoint(a) && isPoint(b)) return a.x === b.x && a.y === b.y && a.z === b.z;

@@ -1,4 +1,5 @@
 import { runtimeError } from '@engine/runtime/cpp/cpp';
+import { sdkCanonicalType } from '@engine/runtime/SdkDefinitions';
 import {
   isArray,
   isPoint,
@@ -39,7 +40,11 @@ export function indexValue(value: RuntimeValue, index: bigint): RuntimeValue {
   if (!isArray(value)) throw runtimeError('indexing requires an array, FdPoint3d or FdVector3d');
   if (index < 0n || index >= BigInt(value.elements.length)) throw runtimeError('array index out of range');
 
-  return runtimeDeepCopy(value.elements[Number(index)]);
+  const element = value.elements[Number(index)];
+
+  return sdkCanonicalType(value.elementType) === 'char' && typeof element === 'string'
+    ? BigInt(element.charCodeAt(0) || 0)
+    : runtimeDeepCopy(element);
 }
 
 export function memberValue(value: RuntimeValue, member: string): RuntimeValue {

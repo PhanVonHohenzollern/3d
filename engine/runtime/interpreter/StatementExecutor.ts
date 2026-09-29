@@ -7,6 +7,7 @@ import { splitTopLevel, TokKind, tokensToExpression, type Token } from '@engine/
 import { callMethod } from '@engine/runtime/helpers/valueMethods';
 import { addValues, compoundOperation } from '@engine/runtime/helpers/valueOperations';
 import { recordChange, recordChangeIf } from '@engine/runtime/interpreter/changes';
+import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import {
   assignmentParts,
   freeCallParts,
@@ -228,6 +229,17 @@ export class StatementExecutor {
     if (!assignment) return this.x.evaluate(tokens);
     const { op, target, value } = assignment;
     const lhs = this.x.resolveLValue(target);
+    if (op === '=' && target.length === 1 && this.x.state.isPointer(target[0].text)) {
+      const next = evaluateExpression(value, {
+        ...this.x.evalContext,
+        lookupValue: (name) => this.x.state.lookupValue(name, false),
+      });
+      const before = readLValue(lhs);
+      this.x.state.bindPointer(target[0].text, next);
+      this.x.state.recordVariableChange(line, lhs.path, 'rebind', tokensToExpression(value), before, next);
+
+      return next;
+    }
     const rhs =
       op === '=' && isBraceList(value)
         ? this.x.directInitializer(runtimeTypeName(readLValue(lhs)), value)
@@ -247,14 +259,23 @@ export class StatementExecutor {
     );
   }
 
-  private executeIncrement(op: string, target: Token[], line: number): void {
+  executeIncrement(op: string, target: readonly Token[], line: number, prefix = true): RuntimeValue {
     const state = this.x.state;
-    recordChange(
+    const ref = this.x.resolveLValue(target);
+    const before = readLValue(ref);
+    const after = recordChange(
       state,
-      this.x.resolveLValue(target),
-      { line, operation: op, expression: '', sources: () => state.captureValueSources(tokensToExpression(target)) },
+      ref,
+      {
+        line: this.x.lineOrCaller(line),
+        operation: op,
+        expression: '',
+        sources: () => state.captureValueSources(tokensToExpression(target)),
+      },
       (before) => addValues(before, op === '++' ? 1n : -1n),
     );
+
+    return prefix ? after : before;
   }
 
   private executeMutatingMethod(tokens: readonly Token[], line: number): boolean {

@@ -1,9 +1,11 @@
 import { runtimeError } from '@engine/runtime/cpp/cpp';
 import { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
+import { sdkCanonicalType } from '@engine/runtime/SdkDefinitions';
 import { memberValue } from '@engine/runtime/helpers/valueMethods';
 import { valueTypeNamed, valueTypeOf } from '@engine/runtime/values/registry';
 import {
   isPoint,
+  isArray,
   isVector,
   kValueOps,
   runtimeCoerceToType,
@@ -34,7 +36,13 @@ export const mapSlot = (map: Map<string, RuntimeValue>, key: string): RuntimeVal
 });
 
 export const arraySlot = (array: RuntimeArray, index: number): RuntimeValueSlot => ({
-  get: () => array.elements[index],
+  get: () => {
+    const value = array.elements[index];
+
+    return sdkCanonicalType(array.elementType) === 'char' && typeof value === 'string'
+      ? BigInt(value.charCodeAt(0) || 0)
+      : value;
+  },
   set: (value) => {
     array.elements[index] = value;
   },
@@ -71,7 +79,14 @@ export function readLValue(ref: LValueRef): RuntimeValue {
 
 export function writeLValue(ref: LValueRef, value: RuntimeValue): void {
   if (ref.member === '') {
-    const type = runtimeTypeName(ref.slot.get());
+    const current = ref.slot.get();
+    if (isArray(current) && isArray(value) && !stdVectorElementType(runtimeTypeName(current))) {
+      current.elements = value.elements.map(runtimeDeepCopy);
+      current.dimensions = [...value.dimensions];
+
+      return;
+    }
+    const type = runtimeTypeName(current);
     ref.slot.set(
       kCoercedScalars.includes(type) || stdVectorElementType(type) || valueTypeNamed(type)?.coerce
         ? runtimeCoerceToType(value, type)

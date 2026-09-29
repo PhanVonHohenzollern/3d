@@ -62,7 +62,7 @@ function appendRectToTubeTransition(scene: PreviewGeometryScene, context: MeshBu
     tubeDiams.length < 3 ||
     tubeDiams[0] <= 0.0 ||
     tubeDiams[1] <= 0.0 ||
-    Math.abs(tubeDiams[2]) <= kEps ||
+    !tubeDiams.every(Number.isFinite) ||
     complexity < 1
   )
     throw new Error('makeRectToTubeTransition has invalid normal/upVector, tube diameters or tube length');
@@ -83,6 +83,7 @@ function appendRectToTubeTransition(scene: PreviewGeometryScene, context: MeshBu
   if (transition.vertices.length === 0 || transition.indices.length === 0)
     throw new Error('makeRectToTubeTransition could not build the rectangle-to-ellipse loft');
   pushNonEmptyMesh(scene, transition);
+  if (Math.abs(tubeDiams[2]) <= kEps) return;
 
   const n = normalized(toVec(normal));
   const tubeEnd = toPoint(toVec(tubeStart).add(n.mul(tubeDiams[2])));

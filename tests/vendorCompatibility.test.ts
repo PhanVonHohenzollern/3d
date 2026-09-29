@@ -11,9 +11,163 @@ import {
   validFunctionCode,
 } from '@/entities/source-function';
 import { FunctionWorkspace } from '@/entities/source-function';
-import { RuntimeStdVector } from '@engine/runtime/RuntimeValue';
+import { RuntimeArray, RuntimeStdVector } from '@engine/runtime/RuntimeValue';
 
 describe('vendor C++ compatibility regressions', () => {
+  it.each([
+    ['centering', 'gear', 1, 1],
+    ['centering', 'hand', 1, 0],
+    ['tapped', 'gear', 0, 1],
+    ['tapped', 'hand', 0, 0],
+  ])('selects makeBUTTV branches for conn=%s and act=%s', (conn, act, center, gear) => {
+    const runtime = new GeometryRuntime();
+    runtime.setParameters(
+      new Map([
+        ['conn', String(conn)],
+        ['act', String(act)],
+      ]),
+    );
+    const result = runtime.executeUpToLine(
+      `
+WCHAR wd[40] = {L""}; WCHAR *wdp = wd;
+WCHAR w2[] = {L"tapped"}; WCHAR w3[] = {L"hand"};
+bool bCenter_lugs = true, bGear_box = true;
+get_val("conn", wdp);
+if (wcsstr(wdp, w2) != NULL) bCenter_lugs = false;
+get_val("act", wdp);
+if (wcsstr(wdp, w3) != NULL) bGear_box = false;
+`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(runtime.evaluateNumericExpression('bCenter_lugs')).toBe(center);
+    expect(runtime.evaluateNumericExpression('bGear_box')).toBe(gear);
+    expect(result.parameterRequests.map((p) => p.currentValue)).toEqual([conn, act]);
+    expect(result.parameterRequests.map((p) => p.type)).toEqual(['string', 'string']);
+    expect(result.variables.find((v) => v.name === 'wd')?.value).toMatchObject({
+      elements: [...String(act), '\0', ...Array(35).fill('\0')],
+    });
+  });
+
+  it('initializes and aliases character buffers, respects NUL and bounds configured text', () => {
+    const runtime = new GeometryRuntime();
+    runtime.setParameters(new Map([['value', 'abcdef']]));
+    const result = runtime.executeUpToLine(
+      `
+WCHAR word[] = {L"tapped"}; WCHAR direct[] = L"abc";
+WCHAR buffer[4] = {L""}; WCHAR *p = buffer;
+int emptyLength = wcslen(p);
+get_val("value", p);
+int length = wcslen(buffer);
+bool stopsAtNull = wcsstr(L"abc\0hand", L"hand") == NULL;
+bool nullsEqual = NULL == nullptr && nullptr == 0 && 0 == NULL;
+bool emptyMatch = wcsstr(L"", L"");
+const WCHAR *nullPointer = 0;
+bool zeroIsNull = nullPointer == NULL;
+bool firstCharacter = buffer[0] == 'a';
+p[1] = '\0';
+int shortened = wcslen(buffer);
+`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(result.variables.find((v) => v.name === 'word')?.value).toEqual(
+      new RuntimeArray('char', [7], [...'tapped', '\0']),
+    );
+    expect(result.variables.find((v) => v.name === 'direct')?.value).toEqual(
+      new RuntimeArray('char', [4], [...'abc', '\0']),
+    );
+    expect(
+      [
+        'emptyLength',
+        'length',
+        'stopsAtNull',
+        'nullsEqual',
+        'emptyMatch',
+        'zeroIsNull',
+        'firstCharacter',
+        'shortened',
+      ].map((v) => runtime.evaluateNumericExpression(v)),
+    ).toEqual([0, 3, 1, 1, 1, 1, 1, 1]);
+  });
+
+  it.each(['unsigned int', 'unsigned', 'signed int', 'unsigned long int'])(
+    'runs the TERMOPJ bit loop declared as %s',
+    (type) => {
+      const runtime = new GeometryRuntime();
+      const result = runtime.executeUpToLine(
+        `${type} bitStop = 1 << 3; int count=0;
+for (${type} bitMask=1; bitMask!=bitStop; bitMask*=2) count++;`,
+        999,
+      );
+      expect(result.diagnostics).toEqual([]);
+      expect(runtime.evaluateNumericExpression('count')).toBe(3);
+    },
+  );
+
+  it.each([1, 2])('writes through the selected TERMOPJ wall pointer and preserves API snapshots (wall=%s)', (wall) => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      `
+FdPoint3d walls1[2], walls2[2];
+FdPoint3d *currentWall = ${wall} == 1 ? walls1 : walls2;
+int i=-1;
+currentWall[++i].set(1,2,3);
+makeFlatDisc(currentWall[0], vz, 20, 2);
+FdPoint3d copy = currentWall[0];
+currentWall[0].z = 8;
+currentWall = ${wall} == 1 ? walls2 : walls1;
+currentWall[1].z = 9;
+`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(runtime.evaluateNumericExpression(`walls${wall}[0].z`)).toBe(8);
+    expect(runtime.evaluateNumericExpression(`walls${3 - wall}[1].z`)).toBe(9);
+    expect(runtime.evaluateNumericExpression('copy.z')).toBe(3);
+    expect(runtime.evaluateNumericExpression('i')).toBe(0);
+    expect(result.apiCalls[0].arguments[0]).toMatchObject({ x: 1, y: 2, z: 3 });
+    expect(
+      result.variableChanges.filter((c) => c.name === `walls${wall}[0].z`).map((c) => [c.before, c.after]),
+    ).toEqual([[3, 8]]);
+  });
+
+  it('evaluates prefix/postfix updates once, including a mutating method inside an expression', () => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      `
+FdPoint3d walls[3]; int i=-1;
+FdPoint3d first = walls[++i].set(1,2,3);
+walls[i++].z++;
+int values[2] = {4,5}; int old = values[--i]++; int now = ++values[i];
+bool skipped = false && ++i;
+int selected = true ? i++ : ++i;
+`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(
+      ['i', 'old', 'now', 'selected', 'values[0]', 'walls[0].z', 'walls[1].z'].map((v) =>
+        runtime.evaluateNumericExpression(v),
+      ),
+    ).toEqual([1, 4, 6, 0, 6, 4, 0]);
+    expect(result.variableChanges.filter((c) => c.name === 'i' && c.operation === '++')).toHaveLength(3);
+  });
+
+  it('writes helper reference arguments back to the original index without repeating i++', () => {
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(
+      `
+void setZ(FdPoint3d &point) { point.z=7; }
+void element() { FdPoint3d points[2]; int i=0; setZ(points[i++]); }
+`,
+      999,
+      true,
+    );
+    expect(result.diagnostics).toEqual([]);
+    expect(['i', 'points[0].z', 'points[1].z'].map((v) => runtime.evaluateNumericExpression(v))).toEqual([1, 7, 0]);
+  });
+
   const conditionalSource = [
     '\uFEFF#define FIX_BRX',
     '#define SCALE(x) \\',

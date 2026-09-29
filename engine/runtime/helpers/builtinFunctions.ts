@@ -1,7 +1,8 @@
 import { cppPow, cppRound, runtimeError } from '@engine/runtime/cpp/cpp';
 import {
-  isString,
   isArray,
+  isString,
+  runtimeString,
   runtimeCoerceToType,
   runtimeDefaultValueForType,
   runtimeValueConstructor,
@@ -39,9 +40,9 @@ const binary =
 
 const strcmp: BuiltinFunction = (args) => {
   if (args.length !== 2) throw runtimeError('strcmp requires 2 arguments');
-  const a = args[0];
-  const b = args[1];
-  if (!isString(a) || !isString(b)) throw runtimeError('strcmp requires string arguments');
+  if (args.some((value) => !isString(value) && !isArray(value))) throw runtimeError('strcmp requires string arguments');
+  const a = runtimeString(args[0]);
+  const b = runtimeString(args[1]);
 
   return a === b ? 0n : a < b ? -1n : 1n;
 };
@@ -78,28 +79,18 @@ const kMathFunctions: ReadonlyMap<string, BuiltinFunction> = new Map([
 ]);
 
 export function builtinFunction(name: string): BuiltinFunction | undefined {
-  if (name === 'strlen')
+  if (name === 'strlen' || name === 'wcslen')
     return (args) => {
-      if (args.length !== 1 || (!isString(args[0]) && !isArray(args[0])))
-        throw runtimeError('strlen requires one string');
-      const value = args[0];
-      const text = isString(value)
-        ? value
-        : value.elements
-            .map((item) => (typeof item === 'string' ? item : String.fromCharCode(runtimeNumber(item))))
-            .join('');
+      if (args.length !== 1) throw runtimeError(name + ' requires one string');
 
-      return BigInt(text.split('\0')[0].length);
+      return BigInt(runtimeString(args[0]).length);
     };
   if (name === 'wcsstr' || name === 'strstr')
     return (args) => {
       if (args.length !== 2) throw runtimeError(name + ' requires two strings');
 
-      const text = (value: RuntimeValue): string =>
-        isString(value) ? value : isArray(value) ? value.elements.map(text).join('').split('\0')[0] : '';
-
-      const haystack = text(args[0]),
-        index = haystack.indexOf(text(args[1]));
+      const haystack = runtimeString(args[0]),
+        index = haystack.indexOf(runtimeString(args[1]));
 
       return index < 0 ? undefined : haystack.slice(index);
     };

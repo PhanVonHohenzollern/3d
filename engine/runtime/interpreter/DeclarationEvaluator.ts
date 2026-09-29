@@ -13,6 +13,7 @@ import {
 } from '@engine/runtime/helpers/tokens';
 import { parseRuntimeType } from '@engine/runtime/helpers/typeNames';
 import type { Execution } from '@engine/runtime/interpreter/execution';
+import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import {
   isArray,
   runtimeCoerceToType,
@@ -24,13 +25,21 @@ import {
   stdVectorElementType,
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
-import { sdkTypeDefinition } from '@engine/runtime/SdkDefinitions';
+import { sdkCanonicalType, sdkTypeDefinition } from '@engine/runtime/SdkDefinitions';
 import { valueTypeNamed, valueTypeOf } from '@engine/runtime/values/registry';
 
 // Declarations and their initializers: `T a = e;`, `T a(args);`, `T a{...};`, arrays with brace
 // lists and inferred dimensions, std::vector constructors and SDK value constructors.
 export class DeclarationEvaluator {
   constructor(private readonly x: Execution) {}
+
+  private stringInitializer(tokens: readonly Token[], type: string): string | undefined {
+    if (sdkCanonicalType(type) !== 'char') return undefined;
+    const items = isBraceList(tokens) ? braceListItems(tokens).filter((part) => part.length) : [tokens];
+    const token = items.length === 1 && items[0].length === 1 ? items[0][0] : undefined;
+
+    return token?.kind === TokKind.String && !token.character ? token.text : undefined;
+  }
 
   private initializerValue(
     tokens: readonly Token[],
@@ -44,6 +53,13 @@ export class DeclarationEvaluator {
         : runtimeCoerceToType(this.x.evaluate(tokens), type);
     const array = createArray(type, dims, level);
     if (tokens.length === 0) return array;
+    const text = level === dims.length - 1 ? this.stringInitializer(tokens, type) : undefined;
+    if (text !== undefined) {
+      if (text.length > array.elements.length) throw runtimeError('string initializer exceeds character array size');
+      array.elements = array.elements.map((_, i) => text[i] ?? '\0');
+
+      return array;
+    }
     if (!isBraceList(tokens)) {
       if (dims[level] > 0) array.elements[0] = this.initializerValue(tokens, type, dims, level + 1);
 
@@ -144,6 +160,7 @@ export class DeclarationEvaluator {
       const parenthesizedPointer = decl[0]?.text === '(' && decl[1]?.text === '*';
       if (parenthesizedPointer) ++p;
       while (p < decl.length && (isSymbol(decl[p], '&') || isSymbol(decl[p], '*'))) ++p;
+      const pointer = type === 'char*' || decl.slice(0, p).some((token) => token.text === '*');
       if (p >= decl.length || decl[p].kind !== TokKind.Identifier)
         throw runtimeError('expected variable name in declaration');
       const name = decl[p++].text;
@@ -153,12 +170,22 @@ export class DeclarationEvaluator {
       const tail = sliceTokens(decl, end, decl.length);
       const assigned = tail.length !== 0 && isSymbol(tail[0], '=');
       const initializer = assigned ? sliceTokens(tail, 1, tail.length) : tail;
-      if (dims.length !== 0 && assigned) inferArrayDimensions(initializer, dims, 0);
+      if (dims.length !== 0 && assigned) {
+        const text = dims.length === 1 ? this.stringInitializer(initializer, type) : undefined;
+        if (text !== undefined && dims[0] === 0) dims[0] = text.length + 1;
+        else inferArrayDimensions(initializer, dims, 0);
+      }
       let value: RuntimeValue = dims.length === 0 ? runtimeDefaultValueForType(type) : createArray(type, dims);
       if (assigned) {
         if (initializer.length > 0 && isIdentifier(initializer[0], 'new')) value = this.x.evaluate(initializer);
         else if (dims.length !== 0) value = this.initializerValue(initializer, type, dims, 0);
-        else
+        else if (pointer) {
+          value = evaluateExpression(initializer, {
+            ...this.x.evalContext,
+            lookupValue: (name) => this.x.state.lookupValue(name, false),
+          });
+          if (value !== undefined && !isArray(value)) value = runtimeCoerceToType(value, type);
+        } else
           value = isBraceList(initializer)
             ? this.directInitializer(type, initializer)
             : runtimeCoerceToType(this.x.evaluateAssignment(initializer), type);
@@ -176,6 +203,7 @@ export class DeclarationEvaluator {
         'declare',
         tokensToExpression(initializer),
       );
+      if (pointer) this.x.state.bindPointer(name, value, type);
       // getFaceForInit returns a C++ reference. Keep the same face instance for
       // reference declarations, while ordinary bowl assignments remain copies.
       if (decl.slice(0, p).some((token) => token.text === '&') && valueTypeOf(value)?.changedInPlace)

@@ -1,5 +1,5 @@
 import { runtimeError, trim } from '@engine/runtime/cpp/cpp';
-import { parameterDisplayText, parameterTextToValue } from '@engine/runtime/helpers/parameters';
+import { parameterDisplayText, parameterTextToValue, parameterType } from '@engine/runtime/helpers/parameters';
 import { readLValue, writeLValue } from '@engine/runtime/helpers/lvalues';
 import {
   balancedEnd,
@@ -26,20 +26,20 @@ export const getVal: LanguageIntrinsic = {
     const name = evaluate(argGroups[0]);
     if (!isString(name)) throw runtimeError('get_val parameter name must be a string');
     const dest = resolveLValue(argGroups[1]);
-    const before = readLValue(dest);
+    const before = readLValue(dest) ?? (state.pointerType(dest.path) === 'char*' ? '' : undefined);
 
     const configured = state.parameter(`${state.functionName}::${name}`) ?? state.parameter(name);
     if (configured !== undefined)
       recordChange(state, dest, { line, operation: 'get_val', expression: name, onlyIfChanged: true }, (current) =>
-        parameterTextToValue(configured, current),
+        parameterTextToValue(configured, current ?? before),
       );
 
     state.recordParameterRequest({
       ...(state.functionName ? { functionName: state.functionName } : {}),
       name,
-      type: runtimeTypeName(before),
+      type: parameterType(before),
       defaultValue: parameterDisplayText(before),
-      currentValue: parameterDisplayText(readLValue(dest)),
+      currentValue: parameterDisplayText(readLValue(dest) ?? before),
       sourceFunction: 'get_val',
       variableName: dest.path,
       line,

@@ -51,7 +51,8 @@ export class PreviewGeometryEngine {
 
       if (call.name === 'preTransformMesh' || call.name === 'postTransformMesh') {
         const delta = meshTransformDelta(args);
-        if (!delta) scene.warnings.push(warningFor(call, 'invalid mesh transform arguments'));
+        if (!delta || !delta.every((row) => row.every(Number.isFinite)))
+          scene.warnings.push(warningFor(call, 'invalid mesh transform arguments'));
         else if (call.name === 'preTransformMesh') currentTransform = multiply(delta, currentTransform);
         else currentTransform = multiply(currentTransform, delta);
         continue;
@@ -102,6 +103,26 @@ export class PreviewGeometryEngine {
       const transform = transformByApi.get(mesh.apiIndex);
       if (transform !== undefined) applyTransform(mesh, transform);
     }
+    const invalidCalls = new Set<number>();
+    scene.meshes = scene.meshes.filter((mesh) => {
+      const valid =
+        mesh.vertices.every(
+          (v) =>
+            Number.isFinite(v.x) &&
+            Number.isFinite(v.y) &&
+            Number.isFinite(v.z) &&
+            Number.isFinite(v.nx) &&
+            Number.isFinite(v.ny) &&
+            Number.isFinite(v.nz),
+        ) && mesh.indices.every((i) => Number.isInteger(i) && i >= 0 && i < mesh.vertices.length);
+      if (!valid) invalidCalls.add(mesh.apiIndex);
+
+      return valid;
+    });
+    for (const index of invalidCalls)
+      scene.warnings.push(
+        warningFor(result.apiCalls[index], 'mesh contains non-finite values or invalid indices; mesh omitted'),
+      );
 
     return scene;
   }

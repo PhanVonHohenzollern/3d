@@ -73,6 +73,7 @@ export function runtimeDefaultValueForType(requestedType: string): RuntimeValue 
   if (typeName === 'double' || typeName === 'float' || typeName === 'ads_real') return 0.0;
   if (typeName === 'int' || typeName === 'short' || typeName === 'long') return 0n;
   if (typeName === 'bool') return false;
+  if (typeName === 'char') return 0n;
   if (typeName === 'char*' || typeName === 'const char*' || typeName === 'string') return '';
 
   return valueTypeNamed(typeName)?.create();
@@ -91,14 +92,27 @@ export function runtimeCoerceToType(value: RuntimeValue, requestedType: string):
   if (typeName === 'int' || typeName === 'short' || typeName === 'long') return runtimeInteger(value);
   if (typeName === 'bool') return runtimeTruthy(value);
   if (typeName === 'char*' || typeName === 'const char*' || typeName === 'string') {
-    if (value === undefined) return '';
-    if (isString(value)) return value;
+    if (value === undefined || value === 0n) return undefined;
+    if (isString(value) || isArray(value)) return value;
 
     return runtimeValueToCompactString(value);
   }
   const type = valueTypeNamed(typeName);
 
   return type?.coerce ? type.coerce(value) : value;
+}
+
+export function runtimeString(value: RuntimeValue): string {
+  const text = isString(value)
+    ? value
+    : isArray(value)
+      ? value.elements
+          .map((item) => (isString(item) ? item : String.fromCharCode(Number(runtimeInteger(item)))))
+          .join('')
+      : undefined;
+  if (text === undefined) throw new CppException('runtime_error', 'string or character array required');
+
+  return text.split('\0')[0];
 }
 
 export function runtimeDeepCopy(value: RuntimeValue): RuntimeValue {
