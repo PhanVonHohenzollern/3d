@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
 import { playDrawScenarios } from '@tests/renderer/drawScenarios';
-import { fixedMeasurer } from '@tests/renderer/helpers';
-import { RecordingBackend } from '@tests/renderer/recordingBackend';
+import { boxMesh, fixedMeasurer, scene } from '@tests/renderer/helpers';
+import { fakeSurface, RecordingBackend } from '@tests/renderer/recordingBackend';
 
 const backend = vi.hoisted(() => ({ current: null as RecordingBackend | null }));
 
@@ -28,5 +28,35 @@ describe('scene draw calls', () => {
     expect(byName['selected vector']).toContain('lineWidth 4');
     expect(byName['hovered mesh']).toContain('overrideColor 0.7,0.95,1');
     expect(byName).toMatchSnapshot();
+  });
+
+  it('uploads again and repaints when a lost device comes back', () => {
+    const recorder = new RecordingBackend();
+    backend.current = recorder;
+    const pending: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => pending.push(callback));
+
+    const flush = () => {
+      for (const callback of pending.splice(0)) callback(0);
+    };
+
+    try {
+      const engine = new ViewportEngine();
+      engine.setTextMeasurer(fixedMeasurer);
+      engine.attach(fakeSurface());
+      engine.resize(800, 600, 1);
+      engine.setGeometryScene(scene(boxMesh([0, 0, 0], [10, 10, 10])));
+      flush();
+      const uploads = recorder.uploads;
+      const frames = recorder.frames.length;
+
+      recorder.events?.lost();
+      recorder.events?.ready();
+      expect(recorder.uploads).toBe(uploads + 1);
+      flush();
+      expect(recorder.frames).toHaveLength(frames + 1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

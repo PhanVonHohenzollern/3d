@@ -9,15 +9,20 @@ const color = (c: QVector3D) => [c.x, c.y, c.z].map((v) => Number(v.toFixed(4)))
 // A backend that draws nothing and logs every call made during a frame, one string per call.
 export class RecordingBackend implements RenderBackend {
   readonly frames: string[][] = [];
+  events: RenderBackendEvents | null = null;
+  uploads = 0;
   #frame: string[] | null = null;
 
   attach(_canvas: HTMLCanvasElement, events: RenderBackendEvents): void {
+    this.events = events;
     events.ready();
   }
 
   detach(): void {}
 
   uploadVertexData(_vertices: VertexArray, _layout: unknown, _geometryVersion: number): boolean {
+    ++this.uploads;
+
     return true;
   }
 
