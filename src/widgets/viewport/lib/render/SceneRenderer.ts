@@ -14,13 +14,13 @@ import {
 } from '@/widgets/viewport/config/viewport';
 import { QMatrix4x4 } from '@/widgets/viewport/lib/math/Matrix4x4';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import type { RenderBackend } from '@/widgets/viewport/lib/render/backend/RenderBackend';
 import type { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import { appendConnectorVertices } from '@/widgets/viewport/lib/render/connectorOverlay';
 import { appendVectorArrow } from '@/widgets/viewport/lib/render/debugItems';
 import { buildGeometryVertices, buildGeometryWireVertices } from '@/widgets/viewport/lib/render/geometryVertices';
 import type { GeometryRange, GpuVertexLayout } from '@/widgets/viewport/lib/render/types';
 import { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
-import { ViewportRenderer } from '@/widgets/viewport/lib/render/ViewportRenderer';
 import type { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
 
 interface GeometryVertexCache {
@@ -38,10 +38,10 @@ interface Span {
 
 const kNoSpan: Span = { start: 0, count: 0 };
 
-// The GL scene: one vertex buffer holding the axes, the geometry (solid and wire), the vector
-// arrows and the connectors, rebuilt when what is shown changes, and the draw calls over it.
+// The 3D scene: one vertex buffer holding the axes, the geometry (solid and wire), the vector
+// arrows and the connectors, rebuilt when what is shown changes, and the draw calls over it. It is
+// the abstraction side of a Bridge: what to draw lives here, how to draw it in the RenderBackend.
 export class SceneRenderer {
-  readonly renderer = new ViewportRenderer();
   #vertices = new VertexArray(4096);
   #layout: GpuVertexLayout = {
     axesVertexCount: 0,
@@ -66,6 +66,7 @@ export class SceneRenderer {
   constructor(
     private readonly state: ViewportState,
     private readonly view: CameraController,
+    private readonly renderer: RenderBackend,
   ) {}
 
   // The geometry scene changed: its vertices are rebuilt on the next rebuild.
@@ -120,32 +121,30 @@ export class SceneRenderer {
     this.#dirty = true;
   }
 
-  // Sets up GL; `rebuild` fills the vertex buffer first when nothing was built yet.
-  initialize(gl: WebGL2RenderingContext, rebuild: () => void): boolean {
-    if (!this.renderer.initialize(gl)) return false;
+  // The backend can draw: `rebuild` fills the vertex buffer first when nothing was built yet, then
+  // everything is uploaded.
+  ready(rebuild: () => void): void {
     if (this.#vertices.empty()) rebuild();
     this.#upload();
     this.#dirty = false;
-
-    return true;
   }
 
-  // Updates the camera matrices and draws the scene when GL is available.
+  // Updates the camera matrices and draws the scene when the backend can draw.
   paint(): void {
     const { renderer, state, view } = this;
-    const glActive = renderer.beginFrame();
+    const drawing = renderer.beginFrame();
     view.updateMatrices();
-    if (!glActive) return;
+    if (!drawing) return;
     if (this.#dirty) this.#upload();
 
     const model = new QMatrix4x4();
     model.setToIdentity();
     renderer.setMatrices(view.camera.viewProjection().times(model), view.camera.view.normalMatrix());
-    renderer.setUniformValue('uUseOverrideColor', false);
-    renderer.setUniformValue('uLightingEnabled', false);
+    renderer.setUseOverrideColor(false);
+    renderer.setLightingEnabled(false);
 
-    renderer.glLineWidth(kAxisLineWidth);
-    if (this.#axes.count > 0) renderer.glDrawArrays('GL_LINES', 0, this.#axes.count);
+    renderer.setLineWidth(kAxisLineWidth);
+    if (this.#axes.count > 0) renderer.drawLines(0, this.#axes.count);
 
     if (state.showGeometry && this.#geometryRanges.length > 0) {
       if (state.geometryWireframe) this.#drawWireframe();
@@ -155,14 +154,14 @@ export class SceneRenderer {
       renderer.setDepthTest(true);
     }
 
-    renderer.setUniformValue('uUseOverrideColor', false);
+    renderer.setUseOverrideColor(false);
     if (this.#vectors.count > 0) {
-      renderer.glLineWidth(kVectorLineWidth);
-      renderer.glDrawArrays('GL_LINES', this.#vectors.start, this.#vectors.count);
+      renderer.setLineWidth(kVectorLineWidth);
+      renderer.drawLines(this.#vectors.start, this.#vectors.count);
     }
     if (this.#selectedVectors.count > 0) {
-      renderer.glLineWidth(kSelectedVectorLineWidth);
-      renderer.glDrawArrays('GL_LINES', this.#selectedVectors.start, this.#selectedVectors.count);
+      renderer.setLineWidth(kSelectedVectorLineWidth);
+      renderer.drawLines(this.#selectedVectors.start, this.#selectedVectors.count);
     }
 
     if (!state.apiFocusActive && this.#connectors.count > 0) this.#drawConnectors();
@@ -177,10 +176,10 @@ export class SceneRenderer {
     const { renderer, state } = this;
     renderer.setDepthTest(false);
     renderer.setDepthMask(false);
-    renderer.glLineWidth(kWireLineWidth);
+    renderer.setLineWidth(kWireLineWidth);
     for (const range of this.#wireRanges) {
       if (!state.isGeometryApiVisible(range.apiIndex)) continue;
-      renderer.glDrawArrays('GL_LINES', range.start, range.count);
+      renderer.drawLines(range.start, range.count);
     }
   }
 
@@ -191,33 +190,30 @@ export class SceneRenderer {
       renderer.setDepthTest(false);
       renderer.setDepthMask(false);
     }
-    renderer.setUniformValue('uLightingEnabled', true);
+    renderer.setLightingEnabled(true);
     for (const range of this.#geometryRanges) {
       if (!state.isGeometryApiVisible(range.apiIndex)) continue;
       const selected = state.isMeshSelected(range.meshIndex);
       const hovered = state.isMeshInGroup(range.meshIndex, state.hoveredMeshIndex);
       if (unite) renderer.setOpacity(selected || hovered ? kUniteOpacity.focused : kUniteOpacity.other);
-      renderer.setUniformValue('uUseOverrideColor', selected || hovered);
-      if (selected) renderer.setUniformValue('uOverrideColor', kSelectedMeshColor);
+      renderer.setUseOverrideColor(selected || hovered);
+      if (selected) renderer.setOverrideColor(kSelectedMeshColor);
       else if (hovered) {
         const color = state.geometryScene.meshes[range.meshIndex].color;
-        renderer.setUniformValue(
-          'uOverrideColor',
-          new QVector3D(color.r, color.g, color.b).mul(kHoverTint.amount).add(kHoverTint.lift),
-        );
+        renderer.setOverrideColor(new QVector3D(color.r, color.g, color.b).mul(kHoverTint.amount).add(kHoverTint.lift));
       }
-      renderer.glDrawArrays('GL_TRIANGLES', range.start, range.count);
+      renderer.drawTriangles(range.start, range.count);
     }
     if (unite) renderer.setOpacity(1);
-    renderer.setUniformValue('uLightingEnabled', false);
-    renderer.setUniformValue('uUseOverrideColor', false);
+    renderer.setLightingEnabled(false);
+    renderer.setUseOverrideColor(false);
   }
 
   #drawHighlight(): void {
     const { renderer, state } = this;
     if (state.selectedApiIndex < 0 && state.selectedMeshIndex < 0 && state.hoveredMeshIndex < 0) return;
-    renderer.setUniformValue('uUseOverrideColor', true);
-    renderer.glLineWidth(kHighlightLineWidth);
+    renderer.setUseOverrideColor(true);
+    renderer.setLineWidth(kHighlightLineWidth);
     for (const range of this.#wireRanges) {
       if (!state.isGeometryApiVisible(range.apiIndex)) continue;
       const selectedDirectly =
@@ -228,29 +224,28 @@ export class SceneRenderer {
         state.selectedMeshIndex < 0 && state.apiFocusActive && state.apiFocusIndices.has(range.apiIndex);
       const hovered = state.isMeshInGroup(range.meshIndex, state.hoveredMeshIndex);
       if (!selectedDirectly && !selectedAsHelperChild && !hovered) continue;
-      renderer.setUniformValue(
-        'uOverrideColor',
+      renderer.setOverrideColor(
         hovered
           ? kHoverOutlineColor
           : state.selectedMeshIndex >= 0
             ? kSelectedMeshOutlineColor
             : kSelectedApiOutlineColor,
       );
-      renderer.glDrawArrays('GL_LINES', range.start, range.count);
+      renderer.drawLines(range.start, range.count);
     }
-    renderer.setUniformValue('uUseOverrideColor', false);
+    renderer.setUseOverrideColor(false);
   }
 
   #drawConnectors(): void {
     const { renderer, state } = this;
-    renderer.setUniformValue('uUseOverrideColor', false);
-    renderer.setUniformValue('uLightingEnabled', true);
-    if (!state.geometryWireframe) renderer.glDrawArrays('GL_TRIANGLES', this.#connectors.start, this.#connectors.count);
-    renderer.setUniformValue('uLightingEnabled', false);
-    renderer.glLineWidth(kConnectorLineWidth);
+    renderer.setUseOverrideColor(false);
+    renderer.setLightingEnabled(true);
+    if (!state.geometryWireframe) renderer.drawTriangles(this.#connectors.start, this.#connectors.count);
+    renderer.setLightingEnabled(false);
+    renderer.setLineWidth(kConnectorLineWidth);
     renderer.setDepthTest(false);
     renderer.setDepthMask(false);
-    renderer.glDrawArrays('GL_LINES', this.#connectorLines.start, this.#connectorLines.count);
+    renderer.drawLines(this.#connectorLines.start, this.#connectorLines.count);
     renderer.setDepthMask(true);
     renderer.setDepthTest(true);
   }

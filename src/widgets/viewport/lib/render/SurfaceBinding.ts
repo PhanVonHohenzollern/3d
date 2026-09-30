@@ -1,6 +1,7 @@
 import { approximateTextMeasurer, CanvasTextMeasurer, kDefaultFontFamily, pointSizeToPixels } from '@/shared/lib/text';
 import { kWidgetFontPointSize } from '@/widgets/viewport/config/viewport';
 import { QRect } from '@/widgets/viewport/lib/math/Rect';
+import type { RenderBackend } from '@/widgets/viewport/lib/render/backend/RenderBackend';
 import type { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import type { OverlayLayer } from '@/widgets/viewport/lib/render/OverlayLayer';
 import type { SceneRenderer } from '@/widgets/viewport/lib/render/SceneRenderer';
@@ -8,15 +9,14 @@ import type { ViewportSurface } from '@/widgets/viewport/lib/render/types';
 
 // What the surface needs from the viewport that owns it.
 export interface SurfaceHost {
-  // Fills the vertex buffer when GL starts with nothing built.
+  // Fills the vertex buffer when the backend becomes ready with nothing built.
   rebuildVertices(): void;
   clearHover(): void;
 }
 
-// The canvases the viewport draws on: the WebGL context and its loss, the 2D overlay context,
-// the size and pixel ratio, the cursor, and painting on the next animation frame.
+// The canvases the viewport draws on: the 3D canvas (given to the render backend), the 2D overlay
+// context, the size and pixel ratio, the cursor, and painting on the next animation frame.
 export class SurfaceBinding {
-  #gl: WebGL2RenderingContext | null = null;
   #surface: ViewportSurface | null = null;
   #overlayContext: CanvasRenderingContext2D | null = null;
   #width = 0;
@@ -29,6 +29,7 @@ export class SurfaceBinding {
     private readonly view: CameraController,
     private readonly overlay: OverlayLayer,
     private readonly scene: SceneRenderer,
+    private readonly backend: RenderBackend,
     private readonly host: SurfaceHost,
   ) {}
 
@@ -53,18 +54,7 @@ export class SurfaceBinding {
     );
     this.#overlayContext = surface.overlay.getContext('2d');
     this.overlay.setTextMeasurer(CanvasTextMeasurer.create() ?? approximateTextMeasurer);
-    surface.glCanvas.addEventListener('webglcontextlost', this.#onContextLost);
-    surface.glCanvas.addEventListener('webglcontextrestored', this.#onContextRestored);
-    this.#gl = surface.glCanvas.getContext('webgl2', {
-      antialias: true,
-      depth: true,
-      stencil: false,
-      alpha: false,
-      premultipliedAlpha: true,
-      preserveDrawingBuffer: false,
-    });
-    if (!this.#gl) console.warn('Viewport3D: WebGL2 is not available; only the overlay is drawn.');
-    else if (!this.#gl.isContextLost()) this.#initializeGL();
+    this.backend.attach(surface.glCanvas, { ready: this.#backendReady, lost: () => {} });
     this.#applyCanvasSize();
     this.setCursor(this.#cursor);
     this.overlay.layout(this.#width, this.#height);
@@ -77,10 +67,7 @@ export class SurfaceBinding {
     if (this.#updateFrame !== null && typeof cancelAnimationFrame === 'function')
       cancelAnimationFrame(this.#updateFrame);
     this.#updateFrame = null;
-    surface.glCanvas.removeEventListener('webglcontextlost', this.#onContextLost);
-    surface.glCanvas.removeEventListener('webglcontextrestored', this.#onContextRestored);
-    this.scene.renderer.release(this.#gl !== null && !this.#gl.isContextLost());
-    this.#gl = null;
+    this.backend.detach();
     this.#overlayContext = null;
     this.#surface = null;
     for (const panel of this.overlay.panels) panel.dispose();
@@ -113,10 +100,12 @@ export class SurfaceBinding {
       this.#surface.cursorElement.style.cursor = cursor;
   }
 
-  #initializeGL(): void {
-    if (!this.#gl || !this.scene.initialize(this.#gl, () => this.host.rebuildVertices())) return;
+  // Also runs when a lost device comes back, so it repaints.
+  #backendReady = (): void => {
+    this.scene.ready(() => this.host.rebuildVertices());
     this.view.camera.updateViewMatrix();
-  }
+    this.update();
+  };
 
   #paintNow(): void {
     if (!this.#surface || this.#width <= 0 || this.#height <= 0) return;
@@ -135,15 +124,4 @@ export class SurfaceBinding {
       if (canvas.height !== h) canvas.height = h;
     }
   }
-
-  #onContextLost = (event: Event): void => {
-    event.preventDefault();
-    this.scene.renderer.release(false);
-  };
-
-  #onContextRestored = (): void => {
-    if (!this.#gl || this.#gl.isContextLost()) return;
-    this.#initializeGL();
-    this.update();
-  };
 }

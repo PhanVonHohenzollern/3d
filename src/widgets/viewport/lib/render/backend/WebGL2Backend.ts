@@ -10,8 +10,7 @@ import {
   kVertexShader,
 } from '@/widgets/viewport/lib/render/shaders';
 import { kVertexBytes, kVertexFloats, type VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
-
-type BoolUniform = 'uUseOverrideColor' | 'uLightingEnabled';
+import type { RenderBackend, RenderBackendEvents } from '@/widgets/viewport/lib/render/backend/RenderBackend';
 
 interface MainProgram {
   program: WebGLProgram;
@@ -47,7 +46,20 @@ const kEmptyLayout: GpuVertexLayout = {
   connectorLineCount: 0,
 };
 
-export class ViewportRenderer {
+const kContextAttributes: WebGLContextAttributes = {
+  antialias: true,
+  depth: true,
+  stencil: false,
+  alpha: false,
+  premultipliedAlpha: true,
+  preserveDrawingBuffer: false,
+};
+
+// Draws with WebGL2. Lines are drawn as screen-space quads (see lineQuads.ts), since WebGL line
+// widths are clamped to 1 px.
+export class WebGL2Backend implements RenderBackend {
+  private m_canvas: HTMLCanvasElement | null = null;
+  private m_events: RenderBackendEvents | null = null;
   private m_gl: WebGL2RenderingContext | null = null;
   private m_program: MainProgram | null = null;
   private m_vertexBuffer: WebGLBuffer | null = null;
@@ -70,6 +82,40 @@ export class ViewportRenderer {
   private m_lineWidth = 1;
   private m_opacity = 1;
 
+  attach(canvas: HTMLCanvasElement, events: RenderBackendEvents): void {
+    this.detach();
+    this.m_canvas = canvas;
+    this.m_events = events;
+    canvas.addEventListener('webglcontextlost', this.onContextLost);
+    canvas.addEventListener('webglcontextrestored', this.onContextRestored);
+    const gl = canvas.getContext('webgl2', kContextAttributes);
+    if (!gl) console.warn('Viewport3D: WebGL2 is not available; only the overlay is drawn.');
+    else if (!gl.isContextLost() && this.initialize(gl)) events.ready();
+  }
+
+  detach(): void {
+    const canvas = this.m_canvas;
+    if (!canvas) return;
+    canvas.removeEventListener('webglcontextlost', this.onContextLost);
+    canvas.removeEventListener('webglcontextrestored', this.onContextRestored);
+    this.release(this.m_gl !== null && !this.m_gl.isContextLost());
+    this.m_gl = null;
+    this.m_canvas = null;
+    this.m_events = null;
+  }
+
+  private onContextLost = (event: Event): void => {
+    event.preventDefault();
+    this.release(false);
+    this.m_events?.lost();
+  };
+
+  private onContextRestored = (): void => {
+    const gl = this.m_gl;
+    if (!gl || gl.isContextLost()) return;
+    if (this.initialize(gl)) this.m_events?.ready();
+  };
+
   setOpacity(opacity: number): void {
     this.m_opacity = opacity;
     const gl = this.m_gl;
@@ -80,7 +126,7 @@ export class ViewportRenderer {
     } else gl.disable(gl.BLEND);
   }
 
-  initialize(gl: WebGL2RenderingContext): boolean {
+  private initialize(gl: WebGL2RenderingContext): boolean {
     this.release(false);
     this.m_gl = gl;
 
@@ -131,7 +177,7 @@ export class ViewportRenderer {
     return true;
   }
 
-  release(deleteObjects: boolean): void {
+  private release(deleteObjects: boolean): void {
     const gl = this.m_gl;
     if (gl && deleteObjects) {
       if (this.m_vao) gl.deleteVertexArray(this.m_vao);
@@ -154,7 +200,7 @@ export class ViewportRenderer {
     this.m_wireQuadVersion = -1;
   }
 
-  isReady(): boolean {
+  private isReady(): boolean {
     return this.m_gl !== null && this.m_program !== null && !this.m_gl.isContextLost();
   }
 
@@ -256,19 +302,31 @@ export class ViewportRenderer {
     this.m_gl?.depthMask(enabled);
   }
 
-  setUniformValue(name: BoolUniform, value: boolean): void;
-  setUniformValue(name: 'uOverrideColor', value: QVector3D): void;
-  setUniformValue(name: BoolUniform | 'uOverrideColor', value: boolean | QVector3D): void {
-    if (name === 'uOverrideColor') this.m_uniformOverrideColor = value as QVector3D;
-    else if (name === 'uUseOverrideColor') this.m_uniformUseOverrideColor = value as boolean;
-    else this.m_uniformLightingEnabled = value as boolean;
+  setUseOverrideColor(enabled: boolean): void {
+    this.m_uniformUseOverrideColor = enabled;
   }
 
-  glLineWidth(width: number): void {
+  setOverrideColor(color: QVector3D): void {
+    this.m_uniformOverrideColor = color;
+  }
+
+  setLightingEnabled(enabled: boolean): void {
+    this.m_uniformLightingEnabled = enabled;
+  }
+
+  setLineWidth(width: number): void {
     this.m_lineWidth = width;
   }
 
-  glDrawArrays(mode: 'GL_LINES' | 'GL_TRIANGLES', first: number, count: number): void {
+  drawLines(first: number, count: number): void {
+    this.drawArrays('GL_LINES', first, count);
+  }
+
+  drawTriangles(first: number, count: number): void {
+    this.drawArrays('GL_TRIANGLES', first, count);
+  }
+
+  private drawArrays(mode: 'GL_LINES' | 'GL_TRIANGLES', first: number, count: number): void {
     const gl = this.m_gl;
     const program = this.m_program;
     if (!gl || !program || count <= 0) return;

@@ -3,6 +3,7 @@ import { setsEqual } from '@/shared/lib/sets';
 import type { TextMeasurer } from '@/shared/lib/text';
 import { kNextSelectionMode, kSelectionModeNames } from '@/widgets/viewport/config/viewport';
 import type { QRect } from '@/widgets/viewport/lib/math/Rect';
+import { createRenderBackend } from '@/widgets/viewport/lib/render/backend/createRenderBackend';
 import { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import type { DebugLabelPanel } from '@/widgets/viewport/lib/render/DebugLabelPanel';
 import { buildDebugItems } from '@/widgets/viewport/lib/render/debugItems';
@@ -28,7 +29,8 @@ export class ViewportEngine {
   readonly #view = new CameraController(this.#state);
   readonly #pickers = new PickingService(this.#state, this.#view);
   readonly #overlay = new OverlayLayer(this.#state, this.#view, () => this.#notifyWidgets());
-  readonly #scene = new SceneRenderer(this.#state, this.#view);
+  readonly #backend = createRenderBackend();
+  readonly #scene = new SceneRenderer(this.#state, this.#view, this.#backend);
   readonly #callbacks: ViewportCallbacks = {
     selectionChanged: null,
     pointCreation: null,
@@ -36,7 +38,7 @@ export class ViewportEngine {
     connectorSelection: null,
   };
   readonly #input = new ViewportInput(this.#state, this.#view, this.#pickers, this.#overlay, this.#inputHost());
-  readonly #surface = new SurfaceBinding(this.#view, this.#overlay, this.#scene, {
+  readonly #surface = new SurfaceBinding(this.#view, this.#overlay, this.#scene, this.#backend, {
     rebuildVertices: () => this.#rebuildGpuVertices(),
     clearHover: () => this.#input.clearHover(),
   });
