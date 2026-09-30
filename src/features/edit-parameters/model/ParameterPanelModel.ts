@@ -346,19 +346,10 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.dataSetIndex = index;
     this.editor = null;
     for (const [key, value] of data) {
-      const row = this.rows.find((item) => item.key === key);
-      if (!row?.checkbox || row.disabled) continue;
-      this.#values.set(key, value);
-      this.#userEditedKeys.add(key);
-    }
-    this.#refreshAvailability();
-    for (const [key, value] of data) {
       const definition = this.#definitions.find((item) => parameterKey(item) === key);
       if (
         !definition ||
-        (isInsulationQuery(definition.sourceFunction)
-          ? !this.#enabledInsulation.has(definition.sourceFunction)
-          : this.#activeKeys && !this.#activeKeys.has(key))
+        (isInsulationQuery(definition.sourceFunction) && !this.#enabledInsulation.has(definition.sourceFunction))
       )
         continue;
       this.#values.set(key, value);

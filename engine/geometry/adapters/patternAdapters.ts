@@ -35,14 +35,18 @@ function kfFlat(s: PatternSketch): void {
   const dx = sw + a.positive('hwidth'),
     dy = sh + a.positive('hh'),
     rows = Math.min(128, Math.floor(h / dy)),
-    cols = Math.min(128, Math.floor(w / dx));
-  for (let r = 0; r <= rows; ++r)
+    start = a.num('startOff'),
+    offset = a.num('off');
+  for (let r = 0; r <= rows; ++r) {
+    const rowStart = start + (r % 2) * offset,
+      cols = Math.min(128, Math.floor((w - rowStart - sw) / dx) + 1);
     for (let c = 0; c < cols; ++c) {
-      const x = -w / 2 + c * dx + a.num('startOff') + (r % 2) * a.num('off'),
+      const x = -w / 2 + c * dx + rowStart,
         y = -h / 2 + r * dy;
       if (x + sw > w / 2 || y + sh > h / 2) continue;
       s.stroke([s.at(x, y + sh), s.at(x + sw / 2, y), s.at(x + sw, y + sh)]);
     }
+  }
 }
 
 function kfCurved(s: PatternSketch): void {

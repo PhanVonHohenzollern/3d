@@ -31,6 +31,45 @@ const triangleAreas = (mesh: PreviewMesh, normal: DVec3): number[] => {
 const signedArea = (mesh: PreviewMesh, normal: DVec3): number =>
   triangleAreas(mesh, normal).reduce((sum, area) => sum + area, 0);
 
+describe('makeKFSymbolFlat layout', () => {
+  it.each([
+    [7, 0],
+    [8, 1],
+    [10, 1],
+    [13, 1],
+    [21, 2],
+    [26, 2],
+  ])('fits symbols without requiring a trailing gap (width=%s)', (width, count) => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `makeKFSymbolFlat(FdPoint3d(), vz, vx, ${width}, 5, 8, 5, 0, 5, 5);`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(count);
+    for (const mesh of scene.meshes) expect(mesh.indices.length).toBeGreaterThan(0);
+    expectFiniteScene(scene);
+  });
+
+  it.each([
+    [0, 0, 4],
+    [0, 4, 3],
+    [5, 0, 2],
+    [14, 0, 0],
+  ])('accounts for row offsets (start=%s, alternating=%s)', (start, offset, count) => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `makeKFSymbolFlat(FdPoint3d(), vz, vx, 21, 15, 8, 5, ${offset}, 5, 5, ${start});`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(count);
+    expectFiniteScene(scene);
+  });
+});
+
 describe('makeBUTTV tube intersection boundary', () => {
   it.each([56, 56.0001, -56, -56.0001])('builds both sides when the duct reaches the radius (%s)', (length) => {
     const runtime = new GeometryRuntime();

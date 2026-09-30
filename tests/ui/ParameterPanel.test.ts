@@ -43,6 +43,34 @@ function editValue(model: ParameterPanelModel, row: number, text: string): void 
 }
 
 describe('ParameterPanel', () => {
+  it('applies a whole data row before checking numeric and nested checkbox branches', () => {
+    const source = `double mode=0; get_val("Mode",mode);
+if(mode==1) { bool enabled=false; get_val("Enabled",enabled);
+  if(enabled) { double width=0; get_val("Width",width); }
+}`;
+    const model = new ParameterPanelModel();
+    const availability = vi.fn(availabilityFor(source));
+    const changed = vi.fn();
+    model.setAvailability(availability);
+    model.setDefinitions(new GeometryRuntime().discoverParameters(source));
+    model.valuesChanged.connect(changed);
+    availability.mockClear();
+    expect(model.importTable('Width\tEnabled\tMode\n60\ttrue\t1\n80\tfalse\t0')).toBe(true);
+    expect(Object.fromEntries(model.overrides())).toEqual({ Width: '60', Enabled: 'true', Mode: '1' });
+    expect(availability).toHaveBeenCalledTimes(1);
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(model.rows.find((row) => row.key === 'Width')?.disabled).toBe(false);
+    model.selectDataSet(1);
+    expect(Object.fromEntries(model.overrides())).toEqual({ Width: '80', Enabled: 'false', Mode: '0' });
+    expect(model.rows.find((row) => row.key === 'Width')?.disabled).toBe(true);
+    expect(
+      model.edit(
+        model.rows.findIndex((row) => row.key === 'Width'),
+        3,
+      ),
+    ).toBe(false);
+  });
+
   it('groups function parameters, gates nested branches, and keeps same-name overrides independent', () => {
     const source = [
       'short makeDV() {',
