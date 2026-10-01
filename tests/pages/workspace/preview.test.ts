@@ -10,6 +10,66 @@ describe('Workspace: Build and Debug preview', () => {
     vi.useRealTimers();
   });
 
+  it.each(['elType\tL\tl\tdext\td\n3\t300\t80\t40\t60', 'd\tl\tdext\tL\telType\n60\t80\t40\t300\t3'])(
+    'keeps the CNRV middle section when a data row changes the active branch (%s)',
+    (table) => {
+      const { mw, editor, parameters } = createWorkspace();
+      const source = `short element() {
+int elType=0; double L=300, diam=40;
+get_val("elType",elType); get_val("L",L); get_val("dext",diam);
+if(elType==3) {
+  double l=0, d=0; get_val("l",l); get_val("d",d);
+  double ll=(L-l)/2;
+  FdPoint3d p1(-L/2,0,0), p2(-L/2+ll,0,0), p3(L/2-ll,0,0), p4(L/2,0,0);
+  FdPoint3d p[6]={p1,p2,p2,p3,p3,p4};
+  double diams[6]={diam,diam,d,d,diam,diam};
+  makeUniVectorTube(p,vx,diams,10,5);
+}
+return 0;
+}`;
+      try {
+        mw.start();
+        editor.type(source, 1);
+        mw.buildPreview();
+        expect(parameters.rows.find((row) => row.key === 'element::l')?.disabled).toBe(true);
+        const previousScene = mw.session.scene;
+        expect(parameters.importTable(table)).toBe(true);
+        expect(parameters.overrides().get('element::l')).toBe('80');
+        expect(parameters.overrides().get('element::d')).toBe('60');
+        expect(mw.session.scene).toBe(previousScene);
+        mw.buildPreview();
+        expect(mw.session.lastResult.diagnostics).toEqual([]);
+        expect(mw.session.scene.warnings).toEqual([]);
+        expect(mw.session.scene.meshes).toHaveLength(1);
+        const mesh = mw.session.scene.meshes[0];
+        for (const [x, diameters] of [
+          [-150, [40]],
+          [-40, [40, 60]],
+          [40, [40, 60]],
+          [150, [40]],
+        ] as const) {
+          const rings = new Set(
+            mesh.vertices.filter((v) => v.x === x).map((v) => Math.round(2 * Math.hypot(v.y, v.z))),
+          );
+          expect([...rings].sort((a, b) => a - b)).toEqual(diameters);
+        }
+        const spansMiddle = mesh.indices.some((_, i) => {
+          if (i % 3) return false;
+          const points = mesh.indices.slice(i, i + 3).map((j) => mesh.vertices[j]);
+
+          return (
+            Math.min(...points.map((p) => p.x)) === -40 &&
+            Math.max(...points.map((p) => p.x)) === 40 &&
+            points.every((p) => Math.abs(Math.hypot(p.y, p.z) - 30) < 0.0001)
+          );
+        });
+        expect(spansMiddle).toBe(true);
+      } finally {
+        mw.dispose();
+      }
+    },
+  );
+
   it('Build runs the main element before its helpers and locks inactive helper parameters immediately', () => {
     const { mw, editor, parameters } = createWorkspace();
     const source = [
