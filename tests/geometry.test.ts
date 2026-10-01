@@ -333,6 +333,62 @@ makeBox(1, points, normals, ups, widths, heights, sides, edges, false, false, ${
   });
 });
 
+describe('symbol colors', () => {
+  it.each([
+    'makeSymbolicLine(FdPoint3d(), FdPoint3d(10,0,0));',
+    'makeSymbolicCircle(FdPoint3d(), vz, 20);',
+    'makeSymbolicArc(FdPoint3d(), vz, vx, 20, 90);',
+    'makeRectHatch(FdPoint3d(), vz, vx, 10, 20);',
+    'makeCircleSymbol(FdPoint3d(), vz, vx, 20, 5);',
+    'makeAssemblyHole(FdPoint3d(), vz, vx, 20, 5);',
+    'makeKFSymbolFlat(FdPoint3d(), vz, vx, 100, 50, 8, 5, 0, 5, 5);',
+    'makeKFSymbolCurved(FdPoint3d(), vz, vx, 100, 20, 10, 20, 0, 5, 5);',
+    'makeRectHoles(FdPoint3d(), vz, vx, 40, 80, 5, 4, 0, 0);',
+    'addThinLine(FdPoint3d(), FdPoint3d(10,0,0));',
+    'addCenterLine(FdPoint3d(), FdPoint3d(10,0,0));',
+  ])('keeps %s green without changing the surrounding mesh colors', (symbol) => {
+    const solid = 'makeFlatDisc(FdPoint3d(), vz, 20, 5);';
+    const stages = [
+      ['', { r: 1, g: Math.fround(176 / 255), b: 0 }],
+      ['setMeshColor(255,0,0);', { r: 1, g: 0, b: 0 }],
+      ['setPrimitiveMode(FLM3Geo::pmExtInsulation); setMeshColor(5);', { r: Math.fround(139 / 255), g: 0, b: 0 }],
+      ['setPrimitiveMode(FLM3Geo::pmNormal);', { r: 0, g: 0, b: 1 }],
+    ] as const;
+    const source = stages.map(([setup]) => [setup, solid, symbol, solid].join('\n')).join('\n');
+    const result = new GeometryRuntime().executeUpToLine(source, 999, true);
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes.filter((mesh) => mesh.apiName === 'makeFlatDisc').map((mesh) => mesh.color)).toEqual(
+      stages.flatMap(([, color]) => [color, color]),
+    );
+    for (const [apiIndex, call] of result.apiCalls.entries()) {
+      if (!symbol.startsWith(call.name + '(')) continue;
+      const meshes = scene.meshes.filter((mesh) => mesh.apiIndex === apiIndex);
+      expect(meshes.length).toBeGreaterThan(0);
+      for (const mesh of meshes) {
+        expect(mesh.indices.length).toBeGreaterThan(0);
+        expect(mesh.color).toEqual({ r: 0, g: 1, b: 0 });
+      }
+    }
+  });
+
+  it('uses the native calls inside a user helper to decide the color', () => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `void makeSymbolicLine() { makeFlatDisc(FdPoint3d(), vz, 20, 5); }
+setMeshColor(255,0,0);
+makeSymbolicLine();`,
+      999,
+      true,
+    );
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(1);
+    expect(scene.meshes[0].color).toEqual({ r: 1, g: 0, b: 0 });
+  });
+});
+
 it('keeps external insulation dark red across color changes and restores colors in normal mode', () => {
   const tube = 'makeVerySimpleTube(FdPoint3d(0, 0, 0), FdPoint3d(0, 0, 100), 100, 8);';
   const source = [

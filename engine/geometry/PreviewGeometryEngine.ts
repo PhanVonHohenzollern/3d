@@ -3,6 +3,7 @@ import { effectiveApiArguments, type RuntimeApiCall, type RuntimeResult } from '
 import {
   appendCompositeApiMeshes,
   appendPrimitiveApiMeshes,
+  isSymbolApiName,
   kCompositeGeometryHeaders,
   supportedPreviewApiNames,
 } from '@engine/geometry/adapters/apiAdapters';
@@ -39,6 +40,7 @@ export class PreviewGeometryEngine {
     const scene: PreviewGeometryScene = { meshes: [], warnings: [] };
     let currentColor: PreviewColor = defaultPreviewColor();
     let externalInsulation = false;
+    const symbolColor: PreviewColor = { r: 0, g: 1, b: 0 };
     const insulationColor: PreviewColor = { r: Math.fround(139 / 255), g: 0, b: 0 };
     let currentTransform = identityMatrix();
     const transformByApi = new Map<number, DMat4>();
@@ -71,7 +73,8 @@ export class PreviewGeometryEngine {
         continue;
       }
 
-      const context = new MeshBuildContext(call, apiIndex, externalInsulation ? insulationColor : currentColor);
+      const color = isSymbolApiName(call.name) ? symbolColor : externalInsulation ? insulationColor : currentColor;
+      const context = new MeshBuildContext(call, apiIndex, color);
       const firstMesh = scene.meshes.length;
       if (appendPrimitiveApiMeshes(scene, context, args) || appendCompositeApiMeshes(scene, context, args)) {
         // Repeated grille blades and symbol strokes share one draw call. Keep

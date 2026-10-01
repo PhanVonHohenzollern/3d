@@ -82,6 +82,10 @@ export function supportedPreviewApiNames(): readonly string[] {
   return kSupportedPreviewApiNames;
 }
 
+export function isSymbolApiName(name: string): boolean {
+  return name === 'makeSymbolicCircle' || Object.hasOwn(symbolAdapters, name) || Object.hasOwn(patternAdapters, name);
+}
+
 export const kCompositeGeometryHeaders: ReadonlySet<string> = new Set([
   'SymbolsInt.h',
   'GrillsInt.h',
