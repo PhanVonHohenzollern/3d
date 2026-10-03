@@ -98,9 +98,12 @@ function surface(
   const mesh = context.createMesh();
   const around = Math.min(kMaxRingSegments, circularFaceCount(complexity));
   const along = Math.min(kMaxRingSegments, Math.max(16, Math.ceil((tube.length / Math.min(cutter.a, cutter.b)) * 4)));
+  const begin = half
+    ? Math.atan2(tube.b * cutter.axis.dotProduct(tube.side), tube.a * cutter.axis.dotProduct(tube.up)) - Math.PI / 2
+    : 0;
 
   const sample = (i: number, j: number): Sample => {
-    const angle = (j / around) * Math.PI * (half ? 1 : 2);
+    const angle = begin + (j / around) * Math.PI * (half ? 1 : 2);
     const radial = tube.up.mul(tube.a * Math.cos(angle)).add(tube.side.mul(tube.b * Math.sin(angle)));
 
     return {
@@ -131,19 +134,25 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
     const start = a.point('start'),
       normal = a.fdVector('normal');
     // The overload without upVector derives it from the normal.
-    const up = a.has('upVector') ? a.fdVector('upVector') : defaultUp(normal.normal());
+    const up = a.has('upVector')
+      ? a.fdVector('upVector')
+      : variant === 'tubeParams'
+        ? Math.abs(normal.normal().x) < 0.9
+          ? new FdVector3d(1, 0, 0)
+          : new FdVector3d(0, 1, 0)
+        : defaultUp(normal.normal());
     let main: Cylinder,
       branch: Cylinder,
       complexity: number,
       branchComplexity: number,
-      half = false,
+      halfMain: boolean,
       onlyBranch = false;
     if (variant === 'tubeData') {
       const tube = leadingReals(a, 'tubeData', 2),
         inter = leadingReals(a, 'interTubeData', 4),
         angles = leadingReals(a, 'angles', 0);
       complexity = branchComplexity = a.real('n');
-      half = a.flag('half');
+      halfMain = a.flag('half');
       main = cylinder(start, normal, up, tube[0], tube[0], tube[1]);
       const direction = up.rotateBy(deg(angles[0] ?? 0), main.side).rotateBy(deg(angles[1] ?? 0), main.axis);
       const origin = start.add(main.axis.mul(inter[2])).add(main.side.mul(inter[3]));
@@ -154,27 +163,29 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
         inter = leadingReals(a, 'interTubeParams', 3),
         angles = leadingReals(a, 'angles', 1),
         n = leadingReals(a, 'complexities', 2);
-      // A missing or malformed options array draws both tubes.
-      onlyBranch = isArray(a.get('options')) && (a.flagArray('options')[2] ?? false);
+      const options = isArray(a.get('options')) ? a.flagArray('options') : [];
+      halfMain = options[1] ?? false;
+      onlyBranch = options[2] ?? false;
       complexity = n[0];
       branchComplexity = n[1];
-      main = cylinder(start, normal, up, tube[0], tube[1], tube[2]);
-      const alpha = deg(angles[0]);
+      main = cylinder(start, normal, up.rotateBy(deg(angles[2] ?? 0), normal), tube[0], tube[1], tube[2]);
+      const alpha = deg(angles[0]),
+        beta = deg(angles[1] ?? 90);
       const direction = main.axis
         .mul(-Math.cos(alpha))
-        .add(main.up.mul(Math.sin(alpha)))
-        .rotateBy(deg(angles[2] ?? 0), main.axis);
-      const origin = start.add(main.axis.mul(position[0])).add(main.side.mul(position[1]));
+        .add(main.up.mul(Math.sin(alpha) * Math.cos(beta)))
+        .add(main.side.mul(Math.sin(alpha) * Math.sin(beta)));
+      const origin = start.add(main.axis.mul(position[0])).add(main.up.mul(position[1]));
       branch = cylinder(origin, direction, main.axis, inter[1], inter[2], inter[0]);
     }
     if (!Number.isFinite(complexity) || complexity < 1 || !Number.isFinite(branchComplexity) || branchComplexity < 1)
       throw new Error('complexity must be positive');
     if (!onlyBranch) {
-      const mesh = surface(context, main, branch, complexity);
+      const mesh = surface(context, main, branch, complexity, halfMain);
       mesh.apiName += '.main';
       pushNonEmptyMesh(scene, mesh);
     }
-    const mesh = surface(context, branch, main, branchComplexity, half);
+    const mesh = surface(context, branch, main, branchComplexity);
     mesh.apiName += '.branch';
     pushNonEmptyMesh(scene, mesh);
   });

@@ -268,7 +268,11 @@ export function apiSemanticsForCall(call: RuntimeApiCall): ApiParameterSemantics
     roles('ductPosition', ['Offset along main axis', 'Offset along A axis']);
     roles('ductParams', ['Duct width', 'Duct height', 'Duct length']);
     roles('interTubePosition', ['Offset along main axis', 'Offset along A axis']);
-    roles('interTubeParams', ['Branch length', 'Branch A diameter', 'Branch B diameter']);
+    roles('interTubeParams', ['Branch length', 'Branch B diameter', 'Branch A diameter']);
+  }
+  if (name === 'makeTubeToTubeIntersection') {
+    roles('angles', ['Left/right angle (degrees)', 'Up/down angle (degrees)', 'Whole intersection rotation (degrees)']);
+    roles('options', ['All face edges', 'Hide back half of main tube', 'Omit main tube']);
   }
   if (oneOf(name, ['makePlane', 'makeRotatablePlane'])) {
     set('points', 'Face vertices');

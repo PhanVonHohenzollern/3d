@@ -548,6 +548,50 @@ describe('tube-to-tube intersections', () => {
     expect(scene.warnings).toEqual(['line 1 makeTubeToTubeIntersection2: interTubeData needs 4 numbers']);
   });
 
+  it.each([
+    [false, 0],
+    [false, 90],
+    [false, 180],
+    [false, 270],
+    [true, 0],
+    [true, 90],
+    [true, 180],
+    [true, 270],
+  ] as const)(
+    'makeTubeToTubeIntersection2 halves only the main tube (upVector=%s, rotation=%s)',
+    (explicitUp, rotation) => {
+      const scenes = [false, true].map((half) => {
+        const result = new GeometryRuntime().executeUpToLine(
+          `
+FdPoint3d start(7,11,13);
+double tube[2]={80,200}, branch[4]={20,100,100,0}, angles[2]={30,${rotation}};
+makeTubeToTubeIntersection2(start,vx,${explicitUp ? 'vz,' : ''}tube,branch,angles,4,${half});`,
+          999,
+        );
+        expect(result.diagnostics).toEqual([]);
+        const scene = new PreviewGeometryEngine().build(result);
+        expect(scene.warnings).toEqual([]);
+        expect(scene.meshes.map((mesh) => mesh.apiName)).toEqual([
+          'makeTubeToTubeIntersection2.main',
+          'makeTubeToTubeIntersection2.branch',
+        ]);
+        expectFiniteScene(scene);
+
+        return scene;
+      });
+      const [full, half] = scenes;
+      const angle = (rotation * Math.PI) / 180;
+
+      const facing = (v: { y: number; z: number }) => -(v.y - 11) * Math.sin(angle) + (v.z - 13) * Math.cos(angle);
+
+      expect(full.meshes[0].vertices.some((v) => facing(v) < -1)).toBe(true);
+      expect(half.meshes[0].vertices.every((v) => facing(v) >= -0.0001)).toBe(true);
+      expect(half.meshes[0].vertices.some((v) => facing(v) > 1)).toBe(true);
+      expect(half.meshes[1].vertices).toEqual(full.meshes[1].vertices);
+      expect(half.meshes[1].indices).toEqual(full.meshes[1].indices);
+    },
+  );
+
   it('still accepts an angle array that only sets the first angle', () => {
     const scene = build(
       `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
@@ -557,6 +601,175 @@ describe('tube-to-tube intersections', () => {
     expect(scene.warnings).toEqual([]);
     expect(scene.meshes).toHaveLength(2);
     expectFiniteScene(scene);
+  });
+});
+
+describe('Berliner elbow and tee regressions', () => {
+  const build = (source: string) => {
+    const result = new GeometryRuntime().executeUpToLine(source, 999);
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expectFiniteScene(scene);
+
+    return scene;
+  };
+
+  const point = (v: { x: number; y: number; z: number }) => new DVec3(v.x, v.y, v.z);
+
+  const average = (vertices: { x: number; y: number; z: number }[]) =>
+    vertices.reduce<DVec3>((sum, v) => sum.add(point(v)), new DVec3()).mul(1 / vertices.length);
+
+  const near = (actual: DVec3, expected: DVec3) => expect(vectorLength(actual.sub(expected))).toBeLessThan(0.0001);
+
+  it.each([45, 90])('joins makeSymmetricElbow sections at W=%s', (angle) => {
+    const scene = build(`
+double a=100, b=80, e=100, f=120, w=${angle};
+bool sides[4]={true,true,true,true};
+FdPoint3d p[2]={FdPoint3d(),FdPoint3d(0,0,e)};
+FdVector3d normals[2]={vz,vz}, ups[2]={vx,vx};
+double widths[2]={a,a}, heights[2]={b,b};
+makeBox(1,p,normals,ups,widths,heights,sides,false,false,0,0,0);
+makeBend2(p[1],-vz,-vy,sides,false,w,w,b,a,b,20,0,0);
+p[0].x-=b/2; p[0].z+=b/2+e;
+p[1]=p[0]; p[1].x-=f;
+FdPoint3d center=p[0]; center.z-=b/2;
+p[0].rotateBy(ARX_PI/2-ARX_PI*w/180,vy,center);
+p[1].rotateBy(ARX_PI/2-ARX_PI*w/180,vy,center);
+normals[0].rotateBy(ARX_PI/2-ARX_PI*w/180,vy);
+normals[1]=normals[0];
+ups[0].rotateBy(ARX_PI/2-ARX_PI*w/180,vy); ups[1]=ups[0];
+makeBox(1,p,ups,normals,widths,heights,sides,false,false,0,0,0);`);
+    expect(scene.meshes).toHaveLength(3);
+    const [entry, bend, exit] = scene.meshes;
+
+    const matches = (a: PreviewMesh['vertices'], b: PreviewMesh['vertices']) => {
+      for (const v of a) expect(Math.min(...b.map((w) => vectorLength(point(v).sub(point(w)))))).toBeLessThan(0.0001);
+    };
+
+    matches(bend.vertices.slice(0, 4), entry.vertices.slice(-4));
+    matches(bend.vertices.slice(-4), exit.vertices.slice(0, 4));
+    const theta = (angle * Math.PI) / 180;
+    near(average(bend.vertices.slice(-4)), new DVec3(-40 * (1 - Math.cos(theta)), 0, 100 + 40 * Math.sin(theta)));
+  });
+
+  it.each([false, true])('keeps R11 across the inlet and R12 along the inlet normal (reverse=%s)', (reverse) => {
+    const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeBend2(FdPoint3d(),-vz,-vy,sides,${reverse},90,90,80,100,120,8,30,70);`).meshes;
+    near(average(mesh.vertices.slice(0, 4)), new DVec3());
+    near(average(mesh.vertices.slice(-4)), new DVec3(reverse ? 70 : -70, 0, 130));
+    expect(
+      mesh.vertices
+        .slice(-4)
+        .map((v) => v.z)
+        .sort((a, b) => a - b),
+    ).toEqual([70, 70, 190, 190]);
+    expect(
+      mesh.vertices
+        .slice(-4)
+        .map((v) => v.y)
+        .sort((a, b) => a - b),
+    ).toEqual([-50, -50, 50, 50]);
+  });
+
+  it('uses beta for the outer ellipse while preserving the inner endpoint', () => {
+    const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeBend2(FdPoint3d(),-vz,-vy,sides,false,90,45,80,100,80,8,40,40);`).meshes;
+    const [outerTop, innerTop, innerBottom, outerBottom] = mesh.vertices.slice(-4);
+    near(average([innerTop, innerBottom]), new DVec3(-80, 0, 40));
+    near(average([outerTop, outerBottom]), new DVec3(-80 + 120 / Math.sqrt(2), 0, 120 / Math.sqrt(2)));
+  });
+
+  it('ends both unequal ellipses on the requested radial angle', () => {
+    const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeBend2(FdPoint3d(),-vz,-vy,sides,false,45,45,80,100,120,8,30,70);`).meshes;
+    const [outerTop, innerTop, innerBottom, outerBottom] = mesh.vertices.slice(-4);
+    for (const [vertices, a, b] of [
+      [[innerTop, innerBottom], 30, 70],
+      [[outerTop, outerBottom], 110, 190],
+    ] as const) {
+      const p = average([...vertices]);
+      expect(p.x + 70).toBeCloseTo(p.z, 4);
+      expect(((p.x + 70) / a) ** 2 + (p.z / b) ** 2).toBeCloseTo(1, 5);
+    }
+  });
+
+  it.each([1, -1])('draws addCenterArc using radians (direction=%s)', (sign) => {
+    const [mesh] = build(`addCenterArc(FdPoint3d(-40,0,100),-vy,vx,40,0,${sign}*ARX_PI/2);`).meshes;
+    near(average([mesh.vertices[0], mesh.vertices[3]]), new DVec3(0, 0, 100));
+    near(average(mesh.vertices.slice(-3, -1)), new DVec3(-40, 0, 100 + sign * 40));
+  });
+
+  const tee = (angles = '135,90,0', options = 'false,false,false', frame = 'vx,vy', offset = 10) =>
+    build(`
+double tube[3]={80,40,200}, position[2]={100,${offset}}, branch[3]={100,20,30};
+double angles[3]={${angles}}; int complexity[2]={4,4}; bool options[]={${options}};
+makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,complexity,options);`);
+
+  const tipCenter = (mesh: PreviewMesh, origin: DVec3, direction: DVec3, length: number) => {
+    const tip = mesh.vertices.filter((v) => Math.abs(dot(point(v).sub(origin), direction) - length) < 0.0001);
+    const unique = new Map(tip.map((v) => [[v.x, v.y, v.z].map((c) => c.toFixed(4)).join(','), v]));
+    expect(unique.size).toBeGreaterThan(4);
+
+    return average([...unique.values()]);
+  };
+
+  it.each([30, 90, 120])('applies the second branch angle (%s degrees)', (angle) => {
+    const scene = tee(`135,${angle},0`);
+    const direction = new DVec3(
+      Math.SQRT1_2,
+      Math.SQRT1_2 * Math.cos((angle * Math.PI) / 180),
+      Math.SQRT1_2 * Math.sin((angle * Math.PI) / 180),
+    );
+    const origin = new DVec3(100, 10, 0);
+    near(tipCenter(scene.meshes[1], origin, direction, 100), origin.add(direction.mul(100)));
+  });
+
+  it('rotates both tubes and the offset with the third angle', () => {
+    const base = tee('123,67,0'),
+      rotated = tee('123,67,37');
+    const angle = (37 * Math.PI) / 180;
+    for (let i = 0; i < 2; ++i) {
+      expect(rotated.meshes[i].indices).toEqual(base.meshes[i].indices);
+      base.meshes[i].vertices.forEach((v, j) =>
+        near(
+          point(rotated.meshes[i].vertices[j]),
+          new DVec3(v.x, v.y * Math.cos(angle) - v.z * Math.sin(angle), v.y * Math.sin(angle) + v.z * Math.cos(angle)),
+        ),
+      );
+    }
+  });
+
+  it('hides the back half of the main tube without cutting the branch', () => {
+    const full = tee('135,90,0', 'false,false,false', 'vx,vy', 0);
+    const half = tee('135,90,0', 'true,true', 'vx,vy', 0);
+    expect(half.meshes).toHaveLength(2);
+    expect(full.meshes[0].vertices.some((v) => v.z < -1)).toBe(true);
+    expect(half.meshes[0].vertices.every((v) => v.z >= -0.0001)).toBe(true);
+    expect(half.meshes[1].vertices).toEqual(full.meshes[1].vertices);
+    expect(half.meshes[1].indices).toEqual(full.meshes[1].indices);
+  });
+
+  it('omits only the main mesh when options[2] is true', () => {
+    const full = tee(),
+      branch = tee('135,90,0', 'false,false,true');
+    expect(branch.meshes).toHaveLength(1);
+    expect(branch.meshes[0].apiName).toBe('makeTubeToTubeIntersection.branch');
+    expect(branch.meshes[0].vertices).toEqual(full.meshes[1].vertices);
+    expect(branch.meshes[0].indices).toEqual(full.meshes[1].indices);
+  });
+
+  it.each([
+    ['vx', 'vy'],
+    ['vy', 'vx'],
+    ['vz', 'vx'],
+  ])('uses the SDK default up vector for %s', (normal, up) => {
+    const implicit = tee('135,90,0', 'false,false,false', normal);
+    const explicit = tee('135,90,0', 'false,false,false', `${normal},${up}`);
+    implicit.meshes.forEach((mesh, i) => expect(mesh.vertices).toEqual(explicit.meshes[i].vertices));
   });
 });
 
