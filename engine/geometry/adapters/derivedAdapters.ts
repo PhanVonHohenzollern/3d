@@ -165,9 +165,62 @@ function bend({ scene, context, a }: DerivedSketch): void {
   }
 }
 
+function bend2({ scene, context, a }: DerivedSketch): void {
+  if (a.get('outEllipse') !== undefined) throw new Error('AcDbEllipse output overload requires a native CAD object');
+  if (!a.bool('draw', true)) return;
+  const f = a.frame();
+  const w0 = a.positive('beginWidth'),
+    w1 = a.positive('endWidth'),
+    h = a.num('Height'),
+    r0 = a.num('R11'),
+    r1 = a.num('R12', r0);
+  if (h < 0 || r0 < 0 || r1 < 0) throw new Error('bend height and radii cannot be negative');
+  const alpha = deg(a.num('alfa', 90)),
+    beta = deg(a.num('beta', a.num('alfa', 90))),
+    count = a.count('complexity');
+  if (Math.abs(alpha) < 1e-9 || Math.abs(beta) < 1e-9) throw new Error('bend angle must be nonzero');
+  const turn = f.right.mul(a.bool('reverse') ? -1 : 1);
+  const origin = f.center.add(turn.mul(r0 + w0 / 2));
+
+  const at = (a: number, b: number, angle: number): DVec3 => {
+    // Bend2 ends on the requested radial angle, not the ellipse's parameter angle.
+    const parameter = a > 0 && b > 0 ? Math.atan2(a * Math.sin(angle), b * Math.cos(angle)) : angle;
+
+    return origin.sub(turn.mul(a * Math.cos(parameter))).sub(f.normal.mul(b * Math.sin(parameter)));
+  };
+
+  const centers = [],
+    normals = [],
+    ups = [],
+    widths = [],
+    heights = [];
+  for (let i = 0; i <= count; ++i) {
+    const inner = at(r0, r1, (alpha * i) / count),
+      outer = at(r0 + w0, r1 + w1, (beta * i) / count);
+    centers.push(toPoint(inner.add(outer).mul(0.5)));
+    normals.push(toFdVector(normalized(cross(f.up, outer.sub(inner)))));
+    ups.push(toFdVector(f.up));
+    widths.push(length(outer.sub(inner)));
+    heights.push(h);
+  }
+  const sides = a.get('sides');
+  const visible = sides instanceof RuntimeArray ? sides.elements.slice(0, 4).map(Boolean) : [true, true, true, true];
+  scene.meshes.push(
+    buildBoxMesh(context, {
+      count,
+      centers,
+      normals,
+      upVectors: ups,
+      widths,
+      heights,
+      visibleSides: Array.from({ length: count }, () => visible).flat(),
+    }),
+  );
+}
+
 export const derivedAdapters: AdapterTable = {
   makeBend: derived(bend),
-  makeBend2: derived(bend),
+  makeBend2: derived(bend2),
   makeRectBend: derived(bend),
   makeSymetricBend: derived(bend),
   makeEllipticalPlane: derived(ellipticalPlane),

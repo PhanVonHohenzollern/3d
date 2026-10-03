@@ -126,11 +126,11 @@ function symbolicArc(s: SymbolSketch): void {
   s.stroke(ellipse(c, u, v, radius, radius, 0, s.number('angle')));
 }
 
-function centerArc(s: SymbolSketch, names: ArcNames): void {
+function centerArc(s: SymbolSketch, names: ArcNames, angleScale = 1): void {
   const { c, u, v } = s.plane(names.direction);
   const radius = s.number('radius');
-  const begin = s.number(names.begin);
-  s.stroke(ellipse(c, u, v, radius, radius, begin, s.number(names.end)));
+  const begin = s.number(names.begin) * angleScale;
+  s.stroke(ellipse(c, u, v, radius, radius, begin, s.number(names.end) * angleScale));
 }
 
 function symbolicEllipse(s: SymbolSketch, names: ArcNames): void {
@@ -290,7 +290,9 @@ export const symbolAdapters: AdapterTable = {
   makeSymbolicEllipse: symbol((s) =>
     symbolicEllipse(s, { direction: 'radVect', begin: 'startAngle', end: 'endAngle' }),
   ),
-  addCenterArc: symbol((s) => centerArc(s, { direction: 'radiusVector', begin: 'startAngle', end: 'endAngle' })),
+  addCenterArc: symbol((s) =>
+    centerArc(s, { direction: 'radiusVector', begin: 'startAngle', end: 'endAngle' }, 180 / Math.PI),
+  ),
   addThinCircle: symbol(thinCircle),
   addThinRect: symbol(rectangle),
   drawRectAsThinLines: symbol(cornersOrRectangle),
