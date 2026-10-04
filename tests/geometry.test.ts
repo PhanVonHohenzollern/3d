@@ -614,6 +614,115 @@ describe('tube-to-tube intersections', () => {
 
   const build = (code: string) => new PreviewGeometryEngine().build(new GeometryRuntime().executeUpToLine(code, 999));
 
+  const distanceToMesh = (point: DVec3, mesh: PreviewMesh): number => {
+    let nearest = Infinity;
+    for (let i = 0; i < mesh.indices.length; i += 3) {
+      const points = mesh.indices.slice(i, i + 3).map((index) => {
+        const v = mesh.vertices[index];
+
+        return new DVec3(v.x, v.y, v.z);
+      });
+      const normal = cross(points[1].sub(points[0]), points[2].sub(points[0]));
+      const squared = dot(normal, normal);
+      if (squared < 1e-16) continue;
+      const signed = dot(point.sub(points[0]), normal);
+      const projected = point.sub(normal.mul(signed / squared));
+      const edges = points.map((a, j) => [a, points[(j + 1) % 3]]);
+      if (edges.every(([a, b]) => dot(cross(b.sub(a), projected.sub(a)), normal) >= -1e-6 * squared))
+        nearest = Math.min(nearest, Math.abs(signed) / Math.sqrt(squared));
+      else
+        for (const [a, b] of edges) {
+          const edge = b.sub(a);
+          const t = Math.max(0, Math.min(1, dot(point.sub(a), edge) / dot(edge, edge)));
+          nearest = Math.min(nearest, vectorLength(point.sub(a.add(edge.mul(t)))));
+        }
+    }
+
+    return nearest;
+  };
+
+  const expectJoined = (main: PreviewMesh, branch: PreviewMesh, origin: DVec3, axis: DVec3, n: number) => {
+    const projected = new DVec3(1, 0, 0).sub(axis.mul(axis.x));
+    const up = projected.mul(1 / vectorLength(projected)),
+      side = cross(axis, up);
+    for (let i = 0; i < 4 * n; ++i) {
+      const angle = (i * 2 * Math.PI) / (4 * n);
+      const radial = up.mul(12.5 * Math.cos(angle)).add(side.mul(12.5 * Math.sin(angle)));
+      const lengths = branch.vertices.flatMap((v) => {
+        const p = new DVec3(v.x, v.y, v.z).sub(origin);
+        const along = dot(p, axis);
+
+        return vectorLength(p.sub(axis.mul(along)).sub(radial)) < 0.0001 ? [along] : [];
+      });
+      expect(lengths.length).toBeGreaterThan(0);
+      const seam = origin.add(radial).add(axis.mul(Math.min(...lengths)));
+      expect(distanceToMesh(seam, main)).toBeLessThan(0.0001);
+    }
+  };
+
+  it('joins the DN40/DN25 Berliner asymmetric tee supplied by the user', () => {
+    const scene = build(`
+void BerlinerBlockCreator::makeAsymmetric_Cicular_Tee() {
+ double L1=60, L3=30, d1=40, d2=25, d3=25;
+ get_val("D2",d1); get_val("D1",d2); get_val("D3",d3); get_val("L1",L1); get_val("L3",L3);
+ FdPoint3d cP, sP=cP;
+ sP.x-=L1/2;
+ double tubeData[]={d1,L1*4/5}, innerDiam[]={d3,L3,L1*0.4,0}, angle[]={0,0};
+ makeTubeToTubeIntersection2(sP,vx,tubeData,innerDiam,angle,cpx,false);
+ sP.x+=L1*4/5;
+ FdPoint3d eP=sP; eP.x+=L1/5;
+ makeSimpleTube(sP,eP,d1,d2,cpx);
+ FdPoint3d points[2]={cP,cP}; points[0].x-=0.5*L1; points[1].x+=0.5*L1;
+ addCenterLine(points[0],points[1]);
+ points[0].x+=L1*0.4; points[1]=points[0]; points[1].z+=L3;
+ addCenterLine(points[0],points[1]);
+}`);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(5);
+    expectJoined(scene.meshes[0], scene.meshes[1], new DVec3(-6, 0, 0), new DVec3(0, 0, 1), 10);
+    expect(distanceToMesh(new DVec3(-6, 0, 20), scene.meshes[0])).toBeGreaterThan(10);
+  });
+
+  it('opens the main tube even when a small branch crosses only the interior of a face', () => {
+    const scene = build(`
+double tube[]={40,120}, branch[]={1,30,60,0}, angles[]={0,0};
+makeTubeToTubeIntersection2(FdPoint3d(-60,0,0),vx,tube,branch,angles,2,false);`);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    expect(distanceToMesh(new DVec3(0, 0, 20), scene.meshes[0])).toBeGreaterThan(0.4);
+  });
+
+  it.each([
+    [1, 2, 3, 0, 0, 40],
+    [2, 2, 2, 0, 0, 40],
+    [1, 10, 4, 0, 5, 50],
+    [2, 10, 10, 0, 5, 40],
+    [1, 4, 7, 45, 5, 50],
+    [2, 7, 7, 45, 5, 40],
+  ])('joins API %s at resolutions %s/%s, angle %s, offset %s, diameter %s', (api, n, bn, tilt, offset, diameter) => {
+    const scene = build(
+      api === 1
+        ? `
+double tube[]={40,${diameter},120}, position[]={60,${offset}}, branch[]={80,25,25};
+double angles[]={${90 + tilt},90,0}; int n[]={${n},${bn}}; bool options[]={true,true};
+makeTubeToTubeIntersection(FdPoint3d(-60,0,0),vx,vy,tube,position,branch,angles,n,options);`
+        : `
+double tube[]={40,120}, branch[]={25,80,60,${offset}}, angles[]={${tilt},0};
+makeTubeToTubeIntersection2(FdPoint3d(-60,0,0),vx,tube,branch,angles,${n},false);`,
+    );
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    const angle = (tilt * Math.PI) / 180,
+      sign = api === 1 ? 1 : -1;
+    expectJoined(
+      scene.meshes[0],
+      scene.meshes[1],
+      new DVec3(0, sign * offset, 0),
+      new DVec3(sign * Math.sin(angle), 0, Math.cos(angle)),
+      bn,
+    );
+  });
+
   it.each([
     [
       'a short position array',
@@ -822,7 +931,13 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     const unique = new Map(tip.map((v) => [[v.x, v.y, v.z].map((c) => c.toFixed(4)).join(','), v]));
     expect(unique.size).toBeGreaterThan(4);
 
-    return average([...unique.values()]);
+    return new DVec3(
+      ...((['x', 'y', 'z'] as const).map((key) => {
+        const values = [...unique.values()].map((v) => v[key]);
+
+        return (Math.min(...values) + Math.max(...values)) / 2;
+      }) as [number, number, number]),
+    );
   };
 
   it.each([30, 90, 120])('applies the second branch angle (%s degrees)', (angle) => {
