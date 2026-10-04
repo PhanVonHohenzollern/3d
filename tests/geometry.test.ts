@@ -333,6 +333,100 @@ makeBox(1, points, normals, ups, widths, heights, sides, edges, false, false, ${
   });
 });
 
+describe('dashed centerlines', () => {
+  const build = (source: string) => {
+    const result = new GeometryRuntime().executeUpToLine(`setMeshColor(255,0,0);\n${source}`, 999);
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expectFiniteScene(scene);
+    for (const mesh of scene.meshes) expect(mesh.color).toEqual({ r: 0, g: 1, b: 0 });
+
+    return scene.meshes;
+  };
+
+  const segments = (mesh: PreviewMesh) => {
+    const point = (i: number) => {
+      const v = mesh.vertices[i];
+
+      return new DVec3(v.x, v.y, v.z);
+    };
+
+    return Array.from({ length: mesh.vertices.length / 8 }, (_, i) => [
+      point(i * 8)
+        .add(point(i * 8 + 3))
+        .mul(0.5),
+      point(i * 8 + 1)
+        .add(point(i * 8 + 2))
+        .mul(0.5),
+    ]);
+  };
+
+  it.each([10, 100])('draws gaps and retains both endpoints on a line of length %s', (length) => {
+    const [mesh, solid] = build(`
+addCenterLine(FdPoint3d(3,5,7),FdPoint3d(3,${5 + length},7));
+makeSymbolicLine(FdPoint3d(3,5,7),FdPoint3d(3,${5 + length},7));`);
+    const strokes = segments(mesh);
+    expect(strokes.length).toBeGreaterThan(1);
+    expect(strokes[0][0]).toEqual(new DVec3(3, 5, 7));
+    expect(strokes.at(-1)![1]).toEqual(new DVec3(3, 5 + length, 7));
+    for (let i = 1; i < strokes.length; ++i) expect(strokes[i][0].y - strokes[i - 1][1].y).toBeGreaterThan(0.1);
+    expect(segments(solid)).toEqual([[new DVec3(3, 5, 7), new DVec3(3, 5 + length, 7)]]);
+  });
+
+  it('keeps the dash phase across short polyline segments, corners and repeated points', () => {
+    const [line, polyline] = build(`
+addCenterLine(FdPoint3d(),FdPoint3d(24,0,0));
+FdPoint3d points[6]={FdPoint3d(),FdPoint3d(4,0,0),FdPoint3d(8,0,0),FdPoint3d(8,0,0),FdPoint3d(8,0,4),FdPoint3d(8,0,16)};
+addCenterPolyLine(points,5);`);
+
+    const ranges = (mesh: PreviewMesh) => {
+      const result: number[][] = [];
+      for (const [a, b] of segments(mesh)) {
+        const from = a.x + a.z,
+          to = b.x + b.z;
+        const last = result.at(-1);
+        if (last && Math.abs(last[1] - from) < 0.0001) last[1] = to;
+        else result.push([from, to]);
+      }
+
+      return result;
+    };
+
+    const expected = ranges(line),
+      actual = ranges(polyline);
+    expect(actual).toHaveLength(expected.length);
+    actual.forEach((range, i) => range.forEach((distance, j) => expect(distance).toBeCloseTo(expected[i][j], 4)));
+    expect(segments(polyline).some(([a, b]) => Math.abs(a.x - 8) < 0.0001 && b.z > a.z)).toBe(true);
+  });
+
+  it.each(['ARX_PI/2', '-ARX_PI/2', '2*ARX_PI'])(
+    'draws a dashed arc with gaps across its sampled segments (%s)',
+    (angle) => {
+      const [mesh] = build(`addCenterArc(FdPoint3d(),vz,vx,40,0,${angle});`);
+      const strokes = segments(mesh);
+      expect(strokes.length).toBeGreaterThan(2);
+      expect(strokes.some(([a], i) => i > 0 && vectorLength(a.sub(strokes[i - 1][1])) > 1)).toBe(true);
+      for (const stroke of strokes)
+        for (const p of stroke) {
+          expect(p.z).toBe(0);
+          expect(Math.abs(vectorLength(p) - 40)).toBeLessThan(0.02);
+        }
+    },
+  );
+
+  it('skips zero-length paths and bounds the number of dashes on long lines', () => {
+    const meshes = build(`
+addCenterLine(FdPoint3d(),FdPoint3d());
+FdPoint3d points[3]={FdPoint3d(),FdPoint3d(),FdPoint3d()};
+addCenterPolyLine(points,2);
+addCenterLine(FdPoint3d(),FdPoint3d(1e9,0,0));`);
+    expect(meshes).toHaveLength(1);
+    expect(meshes[0].vertices.length).toBeLessThan(20000);
+    expect(segments(meshes[0]).length).toBeGreaterThan(1);
+  });
+});
+
 describe('symbol colors', () => {
   it.each([
     'makeSymbolicLine(FdPoint3d(), FdPoint3d(10,0,0));',

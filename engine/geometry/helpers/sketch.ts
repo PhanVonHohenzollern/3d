@@ -11,10 +11,11 @@ export class MeshSketch {
   constructor(
     readonly scene: PreviewGeometryScene,
     readonly context: MeshBuildContext,
+    readonly dashed = false,
   ) {}
 
   stroke(points: DVec3[], closed = false): void {
-    appendStroke(this.scene, this.context, points, closed);
+    appendStroke(this.scene, this.context, points, closed, this.dashed);
   }
 
   fill(points: DVec3[]): void {
