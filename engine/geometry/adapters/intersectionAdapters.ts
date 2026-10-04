@@ -21,6 +21,15 @@ interface Sample {
   p: FdPoint3d;
   normal: FdVector3d;
 }
+interface Plane {
+  origin: FdPoint3d;
+  normal: FdVector3d;
+}
+interface TubeSurface {
+  tube: Cylinder;
+  ring: Sample[];
+  planes: Plane[];
+}
 
 // A double[] parameter that must supply at least `count` finite numbers. A short argument used
 // to turn into NaN positions, which drew nothing and warned about nothing.
@@ -47,88 +56,101 @@ function cylinder(origin: FdPoint3d, axis: FdVector3d, up: FdVector3d, a: number
   return { origin, axis, up, side: axis.crossProduct(up).normal(), a: a / 2, b: b / 2, length };
 }
 
-function outside(p: FdPoint3d, tube: Cylinder): number {
-  const v = p.sub(tube.origin),
-    x = v.dotProduct(tube.axis);
-
-  return Math.max(
-    (v.dotProduct(tube.up) / tube.a) ** 2 + (v.dotProduct(tube.side) / tube.b) ** 2 - 1,
-    -x / tube.length,
-    (x - tube.length) / tube.length,
-  );
-}
-
-function clippedTriangle(mesh: PreviewMesh, triangle: Sample[], cutter: Cylinder): void {
-  const polygon: Sample[] = [];
-  for (let i = 0; i < 3; ++i) {
-    const a = triangle[i],
-      b = triangle[(i + 1) % 3];
-    const da = outside(a.p, cutter),
-      db = outside(b.p, cutter);
-    if (da >= 0) polygon.push(a);
-    if (da >= 0 === db >= 0) continue;
-    let lo = 0,
-      hi = 1;
-    for (let k = 0; k < 24; ++k) {
-      const t = (lo + hi) / 2;
-      if (outside(a.p.add(b.p.sub(a.p).mul(t)), cutter) >= 0 === da >= 0) lo = t;
-      else hi = t;
-    }
-    const t = (lo + hi) / 2;
-    polygon.push({
-      p: a.p.add(b.p.sub(a.p).mul(t)),
-      normal: a.normal
-        .mul(1 - t)
-        .add(b.normal.mul(t))
-        .normal(),
-    });
-  }
-  const start = mesh.vertices.length;
-  for (const sample of polygon) mesh.vertices.push(vertex(toVec(sample.p), toVec(sample.normal)));
-  for (let i = 1; i + 1 < polygon.length; ++i) addTriangle(mesh, start, start + i, start + i + 1);
-}
-
-function surface(
-  context: MeshBuildContext,
-  tube: Cylinder,
-  cutter: Cylinder,
-  complexity: number,
-  halves: readonly [boolean, boolean] = [true, true],
-): PreviewMesh {
-  const mesh = context.createMesh();
-  const [upper, lower] = halves;
-  if (!upper && !lower) return mesh;
-  const half = upper !== lower;
-  const around = Math.min(kMaxRingSegments, circularFaceCount(complexity));
-  const along = Math.min(kMaxRingSegments, Math.max(16, Math.ceil((tube.length / Math.min(cutter.a, cutter.b)) * 4)));
-  const begin = half
-    ? Math.atan2(tube.b * cutter.axis.dotProduct(tube.side), tube.a * cutter.axis.dotProduct(tube.up)) -
-      Math.PI / 2 +
-      (upper ? 0 : Math.PI)
-    : 0;
-
-  const sample = (i: number, j: number): Sample => {
-    const angle = begin + (j / around) * Math.PI * (half ? 1 : 2);
-    const radial = tube.up.mul(tube.a * Math.cos(angle)).add(tube.side.mul(tube.b * Math.sin(angle)));
+function tubeSurface(tube: Cylinder, complexity: number): TubeSurface {
+  const count = Math.min(kMaxRingSegments, circularFaceCount(complexity));
+  const ring = Array.from({ length: count }, (_, i): Sample => {
+    const angle = (i / count) * Math.PI * 2;
 
     return {
-      p: tube.origin.add(tube.axis.mul((tube.length * i) / along)).add(radial),
+      p: tube.origin.add(tube.up.mul(tube.a * Math.cos(angle))).add(tube.side.mul(tube.b * Math.sin(angle))),
       normal: tube.up
         .mul(Math.cos(angle) / tube.a)
         .add(tube.side.mul(Math.sin(angle) / tube.b))
         .normal(),
     };
-  };
+  });
+  const planes = ring.map((sample, i) => ({
+    origin: sample.p,
+    normal: ring[(i + 1) % count].p.sub(sample.p).crossProduct(tube.axis).normal(),
+  }));
+  planes.push(
+    { origin: tube.origin, normal: tube.axis.neg() },
+    { origin: tube.origin.add(tube.axis.mul(tube.length)), normal: tube.axis },
+  );
 
-  for (let i = 0; i < along; ++i)
-    for (let j = 0; j < around; ++j) {
-      const a = sample(i, j),
-        b = sample(i, j + 1),
-        c = sample(i + 1, j + 1),
-        d = sample(i + 1, j);
-      clippedTriangle(mesh, [a, b, c], cutter);
-      clippedTriangle(mesh, [a, c, d], cutter);
+  return { tube, ring, planes };
+}
+
+function splitPolygon(polygon: Sample[], plane: Plane, tolerance: number): [Sample[], Sample[]] {
+  const distances = polygon.map(({ p }) => {
+    const distance = p.sub(plane.origin).dotProduct(plane.normal);
+
+    return Math.abs(distance) <= tolerance ? 0 : distance;
+  });
+  if (distances.every((d) => d <= 0)) return [polygon, []];
+  if (distances.every((d) => d >= 0)) return [[], polygon];
+  const inside: Sample[] = [],
+    outside: Sample[] = [];
+  for (let i = 0; i < polygon.length; ++i) {
+    const a = polygon[i],
+      b = polygon[(i + 1) % polygon.length];
+    const da = distances[i],
+      db = distances[(i + 1) % polygon.length];
+    if (da <= 0) inside.push(a);
+    if (da >= 0) outside.push(a);
+    if (!(da < 0 && db > 0) && !(da > 0 && db < 0)) continue;
+    const t = da / (da - db);
+    const sample = {
+      p: a.p.add(b.p.sub(a.p).mul(t)),
+      normal: a.normal
+        .mul(1 - t)
+        .add(b.normal.mul(t))
+        .normal(),
+    };
+    inside.push(sample);
+    outside.push(sample);
+  }
+
+  return [inside, outside];
+}
+
+function appendPolygon(mesh: PreviewMesh, polygon: Sample[], tolerance: number): void {
+  if (polygon.length < 3) return;
+  const start = mesh.vertices.length;
+  for (const sample of polygon) mesh.vertices.push(vertex(toVec(sample.p), toVec(sample.normal)));
+  for (let i = 1; i + 1 < polygon.length; ++i) {
+    const a = polygon[i].p.sub(polygon[0].p),
+      b = polygon[i + 1].p.sub(polygon[0].p);
+    if (a.crossProduct(b).length() > tolerance * tolerance) addTriangle(mesh, start, start + i, start + i + 1);
+  }
+}
+
+function surface(
+  context: MeshBuildContext,
+  source: TubeSurface,
+  cutter: TubeSurface,
+  halves: readonly [boolean, boolean] = [true, true],
+): PreviewMesh {
+  const mesh = context.createMesh();
+  const [upper, lower] = halves;
+  if (!upper && !lower) return mesh;
+  const { tube, ring } = source;
+  const tolerance = 1e-10 * Math.max(tube.a, tube.b, tube.length, cutter.tube.a, cutter.tube.b, cutter.tube.length);
+  const radial = cutter.tube.axis.sub(tube.axis.mul(cutter.tube.axis.dotProduct(tube.axis))).normal();
+  const halfPlane = { origin: tube.origin, normal: radial.mul(upper ? -1 : 1) };
+  const end = tube.axis.mul(tube.length);
+  for (let i = 0; i < ring.length; ++i) {
+    const a = ring[i],
+      b = ring[(i + 1) % ring.length];
+    let polygon = [a, b, { p: b.p.add(end), normal: b.normal }, { p: a.p.add(end), normal: a.normal }];
+    if (upper !== lower) [polygon] = splitPolygon(polygon, halfPlane, tolerance);
+    for (const plane of cutter.planes) {
+      if (polygon.length < 3) break;
+      const [inside, outside] = splitPolygon(polygon, plane, tolerance);
+      appendPolygon(mesh, outside, tolerance);
+      polygon = inside;
     }
+  }
 
   return mesh;
 }
@@ -184,10 +206,12 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
     }
     if (!Number.isFinite(complexity) || complexity < 1 || !Number.isFinite(branchComplexity) || branchComplexity < 1)
       throw new Error('complexity must be positive');
-    const mainMesh = surface(context, main, branch, complexity, mainHalves);
+    const mainSurface = tubeSurface(main, complexity),
+      branchSurface = tubeSurface(branch, branchComplexity);
+    const mainMesh = surface(context, mainSurface, branchSurface, mainHalves);
     mainMesh.apiName += '.main';
     pushNonEmptyMesh(scene, mainMesh);
-    const mesh = surface(context, branch, main, branchComplexity);
+    const mesh = surface(context, branchSurface, mainSurface);
     mesh.apiName += '.branch';
     pushNonEmptyMesh(scene, mesh);
   });
