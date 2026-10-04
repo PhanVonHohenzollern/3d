@@ -27,8 +27,8 @@ type ArcNames = { direction: string; begin: string; end: string };
 class SymbolSketch extends MeshSketch {
   readonly args: NamedArguments;
 
-  constructor(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[]) {
-    super(scene, context);
+  constructor(scene: PreviewGeometryScene, context: MeshBuildContext, args: RuntimeValue[], dashed: boolean) {
+    super(scene, context, dashed);
     this.args = new NamedArguments(context, args);
   }
 
@@ -69,9 +69,9 @@ class SymbolSketch extends MeshSketch {
   }
 }
 
-function symbol(build: (s: SymbolSketch) => void): ApiMeshAdapter {
+function symbol(build: (s: SymbolSketch) => void, dashed = false): ApiMeshAdapter {
   return withAdapterErrors('invalid symbol arguments', (scene, context, args) => {
-    build(new SymbolSketch(scene, context, args));
+    build(new SymbolSketch(scene, context, args, dashed));
   });
 }
 
@@ -284,14 +284,15 @@ export const symbolAdapters: AdapterTable = {
   makeSymbolicLine: symbol(line),
   addThinLine: symbol(line),
   drawAsThinLine: symbol(line),
-  addCenterLine: symbol(line),
-  addCenterPolyLine: symbol(centerPolyLine),
+  addCenterLine: symbol(line, true),
+  addCenterPolyLine: symbol(centerPolyLine, true),
   makeSymbolicArc: symbol(symbolicArc),
   makeSymbolicEllipse: symbol((s) =>
     symbolicEllipse(s, { direction: 'radVect', begin: 'startAngle', end: 'endAngle' }),
   ),
-  addCenterArc: symbol((s) =>
-    centerArc(s, { direction: 'radiusVector', begin: 'startAngle', end: 'endAngle' }, 180 / Math.PI),
+  addCenterArc: symbol(
+    (s) => centerArc(s, { direction: 'radiusVector', begin: 'startAngle', end: 'endAngle' }, 180 / Math.PI),
+    true,
   ),
   addThinCircle: symbol(thinCircle),
   addThinRect: symbol(rectangle),

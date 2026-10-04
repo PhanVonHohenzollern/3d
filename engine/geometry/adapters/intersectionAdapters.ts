@@ -1,4 +1,4 @@
-import { FdPoint3d, FdVector3d, isArray } from '@engine/runtime';
+import { FdPoint3d, FdVector3d } from '@engine/runtime';
 import { circularFaceCount, toVec, deg } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, pushNonEmptyMesh, vertex } from '@engine/geometry/helpers/meshData';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
@@ -93,13 +93,18 @@ function surface(
   tube: Cylinder,
   cutter: Cylinder,
   complexity: number,
-  half = false,
+  halves: readonly [boolean, boolean] = [true, true],
 ): PreviewMesh {
   const mesh = context.createMesh();
+  const [upper, lower] = halves;
+  if (!upper && !lower) return mesh;
+  const half = upper !== lower;
   const around = Math.min(kMaxRingSegments, circularFaceCount(complexity));
   const along = Math.min(kMaxRingSegments, Math.max(16, Math.ceil((tube.length / Math.min(cutter.a, cutter.b)) * 4)));
   const begin = half
-    ? Math.atan2(tube.b * cutter.axis.dotProduct(tube.side), tube.a * cutter.axis.dotProduct(tube.up)) - Math.PI / 2
+    ? Math.atan2(tube.b * cutter.axis.dotProduct(tube.side), tube.a * cutter.axis.dotProduct(tube.up)) -
+      Math.PI / 2 +
+      (upper ? 0 : Math.PI)
     : 0;
 
   const sample = (i: number, j: number): Sample => {
@@ -145,14 +150,13 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
       branch: Cylinder,
       complexity: number,
       branchComplexity: number,
-      halfMain: boolean,
-      onlyBranch = false;
+      mainHalves: readonly [boolean, boolean];
     if (variant === 'tubeData') {
       const tube = leadingReals(a, 'tubeData', 2),
         inter = leadingReals(a, 'interTubeData', 4),
         angles = leadingReals(a, 'angles', 0);
       complexity = branchComplexity = a.real('n');
-      halfMain = a.flag('half');
+      mainHalves = [true, !a.flag('half')];
       main = cylinder(start, normal, up, tube[0], tube[0], tube[1]);
       const direction = up.rotateBy(deg(angles[0] ?? 0), main.side).rotateBy(deg(angles[1] ?? 0), main.axis);
       const origin = start.add(main.axis.mul(inter[2])).add(main.side.mul(inter[3]));
@@ -163,9 +167,9 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
         inter = leadingReals(a, 'interTubeParams', 3),
         angles = leadingReals(a, 'angles', 1),
         n = leadingReals(a, 'complexities', 2);
-      const options = isArray(a.get('options')) ? a.flagArray('options') : [];
-      halfMain = options[1] ?? false;
-      onlyBranch = options[2] ?? false;
+      const options = a.flagArray('options');
+      if (options.length < 2) throw new Error('options needs 2 booleans');
+      mainHalves = [options[0], options[1]];
       complexity = n[0];
       branchComplexity = n[1];
       main = cylinder(start, normal, up.rotateBy(deg(angles[2] ?? 0), normal), tube[0], tube[1], tube[2]);
@@ -180,11 +184,9 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
     }
     if (!Number.isFinite(complexity) || complexity < 1 || !Number.isFinite(branchComplexity) || branchComplexity < 1)
       throw new Error('complexity must be positive');
-    if (!onlyBranch) {
-      const mesh = surface(context, main, branch, complexity, halfMain);
-      mesh.apiName += '.main';
-      pushNonEmptyMesh(scene, mesh);
-    }
+    const mainMesh = surface(context, main, branch, complexity, mainHalves);
+    mainMesh.apiName += '.main';
+    pushNonEmptyMesh(scene, mainMesh);
     const mesh = surface(context, branch, main, branchComplexity);
     mesh.apiName += '.branch';
     pushNonEmptyMesh(scene, mesh);

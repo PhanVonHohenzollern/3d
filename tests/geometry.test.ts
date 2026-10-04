@@ -333,6 +333,100 @@ makeBox(1, points, normals, ups, widths, heights, sides, edges, false, false, ${
   });
 });
 
+describe('dashed centerlines', () => {
+  const build = (source: string) => {
+    const result = new GeometryRuntime().executeUpToLine(`setMeshColor(255,0,0);\n${source}`, 999);
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expectFiniteScene(scene);
+    for (const mesh of scene.meshes) expect(mesh.color).toEqual({ r: 0, g: 1, b: 0 });
+
+    return scene.meshes;
+  };
+
+  const segments = (mesh: PreviewMesh) => {
+    const point = (i: number) => {
+      const v = mesh.vertices[i];
+
+      return new DVec3(v.x, v.y, v.z);
+    };
+
+    return Array.from({ length: mesh.vertices.length / 8 }, (_, i) => [
+      point(i * 8)
+        .add(point(i * 8 + 3))
+        .mul(0.5),
+      point(i * 8 + 1)
+        .add(point(i * 8 + 2))
+        .mul(0.5),
+    ]);
+  };
+
+  it.each([10, 100])('draws gaps and retains both endpoints on a line of length %s', (length) => {
+    const [mesh, solid] = build(`
+addCenterLine(FdPoint3d(3,5,7),FdPoint3d(3,${5 + length},7));
+makeSymbolicLine(FdPoint3d(3,5,7),FdPoint3d(3,${5 + length},7));`);
+    const strokes = segments(mesh);
+    expect(strokes.length).toBeGreaterThan(1);
+    expect(strokes[0][0]).toEqual(new DVec3(3, 5, 7));
+    expect(strokes.at(-1)![1]).toEqual(new DVec3(3, 5 + length, 7));
+    for (let i = 1; i < strokes.length; ++i) expect(strokes[i][0].y - strokes[i - 1][1].y).toBeGreaterThan(0.1);
+    expect(segments(solid)).toEqual([[new DVec3(3, 5, 7), new DVec3(3, 5 + length, 7)]]);
+  });
+
+  it('keeps the dash phase across short polyline segments, corners and repeated points', () => {
+    const [line, polyline] = build(`
+addCenterLine(FdPoint3d(),FdPoint3d(24,0,0));
+FdPoint3d points[6]={FdPoint3d(),FdPoint3d(4,0,0),FdPoint3d(8,0,0),FdPoint3d(8,0,0),FdPoint3d(8,0,4),FdPoint3d(8,0,16)};
+addCenterPolyLine(points,5);`);
+
+    const ranges = (mesh: PreviewMesh) => {
+      const result: number[][] = [];
+      for (const [a, b] of segments(mesh)) {
+        const from = a.x + a.z,
+          to = b.x + b.z;
+        const last = result.at(-1);
+        if (last && Math.abs(last[1] - from) < 0.0001) last[1] = to;
+        else result.push([from, to]);
+      }
+
+      return result;
+    };
+
+    const expected = ranges(line),
+      actual = ranges(polyline);
+    expect(actual).toHaveLength(expected.length);
+    actual.forEach((range, i) => range.forEach((distance, j) => expect(distance).toBeCloseTo(expected[i][j], 4)));
+    expect(segments(polyline).some(([a, b]) => Math.abs(a.x - 8) < 0.0001 && b.z > a.z)).toBe(true);
+  });
+
+  it.each(['ARX_PI/2', '-ARX_PI/2', '2*ARX_PI'])(
+    'draws a dashed arc with gaps across its sampled segments (%s)',
+    (angle) => {
+      const [mesh] = build(`addCenterArc(FdPoint3d(),vz,vx,40,0,${angle});`);
+      const strokes = segments(mesh);
+      expect(strokes.length).toBeGreaterThan(2);
+      expect(strokes.some(([a], i) => i > 0 && vectorLength(a.sub(strokes[i - 1][1])) > 1)).toBe(true);
+      for (const stroke of strokes)
+        for (const p of stroke) {
+          expect(p.z).toBe(0);
+          expect(Math.abs(vectorLength(p) - 40)).toBeLessThan(0.02);
+        }
+    },
+  );
+
+  it('skips zero-length paths and bounds the number of dashes on long lines', () => {
+    const meshes = build(`
+addCenterLine(FdPoint3d(),FdPoint3d());
+FdPoint3d points[3]={FdPoint3d(),FdPoint3d(),FdPoint3d()};
+addCenterPolyLine(points,2);
+addCenterLine(FdPoint3d(),FdPoint3d(1e9,0,0));`);
+    expect(meshes).toHaveLength(1);
+    expect(meshes[0].vertices.length).toBeLessThan(20000);
+    expect(segments(meshes[0]).length).toBeGreaterThan(1);
+  });
+});
+
 describe('symbol colors', () => {
   it.each([
     'makeSymbolicLine(FdPoint3d(), FdPoint3d(10,0,0));',
@@ -549,6 +643,19 @@ describe('tube-to-tube intersections', () => {
   });
 
   it.each([
+    ['bool opt[1] = {true};', 'options needs 2 booleans'],
+    ['bool opt = true;', 'options must be a bool array'],
+  ])('warns for invalid intersection options: %s', (declaration, warning) => {
+    const scene = build(
+      `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
+        ` double pos[2] = {100,0}; double ang[3] = {90,0,0}; ${declaration}` +
+        ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
+    );
+    expect(scene.meshes).toEqual([]);
+    expect(scene.warnings).toEqual([`line 1 makeTubeToTubeIntersection: ${warning}`]);
+  });
+
+  it.each([
     [false, 0],
     [false, 90],
     [false, 180],
@@ -595,7 +702,7 @@ makeTubeToTubeIntersection2(start,vx,${explicitUp ? 'vz,' : ''}tube,branch,angle
   it('still accepts an angle array that only sets the first angle', () => {
     const scene = build(
       `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
-        ' bool opt[2] = {false,false}; double pos[2] = {100,0}; double ang[1] = {90};' +
+        ' bool opt[2] = {true,true}; double pos[2] = {100,0}; double ang[1] = {90};' +
         ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
     );
     expect(scene.warnings).toEqual([]);
@@ -703,7 +810,7 @@ makeBend2(FdPoint3d(),-vz,-vy,sides,false,45,45,80,100,120,8,30,70);`).meshes;
     near(average(mesh.vertices.slice(-3, -1)), new DVec3(-40, 0, 100 + sign * 40));
   });
 
-  const tee = (angles = '135,90,0', options = 'false,false,false', frame = 'vx,vy', offset = 10) =>
+  const tee = (angles = '135,90,0', options = 'true,true', frame = 'vx,vy', offset = 10) =>
     build(`
 double tube[3]={80,40,200}, position[2]={100,${offset}}, branch[3]={100,20,30};
 double angles[3]={${angles}}; int complexity[2]={4,4}; bool options[]={${options}};
@@ -743,23 +850,44 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     }
   });
 
-  it('hides the back half of the main tube without cutting the branch', () => {
-    const full = tee('135,90,0', 'false,false,false', 'vx,vy', 0);
-    const half = tee('135,90,0', 'true,true', 'vx,vy', 0);
-    expect(half.meshes).toHaveLength(2);
-    expect(full.meshes[0].vertices.some((v) => v.z < -1)).toBe(true);
-    expect(half.meshes[0].vertices.every((v) => v.z >= -0.0001)).toBe(true);
-    expect(half.meshes[1].vertices).toEqual(full.meshes[1].vertices);
-    expect(half.meshes[1].indices).toEqual(full.meshes[1].indices);
-  });
+  it.each([
+    ['vx', 0],
+    ['vx', 37],
+    ['vx', 180],
+    ['vx,vy', 0],
+    ['vx,vy', 37],
+    ['vx,vy', 180],
+  ] as const)('controls both main tube halves independently (frame=%s, rotation=%s)', (frame, rotation) => {
+    const angles = `123,67,${rotation}`;
+    const full = tee(angles, 'true,true', frame);
+    const angle = ((67 + rotation) * Math.PI) / 180;
 
-  it('omits only the main mesh when options[2] is true', () => {
-    const full = tee(),
-      branch = tee('135,90,0', 'false,false,true');
-    expect(branch.meshes).toHaveLength(1);
-    expect(branch.meshes[0].apiName).toBe('makeTubeToTubeIntersection.branch');
-    expect(branch.meshes[0].vertices).toEqual(full.meshes[1].vertices);
-    expect(branch.meshes[0].indices).toEqual(full.meshes[1].indices);
+    const facing = (v: { y: number; z: number }) => v.y * Math.cos(angle) + v.z * Math.sin(angle);
+
+    expect(full.meshes).toHaveLength(2);
+    expect(full.meshes[0].vertices.some((v) => facing(v) > 1)).toBe(true);
+    expect(full.meshes[0].vertices.some((v) => facing(v) < -1)).toBe(true);
+
+    for (const [upper, lower] of [
+      [true, false],
+      [false, true],
+      [false, false],
+    ]) {
+      const scene = tee(angles, `${upper},${lower}`, frame);
+      expect(scene.meshes.map((mesh) => mesh.apiName)).toEqual(
+        upper || lower
+          ? ['makeTubeToTubeIntersection.main', 'makeTubeToTubeIntersection.branch']
+          : ['makeTubeToTubeIntersection.branch'],
+      );
+      const branch = scene.meshes.at(-1)!;
+      expect(branch.vertices).toEqual(full.meshes[1].vertices);
+      expect(branch.indices).toEqual(full.meshes[1].indices);
+      if (!upper && !lower) continue;
+      const sign = upper ? 1 : -1;
+      const vertices = scene.meshes[0].vertices;
+      expect(vertices.every((v) => sign * facing(v) >= -0.0001)).toBe(true);
+      expect(vertices.some((v) => sign * facing(v) > 1)).toBe(true);
+    }
   });
 
   it.each([
@@ -767,8 +895,8 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     ['vy', 'vx'],
     ['vz', 'vx'],
   ])('uses the SDK default up vector for %s', (normal, up) => {
-    const implicit = tee('135,90,0', 'false,false,false', normal);
-    const explicit = tee('135,90,0', 'false,false,false', `${normal},${up}`);
+    const implicit = tee('135,90,0', 'true,true', normal);
+    const explicit = tee('135,90,0', 'true,true', `${normal},${up}`);
     implicit.meshes.forEach((mesh, i) => expect(mesh.vertices).toEqual(explicit.meshes[i].vertices));
   });
 });

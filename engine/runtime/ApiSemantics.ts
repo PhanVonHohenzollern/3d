@@ -272,7 +272,7 @@ export function apiSemanticsForCall(call: RuntimeApiCall): ApiParameterSemantics
   }
   if (name === 'makeTubeToTubeIntersection') {
     roles('angles', ['Left/right angle (degrees)', 'Up/down angle (degrees)', 'Whole intersection rotation (degrees)']);
-    roles('options', ['All face edges', 'Hide back half of main tube', 'Omit main tube']);
+    roles('options', ['Show upper half of main tube', 'Show lower half of main tube']);
   }
   if (oneOf(name, ['makePlane', 'makeRotatablePlane'])) {
     set('points', 'Face vertices');
