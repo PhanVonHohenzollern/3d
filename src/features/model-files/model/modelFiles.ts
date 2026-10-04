@@ -38,10 +38,14 @@ export async function readObjFile(file: File): Promise<{ model: ImportedModel; m
   if (!/\.obj$/i.test(file.name)) throw new Error('Choose a .obj file.');
   if (file.size > OBJ_MAX_BYTES) throw new Error('OBJ files must be 20 MB or smaller.');
   const scene = parseObj(await file.text());
-  const triangles = scene.meshes.reduce((sum, mesh) => sum + mesh.indices.length / 3, 0);
+  const triangles = scene.meshes.reduce(
+    (sum, mesh) => sum + (mesh.primitive === 'lines' ? 0 : mesh.indices.length / 3),
+    0,
+  );
+  const lines = scene.meshes.reduce((sum, mesh) => sum + (mesh.primitive === 'lines' ? mesh.indices.length / 2 : 0), 0);
 
   return {
     model: { name: file.name, scene },
-    message: `Imported ${file.name}: ${triangles.toLocaleString()} triangles.${scene.warnings.length ? ` ${scene.warnings.join(' ')}` : ''}`,
+    message: `Imported ${file.name}: ${triangles.toLocaleString()} triangles${lines ? `, ${lines.toLocaleString()} line segments` : ''}.${scene.warnings.length ? ` ${scene.warnings.join(' ')}` : ''}`,
   };
 }

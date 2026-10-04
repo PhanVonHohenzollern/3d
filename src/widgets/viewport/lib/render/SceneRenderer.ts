@@ -85,6 +85,8 @@ export class SceneRenderer {
     const geometryWireVertexStart = vertices.size();
     this.#wireRanges = this.#appendCached(cache.wires, cache.wireRanges);
     const geometryWireVertexCount = vertices.size() - geometryWireVertexStart;
+    for (const range of this.#wireRanges)
+      if (state.geometryScene.meshes[range.meshIndex].primitive === 'lines') this.#geometryRanges.push(range);
 
     const eye = view.camera.cameraPosition();
 
@@ -191,9 +193,11 @@ export class SceneRenderer {
       renderer.setDepthTest(false);
       renderer.setDepthMask(false);
     }
-    renderer.setUniformValue('uLightingEnabled', true);
+    renderer.glLineWidth(kWireLineWidth);
     for (const range of this.#geometryRanges) {
       if (!state.isGeometryApiVisible(range.apiIndex)) continue;
+      const lines = state.geometryScene.meshes[range.meshIndex].primitive === 'lines';
+      renderer.setUniformValue('uLightingEnabled', !lines);
       const selected = state.isMeshSelected(range.meshIndex);
       const hovered = state.isMeshInGroup(range.meshIndex, state.hoveredMeshIndex);
       if (unite) renderer.setOpacity(selected || hovered ? kUniteOpacity.focused : kUniteOpacity.other);
@@ -206,7 +210,7 @@ export class SceneRenderer {
           new QVector3D(color.r, color.g, color.b).mul(kHoverTint.amount).add(kHoverTint.lift),
         );
       }
-      renderer.glDrawArrays('GL_TRIANGLES', range.start, range.count);
+      renderer.glDrawArrays(lines ? 'GL_LINES' : 'GL_TRIANGLES', range.start, range.count);
     }
     if (unite) renderer.setOpacity(1);
     renderer.setUniformValue('uLightingEnabled', false);

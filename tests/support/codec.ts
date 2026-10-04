@@ -106,6 +106,7 @@ export function encodeMesh(m: PreviewMesh): Json {
     apiIndex: m.apiIndex,
     sourceLine: m.sourceLine,
     apiName: m.apiName,
+    ...(m.primitive ? { primitive: m.primitive } : {}),
     color: [m.color.r, m.color.g, m.color.b].map(encodeNumber),
     vertices: vertices.map(encodeNumber),
     indices: [...m.indices],

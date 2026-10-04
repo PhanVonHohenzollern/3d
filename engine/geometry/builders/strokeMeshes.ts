@@ -38,8 +38,6 @@ function* strokeSegments(points: DVec3[], closed: boolean, dashed: boolean): Gen
   }
 }
 
-// Symbols are narrow ribbons in the preview's triangle-only renderer. Their
-// centre lines retain SDK coordinates; stroke width is a display property.
 export function appendStroke(
   scene: PreviewGeometryScene,
   context: MeshBuildContext,
@@ -48,9 +46,16 @@ export function appendStroke(
   dashed = false,
 ): void {
   const mesh = context.createMesh();
+  if (dashed) mesh.primitive = 'lines';
   for (const [a, b] of strokeSegments(points, closed, dashed)) {
     const axis = b.sub(a);
     if (length(axis) < 1e-9) continue;
+    if (dashed) {
+      const start = mesh.vertices.length;
+      mesh.vertices.push(vertex(a, new DVec3()), vertex(b, new DVec3()));
+      mesh.indices.push(start, start + 1);
+      continue;
+    }
     const [u, v] = stableBasis(normalized(axis));
     // Two crossed ribbons keep a line visible when viewed edge-on.
     for (const offset of [u.mul(kStrokeHalfWidth), v.mul(kStrokeHalfWidth)]) {

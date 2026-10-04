@@ -82,7 +82,7 @@ export class PreviewGeometryEngine {
         if (scene.meshes.length - firstMesh > 8) {
           const grouped = new Map<string, PreviewGeometryScene['meshes'][number]>();
           for (const mesh of scene.meshes.splice(firstMesh)) {
-            const key = mesh.apiName + ':' + String(mesh.preserveNormals);
+            const key = mesh.apiName + ':' + String(mesh.primitive) + ':' + String(mesh.preserveNormals);
             const existing = grouped.get(key);
             if (!existing) {
               grouped.set(key, mesh);
