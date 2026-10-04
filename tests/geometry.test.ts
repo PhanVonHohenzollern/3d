@@ -549,6 +549,19 @@ describe('tube-to-tube intersections', () => {
   });
 
   it.each([
+    ['bool opt[1] = {true};', 'options needs 2 booleans'],
+    ['bool opt = true;', 'options must be a bool array'],
+  ])('warns for invalid intersection options: %s', (declaration, warning) => {
+    const scene = build(
+      `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
+        ` double pos[2] = {100,0}; double ang[3] = {90,0,0}; ${declaration}` +
+        ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
+    );
+    expect(scene.meshes).toEqual([]);
+    expect(scene.warnings).toEqual([`line 1 makeTubeToTubeIntersection: ${warning}`]);
+  });
+
+  it.each([
     [false, 0],
     [false, 90],
     [false, 180],
@@ -595,7 +608,7 @@ makeTubeToTubeIntersection2(start,vx,${explicitUp ? 'vz,' : ''}tube,branch,angle
   it('still accepts an angle array that only sets the first angle', () => {
     const scene = build(
       `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
-        ' bool opt[2] = {false,false}; double pos[2] = {100,0}; double ang[1] = {90};' +
+        ' bool opt[2] = {true,true}; double pos[2] = {100,0}; double ang[1] = {90};' +
         ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
     );
     expect(scene.warnings).toEqual([]);
@@ -703,7 +716,7 @@ makeBend2(FdPoint3d(),-vz,-vy,sides,false,45,45,80,100,120,8,30,70);`).meshes;
     near(average(mesh.vertices.slice(-3, -1)), new DVec3(-40, 0, 100 + sign * 40));
   });
 
-  const tee = (angles = '135,90,0', options = 'false,false,false', frame = 'vx,vy', offset = 10) =>
+  const tee = (angles = '135,90,0', options = 'true,true', frame = 'vx,vy', offset = 10) =>
     build(`
 double tube[3]={80,40,200}, position[2]={100,${offset}}, branch[3]={100,20,30};
 double angles[3]={${angles}}; int complexity[2]={4,4}; bool options[]={${options}};
@@ -743,23 +756,44 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     }
   });
 
-  it('hides the back half of the main tube without cutting the branch', () => {
-    const full = tee('135,90,0', 'false,false,false', 'vx,vy', 0);
-    const half = tee('135,90,0', 'true,true', 'vx,vy', 0);
-    expect(half.meshes).toHaveLength(2);
-    expect(full.meshes[0].vertices.some((v) => v.z < -1)).toBe(true);
-    expect(half.meshes[0].vertices.every((v) => v.z >= -0.0001)).toBe(true);
-    expect(half.meshes[1].vertices).toEqual(full.meshes[1].vertices);
-    expect(half.meshes[1].indices).toEqual(full.meshes[1].indices);
-  });
+  it.each([
+    ['vx', 0],
+    ['vx', 37],
+    ['vx', 180],
+    ['vx,vy', 0],
+    ['vx,vy', 37],
+    ['vx,vy', 180],
+  ] as const)('controls both main tube halves independently (frame=%s, rotation=%s)', (frame, rotation) => {
+    const angles = `123,67,${rotation}`;
+    const full = tee(angles, 'true,true', frame);
+    const angle = ((67 + rotation) * Math.PI) / 180;
 
-  it('omits only the main mesh when options[2] is true', () => {
-    const full = tee(),
-      branch = tee('135,90,0', 'false,false,true');
-    expect(branch.meshes).toHaveLength(1);
-    expect(branch.meshes[0].apiName).toBe('makeTubeToTubeIntersection.branch');
-    expect(branch.meshes[0].vertices).toEqual(full.meshes[1].vertices);
-    expect(branch.meshes[0].indices).toEqual(full.meshes[1].indices);
+    const facing = (v: { y: number; z: number }) => v.y * Math.cos(angle) + v.z * Math.sin(angle);
+
+    expect(full.meshes).toHaveLength(2);
+    expect(full.meshes[0].vertices.some((v) => facing(v) > 1)).toBe(true);
+    expect(full.meshes[0].vertices.some((v) => facing(v) < -1)).toBe(true);
+
+    for (const [upper, lower] of [
+      [true, false],
+      [false, true],
+      [false, false],
+    ]) {
+      const scene = tee(angles, `${upper},${lower}`, frame);
+      expect(scene.meshes.map((mesh) => mesh.apiName)).toEqual(
+        upper || lower
+          ? ['makeTubeToTubeIntersection.main', 'makeTubeToTubeIntersection.branch']
+          : ['makeTubeToTubeIntersection.branch'],
+      );
+      const branch = scene.meshes.at(-1)!;
+      expect(branch.vertices).toEqual(full.meshes[1].vertices);
+      expect(branch.indices).toEqual(full.meshes[1].indices);
+      if (!upper && !lower) continue;
+      const sign = upper ? 1 : -1;
+      const vertices = scene.meshes[0].vertices;
+      expect(vertices.every((v) => sign * facing(v) >= -0.0001)).toBe(true);
+      expect(vertices.some((v) => sign * facing(v) > 1)).toBe(true);
+    }
   });
 
   it.each([
@@ -767,8 +801,8 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     ['vy', 'vx'],
     ['vz', 'vx'],
   ])('uses the SDK default up vector for %s', (normal, up) => {
-    const implicit = tee('135,90,0', 'false,false,false', normal);
-    const explicit = tee('135,90,0', 'false,false,false', `${normal},${up}`);
+    const implicit = tee('135,90,0', 'true,true', normal);
+    const explicit = tee('135,90,0', 'true,true', `${normal},${up}`);
     implicit.meshes.forEach((mesh, i) => expect(mesh.vertices).toEqual(explicit.meshes[i].vertices));
   });
 });
