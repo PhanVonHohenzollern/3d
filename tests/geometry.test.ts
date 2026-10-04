@@ -352,13 +352,12 @@ describe('dashed centerlines', () => {
       return new DVec3(v.x, v.y, v.z);
     };
 
-    return Array.from({ length: mesh.vertices.length / 8 }, (_, i) => [
-      point(i * 8)
-        .add(point(i * 8 + 3))
-        .mul(0.5),
-      point(i * 8 + 1)
-        .add(point(i * 8 + 2))
-        .mul(0.5),
+    expect(mesh.primitive).toBe('lines');
+    expect(mesh.indices.length % 2).toBe(0);
+
+    return Array.from({ length: mesh.indices.length / 2 }, (_, i) => [
+      point(mesh.indices[i * 2]),
+      point(mesh.indices[i * 2 + 1]),
     ]);
   };
 
@@ -371,7 +370,9 @@ makeSymbolicLine(FdPoint3d(3,5,7),FdPoint3d(3,${5 + length},7));`);
     expect(strokes[0][0]).toEqual(new DVec3(3, 5, 7));
     expect(strokes.at(-1)![1]).toEqual(new DVec3(3, 5 + length, 7));
     for (let i = 1; i < strokes.length; ++i) expect(strokes[i][0].y - strokes[i - 1][1].y).toBeGreaterThan(0.1);
-    expect(segments(solid)).toEqual([[new DVec3(3, 5, 7), new DVec3(3, 5 + length, 7)]]);
+    expect(mesh.vertices.every((v) => v.x === 3 && v.z === 7)).toBe(true);
+    expect(solid.primitive).toBeUndefined();
+    expect(solid.indices).toHaveLength(12);
   });
 
   it('keeps the dash phase across short polyline segments, corners and repeated points', () => {
@@ -806,8 +807,8 @@ makeBend2(FdPoint3d(),-vz,-vy,sides,false,45,45,80,100,120,8,30,70);`).meshes;
 
   it.each([1, -1])('draws addCenterArc using radians (direction=%s)', (sign) => {
     const [mesh] = build(`addCenterArc(FdPoint3d(-40,0,100),-vy,vx,40,0,${sign}*ARX_PI/2);`).meshes;
-    near(average([mesh.vertices[0], mesh.vertices[3]]), new DVec3(0, 0, 100));
-    near(average(mesh.vertices.slice(-3, -1)), new DVec3(-40, 0, 100 + sign * 40));
+    near(point(mesh.vertices[0]), new DVec3(0, 0, 100));
+    near(point(mesh.vertices.at(-1)!), new DVec3(-40, 0, 100 + sign * 40));
   });
 
   const tee = (angles = '135,90,0', options = 'true,true', frame = 'vx,vy', offset = 10) =>

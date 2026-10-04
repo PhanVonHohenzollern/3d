@@ -1,6 +1,6 @@
 import type { DebugKind } from '@/widgets/viewport/lib/render/types';
 import { distancePointToSegment, rayTriangleDistance } from '@/widgets/viewport/lib/math/geometry';
-import { isValidIndex } from '@/widgets/viewport/lib/math/math';
+import { clamp, isValidIndex } from '@/widgets/viewport/lib/math/math';
 import { QPointF, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import type { ConnectorPreview } from '@engine/geometry';
 import type { PreviewMesh } from '@engine/geometry';
@@ -9,23 +9,27 @@ import type { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import type { ScreenRay } from '@/widgets/viewport/lib/render/ViewportCamera';
 
 type Projection = (world: QVector3D) => QPointF | null;
+type LinePick = { screen: QPointF; project: Projection };
 
 const kPointPickRadius = 18;
 const kVectorPickRadius = 12;
 const kConnectorPickRadius = 18;
+const kLinePickRadius = 6;
 
 export function pickMeshAlongRay(
   meshes: readonly PreviewMesh[],
   ray: ScreenRay,
   isApiVisible: (apiIndex: number) => boolean,
+  linePick?: LinePick,
 ): number {
-  return pickMeshesAlongRay(meshes, ray, isApiVisible)[0] ?? -1;
+  return pickMeshesAlongRay(meshes, ray, isApiVisible, linePick)[0] ?? -1;
 }
 
 export function pickMeshesAlongRay(
   meshes: readonly PreviewMesh[],
   ray: ScreenRay,
   isApiVisible: (apiIndex: number) => boolean,
+  linePick?: LinePick,
 ): number[] {
   const nearPoint = ray.nearPoint;
   const direction = ray.farPoint.sub(nearPoint).normalized();
@@ -36,6 +40,34 @@ export function pickMeshesAlongRay(
     let closest = ray.farPoint.sub(nearPoint).length();
     let hit = false;
     const vertexCount = mesh.vertices.length;
+    if (mesh.primitive === 'lines') {
+      if (!linePick) continue;
+      for (let i = 0; i + 1 < mesh.indices.length; i += 2) {
+        const ia = mesh.indices[i],
+          ib = mesh.indices[i + 1];
+        if (!isValidIndex(ia, vertexCount) || !isValidIndex(ib, vertexCount)) continue;
+        const a = mesh.vertices[ia],
+          b = mesh.vertices[ib];
+        const start = new QVector3D(a.x, a.y, a.z);
+        const edge = new QVector3D(b.x - a.x, b.y - a.y, b.z - a.z);
+        const across = edge.sub(direction.mul(QVector3D.dotProduct(edge, direction)));
+        const t =
+          across.lengthSquared() > 1e-12
+            ? clamp(-QVector3D.dotProduct(start.sub(nearPoint), across) / across.lengthSquared(), 0, 1)
+            : Number(QVector3D.dotProduct(edge, direction) < 0);
+        const point = start.add(edge.mul(t));
+        const screen = linePick.project(point);
+        if (!screen || Math.hypot(screen.x - linePick.screen.x, screen.y - linePick.screen.y) >= kLinePickRadius)
+          continue;
+        const distance = QVector3D.dotProduct(point.sub(nearPoint), direction);
+        if (distance >= 0 && distance < closest) {
+          closest = distance;
+          hit = true;
+        }
+      }
+      if (hit) hits.push({ index: meshIndex, distance: closest });
+      continue;
+    }
     for (let i = 0; i + 2 < mesh.indices.length; i += 3) {
       const ia = mesh.indices[i];
       const ib = mesh.indices[i + 1];

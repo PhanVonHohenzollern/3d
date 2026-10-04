@@ -10,6 +10,7 @@ export function buildGeometryVertices(scene: PreviewGeometryScene): { vertices: 
   let meshIndex = 0;
   for (const mesh of scene.meshes) {
     const range: GeometryRange = { meshIndex: meshIndex++, apiIndex: mesh.apiIndex, start: vertices.size(), count: 0 };
+    if (mesh.primitive === 'lines') continue;
 
     interface Face {
       indices: [number, number, number];
@@ -98,6 +99,20 @@ export function buildGeometryWireVertices(scene: PreviewGeometryScene): {
   let meshIndex = 0;
   for (const mesh of scene.meshes) {
     const range: GeometryRange = { meshIndex: meshIndex++, apiIndex: mesh.apiIndex, start: vertices.size(), count: 0 };
+    if (mesh.primitive === 'lines') {
+      for (let i = 0; i + 1 < mesh.indices.length; i += 2) {
+        const a = mesh.indices[i],
+          b = mesh.indices[i + 1];
+        if (!isValidIndex(a, mesh.vertices.length) || !isValidIndex(b, mesh.vertices.length)) continue;
+        for (const index of [a, b]) {
+          const v = mesh.vertices[index];
+          vertices.push(v.x, v.y, v.z, mesh.color.r, mesh.color.g, mesh.color.b, 0, 0, 0);
+        }
+      }
+      range.count = vertices.size() - range.start;
+      if (range.count > 0) ranges.push(range);
+      continue;
+    }
 
     const edges = new Map<string, EdgeData>();
     const vertexCount = mesh.vertices.length;

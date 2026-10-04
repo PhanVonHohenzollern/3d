@@ -28,7 +28,10 @@ export class PickingService {
 
     return (
       this.#cycle(
-        pickMeshesAlongRay(state.geometryScene.meshes, ray, (apiIndex) => state.isGeometryApiVisible(apiIndex)),
+        pickMeshesAlongRay(state.geometryScene.meshes, ray, (apiIndex) => state.isGeometryApiVisible(apiIndex), {
+          screen,
+          project: this.view.projectToScreen,
+        }),
         screen,
         advance,
       ) ?? -1

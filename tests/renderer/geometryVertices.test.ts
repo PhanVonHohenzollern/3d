@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { kVertexFloats } from '@/widgets/viewport/lib/render/VertexArray';
 import { expandLineQuads, kLineQuadFloats } from '@/widgets/viewport/lib/render/lineQuads';
 import { buildGeometryVertices, buildGeometryWireVertices } from '@/widgets/viewport/lib/render/geometryVertices';
 import { boxMesh, scene } from '@tests/renderer/helpers';
+import { GeometryRuntime } from '@engine/runtime';
+import { PreviewGeometryEngine } from '@engine/geometry';
+import { CameraController } from '@/widgets/viewport/lib/render/CameraController';
+import { SceneRenderer } from '@/widgets/viewport/lib/render/SceneRenderer';
+import { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
 
 function normalAt(data: Float32Array, vertex: number): QVector3D {
   const o = vertex * kVertexFloats;
@@ -111,5 +116,40 @@ describe('feature edges', () => {
       [0, 1],
       [1, 1],
     ]);
+  });
+});
+
+describe('centerline rendering', () => {
+  const build = () =>
+    new PreviewGeometryEngine().build(
+      new GeometryRuntime().executeUpToLine('addCenterLine(FdPoint3d(3,5,7),FdPoint3d(3,105,7));', 999),
+    );
+
+  it('sends endpoint pairs to the line buffer without any triangle faces or width offsets', () => {
+    const geometry = build();
+    expect(buildGeometryVertices(geometry).vertices.size()).toBe(0);
+    const { vertices, ranges } = buildGeometryWireVertices(geometry);
+    const mesh = geometry.meshes[0];
+    expect(vertices.size()).toBe(mesh.indices.length);
+    expect(ranges).toEqual([{ meshIndex: 0, apiIndex: 0, start: 0, count: mesh.indices.length }]);
+    mesh.indices.forEach((index, i) => {
+      const v = mesh.vertices[index];
+      expect(vertices.position(i)).toEqual(new QVector3D(v.x, v.y, v.z));
+      expect(Array.from(vertices.data().slice(i * 9 + 3, i * 9 + 6))).toEqual([0, 1, 0]);
+    });
+  });
+
+  it.each([false, true])('draws a scene containing only centerlines (wireframe=%s)', (wireframe) => {
+    const state = new ViewportState();
+    state.geometryScene = build();
+    state.geometryWireframe = wireframe;
+    const renderer = new SceneRenderer(state, new CameraController(state));
+    vi.spyOn(renderer.renderer, 'beginFrame').mockReturnValue(true);
+    const draw = vi.spyOn(renderer.renderer, 'glDrawArrays');
+    renderer.rebuild();
+    renderer.paint();
+    expect(draw.mock.calls).toHaveLength(2);
+    expect(draw.mock.calls.every(([mode]) => mode === 'GL_LINES')).toBe(true);
+    expect(draw.mock.calls[1][2]).toBe(state.geometryScene.meshes[0].indices.length);
   });
 });

@@ -13,9 +13,29 @@ export function parseObj(source: string): PreviewGeometryScene {
   const meshes: PreviewMesh[] = [];
   const warnings = new Set<string>();
   let name = 'Imported model';
+  let explicitGroup = false;
   let mesh: PreviewMesh | undefined;
   let triangleCount = 0;
+  let segmentCount = 0;
   const lines = source.replace(/^\uFEFF/, '').split(/\r?\n/);
+
+  const currentMesh = (primitive?: 'lines'): PreviewMesh => {
+    if (!mesh || mesh.primitive !== primitive) {
+      mesh = {
+        apiIndex: -1,
+        sourceLine: 0,
+        apiName: name,
+        color: defaultPreviewColor(),
+        preserveNormals: true,
+        ...(primitive ? { primitive } : {}),
+        vertices: [],
+        indices: [],
+      };
+      meshes.push(mesh);
+    }
+
+    return mesh;
+  };
 
   for (let line = 0; line < lines.length; line++) {
     const lineNumber = line + 1;
@@ -48,6 +68,7 @@ export function parseObj(source: string): PreviewGeometryScene {
     };
 
     if (command === 'v') {
+      if (!explicitGroup && mesh?.indices.length) mesh = undefined;
       const position: Vector = [number(args[0]), number(args[1]), number(args[2])];
       if (args.length === 4) {
         const weight = number(args[3]);
@@ -66,7 +87,23 @@ export function parseObj(source: string): PreviewGeometryScene {
       warnings.add('Textures and materials are not imported.');
     } else if (command === 'o' || command === 'g') {
       name = args.join(' ') || 'Imported model';
+      explicitGroup = true;
       mesh = undefined;
+    } else if (command === 'l') {
+      if (args.length < 2 || args.length > 4096) fail('Lines must have between 2 and 4096 points.');
+      const points = args.map((arg) => {
+        const parts = arg.split('/');
+        if (parts.length > 2) fail('Invalid line reference.');
+        if (parts[1]) index(parts[1], textureCount);
+
+        return positions[index(parts[0], positions.length)];
+      });
+      segmentCount += points.length - 1;
+      if (segmentCount > MAX_TRIANGLES) fail('Model exceeds the 200,000 line segment limit.');
+      const target = currentMesh('lines');
+      const offset = target.vertices.length;
+      for (const [x, y, z] of points) target.vertices.push({ x, y, z, nx: 0, ny: 0, nz: 0 });
+      for (let i = 0; i + 1 < points.length; ++i) target.indices.push(offset + i, offset + i + 1);
     } else if (command === 'f') {
       if (args.length < 3 || args.length > 4096) fail('Faces must have between 3 and 4096 corners.');
       const corners = args.map((arg) => {
@@ -95,18 +132,7 @@ export function parseObj(source: string): PreviewGeometryScene {
       if (!triangles.length) fail('Face could not be triangulated.');
       triangleCount += triangles.length / 3;
       if (triangleCount > MAX_TRIANGLES) fail('Model exceeds the 200,000 triangle limit.');
-      if (!mesh) {
-        mesh = {
-          apiIndex: -1,
-          sourceLine: 0,
-          apiName: name,
-          color: defaultPreviewColor(),
-          preserveNormals: true,
-          vertices: [],
-          indices: [],
-        };
-        meshes.push(mesh);
-      }
+      mesh = currentMesh();
       const offset = mesh.vertices.length;
       for (const corner of corners) {
         const n = corner.normal && Math.hypot(...corner.normal) > 0 ? corner.normal : normal;
@@ -131,40 +157,42 @@ export function parseObj(source: string): PreviewGeometryScene {
     else if (command === 's') {
       if (args[0] !== 'off' && args[0] !== '0')
         warnings.add('Smoothing groups are ignored; supplied normals are preserved.');
-    } else warnings.add('Unsupported OBJ records (such as lines or curves) were skipped.');
+    } else warnings.add('Unsupported OBJ records (such as curves) were skipped.');
   }
-  if (!meshes.length) throw new Error('No mesh faces found. Choose an OBJ containing polygon faces.');
+  if (!meshes.length) throw new Error('No mesh faces or lines found. Choose an OBJ containing polygon faces or lines.');
 
   return { meshes, warnings: [...warnings] };
 }
 
 export function writeObj(scene: PreviewGeometryScene): string {
-  const output = ['# Geometry Preview OBJ export', '# Mesh geometry and normals; no materials or textures'];
+  const output: string[] = [];
   let offset = 1;
-  let faceCount = 0;
+  let elementCount = 0;
   for (const mesh of scene.meshes) {
     if (!mesh.indices.length) continue;
-    output.push(`o ${mesh.apiName.replace(/[^\w.-]+/g, '_') || 'mesh'}`);
     for (const vertex of mesh.vertices) {
       if (![vertex.x, vertex.y, vertex.z, vertex.nx, vertex.ny, vertex.nz].every(Number.isFinite))
         throw new Error('Cannot export non-finite geometry.');
       output.push(`v ${vertex.x} ${vertex.y} ${vertex.z}`);
     }
     for (const vertex of mesh.vertices) output.push(`vn ${vertex.nx} ${vertex.ny} ${vertex.nz}`);
-    if (mesh.indices.length % 3 !== 0) throw new Error('Cannot export incomplete triangles.');
-    for (let i = 0; i < mesh.indices.length; i += 3) {
-      const face = mesh.indices.slice(i, i + 3).map((index) => {
+    const lines = mesh.primitive === 'lines';
+    const stride = lines ? 2 : 3;
+    if (mesh.indices.length % stride !== 0)
+      throw new Error(`Cannot export incomplete ${lines ? 'lines' : 'triangles'}.`);
+    for (let i = 0; i < mesh.indices.length; i += stride) {
+      const face = mesh.indices.slice(i, i + stride).map((index) => {
         if (!Number.isInteger(index) || index < 0 || index >= mesh.vertices.length)
           throw new Error('Cannot export invalid mesh indices.');
 
-        return `${index + offset}//${index + offset}`;
+        return lines ? `${index + offset}` : `${index + offset}//${index + offset}`;
       });
-      output.push(`f ${face.join(' ')}`);
-      faceCount++;
+      output.push(`${lines ? 'l' : 'f'} ${face.join(' ')}`);
+      elementCount++;
     }
     offset += mesh.vertices.length;
   }
-  if (!faceCount) throw new Error('There is no mesh geometry to export.');
+  if (!elementCount) throw new Error('There is no mesh geometry to export.');
 
   return output.join('\n') + '\n';
 }

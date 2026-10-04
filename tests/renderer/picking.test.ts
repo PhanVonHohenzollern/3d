@@ -7,13 +7,17 @@ import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngin
 import type { PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
 import { QPointF, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { boxMesh, createEngine, project, updateCamera, vectorItem } from '@tests/renderer/helpers';
+import { GeometryRuntime } from '@engine/runtime';
+import { PreviewGeometryEngine } from '@engine/geometry';
 
 const everything = () => true;
 
 function pickMesh(engine: ViewportEngine, meshes: PreviewMesh[], screen: QPointF): number {
   const ray = updateCamera(engine).screenRay(screen);
 
-  return ray ? pickMeshAlongRay(meshes, ray, everything) : -1;
+  return ray
+    ? pickMeshAlongRay(meshes, ray, everything, { screen, project: (p) => engine.camera().projectToScreen(p) })
+    : -1;
 }
 
 function pickItem(engine: ViewportEngine, items: DebugItem[], kind: 'Point' | 'Vector', screen: QPointF): string {
@@ -31,6 +35,23 @@ function pickItem(engine: ViewportEngine, items: DebugItem[], kind: 'Point' | 'V
 }
 
 describe('mesh picking', () => {
+  it.each([18, 36])('picks centerline dashes but not gaps, at camera distance %s', (distance) => {
+    const geometry = new PreviewGeometryEngine().build(
+      new GeometryRuntime().executeUpToLine('addCenterLine(FdPoint3d(0,-5,0),FdPoint3d(0,5,0));', 999),
+    );
+    const engine = createEngine();
+    engine.camera().distance = distance;
+    const [a, b, c] = geometry.meshes[0].vertices.map((v) => new QVector3D(v.x, v.y, v.z));
+    const screen = project(engine, a.add(b).mul(0.5));
+    const gap = project(engine, b.add(c).mul(0.5));
+    expect(pickMesh(engine, geometry.meshes, screen)).toBe(0);
+    expect(pickMesh(engine, geometry.meshes, gap)).toBe(-1);
+    const toward = updateCamera(engine).cameraPosition().normalized();
+    const front = a.add(b).mul(0.5).add(toward);
+    const box = boxMesh([front.x - 0.2, front.y - 0.2, front.z - 0.2], [front.x + 0.2, front.y + 0.2, front.z + 0.2]);
+    expect(pickMesh(engine, [...geometry.meshes, box], screen)).toBe(1);
+  });
+
   it('intersects actual triangles and keeps the nearest hit', () => {
     const engine = createEngine();
     const meshes = [boxMesh([-1, -1, -1], [1, 1, 1], 0), boxMesh([-0.5, -0.5, 4], [0.5, 0.5, 5], 1)];
