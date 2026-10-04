@@ -70,6 +70,141 @@ describe('makeKFSymbolFlat layout', () => {
   });
 });
 
+describe('framed rectangular grills', () => {
+  const build = (code: string) => {
+    const result = new GeometryRuntime().executeUpToLine(code, 999);
+    expect(result.diagnostics).toEqual([]);
+
+    return new PreviewGeometryEngine().build(result);
+  };
+
+  const boundaryLoops = (mesh: PreviewMesh) => {
+    const edges = new Map<string, [number, number, number]>();
+    for (let i = 0; i < mesh.indices.length; i += 3)
+      for (let j = 0; j < 3; ++j) {
+        const a = mesh.indices[i + j],
+          b = mesh.indices[i + ((j + 1) % 3)];
+        const key = [a, b].sort((x, y) => x - y).join(',');
+        const entry = edges.get(key) ?? [a, b, 0];
+        ++entry[2];
+        edges.set(key, entry);
+      }
+    const boundary = new Map<number, number[]>();
+    for (const [a, b, count] of edges.values()) {
+      expect(count).toBeLessThanOrEqual(2);
+      if (count !== 1) continue;
+      boundary.set(a, [...(boundary.get(a) ?? []), b]);
+      boundary.set(b, [...(boundary.get(b) ?? []), a]);
+    }
+    const seen = new Set<number>();
+    let loops = 0;
+    for (const start of boundary.keys()) {
+      if (seen.has(start)) continue;
+      ++loops;
+      const pending = [start];
+      while (pending.length) {
+        const v = pending.pop()!;
+        if (seen.has(v)) continue;
+        seen.add(v);
+        const neighbors = boundary.get(v)!;
+        expect(neighbors).toHaveLength(2);
+        pending.push(...neighbors.filter((p) => !seen.has(p)));
+      }
+    }
+
+    return loops;
+  };
+
+  it.each([1, 4, 20, 300])('Type6 makes %s holes of width a and a complete frame', (n) => {
+    const a = 50 / n;
+    const scene = build(`makeGrillType6(FdPoint3d(),vz,vy,200,100,${n},${a});`);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(1);
+    const mesh = scene.meshes[0];
+    expect(boundaryLoops(mesh)).toBe(n + 1);
+    expect(Math.min(...mesh.vertices.map((p) => p.x))).toBe(-100);
+    expect(Math.max(...mesh.vertices.map((p) => p.x))).toBe(100);
+    expect(Math.min(...mesh.vertices.map((p) => p.y))).toBe(-50);
+    expect(Math.max(...mesh.vertices.map((p) => p.y))).toBe(50);
+    expect(mesh.vertices.every((p) => p.z === 0)).toBe(true);
+    const border = 50 / (n + 1);
+    expect(signedArea(mesh, new DVec3(0, 0, 1))).toBeCloseTo(200 * 100 - n * a * (200 - 2 * border), 1);
+    const rows = [...new Set(mesh.vertices.map((p) => p.y))].sort((x, y) => x - y);
+    for (let i = 0; i < n; ++i) expect(rows[2 * i + 2] - rows[2 * i + 1]).toBeCloseTo(a, 4);
+  });
+
+  it('Type6 uses perpVector for the wide grille in the CGeneral sample', () => {
+    const scene = build('makeGrillType6(FdPoint3d(),vx,200,600,20,5);');
+    expect(scene.warnings).toEqual([]);
+    const vertices = scene.meshes[0].vertices;
+    expect(vertices.every((p) => p.x === 0)).toBe(true);
+    expect(Math.min(...vertices.map((p) => p.y))).toBe(-300);
+    expect(Math.max(...vertices.map((p) => p.y))).toBe(300);
+    expect(Math.min(...vertices.map((p) => p.z))).toBe(-100);
+    expect(Math.max(...vertices.map((p) => p.z))).toBe(100);
+  });
+
+  it('keeps the zero-width-hole solid plate used by makeGrPPD1', () => {
+    const scene = build('makeGrillType6(FdPoint3d(),vz,vy,200,100,2,0);');
+    expect(scene.warnings).toEqual([]);
+    expect(boundaryLoops(scene.meshes[0])).toBe(1);
+    expect(signedArea(scene.meshes[0], new DVec3(0, 0, 1))).toBe(20000);
+  });
+
+  it.each([1, 3, 20, 300])('Type7 makes %s angled blades with the specified normal depth', (n) => {
+    const scene = build(`makeGrillType7(FdPoint3d(),vz,vy,200,100,${n},30,10);`);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(1);
+    const mesh = scene.meshes[0];
+    let blades = 0,
+      frame = 0;
+    for (let i = 0; i < mesh.indices.length; i += 3) {
+      const points = mesh.indices.slice(i, i + 3).map((index) => mesh.vertices[index]);
+      if (points.every((p) => p.z === 0)) {
+        ++frame;
+        continue;
+      }
+      ++blades;
+      const p = points[0];
+      expect((Math.acos(p.nz) * 180) / Math.PI).toBeCloseTo(30, 4);
+      expect(Math.min(...points.map((v) => v.z))).toBe(0);
+      expect(Math.max(...points.map((v) => v.z))).toBe(10);
+    }
+    expect(blades).toBe(2 * n);
+    expect(frame).toBe(16);
+    expect(mesh.vertices.every((p) => Math.abs(p.x) <= 100 && Math.abs(p.y) <= 50 && p.z >= 0 && p.z <= 10)).toBe(true);
+    expectFiniteScene(scene);
+  });
+
+  it.each(['vx', 'vy', 'vz', '-vx', '-vz', 'FdVector3d(1,2,3)'])(
+    'matches implicit and explicit upVector for %s',
+    (axis) => {
+      for (const [api, args] of [
+        ['makeGrillType6', '200,100,3,10'],
+        ['makeGrillType7', '200,100,3,30,10'],
+      ]) {
+        const implicit = build(`FdVector3d axis=${axis}; ${api}(FdPoint3d(5,7,9),axis,${args});`);
+        const explicit = build(`FdVector3d axis=${axis}; ${api}(FdPoint3d(5,7,9),axis,axis.perpVector(),${args});`);
+        expect(implicit.warnings).toEqual([]);
+        expect(explicit.warnings).toEqual([]);
+        expect(implicit.meshes).toEqual(explicit.meshes);
+      }
+    },
+  );
+
+  it.each([
+    'makeGrillType6(FdPoint3d(),vz,200,100,20,5);',
+    'makeGrillType6(FdPoint3d(),vz,200,100,20,-1);',
+    'makeGrillType7(FdPoint3d(),vz,200,100,3,0,10);',
+    'makeGrillType7(FdPoint3d(),vz,200,100,3,90,10);',
+    'makeGrillType7(FdPoint3d(),vz,200,100,3,30,100);',
+  ])('warns for invalid grille parameters: %s', (code) => {
+    const scene = build(code);
+    expect(scene.warnings).toHaveLength(1);
+    expect(scene.meshes).toEqual([]);
+  });
+});
+
 describe('makeBUTTV tube intersection boundary', () => {
   it.each([56, 56.0001, -56, -56.0001])('builds both sides when the duct reaches the radius (%s)', (length) => {
     const runtime = new GeometryRuntime();

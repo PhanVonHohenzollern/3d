@@ -1,6 +1,7 @@
-import { cross, normalized } from '@engine/math';
+import { cross, DVec3, normalized } from '@engine/math';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { rotateAroundAxis, deg } from '@engine/geometry/helpers/geometryMath';
+import { rotateAroundAxis, deg, basisFromUp, sdkPerpVector, toVec } from '@engine/geometry/helpers/geometryMath';
+import { addTriangle, vertex } from '@engine/geometry/helpers/meshData';
 import { NamedArguments, type Frame } from '@engine/geometry/helpers/NamedArguments';
 import { FrameSketch, MeshSketch } from '@engine/geometry/helpers/sketch';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
@@ -115,6 +116,76 @@ function rectGrill(g: GrillSketch, { count: lamels, type, outline }: RectGrillOp
     g.stroke([g.at(-w / 2, -h / 2), g.at(w / 2, -h / 2), g.at(w / 2, h / 2), g.at(-w / 2, h / 2)], true);
 }
 
+function framedGrill(type: 6 | 7): ApiMeshAdapter {
+  return withAdapterErrors(invalidGrill, (scene, context, args) => {
+    const a = new NamedArguments(context, args);
+    const center = a.vector('centralPointD'),
+      direction = a.fdVector('vectorD'),
+      normal = normalized(toVec(direction));
+    if (direction.lengthSqrd() === 0) throw new Error('zero normal');
+    const hint = a.has('upVectorD') ? a.vector('upVectorD') : toVec(sdkPerpVector(direction));
+    const [up] = basisFromUp(normal, hint),
+      right = cross(up, normal);
+    const w = a.positive('L'),
+      h = a.positive('H'),
+      count = Math.trunc(a.positive('n'));
+    if (count < 1) throw new Error('n must be at least 1');
+    const hole = type === 6 ? a.num('a') : 0;
+    if (type === 6 && (hole < 0 || count * hole >= h))
+      throw new Error('a must be non-negative and n * a must be less than H');
+    // Type7's rim width is unspecified in the SDK document; use 10% of the blade pitch, limited by L.
+    const border = type === 6 ? (h - count * hole) / (count + 1) : Math.min(w, h / count) * 0.1;
+    if (type === 6 && hole > 0 && 2 * border >= w) throw new Error('L must leave room for the side frame');
+    const depth = type === 7 ? a.positive('thickness') : 0;
+    const angle = type === 7 ? a.num('alfa') : 0;
+    if (type === 7 && (angle <= 0 || angle >= 90)) throw new Error('alfa must be between 0 and 90 degrees');
+    const run = type === 7 ? depth / Math.tan(deg(angle)) : 0;
+    if (type === 7 && run > h - 2 * border) throw new Error('blade depth and angle exceed the grille height');
+    const mesh = context.createMesh();
+
+    const at = (x: number, y: number, z = 0) => center.add(right.mul(x)).add(up.mul(y)).add(normal.mul(z));
+
+    const face = (points: DVec3[]) => {
+      const offset = mesh.vertices.length;
+      const n = normalized(cross(points[1].sub(points[0]), points[2].sub(points[0])));
+      for (const p of points) mesh.vertices.push(vertex(p, n));
+      addTriangle(mesh, offset, offset + 1, offset + 2);
+      addTriangle(mesh, offset, offset + 2, offset + 3);
+    };
+
+    if (type === 6 && hole === 0) {
+      face([at(-w / 2, -h / 2), at(w / 2, -h / 2), at(w / 2, h / 2), at(-w / 2, h / 2)]);
+    } else {
+      const ys = [-h / 2];
+      const openings = type === 6 ? count : 1;
+      const openingWidth = type === 6 ? hole : h - 2 * border;
+      for (let i = 0; i < openings; ++i) {
+        const bottom = -h / 2 + border + i * (border + openingWidth);
+        ys.push(bottom, bottom + openingWidth);
+      }
+      ys.push(h / 2);
+      const xs = [-w / 2, -w / 2 + border, w / 2 - border, w / 2];
+      for (const y of ys) for (const x of xs) mesh.vertices.push(vertex(at(x, y), normal));
+      for (let row = 0; row + 1 < ys.length; ++row)
+        for (let col = 0; col < 3; ++col) {
+          if (row % 2 === 1 && col === 1) continue;
+          const i = row * 4 + col;
+          addTriangle(mesh, i, i + 1, i + 5);
+          addTriangle(mesh, i, i + 5, i + 4);
+        }
+    }
+    if (type === 7) {
+      const x = w / 2 - border;
+      const available = h - 2 * border - run;
+      for (let i = 0; i < count; ++i) {
+        const y = -h / 2 + border + (count === 1 ? available / 2 : (i * available) / (count - 1));
+        face([at(-x, y), at(x, y), at(x, y + run, depth), at(-x, y + run, depth)]);
+      }
+    }
+    scene.meshes.push(mesh);
+  });
+}
+
 // Reads the arguments every circular grill has, even when the grill leaves some unused, and
 // draws the rim.
 function circularRim(g: GrillSketch, radius: number, inner: number): { count: number; rings: number; angle: number } {
@@ -176,6 +247,6 @@ export const grillAdapters: AdapterTable = {
   makeGrillType3: grill(bladedGrill),
   makeGrillType4: grill(bladedGrill),
   makeGrillType5: grill(bladedGrill),
-  makeGrillType6: grill((g) => rectGrill(g, { count: 'n', type: 6, outline: 'closeLast' })),
-  makeGrillType7: grill((g) => rectGrill(g, { count: 'n', type: 7, outline: 'closeLast' })),
+  makeGrillType6: framedGrill(6),
+  makeGrillType7: framedGrill(7),
 };
