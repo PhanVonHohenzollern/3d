@@ -658,6 +658,39 @@ describe('tube-to-tube intersections', () => {
       const seam = origin.add(radial).add(axis.mul(Math.min(...lengths)));
       expect(distanceToMesh(seam, main)).toBeLessThan(0.0001);
     }
+    const edges = new Map<string, { a: DVec3; b: DVec3; count: number; direction: number }>();
+    for (const mesh of [main, branch])
+      for (let i = 0; i < mesh.indices.length; i += 3) {
+        const triangle = mesh.indices.slice(i, i + 3).map((index) => {
+          const p = mesh.vertices[index];
+
+          return new DVec3(p.x, p.y, p.z);
+        });
+        for (let j = 0; j < 3; ++j) {
+          const a = triangle[j],
+            b = triangle[(j + 1) % 3];
+          const ka = `${a.x},${a.y},${a.z}`,
+            kb = `${b.x},${b.y},${b.z}`;
+          const key = [ka, kb].sort().join('|');
+          const edge = edges.get(key) ?? { a, b, count: 0, direction: 0 };
+          ++edge.count;
+          edge.direction += ka < kb ? 1 : -1;
+          edges.set(key, edge);
+        }
+      }
+    const mainEnds = [Math.min(...main.vertices.map((p) => p.x)), Math.max(...main.vertices.map((p) => p.x))];
+    const branchEnd = Math.max(...branch.vertices.map((p) => dot(new DVec3(p.x, p.y, p.z).sub(origin), axis)));
+    const unmatched = [...edges.values()].filter(({ a, b, count, direction }) => {
+      if (count === 2 && direction === 0) return false;
+      if (count !== 1) return true;
+      if (mainEnds.some((x) => Math.abs(a.x - x) < 0.0001 && Math.abs(b.x - x) < 0.0001)) return false;
+
+      return (
+        Math.abs(dot(a.sub(origin), axis) - branchEnd) > 0.0001 ||
+        Math.abs(dot(b.sub(origin), axis) - branchEnd) > 0.0001
+      );
+    });
+    expect(unmatched.length, 'edges at the junction must have two faces with opposite winding').toBe(0);
   };
 
   it('joins the DN40/DN25 Berliner asymmetric tee supplied by the user', () => {
@@ -693,12 +726,14 @@ makeTubeToTubeIntersection2(FdPoint3d(-60,0,0),vx,tube,branch,angles,2,false);`)
   });
 
   it.each([
+    [2, 1, 1, 0, 0, 40],
     [1, 2, 3, 0, 0, 40],
     [2, 2, 2, 0, 0, 40],
     [1, 10, 4, 0, 5, 50],
     [2, 10, 10, 0, 5, 40],
     [1, 4, 7, 45, 5, 50],
     [2, 7, 7, 45, 5, 40],
+    [2, 64, 64, 0, 0, 40],
   ])('joins API %s at resolutions %s/%s, angle %s, offset %s, diameter %s', (api, n, bn, tilt, offset, diameter) => {
     const scene = build(
       api === 1

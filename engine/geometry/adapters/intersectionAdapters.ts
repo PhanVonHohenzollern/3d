@@ -1,7 +1,6 @@
 import { FdPoint3d, FdVector3d } from '@engine/runtime';
 import { circularFaceCount, toVec, deg } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, pushNonEmptyMesh, vertex } from '@engine/geometry/helpers/meshData';
-import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewMesh } from '@engine/geometry/previewScene';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
@@ -116,26 +115,32 @@ function splitPolygon(polygon: Sample[], plane: Plane, tolerance: number): [Samp
 
 function appendPolygon(mesh: PreviewMesh, polygon: Sample[], tolerance: number): void {
   if (polygon.length < 3) return;
+  const origin = polygon[0].p;
+  const center = origin.add(
+    polygon.reduce((sum, sample) => sum.add(sample.p.sub(origin)), new FdVector3d()).div(polygon.length),
+  );
+  const normal = polygon.reduce((sum, sample) => sum.add(sample.normal), new FdVector3d()).normal();
   const start = mesh.vertices.length;
+  mesh.vertices.push(vertex(toVec(center), toVec(normal)));
   for (const sample of polygon) mesh.vertices.push(vertex(toVec(sample.p), toVec(sample.normal)));
-  for (let i = 1; i + 1 < polygon.length; ++i) {
-    const a = polygon[i].p.sub(polygon[0].p),
-      b = polygon[i + 1].p.sub(polygon[0].p);
-    if (a.crossProduct(b).length() > tolerance * tolerance) addTriangle(mesh, start, start + i, start + i + 1);
+  for (let i = 0; i < polygon.length; ++i) {
+    const next = (i + 1) % polygon.length;
+    const a = polygon[i].p.sub(center),
+      b = polygon[next].p.sub(center);
+    if (a.crossProduct(b).length() > tolerance * tolerance) addTriangle(mesh, start, start + i + 1, start + next + 1);
   }
 }
 
 function surface(
-  context: MeshBuildContext,
   source: TubeSurface,
   cutter: TubeSurface,
+  tolerance: number,
   halves: readonly [boolean, boolean] = [true, true],
-): PreviewMesh {
-  const mesh = context.createMesh();
+): Sample[][] {
+  const polygons: Sample[][] = [];
   const [upper, lower] = halves;
-  if (!upper && !lower) return mesh;
+  if (!upper && !lower) return polygons;
   const { tube, ring } = source;
-  const tolerance = 1e-10 * Math.max(tube.a, tube.b, tube.length, cutter.tube.a, cutter.tube.b, cutter.tube.length);
   const radial = cutter.tube.axis.sub(tube.axis.mul(cutter.tube.axis.dotProduct(tube.axis))).normal();
   const halfPlane = { origin: tube.origin, normal: radial.mul(upper ? -1 : 1) };
   const end = tube.axis.mul(tube.length);
@@ -144,15 +149,115 @@ function surface(
       b = ring[(i + 1) % ring.length];
     let polygon = [a, b, { p: b.p.add(end), normal: b.normal }, { p: a.p.add(end), normal: a.normal }];
     if (upper !== lower) [polygon] = splitPolygon(polygon, halfPlane, tolerance);
+    if (polygon.length < 3) continue;
+    let overlap = polygon;
     for (const plane of cutter.planes) {
-      if (polygon.length < 3) break;
+      [overlap] = splitPolygon(overlap, plane, tolerance);
+      if (overlap.length < 3) break;
+    }
+    if (overlap.length < 3) {
+      polygons.push(polygon);
+      continue;
+    }
+    for (const plane of cutter.planes) {
+      const bordersOverlap = overlap.some(
+        (sample, j) =>
+          Math.abs(sample.p.sub(plane.origin).dotProduct(plane.normal)) <= tolerance &&
+          Math.abs(overlap[(j + 1) % overlap.length].p.sub(plane.origin).dotProduct(plane.normal)) <= tolerance,
+      );
+      if (!bordersOverlap) continue;
       const [inside, outside] = splitPolygon(polygon, plane, tolerance);
-      appendPolygon(mesh, outside, tolerance);
+      if (outside.length >= 3) polygons.push(outside);
       polygon = inside;
     }
   }
 
-  return mesh;
+  return polygons;
+}
+
+function joinSurfaceEdges(groups: Sample[][][], tolerance: number): Sample[][][] {
+  const cells = new Map<string, FdPoint3d[]>();
+  const points: FdPoint3d[] = [];
+  const toleranceSquared = tolerance * tolerance;
+  const welded = groups.map((polygons) =>
+    polygons.map((polygon) =>
+      polygon.map((sample) => {
+        const cell = [sample.p.x, sample.p.y, sample.p.z].map((v) => Math.floor(v / tolerance));
+        let point: FdPoint3d | undefined;
+        for (let x = -1; x <= 1 && !point; ++x)
+          for (let y = -1; y <= 1 && !point; ++y)
+            for (let z = -1; z <= 1 && !point; ++z)
+              point = cells
+                .get(`${cell[0] + x},${cell[1] + y},${cell[2] + z}`)
+                ?.find((p) => p.sub(sample.p).lengthSqrd() <= toleranceSquared);
+        if (!point) {
+          point = sample.p;
+          const key = cell.join(',');
+          const bucket = cells.get(key) ?? [];
+          bucket.push(point);
+          cells.set(key, bucket);
+          points.push(point);
+        }
+
+        return { p: point, normal: sample.normal };
+      }),
+    ),
+  );
+
+  const axes = (['x', 'y', 'z'] as const).map((axis) => ({
+    axis,
+    points: [...points].sort((a, b) => a[axis] - b[axis]),
+  }));
+
+  const lowerBound = (sorted: (typeof axes)[number], value: number) => {
+    let lo = 0,
+      hi = sorted.points.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (sorted.points[mid][sorted.axis] < value) lo = mid + 1;
+      else hi = mid;
+    }
+
+    return lo;
+  };
+
+  return welded.map((polygons) =>
+    polygons.map((polygon) =>
+      polygon.flatMap((a, i) => {
+        const b = polygon[(i + 1) % polygon.length];
+        if (a.p === b.p) return [];
+        const edge = b.p.sub(a.p),
+          lengthSquared = edge.lengthSqrd();
+        const ranges = axes.map((sorted) => ({
+          sorted,
+          lo: lowerBound(sorted, Math.min(a.p[sorted.axis], b.p[sorted.axis]) - tolerance),
+          hi: lowerBound(sorted, Math.max(a.p[sorted.axis], b.p[sorted.axis]) + tolerance),
+        }));
+        const { sorted, lo, hi } = ranges.reduce((best, range) =>
+          range.hi - range.lo < best.hi - best.lo ? range : best,
+        );
+        const splits: { p: FdPoint3d; t: number }[] = [];
+        for (let j = lo; j < hi; ++j) {
+          const p = sorted.points[j];
+          if (p === a.p || p === b.p) continue;
+          const t = p.sub(a.p).dotProduct(edge) / lengthSquared;
+          if (t > 0 && t < 1 && p.sub(a.p.add(edge.mul(t))).lengthSqrd() <= toleranceSquared) splits.push({ p, t });
+        }
+        splits.sort((a, b) => a.t - b.t);
+
+        return [
+          a,
+          ...splits.map(({ p, t }) => ({
+            p,
+            normal: a.normal
+              .mul(1 - t)
+              .add(b.normal.mul(t))
+              .normal(),
+          })),
+        ];
+      }),
+    ),
+  );
 }
 
 function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
@@ -208,10 +313,17 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
       throw new Error('complexity must be positive');
     const mainSurface = tubeSurface(main, complexity),
       branchSurface = tubeSurface(branch, branchComplexity);
-    const mainMesh = surface(context, mainSurface, branchSurface, mainHalves);
+    const tolerance = 1e-10 * Math.max(main.a, main.b, main.length, branch.a, branch.b, branch.length);
+    const [mainPolygons, branchPolygons] = joinSurfaceEdges(
+      [surface(mainSurface, branchSurface, tolerance, mainHalves), surface(branchSurface, mainSurface, tolerance)],
+      tolerance,
+    );
+    const mainMesh = context.createMesh();
+    for (const polygon of mainPolygons) appendPolygon(mainMesh, polygon, tolerance);
     mainMesh.apiName += '.main';
     pushNonEmptyMesh(scene, mainMesh);
-    const mesh = surface(context, branchSurface, mainSurface);
+    const mesh = context.createMesh();
+    for (const polygon of branchPolygons) appendPolygon(mesh, polygon, tolerance);
     mesh.apiName += '.branch';
     pushNonEmptyMesh(scene, mesh);
   });
