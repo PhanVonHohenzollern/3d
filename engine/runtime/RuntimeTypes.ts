@@ -44,6 +44,7 @@ export interface RuntimeApiCall {
   userFunctionCall: boolean;
   name: string;
   arguments: RuntimeValue[];
+  boundArguments?: RuntimeValue[];
   argumentExpressions: string[];
   formalParameterNames: string[];
   formalParameterTypes: string[];
@@ -68,6 +69,7 @@ export function parameterKey(request: Pick<RuntimeParameterRequest, 'name' | 'fu
 }
 
 export interface RuntimeResult {
+  debugApiIndex?: number;
   variables: RuntimeVariable[];
   variableChanges: RuntimeVariableChange[];
   diagnostics: RuntimeDiagnostic[];
@@ -101,4 +103,15 @@ export interface RuntimeExecutionOptions {
   functionScopes?: ReadonlyMap<string, string>;
   arguments?: ReadonlyMap<string, string>;
   isolated?: boolean;
+  debugCall?: { signature: string; occurrence: number; line?: number };
+}
+
+export function debugApiIndices(result: RuntimeResult): Set<number> | undefined {
+  if (result.debugApiIndex === undefined) return;
+  const indices = new Set([result.debugApiIndex]);
+  result.apiCalls.forEach((call, index) => {
+    if (indices.has(call.parentApiIndex)) indices.add(index);
+  });
+
+  return indices;
 }

@@ -80,14 +80,15 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
       apiTrace.m_tree.mouseReleaseEvent(event);
       expect(mw.functions.active).toBe('withPoint');
       expect(editor.text).toContain('void withPoint(');
-      expect(editor.text).not.toContain('void element(');
+      expect(editor.text).toContain('void element(');
+      expect(editor.currentLine()).toBe(7);
       expect(apiTrace.historyDialog()).toBeNull();
       expect(mw.session.lastResult.diagnostics).toEqual([]);
       expect(mw.session.scene.meshes).toHaveLength(2);
       // Inside the function tab, its nested API inputs remain available for debugging.
-      apiTrace.m_tree.setCurrentItem(apiTrace.m_tree.topLevelItem(0));
-      expect(engine.pointLabelPanel().entries().length).toBeGreaterThan(1);
-      expect(engine.vectorLabelPanel().entries().length).toBeGreaterThan(0);
+      mw.subApiTrace.selectMeshApiCall(3);
+      expect(engine.pointLabelPanel().entries()).toHaveLength(1);
+      expect(engine.vectorLabelPanel().entries()).toHaveLength(1);
       mw.dispose();
     },
   );

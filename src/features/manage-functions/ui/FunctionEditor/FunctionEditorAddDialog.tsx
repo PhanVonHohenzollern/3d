@@ -3,11 +3,13 @@ import { Dialog } from 'radix-ui';
 import { useFunctionEditor } from '@/features/manage-functions/ui/FunctionEditor/FunctionEditorContext';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
+import { NativeSelect } from '@/shared/ui/native-select';
 
 const FunctionEditorAddDialog = () => {
   const { actions, state } = useFunctionEditor();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
+  const [header, setHeader] = useState(true);
   const { add, clearError } = actions.create;
 
   const handleOpenChange = useCallback(
@@ -24,18 +26,16 @@ const FunctionEditorAddDialog = () => {
   const handleSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      if (add(name)) setOpen(false);
+      if (add(name, header)) setOpen(false);
     },
-    [add, name],
+    [add, name, header],
   );
-
-  if (state.active) return null;
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger asChild>
-        <Button size="xs" variant="outline">
-          Add Function
+        <Button size="xs" variant="outline" aria-label="Add source files" title="Add .h and .cpp files">
+          +
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -44,14 +44,24 @@ const FunctionEditorAddDialog = () => {
           data-floating-window
           className="fixed top-1/2 left-1/2 z-50 w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-base p-4 text-foreground shadow-xl"
         >
-          <Dialog.Title className="text-sm font-semibold">Add Function</Dialog.Title>
+          <Dialog.Title className="text-sm font-semibold">Add source files</Dialog.Title>
           <Dialog.Description className="mt-1 text-xs text-muted-foreground">
-            Enter a unique tab name. The C++ function name is defined in its code.
+            Files are available to Main automatically. Each CPP file can contain multiple functions.
           </Dialog.Description>
           <form onSubmit={handleSubmit}>
             <label className="mt-3 block text-xs">
-              Tab name
+              File name
               <Input className="mt-1" value={name} onChange={handleNameChange} aria-invalid={!!state.error} />
+            </label>
+            <label className="mt-3 block text-xs">
+              Create
+              <NativeSelect
+                value={header ? 'pair' : 'cpp'}
+                onChange={(event) => setHeader(event.target.value === 'pair')}
+              >
+                <option value="pair">Header (.h) and source (.cpp)</option>
+                <option value="cpp">Source (.cpp) only</option>
+              </NativeSelect>
             </label>
             {state.error && (
               <p role="alert" className="mt-2 text-xs text-error">

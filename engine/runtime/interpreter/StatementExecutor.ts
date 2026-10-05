@@ -26,6 +26,7 @@ import {
   type RuntimeValue,
 } from '@engine/runtime/RuntimeValue';
 import { valueTypeOf } from '@engine/runtime/values/registry';
+import { debugPause } from '@engine/runtime/interpreter/FunctionDebug';
 
 // Runs statements: blocks, control flow, simple statements (declarations, assignments, increments,
 // method calls, free calls) and the loop and switch bookkeeping.
@@ -44,13 +45,14 @@ export class StatementExecutor implements StatementVisitor<void, boolean> {
     try {
       fn();
     } catch (e) {
+      if (e === debugPause) throw e;
       this.x.state.addDiagnostic(this.x.lineOrCaller(s.startLine), stdException(e).message);
     }
   }
 
   executeNode(s: Statement, skipFunctions = true): void {
     if (this.x.flow.returned || this.x.flow.breaking || this.x.flow.continuing) return;
-    if (this.x.callDepth === 0 && s.startLine > this.x.maxLine) return;
+    if (!this.x.debug.allows(s.startLine, this.x.callDepth, this.x.maxLine)) return;
     s.accept(this, skipFunctions);
   }
 
@@ -60,12 +62,12 @@ export class StatementExecutor implements StatementVisitor<void, boolean> {
       this.executeBody(s, skipFunctions);
     } finally {
       // Keep the active block's locals visible when debugging inside it.
-      if (this.x.callDepth > 0 || this.x.maxLine >= s.endLine) this.x.state.popScope();
+      if (!this.x.debug.keepScope(s.endLine, this.x.callDepth, this.x.maxLine)) this.x.state.popScope();
     }
   }
 
   visitSimple(s: Statement): void {
-    if (this.x.callDepth > 0 || s.endLine <= this.x.maxLine)
+    if (this.x.debug.allows(s.endLine, this.x.callDepth, this.x.maxLine))
       this.safeExecute(s, () => this.executeSimple(s.tokens, s.startLine));
   }
 
@@ -81,7 +83,7 @@ export class StatementExecutor implements StatementVisitor<void, boolean> {
     try {
       this.safeExecute(s, () => this.executeFor(s));
     } finally {
-      if (this.x.callDepth > 0 || this.x.maxLine >= s.endLine) this.x.state.popScope();
+      if (!this.x.debug.keepScope(s.endLine, this.x.callDepth, this.x.maxLine)) this.x.state.popScope();
     }
   }
 
@@ -125,7 +127,7 @@ export class StatementExecutor implements StatementVisitor<void, boolean> {
       } finally {
         --this.x.flow.loopDepth;
         this.x.flow.breaking = this.x.flow.continuing = false;
-        this.x.state.restoreBinding(name, saved);
+        if (!this.x.debug.paused) this.x.state.restoreBinding(name, saved);
       }
 
       return;
@@ -354,7 +356,9 @@ export class StatementExecutor implements StatementVisitor<void, boolean> {
     let ref: LValueRef;
     try {
       ref = this.x.resolveLValue(receiver);
-    } catch {
+    } catch (error) {
+      if (error === debugPause) throw error;
+
       return false;
     }
     const target = ref.member === '' ? ref.slot.get() : undefined;

@@ -9,6 +9,7 @@ interface SubParameterPanelProps {
   select: (name: string) => void;
   change: (name: string, parameter: string, initial: string[], index: number, value: string) => void;
   apply: (name: string) => void;
+  reset: (name: string) => void;
 }
 
 export function SubParameterPanel(props: SubParameterPanelProps) {
@@ -32,6 +33,9 @@ export function SubParameterPanel(props: SubParameterPanelProps) {
             </Button>
           ))}
         </div>
+        <Button size="xs" variant="outline" disabled={!props.enabled || !fn} onClick={() => fn && props.reset(fn.name)}>
+          Reset from call
+        </Button>
         <Button
           size="xs"
           title="Build function with these arguments"
@@ -51,7 +55,51 @@ export function SubParameterPanel(props: SubParameterPanelProps) {
             <legend className="px-1 text-xs font-medium">
               {input.name} <span className="font-normal text-muted-foreground">{input.type}</span>
             </legend>
-            {input.kind === 'unsupported' ? (
+            {input.kind === 'array' ? (
+              <div className="space-y-2">
+                {/\b(bool|BOOL)\b/.test(input.type) && !input.type.match(/\].*\[/) && (
+                  <label className="flex items-center gap-2 text-xs">
+                    Elements
+                    <Input
+                      type="number"
+                      min={0}
+                      max={4096}
+                      className="h-7 w-20"
+                      aria-label={`${fn.name}.${input.name}.length`}
+                      value={
+                        input.values[0]
+                          .replace(/[{}\s]/g, '')
+                          .split(',')
+                          .filter(Boolean).length
+                      }
+                      onChange={(event) => {
+                        const count = Math.max(0, Math.min(4096, Math.trunc(Number(event.target.value))));
+                        const values = input.values[0]
+                          .replace(/[{}]/g, '')
+                          .split(',')
+                          .map((value) => value.trim())
+                          .filter(Boolean);
+                        props.change(
+                          fn.name,
+                          input.name,
+                          input.initial,
+                          0,
+                          `{${Array.from({ length: count }, (_, i) => values[i] ?? 'false').join(', ')}}`,
+                        );
+                      }}
+                    />
+                  </label>
+                )}
+                <textarea
+                  aria-label={`${fn.name}.${input.name}`}
+                  className="w-full rounded border border-input bg-transparent p-2 font-code text-xs"
+                  rows={2}
+                  value={input.values[0]}
+                  placeholder="{true, false, true, true}"
+                  onChange={(event) => props.change(fn.name, input.name, input.initial, 0, event.target.value)}
+                />
+              </div>
+            ) : input.kind === 'unsupported' ? (
               <p className="text-xs text-error">Unsupported preview input type.</p>
             ) : (
               <div className="flex gap-2">

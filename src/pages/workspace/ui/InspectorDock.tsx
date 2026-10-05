@@ -13,7 +13,7 @@ type InspectorDockProps = {
 };
 
 function countFor(counts: InspectorCounts, id: DockName): number | undefined {
-  return id === 'LinkDock' || id === 'SubParametersDock' ? undefined : counts[id];
+  return id === 'LinkDock' || id === 'SubParametersDock' || id === 'SubApiTraceDock' ? undefined : counts[id];
 }
 
 export function InspectorDock({ height, raised, onRaise, showSubParameters, counts, panels }: InspectorDockProps) {

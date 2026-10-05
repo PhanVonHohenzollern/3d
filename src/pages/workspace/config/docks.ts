@@ -6,6 +6,12 @@ export const kDocks: readonly { id: DockName; title: string; icon: LucideIcon; h
   { id: 'VariablesDock', title: 'Variables', icon: Braces, hint: 'Inspect values at the cursor' },
   { id: 'ParametersDock', title: 'Parameters', icon: SlidersHorizontal, hint: 'Edit a value to update the preview' },
   { id: 'ApiTraceDock', title: 'API Trace', icon: ListTree, hint: 'Select a call to highlight its geometry' },
+  {
+    id: 'SubApiTraceDock',
+    title: 'API Trace sub-Function',
+    icon: ListTree,
+    hint: 'Inspect a function and its call arguments',
+  },
   { id: 'LinkDock', title: 'Link', icon: Link2 },
   {
     id: 'SubParametersDock',

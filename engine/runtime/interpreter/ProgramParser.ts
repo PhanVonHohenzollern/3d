@@ -10,6 +10,13 @@ import {
 } from '@engine/runtime/helpers/tokens';
 import { Statement, StatementKind } from '@engine/runtime/interpreter/Statement';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
+import {
+  functionParameters,
+  functionSignature,
+  parameterDefaultExpression,
+  parameterDefaultPos,
+} from '@engine/runtime/helpers/functionSignatures';
+import { parseRuntimeType } from '@engine/runtime/helpers/typeNames';
 
 const kPrograms = new Map<string, Statement>();
 
@@ -31,6 +38,10 @@ export class ProgramParser {
   parse(): Statement {
     const root = new Statement(StatementKind.Block, 1);
     while (!this.atEnd()) {
+      if (['class', 'struct'].includes(this.current().text)) {
+        this.parseClass(root);
+        continue;
+      }
       if (isSymbol(this.current(), '}')) {
         this.advance();
         continue;
@@ -40,8 +51,81 @@ export class ProgramParser {
       else if (!this.atEnd()) this.advance();
     }
     root.endLine = this.current().line;
+    this.linkDeclarations(root);
 
     return root;
+  }
+
+  private parseClass(root: Statement): void {
+    const start = this.m_pos;
+    const members: Statement[] = [];
+    while (!this.atEnd() && !['{', ';'].includes(this.current().text)) this.advance();
+    if (this.current().text === ';') {
+      this.advance();
+
+      return;
+    }
+    this.advance();
+    while (!this.atEnd() && this.current().text !== '}') {
+      if (['public', 'protected', 'private'].includes(this.current().text) && this.current(1).text === ':') {
+        this.advance();
+        this.advance();
+        continue;
+      }
+      const child = this.parseStatement(true);
+      if (child) members.push(child);
+      else if (!this.atEnd()) this.advance();
+    }
+    this.advance();
+    if (members.some((member) => member.kind === StatementKind.Function)) {
+      root.children.push(
+        ...members.filter(
+          (member) => member.kind === StatementKind.Function || member.tokens.some((t) => t.text === 'static'),
+        ),
+      );
+    } else {
+      const original = new Statement(StatementKind.Simple, this.m_tokens[start].line);
+      original.tokens = sliceTokens(this.m_tokens, start, this.m_pos);
+      original.endLine = this.m_tokens[this.m_pos - 1].line;
+      root.children.push(original);
+    }
+  }
+
+  private linkDeclarations(root: Statement): void {
+    const declarations = new Map<string, Statement[]>();
+    for (const child of root.children) {
+      if (child.kind !== StatementKind.Function) continue;
+      const key = functionSignature(child);
+      declarations.set(key, [...(declarations.get(key) ?? []), child]);
+    }
+    for (const group of declarations.values()) {
+      const definition = group.find((fn) => fn.body);
+      if (!definition) continue;
+      if (group.filter((fn) => fn.body).length > 1)
+        throw runtimeError(`duplicate function: ${functionSignature(definition)}`);
+      const params = functionParameters(definition);
+      for (const declaration of group) {
+        functionParameters(declaration).forEach((param, i) => {
+          const value = parameterDefaultExpression(param);
+          if (value.length && parameterDefaultPos(params[i]) === params[i].length)
+            params[i] = [
+              ...params[i],
+              { kind: TokKind.Symbol, text: '=', number: 0, line: definition.startLine },
+              ...value,
+            ];
+        });
+      }
+      const lp = definition.signature.findIndex((t) => t.text === '(');
+      const last = definition.signature.slice(lp).findLastIndex((t) => t.text === ')') + lp;
+      definition.signature = [
+        ...definition.signature.slice(0, lp + 1),
+        ...params.flatMap((param, i) =>
+          i ? [{ kind: TokKind.Symbol, text: ',', number: 0, line: definition.startLine }, ...param] : param,
+        ),
+        ...definition.signature.slice(last),
+      ];
+    }
+    root.children = root.children.filter((child) => child.kind !== StatementKind.Function || child.body);
   }
 
   private atEnd(): boolean {
@@ -155,7 +239,31 @@ export class ProgramParser {
     if (isIdentifier(this.current(), 'switch')) return this.parseSwitch();
     if (isIdentifier(this.current(), 'case') || isIdentifier(this.current(), 'default')) return this.parseCase();
 
-    return this.parseSimple();
+    const simple = this.parseSimple();
+    if (allowFunction && simple) {
+      const tokens = simple.tokens;
+      const lp = tokens.findIndex((t) => t.text === '(');
+      if (
+        lp > 1 &&
+        tokens.at(-1)?.text === ')' &&
+        (tokens[0].text === 'void' || parseRuntimeType(tokens, 0)) &&
+        !tokens.slice(0, lp).some((t) => t.text === '=')
+      ) {
+        const params = splitTopLevel(tokens.slice(lp + 1, -1), ',');
+        const emptyValue =
+          params.every((param) => !param.length) && ['FdPoint3d', 'FdVector3d'].includes(tokens[0].text);
+        if (
+          !emptyValue &&
+          params.every((param) => !param.length || param[0].text === 'void' || parseRuntimeType(param, 0))
+        ) {
+          simple.kind = StatementKind.Function;
+          simple.functionName = tokens[lp - 1].text;
+          simple.signature = tokens;
+        }
+      }
+    }
+
+    return simple;
   }
 
   private parseIf(): Statement {

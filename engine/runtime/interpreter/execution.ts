@@ -6,6 +6,7 @@ import type { Statement } from '@engine/runtime/interpreter/Statement';
 import type { IntrinsicContext } from '@engine/runtime/intrinsics';
 import type { RuntimeExecutionOptions } from '@engine/runtime/RuntimeTypes';
 import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { FunctionDebug } from '@engine/runtime/interpreter/FunctionDebug';
 
 export const kMaxIterations = 10000;
 export const kMaxFunctionCallDepth = 64;
@@ -28,6 +29,7 @@ export function freshControlFlow(): ControlFlow {
 // One program run, shared by the statement, declaration and call executors. Each of them gets
 // this at construction instead of reaching into the others.
 export interface Execution {
+  readonly debug: FunctionDebug;
   readonly state: RuntimeState;
   readonly options?: RuntimeExecutionOptions;
   // The editor's cursor line: statements after it do not run, except inside called functions.

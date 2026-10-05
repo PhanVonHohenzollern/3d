@@ -5,6 +5,7 @@ import {
   requiredParameterCount,
   parameterName,
   signatureParameterList,
+  evaluateFunctionInput,
 } from '@engine/runtime/helpers/functionSignatures';
 import type { LValueRef } from '@engine/runtime/helpers/lvalues';
 import { isIdentifier, splitTopLevel, type Token } from '@engine/runtime/helpers/tokens';
@@ -15,6 +16,7 @@ import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
 import { freshControlFlow, type ControlFlow, type Execution } from '@engine/runtime/interpreter/execution';
 import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { FunctionCalls } from '@engine/runtime/interpreter/FunctionCalls';
+import { FunctionDebug } from '@engine/runtime/interpreter/FunctionDebug';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { resolveLValue } from '@engine/runtime/interpreter/lvalueResolution';
 import type { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
@@ -22,11 +24,12 @@ import { StatementExecutor } from '@engine/runtime/interpreter/StatementExecutor
 import { StatementKind, type Statement } from '@engine/runtime/interpreter/Statement';
 import { languageIntrinsic, type IntrinsicContext } from '@engine/runtime/intrinsics';
 import type { RuntimeExecutionOptions } from '@engine/runtime/RuntimeTypes';
-import { runtimeCoerceToType, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
 
 // Runs a parsed program: picks the entry function, runs the global statements and then that
 // function, with the statement, declaration and call executors sharing this Execution.
 export class RuntimeExecutor implements Execution {
+  readonly debug: FunctionDebug;
   flow: ControlFlow = freshControlFlow();
   callDepth = 0;
   readonly functions = new Map<string, Statement[]>();
@@ -43,6 +46,7 @@ export class RuntimeExecutor implements Execution {
     private readonly fullProgram = false,
     readonly options?: RuntimeExecutionOptions,
   ) {
+    this.debug = new FunctionDebug(options?.debugCall);
     this.evalContext = {
       lookupValue: (name) => state.lookupValue(name),
       functionMacro: (name) => state.functionMacro(name),
@@ -60,6 +64,14 @@ export class RuntimeExecutor implements Execution {
   }
 
   executeProgram(root: Statement): void {
+    try {
+      this.executeEntry(root);
+    } finally {
+      if (this.debug.apiIndex >= 0) this.state.debugApiIndex = this.debug.apiIndex;
+    }
+  }
+
+  private executeEntry(root: Statement): void {
     for (const child of root.children) {
       if (child.kind !== StatementKind.Function || child.functionName === '') continue;
       const overloads = this.functions.get(child.functionName) ?? [];
@@ -173,16 +185,10 @@ export class RuntimeExecutor implements Execution {
         const name = parameterName(param);
         const configured = this.options?.arguments?.get(name);
         if (configured !== undefined) {
-          const parsed = parseRuntimeType(param, 0);
-          const value = this.evaluate(Lexer.scanExpression(configured));
-          this.state.setVariable(
-            name,
-            parsed ? runtimeCoerceToType(value, parsed.type) : value,
-            true,
-            fn.startLine,
-            'input',
-            configured,
+          const value = evaluateFunctionInput(param, Lexer.scanExpression(configured), (tokens) =>
+            this.evaluate(tokens),
           );
+          this.state.setVariable(name, value, true, fn.startLine, 'input', configured);
         }
       } catch (e) {
         if (this.options?.arguments?.has(parameterName(param)))

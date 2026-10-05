@@ -11,6 +11,7 @@ import {
   populateFormalParameterMetadata,
   requiredParameterCount,
   writableReferenceParameter,
+  evaluateFunctionInput,
 } from '@engine/runtime/helpers/functionSignatures';
 import { TokKind, tokensToExpression, type Token } from '@engine/runtime/helpers/tokens';
 import { readLValue, type LValueRef } from '@engine/runtime/helpers/lvalues';
@@ -22,6 +23,8 @@ import type { Statement } from '@engine/runtime/interpreter/Statement';
 import { languageIntrinsic, sdkIntrinsic } from '@engine/runtime/intrinsics';
 import type { RuntimeArgumentTrace, RuntimeValueSource } from '@engine/runtime/RuntimeTypes';
 import { isArray, runtimeCoerceToType, runtimeDeepCopy, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { debugPause } from '@engine/runtime/interpreter/FunctionDebug';
+import { Lexer } from '@engine/runtime/interpreter/Lexer';
 
 interface ReferenceOutput {
   index: number;
@@ -64,6 +67,7 @@ export class FunctionCalls {
           args.push(readLValue(ref));
         } else args.push(runtimeDeepCopy(this.x.evaluate(group)));
       } catch (e) {
+        if (e === debugPause) throw e;
         this.x.state.addDiagnostic(
           line,
           `cannot evaluate argument ${i + 1} of ${name} (${tokensToExpression(group)}): ${stdException(e).message}`,
@@ -127,8 +131,9 @@ export class FunctionCalls {
     fn: Statement,
     args: readonly RuntimeValue[],
     traces: readonly RuntimeArgumentTrace[],
-  ): void {
-    functionParameters(fn).forEach((param, i) => {
+    selected: boolean,
+  ): RuntimeValue[] {
+    return functionParameters(fn).map((param, i) => {
       const name = parameterName(param);
       if (name === '') return;
       let value: RuntimeValue = undefined;
@@ -137,15 +142,22 @@ export class FunctionCalls {
         try {
           value = runtimeDeepCopy(this.x.evaluate(parameterDefaultExpression(param)));
         } catch (e) {
+          if (e === debugPause) throw e;
           stdException(e);
           value = undefined;
         }
       }
       const parsed = parseRuntimeType(param, 0);
+      const configured = selected ? this.x.options?.arguments?.get(name) : undefined;
+      if (configured !== undefined)
+        value = evaluateFunctionInput(param, Lexer.scanExpression(configured), (tokens) => this.x.evaluate(tokens));
       if (parsed && value !== undefined && !isArray(value)) value = runtimeCoerceToType(value, parsed.type);
-      const trace = i < traces.length ? traces[i] : null;
-      const expression = trace ? trace.expression : tokensToExpression(parameterDefaultExpression(param));
-      this.x.state.setVariable(name, value, false, fn.startLine, 'bind', expression, trace);
+      const trace = configured === undefined && i < traces.length ? traces[i] : null;
+      const expression =
+        configured ?? (trace ? trace.expression : tokensToExpression(parameterDefaultExpression(param)));
+      this.x.state.setVariable(name, value, selected, fn.startLine, 'bind', expression, trace);
+
+      return runtimeDeepCopy(value);
     });
   }
 
@@ -163,22 +175,35 @@ export class FunctionCalls {
     const callerFlow = this.x.flow;
     this.x.flow = freshControlFlow();
     ++this.x.callDepth;
+    const selected = this.x.debug.enter(fn, parentApiIndex, this.x.callDepth);
     this.x.pushParentApi(parentApiIndex);
     let outputs: ReferenceOutput[];
     let returned: RuntimeValue;
     try {
-      this.bindFunctionArguments(fn, args, state.apiCall(parentApiIndex)?.argumentTraces ?? []);
+      const call = state.apiCall(parentApiIndex)!;
+      call.boundArguments = this.bindFunctionArguments(fn, args, call.argumentTraces, selected);
+      if (selected)
+        call.formalParameterNames.forEach((name, index) => {
+          const configured = this.x.options?.arguments?.get(name);
+          if (configured === undefined) return;
+          call.argumentTraces[index] = { expression: configured, sources: [], elements: [] };
+        });
       if (fn.body) this.x.executeBody(fn.body);
+      if (selected) this.x.debug.pause();
       outputs = this.referenceOutputs(fn, argumentTokens.length);
       const returnType = parseRuntimeType(fn.signature, 0);
       const { returnValue } = this.x.flow;
       returned = runtimeDeepCopy(
         returnType && returnValue !== undefined ? runtimeCoerceToType(returnValue, returnType.type) : returnValue,
       );
+    } catch (error) {
+      if (!selected || error === debugPause) throw error;
+      state.addDiagnostic(fn.startLine, stdException(error).message);
+      this.x.debug.pause();
     } finally {
       this.x.popParentApi();
       --this.x.callDepth;
-      state.popFrame(frame);
+      if (!this.x.debug.paused) state.popFrame(frame);
       this.x.flow = callerFlow;
     }
 

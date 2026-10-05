@@ -12,19 +12,10 @@ const FunctionEditorActions = () => {
         size="xs"
         variant="outline"
         className="mr-auto text-error"
-        title="Delete function, its tab and its code in Main"
+        title="Delete this source file"
         onClick={actions.current.remove}
       >
-        Delete
-      </Button>
-      <Button size="xs" variant="outline" onClick={actions.current.attach}>
-        Attach
-      </Button>
-      <Button size="xs" variant="outline" onClick={actions.current.cancel}>
-        Cancel
-      </Button>
-      <Button size="xs" onClick={actions.current.save}>
-        Save
+        Delete file
       </Button>
     </div>
   );

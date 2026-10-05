@@ -9,6 +9,7 @@ import { Signal } from '@/shared/lib/observable';
 import { PreviewGeometryEngine, type PreviewGeometryScene } from '@engine/geometry';
 import {
   emptyRuntimeResult,
+  debugApiIndices,
   GeometryRuntime,
   parameterKey,
   what,
@@ -97,6 +98,10 @@ export class PreviewSession {
 
   get program(): FunctionProgram | undefined {
     return this.#program;
+  }
+
+  built(tab: string): TabBuild | undefined {
+    return this.#tabBuilds.get(tab);
   }
 
   get buildNumber(): number {
@@ -246,7 +251,14 @@ export class PreviewSession {
   ): ExecutionOutcome {
     const fullProgram = this.#mode === 'build';
     const lines = lineCount(program.source);
-    const effectiveLine = Math.min(Math.max(0, line), lines);
+    const editorLocation = program.locations.find((location) => location.name === program.editorFile);
+    const effectiveLine = fullProgram ? lines : Math.min(lines, (editorLocation?.start ?? 1) + Math.max(0, line) - 1);
+    const options = program.options.debugCall
+      ? {
+          ...program.options,
+          debugCall: { ...program.options.debugCall, line: fullProgram ? undefined : effectiveLine },
+        }
+      : program.options;
     const key = runKey(program, parameters, effectiveLine, fullProgram);
     let result: RuntimeResult;
     if (this.#spareRun?.key === key) {
@@ -257,7 +269,7 @@ export class PreviewSession {
     } else {
       this.#runtime.setParameters(parameters);
       try {
-        result = this.#runtime.executeUpToLine(program.source, line, fullProgram, program.options);
+        result = this.#runtime.executeUpToLine(program.source, effectiveLine, fullProgram, options);
       } catch (e) {
         this.#feedback = { source, diagnostics: [{ line, message: what(e) }] };
 
@@ -268,26 +280,30 @@ export class PreviewSession {
         this.parameterAvailabilityChanged.emit();
       }
     }
-    const sourceLines = source.split('\n').length;
+    const located = result.diagnostics.map((diagnostic) => {
+      const location = program.locations.find(
+        (entry) => diagnostic.line >= entry.start && diagnostic.line <= entry.end,
+      );
+
+      return {
+        ...diagnostic,
+        name: location?.name ?? '',
+        sourceLine: diagnostic.line,
+        line: location ? diagnostic.line - location.start + location.localStart : diagnostic.line,
+      };
+    });
     this.#feedback = {
       source,
-      diagnostics: result.diagnostics.filter((d) => d.line <= sourceLines),
-      externalDiagnostics: result.diagnostics
-        .filter((d) => d.line > sourceLines)
-        .map((d) => {
-          const location = program.locations.findLast((entry) => d.line >= entry.start && d.line <= entry.end);
-
-          return {
-            name: location?.name || 'Main',
-            line: location ? d.line - location.start + location.localStart : d.line,
-            sourceLine: d.line,
-            message: d.message,
-          };
-        }),
+      diagnostics: located.filter((d) => d.name === program.editorFile).map(({ line, message }) => ({ line, message })),
+      externalDiagnostics: located
+        .filter((d) => d.name !== program.editorFile)
+        .map((d) => ({ ...d, name: d.name || 'Main' })),
     };
     this.#lastResult = result;
     this.#currentLine = line;
     this.#scene = this.#engine.build(result);
+    const visible = debugApiIndices(result);
+    if (visible) this.#scene.meshes = this.#scene.meshes.filter((mesh) => visible.has(mesh.apiIndex));
 
     return { result };
   }
@@ -303,6 +319,7 @@ export class PreviewSession {
   }
 
   recordBuild(tab: string, source: string, program: FunctionProgram, parameters: ReadonlyMap<string, string>): void {
+    if (!tab) this.#tabBuilds.clear();
     this.#builtSource = source;
     this.#builtProgram = program;
     this.#tabBuilds.set(tab, { source, program, number: this.#buildNumber, parameters });
@@ -348,7 +365,8 @@ export class PreviewSession {
 
   // A deleted function's tab build goes, and so do its parameter values in other tabs' builds.
   forgetFunction(name: string): void {
-    this.#tabBuilds.delete(name);
+    for (const key of this.#tabBuilds.keys())
+      if (key === name || key.startsWith(name + '#')) this.#tabBuilds.delete(key);
     for (const built of this.#tabBuilds.values())
       built.parameters = new Map([...built.parameters].filter(([key]) => !isFunctionParameterKey(key, name)));
   }

@@ -3,6 +3,7 @@ import { apiParameterRole } from '@engine/runtime';
 import { runtimeSourceHistory } from '@engine/runtime';
 import {
   emptyRuntimeResult,
+  debugApiIndices,
   type RuntimeApiCall,
   type RuntimeArgumentTrace,
   type RuntimeResult,
@@ -185,10 +186,12 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     tree.clear();
     this.#runtimeResult = result;
     const apiItems: TreeWidgetItem[] = [];
+    const visible = debugApiIndices(result);
     for (let i = 0; i < result.apiCalls.length; ++i) {
+      if (visible && !visible.has(i)) continue;
       const call = result.apiCalls[i];
       const item =
-        call.parentApiIndex >= 0 && call.parentApiIndex < i
+        call.parentApiIndex >= 0 && call.parentApiIndex < i && apiItems[call.parentApiIndex]
           ? new TreeWidgetItem(apiItems[call.parentApiIndex])
           : new TreeWidgetItem(tree);
       apiItems[i] = item;
@@ -209,7 +212,8 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
             defaultValue: '',
           });
       }
-      for (let p = 0; p < call.arguments.length; ++p) {
+      const argumentsToShow = call.boundArguments ?? call.arguments;
+      for (let p = 0; p < argumentsToShow.length; ++p) {
         const trace: RuntimeArgumentTrace =
           p < call.argumentTraces.length
             ? { ...call.argumentTraces[p] }
@@ -222,11 +226,11 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
           i,
           p,
           p < metadata.length ? metadata[p].name : `arg${p}`,
-          call.arguments[p],
+          argumentsToShow[p],
           trace,
         );
       }
-      for (let p = call.arguments.length; p < metadata.length; ++p) {
+      for (let p = argumentsToShow.length; p < metadata.length; ++p) {
         if (metadata[p].defaultValue === '') continue;
         const child = new TreeWidgetItem(item);
         child.setData(0, UserRole, i);
