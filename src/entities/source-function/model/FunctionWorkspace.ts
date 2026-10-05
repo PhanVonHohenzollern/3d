@@ -1,38 +1,42 @@
+import { mainFunctionName, sourceFunctions, type SourceFunction } from '@/entities/source-function/lib/sourceFunctions';
 import {
-  mainFunctionName,
-  removeFunctionSource,
-  sourceFunctions,
-  validFunctionCode,
-  type SourceFunction,
-} from '@/entities/source-function/lib/sourceFunctions';
-import type { RuntimeExecutionOptions } from '@engine/runtime';
-import type { RuntimeApiCall } from '@engine/runtime';
-import { normalizedParameterType } from '@engine/runtime';
+  functionInputValues,
+  normalizedParameterType,
+  type RuntimeApiCall,
+  type RuntimeExecutionOptions,
+  type RuntimeResult,
+} from '@engine/runtime';
 
 export interface FunctionProgram {
   source: string;
   options: RuntimeExecutionOptions;
   locations: { start: number; end: number; name: string; localStart: number }[];
+  editorFile: string;
 }
 
-interface SourcePart {
-  code: string;
-  name: string;
+export interface WorkspaceFunction extends SourceFunction {
+  functionName: string;
+  file: string;
+  line: number;
 }
 
 export class FunctionWorkspace {
-  #mainSource = '';
+  readonly #files = new Map<string, string>([['', '']]);
+  #activeFile = '';
   #active = '';
-  #error = '';
   #inputTab = '';
-  readonly #saved = new Map<string, string>();
-  readonly #drafts = new Map<string, string>();
+  #error = '';
+  readonly #calls = new Map<string, RuntimeApiCall[]>();
+  readonly #occurrences = new Map<string, number>();
   readonly #inputs = new Map<string, Map<string, string[]>>();
-  readonly #deleted = new Set<string>();
-  readonly #signatures = new Map<string, string>();
+  #definitions: WorkspaceFunction[] | undefined;
 
   get mainSource(): string {
-    return this.#mainSource;
+    return this.#files.get('') ?? '';
+  }
+
+  get activeFile(): string {
+    return this.#activeFile;
   }
 
   get active(): string {
@@ -47,21 +51,67 @@ export class FunctionWorkspace {
     return this.#inputTab;
   }
 
+  get fileNames(): string[] {
+    return [...this.#files.keys()].filter(Boolean);
+  }
+
   get inline(): readonly SourceFunction[] {
-    return sourceFunctions(this.#mainSource);
+    return sourceFunctions(this.mainSource);
   }
 
   get names(): string[] {
-    return [...new Set([...this.#signatures.keys(), ...this.#saved.keys(), ...this.#drafts.keys()])];
+    return this.functions.map((fn) => fn.name);
   }
 
-  select(name: string): void {
-    this.#active = name;
-    this.#error = '';
+  get cacheKey(): string {
+    return this.#active ? this.#active + '#' + this.occurrence(this.#active) : '';
   }
 
-  selectInputTab(name: string): void {
-    this.#inputTab = name;
+  get functions(): WorkspaceFunction[] {
+    if (this.#definitions) return this.#definitions;
+    const all = [...this.#files].flatMap(([file, code]) =>
+      file.endsWith('.h')
+        ? []
+        : sourceFunctions(code).map((fn) => ({
+            ...fn,
+            file,
+            functionName: fn.name,
+            line: code.slice(0, fn.from).split('\n').length,
+          })),
+    );
+    const entry = this.#entry();
+
+    const counts = new Map<string, number>();
+    for (const fn of all) counts.set(fn.name, (counts.get(fn.name) ?? 0) + 1);
+    this.#definitions = all
+      .filter((fn) => fn.file !== '' || fn.signature !== entry?.signature)
+      .map((fn) => ({
+        ...fn,
+        name: counts.get(fn.name)! > 1 ? fn.signature : fn.name,
+      }));
+
+    return this.#definitions;
+  }
+
+  get parameterFunctions(): WorkspaceFunction[] {
+    return this.functions.filter((fn) => fn.inputs.length);
+  }
+
+  #entry(): SourceFunction | undefined {
+    const name = mainFunctionName(this.mainSource);
+
+    return this.inline.find((fn) => fn.name === name);
+  }
+
+  source(file = this.#activeFile): string {
+    return this.#files.get(file) ?? '';
+  }
+
+  edit(code: string): void {
+    if (code === this.source()) return;
+    this.#files.set(this.#activeFile, code);
+    this.#definitions = undefined;
+    if (this.#active && !this.names.includes(this.#active)) this.#active = '';
   }
 
   reportError(message: string): void {
@@ -72,297 +122,189 @@ export class FunctionWorkspace {
     this.#error = '';
   }
 
-  isDeleted(name: string): boolean {
-    return this.#deleted.has(name);
+  addFiles(raw: string, header: boolean): boolean {
+    const base = raw.trim().replace(/\.(h|cpp)$/i, '');
+    if (!/^[A-Za-z_][\w.-]*$/.test(base)) {
+      this.#error = 'Enter a file name using letters, numbers, underscores, dots or hyphens.';
+
+      return false;
+    }
+    const names = header ? [base + '.h', base + '.cpp'] : [base + '.cpp'];
+    if (
+      names.some(
+        (name) =>
+          name.toLowerCase() === 'main.cpp' || this.fileNames.some((file) => file.toLowerCase() === name.toLowerCase()),
+      )
+    ) {
+      this.#error = 'A file with this name already exists.';
+
+      return false;
+    }
+    for (const name of names) this.#files.set(name, '');
+    this.#definitions = undefined;
+    this.selectFile(names[0]);
+
+    return true;
   }
 
-  hasSaved(name: string): boolean {
-    return this.#saved.has(name);
+  selectFile(file: string): void {
+    if (!this.#files.has(file)) return;
+    this.#activeFile = file;
+    this.#active = '';
+    this.clearError();
   }
 
-  hasDraft(name: string): boolean {
-    return this.#drafts.has(name);
+  openFile(file: string): void {
+    if (this.#files.has(file)) this.#activeFile = file;
   }
 
-  hasInputs(name: string): boolean {
-    return this.#inputs.has(name);
+  select(name: string): void {
+    const fn = this.functions.find((item) => item.name === name);
+    if (name && !fn) return;
+    this.#active = name;
+    this.#activeFile = fn?.file ?? '';
+    this.#inputTab = name;
+    this.clearError();
   }
 
-  unsavedNames(): string[] {
-    return [...this.#drafts.keys()].filter((name) => this.source(name) !== this.savedSource(name));
-  }
+  removeFile(): string | null {
+    const file = this.#activeFile;
+    if (!file) return null;
+    for (const fn of this.functions.filter((fn) => fn.file === file)) {
+      this.#calls.delete(fn.name);
+      this.#occurrences.delete(fn.name);
+      for (const key of this.#inputs.keys()) if (key.startsWith(fn.name + '#')) this.#inputs.delete(key);
+    }
+    this.#files.delete(file);
+    this.#definitions = undefined;
+    this.selectFile('');
 
-  #inlineFor(name: string): SourceFunction | undefined {
-    return this.inline.find((fn) => fn.signature === this.#signatures.get(name));
-  }
-
-  savedSource(name: string): string | undefined {
-    return this.#inlineFor(name)?.code ?? this.#saved.get(name);
-  }
-
-  #labelFor(fn: SourceFunction): string | undefined {
-    return [...this.#signatures].find(([, signature]) => signature === fn.signature)?.[0];
+    return file;
   }
 
   tabForCall(call: RuntimeApiCall): string | undefined {
-    const types = call.formalParameterTypes.map((type) => normalizedParameterType(type));
-    const signature = `${call.name}(${types.join(', ')})`;
+    const signature = call.name + '(' + call.formalParameterTypes.map(normalizedParameterType).join(', ') + ')';
 
-    return [...this.#signatures].find(([, value]) => value === signature)?.[0];
+    return this.functions.find((fn) => fn.signature === signature)?.name;
   }
 
-  source(name = this.#active): string {
-    if (!name) return this.#mainSource;
-
-    return this.#drafts.get(name) ?? this.savedSource(name) ?? '';
-  }
-
-  edit(source: string): void {
-    if (this.#active) {
-      const saved = this.savedSource(this.#active);
-      if (source === saved) this.#drafts.delete(this.#active);
-      else this.#drafts.set(this.#active, source);
-    } else {
-      const previous = this.inline;
-      const next = sourceFunctions(source);
-      // Removing a definition in Main detaches it; only Delete removes its editor.
-      for (const fn of previous) {
-        const label = this.#labelFor(fn);
-        if (!label || next.some((item) => item.signature === fn.signature)) continue;
-        const sameName = next.filter((item) => item.name === fn.name);
-        if (sameName.length === 1 && previous.filter((item) => item.name === fn.name).length === 1)
-          this.#signatures.set(label, sameName[0].signature);
-        else this.#saved.set(label, fn.code);
-      }
-      this.#mainSource = source;
-      const main = mainFunctionName(source) ? next[0] : undefined;
-      for (const fn of next) {
-        if (fn === main) continue;
-        let label = this.#labelFor(fn);
-        if (!label) {
-          const base = next.filter((item) => item.name === fn.name).length > 1 ? fn.signature : fn.name;
-          label = base;
-          for (let i = 2; this.names.includes(label); ++i) label = `${base} (${i})`;
-          this.#signatures.set(label, fn.signature);
-        }
-        this.#deleted.delete(label);
+  acceptCalls(result: RuntimeResult): void {
+    this.#calls.clear();
+    for (const call of result.apiCalls) {
+      if (!call.userFunctionCall) continue;
+      const name = this.tabForCall(call);
+      if (name) {
+        const calls = this.#calls.get(name) ?? [];
+        calls.push(call);
+        this.#calls.set(name, calls);
       }
     }
+    for (const [name, index] of this.#occurrences) if (index >= this.calls(name).length) this.#occurrences.set(name, 0);
   }
 
-  add(raw: string): boolean {
-    const name = raw.trim();
-    if (!name) {
-      this.#error = 'Enter a tab name.';
-
-      return false;
-    }
-    if (name === 'Main' || this.names.includes(name)) {
-      this.#error = 'Name already exists. Enter a unique tab name.';
-
-      return false;
-    }
-    const used = new Set([...this.inline, ...[...this.#saved.values()].flatMap(sourceFunctions)].map((fn) => fn.name));
-    let symbol = /^[A-Za-z_]\w*$/.test(name) && !validFunctionCode(`void ${name}() {}`, name) ? name : 'subFunction';
-    for (let i = 2; used.has(symbol); ++i) symbol = `subFunction${i}`;
-    this.#drafts.set(name, `void ${symbol}()\n{\n\n}\n`);
-    this.#deleted.delete(name);
-    this.#active = name;
-    this.#error = '';
-
-    return true;
+  calls(name: string): readonly RuntimeApiCall[] {
+    return this.#calls.get(name) ?? [];
   }
 
-  save(): boolean {
-    const code = this.source();
-    this.#error = validFunctionCode(code) ?? '';
-    if (this.#error) return false;
-    const fn = sourceFunctions(code)[0];
-    const inline = this.#inlineFor(this.#active);
-    if (
-      this.inline.some((other) => other.signature === fn.signature && other.signature !== inline?.signature) ||
-      this.names.some(
-        (name) =>
-          name !== this.#active && sourceFunctions(this.source(name)).some((other) => other.signature === fn.signature),
-      )
-    ) {
-      this.#error = `Function already exists: ${fn.signature}.`;
-
-      return false;
-    }
-    if (inline) this.#mainSource = this.#mainSource.slice(0, inline.from) + code + this.#mainSource.slice(inline.to);
-    this.#saved.set(this.#active, code);
-    this.#signatures.set(this.#active, fn.signature);
-    this.#drafts.delete(this.#active);
-    this.#active = '';
-
-    return true;
+  occurrence(name = this.#active): number {
+    return this.#occurrences.get(name) ?? 0;
   }
 
-  cancel(): void {
-    this.#drafts.delete(this.#active);
-    this.#active = '';
-    this.#error = '';
+  selectOccurrence(index: number): void {
+    if (index >= 0 && index < this.calls(this.#active).length) this.#occurrences.set(this.#active, index);
   }
 
-  removeActive(): string | null {
-    const name = this.#active;
-    if (!name || !this.names.includes(name)) return null;
-    const fn = this.#inlineFor(name) ?? sourceFunctions(this.#saved.get(name) ?? this.source(name))[0];
-    if (fn) this.#mainSource = removeFunctionSource(this.#mainSource, fn.name, fn.signature);
-    this.#saved.delete(name);
-    this.#drafts.delete(name);
-    this.#signatures.delete(name);
-    this.#inputs.delete(name);
-    this.#deleted.add(name);
-    this.#active = '';
-    this.#inputTab = '';
-    this.#error = '';
-
-    return name;
+  selectInputTab(name: string): void {
+    this.#inputTab = name;
   }
 
-  attach(): boolean {
-    const fn = sourceFunctions(this.source())[0];
-    if (fn && this.inline.some((other) => other.signature === fn.signature)) {
-      this.#error = 'Function already exists.';
-
-      return false;
-    }
-    if (!this.#saved.has(this.#active) || this.source() !== this.#saved.get(this.#active)) {
-      this.#error = 'Save the function before attaching.';
-
-      return false;
-    }
-    this.#mainSource = `${this.#mainSource.trimEnd()}\n\n${this.source().trim()}\n`;
-    this.#error = '';
-
-    return true;
-  }
-
-  get parameterFunctions() {
-    return this.names.flatMap((name) => {
-      const fn = sourceFunctions(this.source(name))[0];
-
-      return fn?.inputs.length ? [{ ...fn, name }] : [];
-    });
+  #inputKey(name: string): string {
+    return name + '#' + this.occurrence(name);
   }
 
   inputValues(name: string, parameter: string, initial: string[]): string[] {
-    const saved = this.#inputs.get(name)?.get(parameter);
+    const saved = this.#inputs.get(this.#inputKey(name))?.get(parameter);
+    if (saved) return saved;
+    const fn = this.functions.find((fn) => fn.name === name);
+    const index = fn?.inputs.findIndex((input) => input.name === parameter) ?? -1;
+    const input = fn?.inputs[index];
+    const call = this.calls(name)[this.occurrence(name)];
+    const value = (call?.boundArguments ?? call?.arguments)?.[index];
+    if (input && value !== undefined) return functionInputValues(input, value);
 
-    return initial.map((value, index) => saved?.[index] ?? value);
+    return input?.kind === 'array'
+      ? initial
+      : initial.map(() => (input?.kind === 'bool' ? 'false' : input?.kind === 'text' ? '' : '0'));
   }
 
   setInput(name: string, parameter: string, initial: string[], index: number, value: string): void {
     const values = [...this.inputValues(name, parameter, initial)];
     values[index] = value;
-    const inputs = this.#inputs.get(name) ?? new Map<string, string[]>();
+    const key = this.#inputKey(name);
+    const inputs = this.#inputs.get(key) ?? new Map<string, string[]>();
     inputs.set(parameter, values);
-    this.#inputs.set(name, inputs);
+    this.#inputs.set(key, inputs);
   }
 
-  program(editorSource = this.source(), validateArguments = true): FunctionProgram {
-    const main = this.#active ? this.#mainSource : editorSource;
-    const inline = sourceFunctions(main);
-    const sourceParts = this.#sourceParts(editorSource, main, inline);
-    const fn = this.#active ? sourceFunctions(editorSource)[0] : undefined;
+  resetInputs(name: string): void {
+    this.#inputs.delete(this.#inputKey(name));
+  }
 
-    return {
-      source: sourceParts.map((part) => part.code).join('\n\n'),
-      locations: this.#locations(sourceParts),
-      options: {
-        entryFunction: this.#active ? (fn?.name ?? null) : mainFunctionName(main),
-        entrySignature: this.#active ? fn?.signature : inline[0]?.signature,
-        functionScopes: this.#functionScopes(editorSource, main, inline),
-        arguments: this.#previewArguments(fn, validateArguments),
-        isolated: !!this.#active,
-      },
+  program(editorSource = this.source(), validate = true, mainOnly = false): FunctionProgram {
+    const files = new Map(this.#files);
+    files.set(this.#activeFile, editorSource);
+    const parts = [...files].sort(([a], [b]) => Number(b.endsWith('.h')) - Number(a.endsWith('.h')));
+    let start = 1;
+    const locations = parts.map(([name, code]) => {
+      const end = start + code.split('\n').length - 1;
+      const location = { name, start, end, localStart: 1 };
+      start = end + 2;
+
+      return location;
+    });
+    const entry = this.#entry();
+    const fn = mainOnly ? undefined : this.functions.find((fn) => fn.name === this.#active);
+    const called = !!fn && this.calls(fn.name).length > 0;
+    const options: RuntimeExecutionOptions = {
+      entryFunction: fn && !called ? fn.functionName : (entry?.name ?? null),
+      entrySignature: fn && !called ? fn.signature : entry?.signature,
+      functionScopes: new Map(this.functions.map((fn) => [fn.signature, fn.name])),
     };
-  }
-
-  // The editor's code first, then Main with the edited function blanked out (so definitions and
-  // globals stay available without running the main element), then saved functions not in Main.
-  #sourceParts(editorSource: string, main: string, inline: readonly SourceFunction[]): SourcePart[] {
-    const parts: SourcePart[] = [{ code: editorSource, name: this.#active }];
-    if (this.#active) {
-      const current = this.#inlineFor(this.#active);
-      parts.push({
-        name: '',
-        code: current
-          ? main.slice(0, current.from) +
-            main.slice(current.from, current.to).replace(/[^\n]/g, ' ') +
-            main.slice(current.to)
-          : main,
-      });
+    if (fn) {
+      options.arguments = this.#arguments(fn, called, validate);
+      if (called) options.debugCall = { signature: fn.signature, occurrence: this.occurrence(fn.name) };
+      else options.isolated = true;
     }
-    for (const [name, code] of this.#saved)
-      if (name !== this.#active && !inline.some((fn) => fn.signature === this.#signatures.get(name)))
-        parts.push({ name, code });
 
-    return parts;
+    return { source: parts.map(([, code]) => code).join('\n\n'), options, locations, editorFile: this.#activeFile };
   }
 
-  #previewArguments(fn: SourceFunction | undefined, validate: boolean): Map<string, string> {
-    const arguments_ = new Map<string, string>();
-    for (const input of fn?.inputs ?? []) {
-      if (!this.#inputs.get(this.#active)?.has(input.name)) continue;
-      const values = this.inputValues(this.#active, input.name, input.initial);
-      if (validate && input.kind === 'unsupported') throw new Error(`Unsupported preview input type: ${input.type}.`);
+  #arguments(fn: WorkspaceFunction, called: boolean, validate: boolean): Map<string, string> {
+    const args = new Map<string, string>();
+    for (const input of fn.inputs) {
+      if (called && !this.#inputs.get(this.#inputKey(fn.name))?.has(input.name)) continue;
+      const values = this.inputValues(fn.name, input.name, input.initial);
+      if (validate && input.kind === 'unsupported') throw new Error('Unsupported preview input type: ' + input.type);
       if (
         validate &&
-        input.kind !== 'text' &&
-        input.kind !== 'bool' &&
+        ['number', 'point', 'vector'].includes(input.kind) &&
         values.some((v) => !v.trim() || !Number.isFinite(Number(v)))
       )
-        throw new Error(`Enter a number for ${input.name}.`);
-      arguments_.set(
+        throw new Error('Enter a number for ' + input.name + '.');
+      if (validate && input.kind === 'bool' && !/^(true|false|0|1)$/i.test(values[0].trim()))
+        throw new Error('Enter true, false, 0 or 1 for ' + input.name + '.');
+      args.set(
         input.name,
         input.kind === 'point' || input.kind === 'vector'
-          ? `${input.kind === 'point' ? 'FdPoint3d' : 'FdVector3d'}(${values.join(',')})`
+          ? (input.kind === 'point' ? 'FdPoint3d' : 'FdVector3d') + '(' + values.join(',') + ')'
           : input.kind === 'text'
             ? JSON.stringify(values[0])
-            : values[0],
+            : input.kind === 'bool'
+              ? values[0].toLowerCase()
+              : values[0],
       );
     }
 
-    return arguments_;
-  }
-
-  #locations(sourceParts: readonly SourcePart[]): FunctionProgram['locations'] {
-    let start = 1;
-    const locations: FunctionProgram['locations'] = [];
-    for (const part of sourceParts) {
-      const count = part.code.split('\n').length;
-      locations.push({ start, end: start + count - 1, name: part.name, localStart: 1 });
-      if (!part.name && start > 1) {
-        for (const fn of sourceFunctions(part.code)) {
-          const label = this.#labelFor(fn);
-          if (!label) continue;
-          const localLine = part.code.slice(0, fn.from).split('\n').length;
-          locations.push({
-            start: start + localLine - 1,
-            end: start + localLine + fn.code.split('\n').length - 2,
-            name: label,
-            localStart: 1,
-          });
-        }
-      }
-      start += count + 1;
-    }
-
-    return locations;
-  }
-
-  #functionScopes(editorSource: string, main: string, inline: readonly SourceFunction[]): Map<string, string> {
-    const scopes = new Map<string, string>();
-    if (mainFunctionName(main) && inline[0])
-      scopes.set(inline[0].signature, this.names.includes(inline[0].name) ? 'Main' : inline[0].name);
-    for (const name of this.names) {
-      const definition = sourceFunctions(name === this.#active ? editorSource : (this.savedSource(name) ?? ''))[0];
-      if (definition) scopes.set(definition.signature, name);
-    }
-
-    return scopes;
+    return args;
   }
 }

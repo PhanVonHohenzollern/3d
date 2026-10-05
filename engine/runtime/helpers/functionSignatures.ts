@@ -1,8 +1,10 @@
 import { trim } from '@engine/runtime/cpp/cpp';
+import { runtimeError } from '@engine/runtime/cpp/cpp';
 import type { Statement } from '@engine/runtime/interpreter/Statement';
 import type { RuntimeApiCall, RuntimeExecutionOptions } from '@engine/runtime/RuntimeTypes';
 import { sdkCanonicalType } from '@engine/runtime/SdkDefinitions';
-import { runtimeTypeName, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { RuntimeArray, runtimeCoerceToType, runtimeTypeName, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { braceListItems, isBraceList } from '@engine/runtime/helpers/arrays';
 import { parseRuntimeType } from '@engine/runtime/helpers/typeNames';
 import {
   isIdentifier,
@@ -178,4 +180,34 @@ export function populateFormalParameterMetadata(call: RuntimeApiCall, fn: Statem
     call.formalParameterNames.push(parameterName(param));
     call.formalParameterTypes.push(parameterType(param));
   }
+}
+
+export function evaluateFunctionInput(
+  param: readonly Token[],
+  tokens: readonly Token[],
+  evaluate: (tokens: readonly Token[]) => RuntimeValue,
+): RuntimeValue {
+  const type = parseRuntimeType(param, 0)?.type ?? '';
+  const array = /[[*]/.test(parameterType(param)) && type !== 'char*';
+  if (array && !isBraceList(tokens)) throw runtimeError('array input must use braces, for example {true, false}');
+
+  const read = (items: readonly Token[]): RuntimeValue => {
+    if (array && isBraceList(items)) {
+      const values = braceListItems(items)
+        .filter((part) => part.length)
+        .map(read);
+      const child = values.find((value) => value instanceof RuntimeArray);
+
+      return new RuntimeArray(
+        type,
+        [values.length, ...(child instanceof RuntimeArray ? child.dimensions : [])],
+        values,
+      );
+    }
+    const value = evaluate(items);
+
+    return type ? runtimeCoerceToType(value, type) : value;
+  };
+
+  return read(tokens);
 }

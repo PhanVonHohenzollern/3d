@@ -17,14 +17,11 @@ export function useWorkspace() {
   const parameterFunctions = functions.parameterFunctions;
   const functionActions = useMemo<FunctionEditorActions>(
     () => ({
-      create: { add: model.addFunction, clearError: model.clearFunctionError },
+      create: { add: model.addSourceFiles, clearError: model.clearFunctionError },
       current: {
-        attach: model.attachFunction,
-        cancel: model.cancelFunction,
-        remove: model.deleteFunction,
-        save: model.saveFunction,
+        remove: model.deleteSourceFile,
       },
-      select: model.selectFunction,
+      select: model.selectSourceFile,
     }),
     [model],
   );
@@ -44,10 +41,9 @@ export function useWorkspace() {
   return {
     functions: {
       state: {
-        active: functions.active,
-        names: functions.names,
+        active: functions.activeFile,
+        names: functions.fileNames,
         error: functions.error,
-        unsaved: functions.unsavedNames(),
       } satisfies FunctionEditorState,
       actions: functionActions,
     },
@@ -66,6 +62,7 @@ export function useWorkspace() {
       select: model.selectFunctionInputs,
       change: model.setFunctionInput,
       apply: model.applyFunctionInputs,
+      reset: model.resetFunctionInputs,
     },
     files,
     importedObj: model.importedObj,
@@ -95,7 +92,16 @@ export function useWorkspace() {
     },
     variables: { model: model.variables },
     parameters: { model: model.parameters, onApply: model.applyParameters },
-    apiTrace: { model: model.apiTrace },
+    apiTrace: { model: model.mainApiTrace },
+    subTrace: {
+      model: model.subApiTrace,
+      names: functions.names,
+      active: functions.active,
+      occurrence: functions.occurrence(),
+      calls: functions.calls(functions.active).map((call, index) => ({ index, line: call.line })),
+      select: model.selectFunction,
+      selectOccurrence: model.selectFunctionOccurrence,
+    },
     links: { model: model.links },
   };
 }

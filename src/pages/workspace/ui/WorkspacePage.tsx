@@ -19,6 +19,7 @@ import { Viewport3D } from '@/widgets/viewport';
 import { FunctionEditor } from '@/features/manage-functions';
 import { PreviewModeToggle } from '@/features/run-preview';
 import { SubParameterPanel } from '@/features/manage-functions';
+import { SubFunctionTrace } from '@/pages/workspace/ui/SubFunctionTrace';
 
 type WorkspacePageProps = {
   theme: Theme;
@@ -77,15 +78,7 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                 <FunctionEditor.Tabs />
                 <FunctionEditor.Error />
                 <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
-                  <CodeEditor
-                    {...workspace.editor}
-                    footer={
-                      <>
-                        <FunctionEditor.Actions />
-                        <FunctionEditor.AddDialog />
-                      </>
-                    }
-                  />
+                  <CodeEditor {...workspace.editor} footer={<FunctionEditor.Actions />} />
                 </div>
               </FunctionEditor.Provider>
             </section>
@@ -145,6 +138,7 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                       VariablesDock: <VariablePanel {...workspace.variables} />,
                       ParametersDock: <ParameterPanel {...workspace.parameters} />,
                       ApiTraceDock: <ApiTracePanel {...workspace.apiTrace} />,
+                      SubApiTraceDock: <SubFunctionTrace {...workspace.subTrace} />,
                       LinkDock: <LinkPanel {...workspace.links} />,
                       SubParametersDock: <SubParameterPanel {...workspace.subParameters} />,
                     }}

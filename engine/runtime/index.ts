@@ -4,6 +4,7 @@ export {
   declaratorSignature,
   maskPreprocessorLines,
   normalizedParameterType,
+  functionInputValues,
 } from '@engine/runtime/analysis/sourceFunctions';
 export type { FunctionDefinition, FunctionInput } from '@engine/runtime/analysis/sourceFunctions';
 export {
@@ -30,7 +31,7 @@ export { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 export { GeometryRuntime, runtimeSourceHistory } from '@engine/runtime/GeometryRuntime';
 export { isInsulationQuery, kInsulationQueries } from '@engine/runtime/intrinsics';
 export type { InsulationQuery } from '@engine/runtime/intrinsics';
-export { emptyApiCall, emptyRuntimeResult, parameterKey } from '@engine/runtime/RuntimeTypes';
+export { emptyApiCall, emptyRuntimeResult, parameterKey, debugApiIndices } from '@engine/runtime/RuntimeTypes';
 export type {
   RuntimeApiCall,
   RuntimeArgumentTrace,

@@ -37,6 +37,7 @@ export interface SavedBinding {
 // Everything a program run changes: variables and their history, scopes, recorded API calls,
 // parameter requests and diagnostics. Only this class touches the storage; callers use its methods.
 export class RuntimeState implements EvalContext {
+  debugApiIndex: number | undefined;
   #functionName = '';
   #globalValues = new Map<string, RuntimeValue>();
   #globalIds = new Map<string, number>();
@@ -88,6 +89,7 @@ export class RuntimeState implements EvalContext {
 
   // Starts a new run; the configured parameters stay.
   reset(): void {
+    this.debugApiIndex = undefined;
     this.#functionName = '';
     this.#globalValues = new Map();
     this.#globalIds = new Map();
@@ -234,6 +236,7 @@ export class RuntimeState implements EvalContext {
 
   result(): RuntimeResult {
     return {
+      ...(this.debugApiIndex === undefined ? {} : { debugApiIndex: this.debugApiIndex }),
       variables: collectVariables(this.#userVariableOrder, this.#values, this.#lastChangedLine),
       variableChanges: this.#variableChanges.slice(),
       diagnostics: this.#diagnostics.slice(),

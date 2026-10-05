@@ -4,19 +4,15 @@ type FunctionEditorState = {
   active: string;
   error: string;
   names: readonly string[];
-  unsaved: readonly string[];
 };
 
 type FunctionEditorActions = {
   create: {
-    add: (name: string) => boolean;
+    add: (name: string, header: boolean) => boolean;
     clearError: () => void;
   };
   current: {
-    attach: () => void;
-    cancel: () => void;
     remove: () => void;
-    save: () => void;
   };
   select: (name: string) => void;
 };

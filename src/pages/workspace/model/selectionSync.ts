@@ -20,7 +20,8 @@ export interface SelectionHost {
   readonly importedObj: ImportedModel | null;
   readonly previewTimer: SingleShotTimer;
   statusBar(): StatusBarModel;
-  selectFunction(name: string): void;
+  selectFunction(name: string, apiIndex?: number): void;
+  openSourceFile(name: string): void;
 }
 
 // Keeps the editor, viewport, Variables and API Trace pointing at the same thing: selecting in
@@ -40,7 +41,7 @@ export class SelectionSync {
     const { viewport, apiTrace, editor } = this.host;
     this.applyApiFocus(apiIndex);
     viewport.setSelectedVariables(apiTrace.selectedDebugItems());
-    editor.setTraceSourceLines(apiTrace.selectedSourceLines());
+    editor.setTraceSourceLines(this.localLines(apiTrace.selectedSourceLines()));
   };
 
   readonly onApiTraceSourceActivated = (line: number): void => {
@@ -57,7 +58,7 @@ export class SelectionSync {
 
       return;
     }
-    this.host.selectFunction(name);
+    this.host.selectFunction(name, apiIndex);
     this.host.editor.setFocus();
   };
 
@@ -82,12 +83,11 @@ export class SelectionSync {
     this.navigateToSource(sourceLine, new Set([sourceLine]));
   };
 
-  // Lines past the edited source belong to a function merged into the preview program; they open
-  // that function's tab at the matching local line.
+  // Trace locations use combined-program lines; the editor shows lines in the original file.
   navigateToSource(line: number, lines: ReadonlySet<number>): void {
     const { session, functions, editor } = this.host;
     const previewProgram = session.program;
-    if (line > session.feedback.source.split('\n').length && previewProgram) {
+    if (previewProgram) {
       const location = previewProgram.locations.findLast((entry) => line >= entry.start && line <= entry.end);
       if (location) {
         const localLine = line - location.start + location.localStart;
@@ -96,7 +96,7 @@ export class SelectionSync {
             .filter((value) => value >= location.start && value <= location.end)
             .map((value) => value - location.start + location.localStart),
         );
-        if (location.name !== functions.active) this.host.selectFunction(location.name);
+        if (location.name !== functions.activeFile) this.host.openSourceFile(location.name);
         line = localLine;
         lines = localLines;
       }
@@ -114,6 +114,18 @@ export class SelectionSync {
     } finally {
       this.#navigating = navigation;
     }
+  }
+
+  private localLines(lines: ReadonlySet<number>): Set<number> {
+    const location = this.host.session.program?.locations.find(
+      (entry) => entry.name === this.host.functions.activeFile,
+    );
+
+    return new Set(
+      [...lines]
+        .filter((line) => !location || (line >= location.start && line <= location.end))
+        .map((line) => (location ? line - location.start + 1 : line)),
+    );
   }
 
   selectRuntimeDebugVariables(selection: ReadonlySet<string>): void {

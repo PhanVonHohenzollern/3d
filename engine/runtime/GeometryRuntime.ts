@@ -8,6 +8,7 @@ import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { parseProgram } from '@engine/runtime/interpreter/ProgramParser';
 import { RuntimeExecutor } from '@engine/runtime/interpreter/RuntimeExecutor';
 import { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
+import { debugPause } from '@engine/runtime/interpreter/FunctionDebug';
 import type { RuntimeExecutionOptions, RuntimeParameterRequest, RuntimeResult } from '@engine/runtime/RuntimeTypes';
 import { runtimeNumber } from '@engine/runtime/RuntimeValue';
 import { expressionIntrinsicCaller, seedSdkValues } from '@engine/runtime/intrinsics';
@@ -36,7 +37,7 @@ export class GeometryRuntime {
       const effectiveMaxLine = Math.min(Math.max(0, maxLine), code.split('\n').length);
       new RuntimeExecutor(state, effectiveMaxLine, fullProgram, options).executeProgram(program);
     } catch (e) {
-      state.addDiagnostic(Math.max(1, maxLine), 'parser: ' + stdException(e).message);
+      if (e !== debugPause) state.addDiagnostic(Math.max(1, maxLine), 'parser: ' + stdException(e).message);
     }
 
     return state.result();

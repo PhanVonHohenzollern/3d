@@ -18,7 +18,7 @@ import { VariablePanelModel } from '@/widgets/variable-panel';
 import { pointDeclaration, unusedPreviewPointName, type Vec3, type Viewport3DHandle } from '@/widgets/viewport';
 import { createWorkspaceActions, type ActionListItem } from '@/widgets/workspace-header';
 import type { ConnectorPreview, PreviewGeometryScene } from '@engine/geometry';
-import { emptyRuntimeResult, what } from '@engine/runtime';
+import { emptyRuntimeResult, GeometryRuntime, what } from '@engine/runtime';
 
 // The workspace page: owns the panel models and the preview session, and turns what happens in
 // one panel into updates of the others. The editor and viewport wrap DOM objects, so they are
@@ -26,7 +26,13 @@ import { emptyRuntimeResult, what } from '@engine/runtime';
 export class WorkspaceModel extends Observable {
   readonly variables = new VariablePanelModel();
   readonly parameters = new ParameterPanelModel();
-  readonly apiTrace = new ApiTracePanelModel();
+  readonly mainApiTrace = new ApiTracePanelModel();
+  readonly subApiTrace = new ApiTracePanelModel();
+
+  get apiTrace(): ApiTracePanelModel {
+    return this.functions.active ? this.subApiTrace : this.mainApiTrace;
+  }
+
   readonly links = new LinkPanelModel();
   readonly session = new PreviewSession();
   readonly functions = new FunctionWorkspace();
@@ -85,10 +91,12 @@ export class WorkspaceModel extends Observable {
     this.parameters.valuesChanged.connect(this.onParametersChanged);
     this.parameters.setAvailability((parameters) => this.session.activeParameterKeys(parameters));
     this.session.parameterAvailabilityChanged.connect(() => this.parameters.refreshAvailability());
-    this.apiTrace.selectionChanged.connect(selection.onApiTraceSelectionChanged);
-    this.apiTrace.sourceActivated.connect(selection.onApiTraceSourceActivated);
-    this.apiTrace.functionActivated.connect(selection.onApiTraceFunctionActivated);
-    this.apiTrace.historySourceActivated.connect(selection.onApiTraceHistorySourceActivated);
+    for (const trace of [this.mainApiTrace, this.subApiTrace]) {
+      trace.selectionChanged.connect(selection.onApiTraceSelectionChanged);
+      trace.sourceActivated.connect(selection.onApiTraceSourceActivated);
+      trace.functionActivated.connect(selection.onApiTraceFunctionActivated);
+      trace.historySourceActivated.connect(selection.onApiTraceHistorySourceActivated);
+    }
     this.links.setExpressionEvaluator((expression) => this.session.runtime.evaluateNumericExpression(expression));
     this.links.previewChanged.connect(this.onLinkPreviewChanged);
   }
@@ -148,6 +156,8 @@ export class WorkspaceModel extends Observable {
     this.#activatePreviewMode('build');
     this.parameters.commitEditor();
     const source = this.editor.toPlainText();
+    this.functions.edit(source);
+    if (this.functions.active) this.#refreshFunctionCalls(this.parameters.overrides());
     let program: ReturnType<FunctionWorkspace['program']>;
     try {
       program = this.functions.program(source);
@@ -159,7 +169,7 @@ export class WorkspaceModel extends Observable {
     }
     this.session.beginBuild();
     this.#updatePreview(source.split('\n').length, source, program);
-    this.session.recordBuild(this.functions.active, source, program, this.parameters.overrides());
+    this.session.recordBuild(this.functions.cacheKey, source, program, this.parameters.overrides());
     this.changed();
   };
 
@@ -205,13 +215,43 @@ export class WorkspaceModel extends Observable {
 
   readonly applyParameters = this.buildPreview;
 
-  readonly addFunction = (name: string): boolean => this.functionTabs.add(name);
+  readonly addSourceFiles = (name: string, header: boolean): boolean => this.functionTabs.add(name, header);
   readonly clearFunctionError = (): void => this.functionTabs.clearError();
-  readonly selectFunction = (name: string): void => this.functionTabs.select(name);
-  readonly saveFunction = (): void => this.functionTabs.save();
-  readonly cancelFunction = (): void => this.functionTabs.cancel();
-  readonly attachFunction = (): void => this.functionTabs.attach();
-  readonly deleteFunction = (): void => this.functionTabs.remove();
+  readonly selectSourceFile = (name: string): void => this.functionTabs.selectFile(name);
+  readonly deleteSourceFile = (): void => this.functionTabs.remove();
+  readonly selectFunction = (name: string, apiIndex?: number): void => {
+    const result = this.session.lastResult;
+    const occurrence =
+      apiIndex === undefined
+        ? undefined
+        : result.apiCalls.slice(0, apiIndex + 1).filter((call) => this.functions.tabForCall(call) === name).length - 1;
+    this.functions.edit(this.editor.toPlainText());
+    this.parameters.commitEditor();
+    if (name) {
+      const built = this.session.mode === 'build' ? this.session.built('') : undefined;
+      this.#refreshFunctionCalls(built?.parameters ?? this.parameters.overrides(), built?.program);
+    }
+    this.functions.select(name);
+    if (occurrence !== undefined) this.functions.selectOccurrence(occurrence);
+    this.#raisedDock = name ? 'SubApiTraceDock' : 'ApiTraceDock';
+    this.#showFunctionEditor();
+  };
+
+  #refreshFunctionCalls(
+    parameters: ReadonlyMap<string, string>,
+    program = this.functions.program(undefined, false, true),
+  ): void {
+    const runtime = new GeometryRuntime();
+    runtime.setParameters(parameters);
+    this.functions.acceptCalls(
+      runtime.executeUpToLine(program.source, program.source.split('\n').length, true, program.options),
+    );
+  }
+
+  readonly selectFunctionOccurrence = (index: number): void => {
+    this.functions.selectOccurrence(index);
+    this.#showFunctionEditor();
+  };
 
   get canEditSubParameters(): boolean {
     return this.functionTabs.canEditInputs;
@@ -224,56 +264,96 @@ export class WorkspaceModel extends Observable {
     index: number,
     value: string,
   ): void => this.functionTabs.setInput(name, parameter, initial, index, value);
+  readonly resetFunctionInputs = (name: string): void => this.functionTabs.resetInputs(name);
   readonly selectFunctionInputs = (name: string): void => this.functionTabs.selectInputs(name);
-  readonly applyFunctionInputs = (name: string): void => this.functionTabs.applyInputs(name);
+  readonly applyFunctionInputs = (name: string): void => {
+    if (this.functions.active !== name) this.selectFunction(name);
+    this.buildPreview();
+    this.#raisedDock = 'SubParametersDock';
+  };
 
   #connectFunctionTabs(): void {
     const tabs = this.functionTabs;
     tabs.editorSwitched.connect(() => this.#showFunctionEditor());
     tabs.stateChanged.connect(() => this.changed());
-    tabs.draftCancelled.connect((name) => this.session.forgetBuild(name));
-    tabs.functionDeleted.connect((name) => {
-      this.previewTimer.stop();
-      this.session.forgetFunction(name);
-    });
     tabs.inputsChanged.connect(() => this.onParametersChanged());
-    tabs.applyRequested.connect(() => this.applyParameters());
-    tabs.statusMessage.connect((text) => this.statusBar().showMessage(text, 2600));
+    tabs.removed.connect((names) => {
+      for (const name of names) this.session.forgetFunction(name);
+    });
+  }
+
+  readonly openSourceFile = (file: string): void => {
+    this.functions.edit(this.editor.toPlainText());
+    this.functions.openFile(file);
+    this.#setEditorSource(1);
+    this.changed();
+  };
+
+  #setEditorSource(line: number): void {
+    this.#switchingEditor = true;
+    try {
+      this.editor.setSource(this.functions.source());
+      this.editor.setTextCursorToLine(line);
+      this.editor.centerCursor();
+    } finally {
+      this.#switchingEditor = false;
+    }
   }
 
   #showFunctionEditor(): void {
     this.previewTimer.stop();
-    this.#switchingEditor = true;
-    try {
-      this.editor.setSource(this.functions.source());
-      this.editor.setTextCursorToLine(this.editor.blockCount());
-    } finally {
-      this.#switchingEditor = false;
-    }
+    const fn = this.functions.functions.find((fn) => fn.name === this.functions.active);
+    this.#setEditorSource(fn?.line ?? 1);
     this.importedObj = null;
     this.selection.browsingTrace = false;
     this.apiTrace.clearApiFocus();
     this.editor.setTraceSourceLines(new Set());
-    this.functions.selectInputTab(this.functions.active);
     this.session.clear(this.functions.source());
-    this.viewport.setGeometryScene(this.session.scene);
-    this.viewport.setRuntimeResult(this.session.lastResult);
-    this.variables.setRuntimeResult(this.session.lastResult, 1);
-    this.apiTrace.setRuntimeResult(this.session.lastResult);
-    const currentProgram = this.functions.program(this.functions.source(), false);
-    const built = this.session.restoreTab(this.functions.active, this.functions.source(), currentProgram);
     if (this.session.mode === 'build') {
+      const source = this.editor.toPlainText();
+      const program = this.functions.program(source, false);
+      const built = this.session.restoreTab(this.functions.cacheKey, source, program);
       if (built) {
+        this.#updatePreview(
+          source.split('\n').length,
+          source,
+          { ...built.program, editorFile: this.functions.activeFile },
+          built.parameters,
+        );
         this.session.showBuild(built);
-        this.#updatePreview(built.source.split('\n').length, built.source, built.program, built.parameters);
-        this.session.markDriftSince(built, this.parameters.overrides(), currentProgram);
-      } else this.buildPreview();
-    } else this.runPreview();
-    const main = this.functions.inline[0];
-    this.parameters.selectTab(
-      this.functions.active || (main && currentProgram.options.functionScopes?.get(main.signature)) || main?.name || '',
-    );
-    if (!this.canEditSubParameters && this.#raisedDock === 'SubParametersDock') this.#raisedDock = 'ParametersDock';
+        this.session.markDriftSince(built, this.parameters.overrides(), program);
+      } else {
+        const main = this.session.built('');
+        const parameters = main?.parameters ?? this.parameters.overrides();
+        const compiled =
+          main && program.options.debugCall
+            ? {
+                ...main.program,
+                editorFile: program.editorFile,
+                options: {
+                  ...main.program.options,
+                  debugCall: program.options.debugCall,
+                  arguments: program.options.arguments,
+                },
+              }
+            : program;
+        this.#updatePreview(source.split('\n').length, source, compiled, parameters);
+        const location = compiled.locations.find((entry) => entry.name === compiled.editorFile);
+        const builtSource = location
+          ? compiled.source
+              .split('\n')
+              .slice(location.start - 1, location.end)
+              .join('\n')
+          : source;
+        this.session.recordBuild(this.functions.cacheKey, builtSource, compiled, parameters);
+        this.session.restoreTab(this.functions.cacheKey, source, program);
+        this.session.markDriftSince(this.session.built(this.functions.cacheKey)!, this.parameters.overrides(), program);
+      }
+    } else {
+      this.#updatePreview(fn ? fn.line + fn.code.split('\n').length - 1 : this.editor.currentLine());
+      this.selection.browsingTrace = !!fn;
+    }
+    this.parameters.selectTab(this.functions.active || this.functions.inline[0]?.name || '');
     this.changed();
   }
 
@@ -308,6 +388,7 @@ export class WorkspaceModel extends Observable {
 
   readonly raiseDock = (name: DockName): void => {
     if (name === 'SubParametersDock' && !this.canEditSubParameters) return;
+    if (name === 'ApiTraceDock' && this.functions.active) this.selectFunction('');
     if (this.#raisedDock === name) return;
     this.#raisedDock = name;
     this.changed();
@@ -388,7 +469,7 @@ export class WorkspaceModel extends Observable {
       return;
     }
     this.functions.clearError();
-    const parameterDefinitions = this.session.discoverParameters(program, (name) => this.functions.isDeleted(name));
+    const parameterDefinitions = this.session.discoverParameters(program, () => false);
     this.parameters.setDefinitions(parameterDefinitions);
 
     const outcome = this.session.execute(program, source, line, parameters ?? this.parameters.overrides());
@@ -399,6 +480,7 @@ export class WorkspaceModel extends Observable {
       return;
     }
     const { result } = outcome;
+    if (!this.functions.active && this.session.mode === 'build') this.functions.acceptCalls(result);
     const scene = this.session.scene;
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
