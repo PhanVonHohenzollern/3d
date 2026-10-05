@@ -42,12 +42,10 @@ const FunctionEditorAddDialog = () => {
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content
           data-floating-window
+          aria-describedby={undefined}
           className="fixed top-1/2 left-1/2 z-50 w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-base p-4 text-foreground shadow-xl"
         >
           <Dialog.Title className="text-sm font-semibold">Add source files</Dialog.Title>
-          <Dialog.Description className="mt-1 text-xs text-muted-foreground">
-            Files are available to Main automatically. Each CPP file can contain multiple functions.
-          </Dialog.Description>
           <form onSubmit={handleSubmit}>
             <label className="mt-3 block text-xs">
               File name
@@ -59,8 +57,8 @@ const FunctionEditorAddDialog = () => {
                 value={header ? 'pair' : 'cpp'}
                 onChange={(event) => setHeader(event.target.value === 'pair')}
               >
-                <option value="pair">Header (.h) and source (.cpp)</option>
-                <option value="cpp">Source (.cpp) only</option>
+                <option value="pair">.h + .cpp</option>
+                <option value="cpp">.cpp</option>
               </NativeSelect>
             </label>
             {state.error && (

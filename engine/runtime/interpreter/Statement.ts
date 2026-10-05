@@ -40,6 +40,7 @@ export class Statement {
   body: Statement | null = null;
   signature: Token[] = [];
   functionName = '';
+  functionOwner = '';
 
   constructor(
     public kind: StatementKind = StatementKind.Empty,

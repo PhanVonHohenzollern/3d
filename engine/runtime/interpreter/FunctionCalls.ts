@@ -1,15 +1,15 @@
-import { resolveApiSignature } from '@engine/runtime/ApiMetadata';
+import { nativeApiSignatures, resolveApiSignature } from '@engine/runtime/ApiMetadata';
 import { runtimeError, stdException } from '@engine/runtime/cpp/cpp';
 import { createApiCall } from '@engine/runtime/helpers/apiCalls';
 import {
   functionArgumentRanks,
   functionParameters,
   functionScope,
+  functionSignature,
   parameterDefaultExpression,
   parameterDefaultPos,
   parameterName,
   populateFormalParameterMetadata,
-  requiredParameterCount,
   writableReferenceParameter,
   evaluateFunctionInput,
 } from '@engine/runtime/helpers/functionSignatures';
@@ -79,7 +79,11 @@ export class FunctionCalls {
     const call = createApiCall(name, line, this.x.parentApiIndex(), [...args], argGroups.map(tokensToExpression));
 
     const fn = baseCall ? null : this.resolveUserFunction(name, args);
-    if (fn) {
+    const intrinsic = sdkIntrinsic(name);
+    const signature = resolveApiSignature(call);
+    if (fn && !fn.body && !intrinsic && !signature)
+      throw runtimeError(`function declared but not defined: ${functionSignature(fn)}`);
+    if (fn?.body) {
       call.userFunctionCall = true;
       populateFormalParameterMetadata(call, fn);
       const functionIndex = this.x.state.recordApiCall(call);
@@ -87,27 +91,29 @@ export class FunctionCalls {
 
       return;
     }
-    const intrinsic = sdkIntrinsic(name);
     if (intrinsic?.value) return intrinsic.value(this.x.intrinsics, { name, argGroups, line }, args);
-    if (expression) throw runtimeError('unsupported expression function: ' + name);
+    if (expression)
+      throw runtimeError(
+        (intrinsic || nativeApiSignatures(name).length ? 'unsupported expression function: ' : 'unknown function: ') +
+          name,
+      );
     intrinsic?.update?.(this.x.intrinsics, { name, argGroups, line }, args);
-    const signature = resolveApiSignature(call);
     if (!signature && /^(make|add|draw)/.test(name)) {
       this.x.state.addDiagnostic(line, 'unknown native geometry API: ' + name);
 
       return;
     }
+    if (!signature && !intrinsic)
+      this.x.state.addDiagnostic(
+        line,
+        (nativeApiSignatures(name).length ? 'no matching overload: ' : 'unknown function: ') + name,
+      );
     this.x.state.recordApiCall(call, signature);
   }
 
   private resolveUserFunction(name: string, args: readonly RuntimeValue[]): Statement | null {
     const candidates = this.x.functions.get(name);
     if (candidates === undefined) return null;
-    if (candidates.length === 1) {
-      const fn = candidates[0];
-
-      return args.length >= requiredParameterCount(fn) && args.length <= functionParameters(fn).length ? fn : null;
-    }
     const matches = candidates.flatMap((fn) => {
       const ranks = functionArgumentRanks(fn, args);
 
@@ -143,8 +149,10 @@ export class FunctionCalls {
           value = runtimeDeepCopy(this.x.evaluate(parameterDefaultExpression(param)));
         } catch (e) {
           if (e === debugPause) throw e;
-          stdException(e);
-          value = undefined;
+          throw runtimeError(
+            `cannot evaluate default argument ${name} of ${fn.functionName}: ${stdException(e).message}`,
+            parameterDefaultExpression(param)[0].line,
+          );
         }
       }
       const parsed = parseRuntimeType(param, 0);

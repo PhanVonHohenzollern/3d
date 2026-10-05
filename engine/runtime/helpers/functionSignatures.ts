@@ -60,7 +60,11 @@ export function parameterSignatureType(param: readonly Token[]): string {
       )
     : -1;
   if (nameIndex >= 0) tokens.splice(nameIndex, 1);
-  let type = tokens.map((token) => sdkCanonicalType(token.text)).join(' ');
+  let type = tokens
+    .map((token) => token.text)
+    .join(' ')
+    .replace(/\s*::\s*/g, '::')
+    .replace(/\b\w+(?:::\w+)*/g, sdkCanonicalType);
   // Top-level cv qualifiers and parameter names/defaults do not define an overload.
   const indirection = type.search(/[&*[]/);
   const base = indirection < 0 ? type : type.slice(0, indirection);
@@ -83,6 +87,39 @@ export function functionSignature(fn: Statement): string {
   return `${fn.functionName}(${functionParameters(fn).map(parameterSignatureType).join(', ')})`;
 }
 
+export function functionReturnType(fn: Statement): string {
+  const lp = fn.signature.findIndex((token) => token.text === '(');
+  let end = lp - 1;
+  while (end > 1 && fn.signature[end - 1].text === '::') end -= 2;
+
+  const type = fn.signature
+    .slice(0, end)
+    .filter((token) => !['static', 'inline', 'extern', 'constexpr', 'virtual', 'explicit'].includes(token.text))
+    .map((token) => token.text)
+    .join(' ')
+    .replace(/\s*::\s*/g, '::')
+    .replace(/\b\w+(?:::\w+)*/g, sdkCanonicalType)
+    .replace(/\s*([&*])\s*/g, '$1');
+  const split = type.search(/[&*]/);
+  const base = split < 0 ? type : type.slice(0, split);
+  const qualifiers = ['const', 'volatile'].filter((word) => base.split(/\s+/).includes(word));
+
+  return (
+    [...qualifiers, base.replace(/\b(const|volatile)\b/g, '').trim()].join(' ') + (split < 0 ? '' : type.slice(split))
+  );
+}
+
+export function functionQualifier(fn: Statement): string {
+  const nameIndex = fn.signature.findIndex((token) => token.text === '(') - 1;
+  let start = nameIndex;
+  while (start > 1 && fn.signature[start - 1].text === '::') start -= 2;
+
+  return fn.signature
+    .slice(start, nameIndex - 1)
+    .map((token) => token.text)
+    .join('');
+}
+
 export function functionScope(
   fn: Statement,
   overloads: readonly Statement[],
@@ -100,15 +137,18 @@ export function functionArgumentRanks(fn: Statement, args: readonly RuntimeValue
   const ranks = args.map((value, index) => {
     const expected = parameterSignatureType(params[index])
       .replace(/\b(const|volatile)\b/g, '')
+      .replace(/\(&\)/g, '')
       .replace(/&/g, '')
       .trim();
     const actual = runtimeTypeName(value);
     if (actual === 'unknown' || actual === expected) return 0;
-    if (actual === 'string' && expected === 'char*') return 0;
-    if (actual.includes('[')) return actual.replace(/\[[^\]]*\]/g, '*') === expected ? 0 : Infinity;
-    const numeric = ['bool', 'int', 'short', 'long', 'float', 'double'];
-    if (numeric.includes(actual) && numeric.includes(expected)) {
-      if (actual === 'bool' && expected === 'int') return 1;
+    if (actual === 'string' && (expected === 'char*' || expected === 'char')) return 0;
+    if (actual.includes('[')) return actual.replace(/\[[^\]]*\]/, '*') === expected ? 0 : Infinity;
+    const numeric = ['bool', 'char', 'int', 'short', 'long', 'float', 'double'];
+    const scalar = sdkCanonicalType(parseRuntimeType(params[index], 0)?.type ?? expected);
+    if (!/[[*]/.test(expected) && numeric.includes(actual) && numeric.includes(scalar)) {
+      if (actual === scalar) return 0;
+      if (actual === 'bool' && scalar === 'int') return 1;
 
       return 2;
     }

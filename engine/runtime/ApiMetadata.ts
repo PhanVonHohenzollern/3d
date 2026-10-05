@@ -128,6 +128,10 @@ export function allNativeApiSignatures(): readonly ApiSignatureMetadata[] {
   return kAllSignatures;
 }
 
+export function nativeApiSignatures(name: string): readonly ApiSignatureMetadata[] {
+  return kSignaturesByName.get(name) ?? [];
+}
+
 // The best-scoring SDK overload for these arguments; the first one wins a tie. The runtime calls
 // this once per recorded call and stores the answer in `call.signature`.
 export function resolveApiSignature(call: CallShape): ApiSignatureMetadata | null {

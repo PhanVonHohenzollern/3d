@@ -2,6 +2,7 @@ export class CppException extends Error {
   constructor(
     readonly kind: 'runtime_error' | 'invalid_argument' | 'out_of_range' | 'logic_error',
     what: string,
+    readonly line?: number,
   ) {
     super(what);
   }
@@ -205,12 +206,12 @@ export function stoll(text: string): { value: bigint; used: number } {
   return { value, used: i + m[0].length };
 }
 
-export function runtimeError(message: string): CppException {
+export function runtimeError(message: string, line?: number): CppException {
   const limit = Error.stackTraceLimit;
   // Diagnostics are ordinary control flow (a runaway loop throws once per iteration); stack capture dominated run time.
   Error.stackTraceLimit = 0;
   try {
-    return new CppException('runtime_error', message);
+    return new CppException('runtime_error', message, line);
   } finally {
     Error.stackTraceLimit = limit;
   }

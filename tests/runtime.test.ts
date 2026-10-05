@@ -9,6 +9,64 @@ import { expectedOutput } from '@tests/support/expected';
 import { fixturesRoot, listFixtures, parseFixture } from '@tests/support/fixtures';
 
 describe('C++ function and block scopes', () => {
+  it.each([
+    ['void helper(double x);\nvoid main(){ helper(2); }', 2, 'function declared but not defined: helper(double)'],
+    ['void main(){ helper(2); }', 1, 'unknown function: helper'],
+    ['void main(){ double x=helper(2); }', 1, 'unknown function: helper'],
+    ['void main(){}\nvoid unused(){ if(false) helper(2); }', 2, 'unknown function: helper'],
+    [
+      'void helper(double x);\nvoid main(){}\nvoid unused(){ helper(2); }',
+      3,
+      'function declared but not defined: helper(double)',
+    ],
+    ['double helper(double x);\nvoid main(){}\nvoid helper(double x){}', 3, 'conflicting return type: helper(double)'],
+    ['double* helper();\nvoid main(){}\ndouble helper(){ return 1; }', 3, 'conflicting return type: helper()'],
+    ['void helper();\nvoid helper(){}\nvoid helper(){}', 3, 'duplicate function: helper()'],
+    [
+      'void helper(double x);\nvoid main(){ helper(2.0); }\nvoid helper(int x){}',
+      2,
+      'function declared but not defined: helper(double)',
+    ],
+    ['void main(){ helper(); }\nvoid helper(double x){}', 1, 'no matching overload: helper'],
+    ['void main(){ helper(FdPoint3d()); }\nvoid helper(double x){}', 1, 'no matching overload: helper'],
+    [
+      'class C { void helper(double x); };\nvoid main(){}\nvoid C::helper(int x){}',
+      3,
+      'no matching declaration: C::helper(int)',
+    ],
+    ['class C { void helper() const; };\nvoid main(){}\nvoid C::helper(){}', 3, 'no matching declaration: C::helper()'],
+    ['void helper(double x=2);\nvoid helper(double x=3){}', 2, 'duplicate default argument 1: helper(double)'],
+    ['void helper(double x=2, double y);\nvoid main(){}', 1, 'missing default argument 2: helper(double, double)'],
+    [
+      'void helper(double x=missing);\nvoid main(){ helper(); }\nvoid helper(double x){}',
+      1,
+      'cannot evaluate default argument x of helper: unknown variable: missing',
+    ],
+  ])('reports declaration and definition errors at their source line: %s', (source, line, message) => {
+    const result = new GeometryRuntime().executeUpToLine(source, 999, true);
+    expect(result.diagnostics).toEqual([{ line, message: expect.stringContaining(message) }]);
+  });
+
+  it.each([
+    'void helper(double x);\nvoid main(){}',
+    'void helper(double x);\nvoid main(){ helper(2); }\nvoid helper(int x){}',
+    'static inline void helper(double x=2);\nvoid main(){ helper(); }\nvoid helper(ads_real value){}',
+    'class C { void helper(double x=2) const; };\nvoid main(){ helper(); }\nvoid C::helper(double value) const {}',
+    'void main(){ helper(); }\nvoid C::helper(){}',
+    'void main(){ helper(); }\nvoid helper(){}',
+    'void helper(double values[][2]);\nvoid main(){ double data[2][2]={{1,2},{3,4}}; helper(data); }\nvoid helper(double values[2][2]){}',
+    'void helper(double (&values)[2]);\nvoid main(){ double data[2]={1,2}; helper(data); }\nvoid helper(double (&values)[2]){}',
+    'void makeFlatDisc(const FdPoint3d &p,const FdVector3d &n,double d,int count);\nvoid main(){ makeFlatDisc(FdPoint3d(),vz,10,8); }',
+    '#define DOUBLE(x) ((x)*2)\nvoid main(){ double a=DOUBLE(3); FdPoint3d p(1,2,3),q(2,3,4); q.rotateBy(1,vz); double b=sqrt(a); }',
+    '#define DOUBLE(x) ((x)*2)\nvoid main(){ sqrt(4); DOUBLE(3); }',
+    'const FdPoint3d &helper();\nvoid main(){}\nFdPoint3d const &helper(){ return FdPoint3d(); }',
+    'class C { void helper(FLM3Geo::primitiveMode mode) {} };\nvoid main(){ helper(0); }',
+    "void helper(char letter);\nvoid main(){ helper('a'); }\nvoid helper(char other){}",
+  ])('keeps valid declarations, overloads, SDK calls and CPP-only helpers: %s', (source) => {
+    const result = new GeometryRuntime().executeUpToLine(source, 999, true);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   it('resolves overloads by argument count and type, including default arguments and nested return values', () => {
     const runtime = new GeometryRuntime();
     const result = runtime.executeUpToLine(

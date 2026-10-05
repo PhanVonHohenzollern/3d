@@ -7,12 +7,15 @@ import {
   TokKind,
   type Token,
   scanTopLevel,
+  balancedEnd,
 } from '@engine/runtime/helpers/tokens';
 import { Statement, StatementKind } from '@engine/runtime/interpreter/Statement';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import {
   functionParameters,
   functionSignature,
+  functionReturnType,
+  functionQualifier,
   parameterDefaultExpression,
   parameterDefaultPos,
 } from '@engine/runtime/helpers/functionSignatures';
@@ -32,6 +35,7 @@ export function parseProgram(code: string): Statement {
 
 export class ProgramParser {
   private m_pos = 0;
+  private readonly classes = new Set<string>();
 
   constructor(private readonly m_tokens: Token[]) {}
 
@@ -58,6 +62,7 @@ export class ProgramParser {
 
   private parseClass(root: Statement): void {
     const start = this.m_pos;
+    const owner = this.current(1).text;
     const members: Statement[] = [];
     while (!this.atEnd() && !['{', ';'].includes(this.current().text)) this.advance();
     if (this.current().text === ';') {
@@ -66,6 +71,7 @@ export class ProgramParser {
       return;
     }
     this.advance();
+    this.classes.add(owner);
     while (!this.atEnd() && this.current().text !== '}') {
       if (['public', 'protected', 'private'].includes(this.current().text) && this.current(1).text === ':') {
         this.advance();
@@ -73,8 +79,10 @@ export class ProgramParser {
         continue;
       }
       const child = this.parseStatement(true);
-      if (child) members.push(child);
-      else if (!this.atEnd()) this.advance();
+      if (child) {
+        if (child.kind === StatementKind.Function) child.functionOwner = owner;
+        members.push(child);
+      } else if (!this.atEnd()) this.advance();
     }
     this.advance();
     if (members.some((member) => member.kind === StatementKind.Function)) {
@@ -93,20 +101,60 @@ export class ProgramParser {
 
   private linkDeclarations(root: Statement): void {
     const declarations = new Map<string, Statement[]>();
+
+    const memberKey = (fn: Statement) => {
+      const lp = fn.signature.findIndex((token) => token.text === '(');
+      const qualifiers = fn.signature
+        .slice(balancedEnd(fn.signature, lp) + 1)
+        .filter((token) => ['const', 'volatile', '&', '&&'].includes(token.text))
+        .map((token) => token.text)
+        .join(' ');
+
+      return `${fn.functionOwner}::${functionSignature(fn)} ${qualifiers}`;
+    };
+
     for (const child of root.children) {
       if (child.kind !== StatementKind.Function) continue;
-      const key = functionSignature(child);
+      const key = memberKey(child);
       declarations.set(key, [...(declarations.get(key) ?? []), child]);
     }
+    const retained = new Set<Statement>();
     for (const group of declarations.values()) {
-      const definition = group.find((fn) => fn.body);
-      if (!definition) continue;
-      if (group.filter((fn) => fn.body).length > 1)
-        throw runtimeError(`duplicate function: ${functionSignature(definition)}`);
+      const definitions = group.filter((fn) => fn.body);
+      const definition = definitions[0] ?? group[0];
+      const type = functionReturnType(group[0]);
+      const conflict = group.find((fn) => functionReturnType(fn) !== type);
+      if (conflict)
+        throw runtimeError(
+          `conflicting return type: ${functionSignature(conflict)} (${type} vs ${functionReturnType(conflict)})`,
+          conflict.startLine,
+        );
+      if (definitions.length > 1)
+        throw runtimeError(`duplicate function: ${functionSignature(definition)}`, definitions[1].startLine);
+      if (
+        definition.body &&
+        this.classes.has(definition.functionOwner) &&
+        !group.some((fn) => !fn.body) &&
+        functionQualifier(definition)
+      )
+        throw runtimeError(
+          `no matching declaration: ${definition.functionOwner}::${functionSignature(definition)}`,
+          definition.startLine,
+        );
+      retained.add(definition);
       const params = functionParameters(definition);
+      const defaults = new Set<number>();
       for (const declaration of group) {
         functionParameters(declaration).forEach((param, i) => {
           const value = parameterDefaultExpression(param);
+          if (value.length) {
+            if (defaults.has(i))
+              throw runtimeError(
+                `duplicate default argument ${i + 1}: ${functionSignature(definition)}`,
+                param[0].line,
+              );
+            defaults.add(i);
+          }
           if (value.length && parameterDefaultPos(params[i]) === params[i].length)
             params[i] = [
               ...params[i],
@@ -115,6 +163,15 @@ export class ProgramParser {
             ];
         });
       }
+      const firstDefault = params.findIndex((param) => parameterDefaultExpression(param).length);
+      if (firstDefault >= 0)
+        params.slice(firstDefault + 1).forEach((param, i) => {
+          if (!parameterDefaultExpression(param).length)
+            throw runtimeError(
+              `missing default argument ${firstDefault + i + 2}: ${functionSignature(definition)}`,
+              param[0].line,
+            );
+        });
       const lp = definition.signature.findIndex((t) => t.text === '(');
       const last = definition.signature.slice(lp).findLastIndex((t) => t.text === ')') + lp;
       definition.signature = [
@@ -125,7 +182,7 @@ export class ProgramParser {
         ...definition.signature.slice(last),
       ];
     }
-    root.children = root.children.filter((child) => child.kind !== StatementKind.Function || child.body);
+    root.children = root.children.filter((child) => child.kind !== StatementKind.Function || retained.has(child));
   }
 
   private atEnd(): boolean {
@@ -199,6 +256,7 @@ export class ProgramParser {
         break;
       }
     }
+    fn.functionOwner = functionQualifier(fn);
     if (isSymbol(this.current(), '{')) {
       fn.body = this.parseBlock();
       fn.endLine = fn.body.endLine;
@@ -243,13 +301,20 @@ export class ProgramParser {
     if (allowFunction && simple) {
       const tokens = simple.tokens;
       const lp = tokens.findIndex((t) => t.text === '(');
+      const rp = lp < 0 ? -1 : balancedEnd(tokens, lp);
+      const typeStart = tokens.findIndex(
+        (t) => !['static', 'inline', 'extern', 'constexpr', 'virtual'].includes(t.text),
+      );
       if (
         lp > 1 &&
-        tokens.at(-1)?.text === ')' &&
-        (tokens[0].text === 'void' || parseRuntimeType(tokens, 0)) &&
+        rp < tokens.length &&
+        tokens
+          .slice(rp + 1)
+          .every((t) => ['const', 'volatile', '&', '&&', 'noexcept', 'override', 'final'].includes(t.text)) &&
+        (tokens[typeStart]?.text === 'void' || parseRuntimeType(tokens, 0)) &&
         !tokens.slice(0, lp).some((t) => t.text === '=')
       ) {
-        const params = splitTopLevel(tokens.slice(lp + 1, -1), ',');
+        const params = splitTopLevel(tokens.slice(lp + 1, rp), ',');
         const emptyValue =
           params.every((param) => !param.length) && ['FdPoint3d', 'FdVector3d'].includes(tokens[0].text);
         if (
@@ -259,6 +324,7 @@ export class ProgramParser {
           simple.kind = StatementKind.Function;
           simple.functionName = tokens[lp - 1].text;
           simple.signature = tokens;
+          simple.functionOwner = functionQualifier(simple);
         }
       }
     }

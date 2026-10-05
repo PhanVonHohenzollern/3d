@@ -37,7 +37,10 @@ export class GeometryRuntime {
       const effectiveMaxLine = Math.min(Math.max(0, maxLine), code.split('\n').length);
       new RuntimeExecutor(state, effectiveMaxLine, fullProgram, options).executeProgram(program);
     } catch (e) {
-      if (e !== debugPause) state.addDiagnostic(Math.max(1, maxLine), 'parser: ' + stdException(e).message);
+      if (e !== debugPause) {
+        const error = stdException(e);
+        state.addDiagnostic(error.line ?? Math.max(1, maxLine), 'parser: ' + error.message);
+      }
     }
 
     return state.result();
