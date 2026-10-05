@@ -1,5 +1,6 @@
 import { runtimeError, stdException } from '@engine/runtime/cpp/cpp';
 import { isBraceList } from '@engine/runtime/helpers/arrays';
+import { builtinFunction } from '@engine/runtime/helpers/builtinFunctions';
 import { parameterName } from '@engine/runtime/helpers/functionSignatures';
 import { readLValue, type LValueRef } from '@engine/runtime/helpers/lvalues';
 import { isMutatingMethod, mutatedValue } from '@engine/runtime/helpers/mutatingMethods';
@@ -46,7 +47,8 @@ export class StatementExecutor implements StatementVisitor<void, boolean> {
       fn();
     } catch (e) {
       if (e === debugPause) throw e;
-      this.x.state.addDiagnostic(this.x.lineOrCaller(s.startLine), stdException(e).message);
+      const error = stdException(e);
+      this.x.state.addDiagnostic(error.line ?? this.x.lineOrCaller(s.startLine), error.message);
     }
   }
 
@@ -374,6 +376,11 @@ export class StatementExecutor implements StatementVisitor<void, boolean> {
     const call = freeCallParts(tokens);
     if (!call) return false;
     const { name, argGroups } = call;
+    if (!this.x.functions.has(name) && (builtinFunction(name) || this.x.state.functionMacro(name))) {
+      this.x.evaluate(call.tokens);
+
+      return true;
+    }
     const intrinsic = languageIntrinsic(name);
     if (intrinsic?.statement?.(this.x.intrinsics, { name, argGroups, line }, call.tokens) === 'done') return true;
     this.x.call(name, argGroups, line, false, call.baseCall);

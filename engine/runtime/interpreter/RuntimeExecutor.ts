@@ -17,6 +17,7 @@ import { freshControlFlow, type ControlFlow, type Execution } from '@engine/runt
 import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import { FunctionCalls } from '@engine/runtime/interpreter/FunctionCalls';
 import { FunctionDebug } from '@engine/runtime/interpreter/FunctionDebug';
+import { FunctionValidator } from '@engine/runtime/interpreter/FunctionValidator';
 import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { resolveLValue } from '@engine/runtime/interpreter/lvalueResolution';
 import type { RuntimeState } from '@engine/runtime/interpreter/RuntimeState';
@@ -79,6 +80,8 @@ export class RuntimeExecutor implements Execution {
       this.functions.set(child.functionName, overloads);
     }
 
+    if (this.fullProgram) root.accept(new FunctionValidator(this), undefined);
+
     const explicit = this.options?.entryFunction;
     const selectedFunction =
       explicit === undefined
@@ -89,7 +92,10 @@ export class RuntimeExecutor implements Execution {
           ? null
           : this.functions
               .get(explicit)
-              ?.find((fn) => !this.options?.entrySignature || functionSignature(fn) === this.options.entrySignature);
+              ?.find(
+                (fn) =>
+                  fn.body && (!this.options?.entrySignature || functionSignature(fn) === this.options.entrySignature),
+              );
     if (explicit && !selectedFunction) throw runtimeError(`Function not found: ${explicit}`);
     if (!selectedFunction) {
       this.executeGlobals(root);
@@ -124,7 +130,7 @@ export class RuntimeExecutor implements Execution {
   }
 
   private entryFunction(root: Statement): Statement | null {
-    const functions = root.children.filter((child) => child.kind === StatementKind.Function);
+    const functions = root.children.filter((child) => child.kind === StatementKind.Function && child.body);
 
     const callsIn = (statement: Statement): string[] => {
       const names: string[] = [];
@@ -167,7 +173,7 @@ export class RuntimeExecutor implements Execution {
   private selectFunction(root: Statement): Statement | null {
     let latestBeforeCursor: Statement | null = null;
     for (const child of root.children) {
-      if (child.kind !== StatementKind.Function || child.startLine > this.maxLine) continue;
+      if (child.kind !== StatementKind.Function || !child.body || child.startLine > this.maxLine) continue;
       latestBeforeCursor = child;
       if (this.maxLine <= child.endLine) return child;
     }

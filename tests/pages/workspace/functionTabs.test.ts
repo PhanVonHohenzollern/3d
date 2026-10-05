@@ -222,7 +222,7 @@ describe('Workspace: source files and sub-function debugging', () => {
     const { mw, editor } = createWorkspace();
     mw.start();
     editor.type(
-      'void element() {}\nvoid helper(double value=8, FdVector3d axis=vz, bool flags[2], double values[2][2], FdPoint3d points[]) {\n double result=flags[1] ? value+values[1][0]+points[0].z+axis.z : 0;\n}',
+      'void element() {}\nvoid helper(bool flags[2], double values[2][2], FdPoint3d points[], double value=8, FdVector3d axis=vz) {\n double result=flags[1] ? value+values[1][0]+points[0].z+axis.z : 0;\n}',
       1,
     );
     mw.buildPreview();
@@ -293,6 +293,54 @@ describe('Workspace: source files and sub-function debugging', () => {
     mw.selection.navigateToSource(error.sourceLine, new Set([error.sourceLine]));
     expect(mw.functions.activeFile).toBe('helpers.cpp');
     expect(editor.currentLine()).toBe(2);
+    mw.dispose();
+  });
+
+  it.each([
+    ['double leaf(double x);', 'void leaf(double x) {}', 'helpers.cpp', 1, 'conflicting return type'],
+    [
+      'void leaf(double x=1);\nvoid leaf(double x=2);',
+      'void leaf(double x) {}',
+      'helpers.h',
+      2,
+      'duplicate default argument',
+    ],
+    ['void leaf(double x=missing);', 'void leaf(double x) {}', 'helpers.h', 1, 'cannot evaluate default argument'],
+  ])('maps linked declaration errors to %s / %s', (header, cpp, name, line, message) => {
+    const { mw, editor } = createWorkspace();
+    mw.start();
+    editor.type('void element() { leaf(); }', 1);
+    mw.addSourceFiles('helpers', true);
+    editor.type(header, 1);
+    mw.selectSourceFile('helpers.cpp');
+    editor.type(cpp, 1);
+    mw.selectSourceFile('');
+    mw.buildPreview();
+    const error = mw.session.feedback.externalDiagnostics!.find((diagnostic) => diagnostic.message.includes(message))!;
+    expect(error).toMatchObject({ name, line });
+    mw.selection.navigateToSource(error.sourceLine, new Set([error.sourceLine]));
+    expect(mw.functions.activeFile).toBe(name);
+    expect(editor.currentLine()).toBe(line);
+    mw.dispose();
+  });
+
+  it('reports a header-only helper at its Main call and clears the error after adding its CPP body', () => {
+    const { mw, editor } = createWorkspace();
+    mw.start();
+    editor.type('void element() {\n leaf(2);\n}', 1);
+    mw.addSourceFiles('helpers', true);
+    editor.type('void leaf(double size);', 1);
+    mw.selectSourceFile('');
+    mw.buildPreview();
+    expect(mw.session.feedback.diagnostics).toEqual([
+      { line: 2, message: 'function declared but not defined: leaf(double)' },
+    ]);
+    mw.selectSourceFile('helpers.cpp');
+    editor.type('void leaf(double size) { makeFlatDisc(FdPoint3d(),vz,size,8); }', 1);
+    mw.selectSourceFile('');
+    mw.buildPreview();
+    expect(mw.session.lastResult.diagnostics).toEqual([]);
+    expect(mw.session.scene.meshes).toHaveLength(1);
     mw.dispose();
   });
 
