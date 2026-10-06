@@ -1,17 +1,10 @@
-import { cross, DVec3, length, normalized } from '@engine/math';
+import { cross, dot, DVec3, length, normalized } from '@engine/math';
 import { FdBowlInfo, RuntimeArray } from '@engine/runtime';
 import { buildAnnulusMesh } from '@engine/geometry/builders/circularMeshes';
 import { buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import {
-  toFdVector,
-  toPoint,
-  toVec,
-  deg,
-  sdkPerpVector,
-  sweepAlongArc,
-  rotateAroundAxis,
-} from '@engine/geometry/helpers/geometryMath';
+import { toFdVector, toPoint, toVec, deg, sdkPerpVector, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
+import { vertex } from '@engine/geometry/helpers/meshData';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
@@ -177,12 +170,6 @@ function bend2({ scene, context, a }: DerivedSketch): void {
   if (a.get('outEllipse') !== undefined) throw new Error('AcDbEllipse output overload requires a native CAD object');
   if (!a.bool('draw', true)) return;
   const f = a.frame();
-  if (a.bool('reverse')) {
-    const axis = a.vector('upVector');
-    f.normal = rotateAroundAxis(f.normal, axis, Math.PI);
-    f.up = rotateAroundAxis(f.up, axis, Math.PI);
-    f.right = rotateAroundAxis(f.right, axis, Math.PI);
-  }
   const w0 = a.positive('beginWidth'),
     w1 = a.positive('endWidth'),
     h = a.num('Height'),
@@ -219,17 +206,26 @@ function bend2({ scene, context, a }: DerivedSketch): void {
   }
   const sides = a.get('sides');
   const visible = sides instanceof RuntimeArray ? sides.elements.slice(0, 4).map(Boolean) : [true, true, true, true];
-  scene.meshes.push(
-    buildBoxMesh(context, {
-      count,
-      centers,
-      normals,
-      upVectors: ups,
-      widths,
-      heights,
-      visibleSides: Array.from({ length: count }, () => visible).flat(),
-    }),
-  );
+  const mesh = buildBoxMesh(context, {
+    count,
+    centers,
+    normals,
+    upVectors: ups,
+    widths,
+    heights,
+    visibleSides: Array.from({ length: count }, () => visible).flat(),
+  });
+  if (a.bool('reverse')) {
+    // Reverse the sweep across the inlet plane, keeping the inlet and ellipse center fixed.
+    const reflect = (v: DVec3) => v.sub(f.normal.mul(2 * dot(v, f.normal)));
+
+    mesh.vertices = mesh.vertices.map((v) =>
+      vertex(f.center.add(reflect(new DVec3(v.x, v.y, v.z).sub(f.center))), reflect(new DVec3(v.nx, v.ny, v.nz))),
+    );
+    for (let i = 0; i < mesh.indices.length; i += 3)
+      [mesh.indices[i + 1], mesh.indices[i + 2]] = [mesh.indices[i + 2], mesh.indices[i + 1]];
+  }
+  scene.meshes.push(mesh);
 }
 
 export const derivedAdapters: AdapterTable = {
