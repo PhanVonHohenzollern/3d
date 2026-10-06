@@ -1226,7 +1226,7 @@ makeBox(1,p,ups,normals,widths,heights,sides,false,false,0,0,0);`);
 bool sides[4]={true,true,true,true};
 makeBend2(FdPoint3d(),-vz,-vy,sides,${reverse},90,90,80,100,120,8,30,70);`).meshes;
     near(average(mesh.vertices.slice(0, 4)), new DVec3());
-    near(average(mesh.vertices.slice(-4)), new DVec3(reverse ? 70 : -70, 0, reverse ? -130 : 130));
+    near(average(mesh.vertices.slice(-4)), new DVec3(-70, 0, reverse ? -130 : 130));
     expect(
       mesh.vertices
         .slice(-4)
@@ -1242,33 +1242,76 @@ makeBend2(FdPoint3d(),-vz,-vy,sides,${reverse},90,90,80,100,120,8,30,70);`).mesh
   });
 
   it.each([
-    ['-vz', new DVec3(0, -2, 0)],
-    ['vx', new DVec3(0, 0, 3)],
-    ['FdVector3d(1,2,3)', new DVec3(2, -1, 0)],
-    ['FdVector3d(1,2,3)', new DVec3(1, -2, 4)],
-  ])('rotates Bend2 vertices and normals 180 degrees around upVector (%s, %j)', (normal, up) => {
+    [new DVec3(0, 0, -1), new DVec3(0, -2, 0)],
+    [new DVec3(1, 0, 0), new DVec3(0, 0, 3)],
+    [new DVec3(1, 2, 3), new DVec3(2, -1, 0)],
+    [new DVec3(1, 2, 3), new DVec3(1, -2, 4)],
+  ])('reverses Bend2 across its inlet plane without moving the inlet (%j, %j)', (normal, up) => {
     const center = new DVec3(11, -23, 37);
-    const axis = up.mul(1 / vectorLength(up));
+    const axis = normal.mul(1 / vectorLength(normal));
 
-    const rotate = (v: DVec3) => axis.mul(2 * dot(axis, v)).sub(v);
+    const reflect = (v: DVec3) => v.sub(axis.mul(2 * dot(axis, v)));
 
     for (const tail of ['30,70', '30,true,false']) {
       const source = (reverse: boolean) => `
 bool sides[4]={true,false,true,true};
-makeBend2(FdPoint3d(11,-23,37),${normal},FdVector3d(${up.x},${up.y},${up.z}),
+makeBend2(FdPoint3d(11,-23,37),FdVector3d(${normal.x},${normal.y},${normal.z}),FdVector3d(${up.x},${up.y},${up.z}),
           sides,${reverse},60,110,80,100,120,8,${tail});`;
 
       const [original] = build(source(false)).meshes;
       const [reversed] = build(source(true)).meshes;
-      expect(reversed.indices).toEqual(original.indices);
+      for (let i = 0; i < original.indices.length; i += 3)
+        expect(reversed.indices.slice(i, i + 3)).toEqual([
+          original.indices[i],
+          original.indices[i + 2],
+          original.indices[i + 1],
+        ]);
       expect(reversed.vertices).toHaveLength(original.vertices.length);
       original.vertices.forEach((v, i) => {
         const actual = reversed.vertices[i];
-        near(point(actual), center.add(rotate(point(v).sub(center))));
-        near(new DVec3(actual.nx, actual.ny, actual.nz), rotate(new DVec3(v.nx, v.ny, v.nz)));
+        near(point(actual), center.add(reflect(point(v).sub(center))));
+        near(new DVec3(actual.nx, actual.ny, actual.nz), reflect(new DVec3(v.nx, v.ny, v.nz)));
       });
       near(average(reversed.vertices.slice(0, 4)), center);
     }
+  });
+
+  it.each([58, 80])('joins all four MAGNA3 clamp bends and their end faces (B5=%s)', (b5) => {
+    const { meshes } = build(`
+double B3=185, B5=${b5};
+bool sides[4]={true,true,true,true};
+FdPoint3d bendPoint(0.15*B3,-0.475*2*B5,0);
+makeBend2(bendPoint,vz,vx,sides,false,90,90,0.05*2*B5,0.09*B3,0.05*2*B5,cpx,0.45*2*B5,0.45*2*B5);
+makeBend2(bendPoint,-vz,-vx,sides,false,90,90,0.05*2*B5,0.09*B3,0.05*2*B5,cpx,0.45*2*B5,0.45*2*B5);
+bendPoint.z+=0.475*2*B5; bendPoint.y+=0.475*2*B5;
+makeBend2(bendPoint,-vy,-vx,sides,false,88,88,0.05*2*B5,0.09*B3,0.05*2*B5,cpx,0.45*2*B5,0.45*2*B5);
+bendPoint.z-=0.95*2*B5;
+makeBend2(bendPoint,vy,-vx,sides,true,88,88,0.05*2*B5,0.09*B3,0.05*2*B5,cpx,0.45*2*B5,0.45*2*B5);
+FdPoint3d centerRotatePoint(0.15*B3,0,0);
+bendPoint.rotateBy(ARX_PI/180*88,vx,centerRotatePoint);
+FdVector3d normalV=vy, upV=vz;
+normalV.rotateBy(ARX_PI/180*88,vx);
+upV.rotateBy(ARX_PI/180*88,vx);
+makeRectFace(bendPoint,normalV,upV,0.05*2*B5,0.09*B3);
+bendPoint.rotateBy(ARX_PI/180*4,vx,centerRotatePoint);
+normalV.rotateBy(ARX_PI/180*4,vx);
+upV.rotateBy(ARX_PI/180*4,vx);
+makeRectFace(bendPoint,normalV,upV,0.05*2*B5,0.09*B3);`);
+    expect(meshes).toHaveLength(6);
+    const [bottomLeft, topLeft, topRight, bottomRight, bottomCap, topCap] = meshes;
+    for (const [a, b] of [
+      [bottomLeft.vertices.slice(0, 4), topLeft.vertices.slice(0, 4)],
+      [bottomLeft.vertices.slice(-4), bottomRight.vertices.slice(0, 4)],
+      [topLeft.vertices.slice(-4), topRight.vertices.slice(0, 4)],
+      [bottomRight.vertices.slice(-4), bottomCap.vertices],
+      [topRight.vertices.slice(-4), topCap.vertices],
+    ])
+      for (const v of a) expect(Math.min(...b.map((w) => vectorLength(point(v).sub(point(w)))))).toBeLessThan(0.0001);
+    for (const mesh of meshes.slice(0, 4))
+      for (const v of mesh.vertices) {
+        expect(Math.hypot(v.y, v.z)).toBeGreaterThanOrEqual(0.9 * b5 - 0.0001);
+        expect(Math.hypot(v.y, v.z)).toBeLessThanOrEqual(b5 + 0.0001);
+      }
   });
 
   it('uses beta for the outer ellipse while preserving the inner endpoint', () => {
