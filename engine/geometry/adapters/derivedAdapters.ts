@@ -3,7 +3,15 @@ import { FdBowlInfo, RuntimeArray } from '@engine/runtime';
 import { buildAnnulusMesh } from '@engine/geometry/builders/circularMeshes';
 import { buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { toFdVector, toPoint, toVec, deg, sdkPerpVector, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
+import {
+  toFdVector,
+  toPoint,
+  toVec,
+  deg,
+  sdkPerpVector,
+  sweepAlongArc,
+  rotateAroundAxis,
+} from '@engine/geometry/helpers/geometryMath';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
@@ -169,6 +177,12 @@ function bend2({ scene, context, a }: DerivedSketch): void {
   if (a.get('outEllipse') !== undefined) throw new Error('AcDbEllipse output overload requires a native CAD object');
   if (!a.bool('draw', true)) return;
   const f = a.frame();
+  if (a.bool('reverse')) {
+    const axis = a.vector('upVector');
+    f.normal = rotateAroundAxis(f.normal, axis, Math.PI);
+    f.up = rotateAroundAxis(f.up, axis, Math.PI);
+    f.right = rotateAroundAxis(f.right, axis, Math.PI);
+  }
   const w0 = a.positive('beginWidth'),
     w1 = a.positive('endWidth'),
     h = a.num('Height'),
@@ -179,7 +193,7 @@ function bend2({ scene, context, a }: DerivedSketch): void {
     beta = deg(a.num('beta', a.num('alfa', 90))),
     count = a.count('complexity');
   if (Math.abs(alpha) < 1e-9 || Math.abs(beta) < 1e-9) throw new Error('bend angle must be nonzero');
-  const turn = f.right.mul(a.bool('reverse') ? -1 : 1);
+  const turn = f.right;
   const origin = f.center.add(turn.mul(r0 + w0 / 2));
 
   const at = (a: number, b: number, angle: number): DVec3 => {
