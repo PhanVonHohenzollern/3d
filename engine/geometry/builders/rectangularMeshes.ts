@@ -1,3 +1,4 @@
+import earcut from 'earcut';
 import { cross, dot, DVec3, length, normalized } from '@engine/math';
 import { FdPoint3d, FdVector3d } from '@engine/runtime';
 import { basisFromUp, kEps, stableBasis, toVec } from '@engine/geometry/helpers/geometryMath';
@@ -202,6 +203,60 @@ export function buildPolygonFaceMesh(context: MeshBuildContext, points: FdPoint3
   }
   for (const p of points) mesh.vertices.push(vertex(toVec(p), n));
   for (let i = 1; i + 1 < points.length; ++i) addTriangle(mesh, 0, i, i + 1);
+
+  return mesh;
+}
+
+export function buildBendProfileMesh(
+  context: MeshBuildContext,
+  inner: DVec3[],
+  outer: DVec3[],
+  up: DVec3,
+  height: number,
+  sides: boolean[],
+): PreviewMesh {
+  const compact = (points: DVec3[]) => points.filter((p, i) => !i || length(p.sub(points[i - 1])) > kEps);
+
+  const inside = compact(inner),
+    outside = compact(outer);
+  const points = [...inside, ...outside.reverse()];
+  const mesh = context.createMesh();
+  const count = points.length;
+  const [u, v] = stableBasis(up);
+  const origin = points[0];
+  const outline = points.flatMap((p) => [dot(p.sub(origin), u), dot(p.sub(origin), v)]);
+  const triangles = earcut(outline, undefined, 2);
+  const area = points.reduce(
+    (sum, p, i) => sum + dot(cross(p.sub(origin), points[(i + 1) % count].sub(origin)), up),
+    0,
+  );
+
+  for (const sign of [1, -1])
+    for (const p of points) mesh.vertices.push(vertex(p.add(up.mul((sign * height) / 2)), up.mul(sign)));
+
+  const triangle = (a: number, b: number, c: number, normal: DVec3) => {
+    const [pa, pb, pc] = [a, b, c].map((i) => {
+      const p = mesh.vertices[i];
+
+      return new DVec3(p.x, p.y, p.z);
+    });
+    if (dot(cross(pb.sub(pa), pc.sub(pa)), normal) < 0) addTriangle(mesh, a, c, b);
+    else addTriangle(mesh, a, b, c);
+  };
+
+  for (let i = 0; i < triangles.length; i += 3) {
+    const [a, b, c] = triangles.slice(i, i + 3);
+    if (sides[0]) triangle(a, b, c, up);
+    if (sides[2]) triangle(count + a, count + b, count + c, up.mul(-1));
+  }
+  if (height > 0)
+    for (let i = 0; i < count - 1; ++i) {
+      const side = i < inside.length - 1 ? 1 : i >= inside.length ? 3 : -1;
+      if (side < 0 || !sides[side]) continue;
+      const normal = cross(points[i + 1].sub(points[i]), up).mul(Math.sign(area));
+      triangle(i, count + i, count + i + 1, normal);
+      triangle(i, count + i + 1, i + 1, normal);
+    }
 
   return mesh;
 }

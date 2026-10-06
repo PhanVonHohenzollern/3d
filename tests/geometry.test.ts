@@ -1190,6 +1190,110 @@ describe('Berliner elbow and tee regressions', () => {
 
   const near = (actual: DVec3, expected: DVec3) => expect(vectorLength(actual.sub(expected))).toBeLessThan(0.0001);
 
+  const containsPoint = (mesh: PreviewMesh, expected: DVec3) =>
+    expect(Math.min(...mesh.vertices.map((v) => vectorLength(point(v).sub(expected))))).toBeLessThan(0.0001);
+
+  it.each([30, 45, 90])('joins the Berliner symmetric bend to both connectors (angle=%s)', (angle) => {
+    const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeSymetricBend(FdPoint3d(11,23,37),-vz,-vy,sides,false,${angle},80,100,120,70,12,40,80,false);`).meshes;
+    const center = new DVec3(11, 23, 37);
+    const theta = (angle * Math.PI) / 180;
+    const radial = new DVec3(Math.cos(theta), 0, Math.sin(theta));
+    const tangent = new DVec3(-Math.sin(theta), 0, Math.cos(theta));
+    const exit = center
+      .add(new DVec3(-80, 0, 0))
+      .add(radial.mul(100))
+      .add(tangent.mul(80));
+    for (const sign of [-1, 1])
+      for (const upper of [-1, 1]) {
+        containsPoint(mesh, center.add(new DVec3(sign * 40, upper * 50, -70)));
+        containsPoint(mesh, exit.add(radial.mul(sign * 60)).add(new DVec3(0, upper * 50, 0)));
+      }
+    containsPoint(mesh, center.add(new DVec3(-40, -50, 0)));
+    expect(mesh.vertices.some((v) => v.z > center.z)).toBe(true);
+    expect(boundaryLoops(mesh)).toBe(2);
+  });
+
+  it('copies the inner radius to the shifted outer curve in the one-radius overload', () => {
+    const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,90,80,100,120,0,8,40,0,false);`).meshes;
+    const diagonal = 40 * Math.SQRT1_2;
+    containsPoint(mesh, new DVec3(-80 + diagonal, -50, diagonal));
+    containsPoint(mesh, new DVec3(diagonal, -50, 120 + diagonal));
+    containsPoint(mesh, new DVec3(40, -50, 120));
+    containsPoint(mesh, new DVec3(0, -50, 160));
+  });
+
+  it('uses the two symmetric-bend radii for inner and outer curves without shifting insulation connectors', () => {
+    const meshes = build(`
+bool sides[4]={true,true,true,true};
+makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,90,80,100,120,30,8,40,0,false);
+makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,90,90,110,130,30,8,35,45,0,false);`).meshes;
+    for (let i = 0; i < meshes.length; ++i) {
+      const halfWidth = 40 + i * 5,
+        halfEnd = 60 + i * 5,
+        halfHeight = 50 + i * 5;
+      for (const sign of [-1, 1]) {
+        containsPoint(meshes[i], new DVec3(sign * halfWidth, -halfHeight, -30));
+        containsPoint(meshes[i], new DVec3(-80, -halfHeight, 100 + sign * halfEnd));
+      }
+    }
+    containsPoint(meshes[1], new DVec3(-80 + 35 * Math.SQRT1_2, -55, 35 * Math.SQRT1_2));
+    containsPoint(meshes[1], new DVec3(45 * Math.SQRT1_2, -55, 120 + 45 * Math.SQRT1_2));
+  });
+
+  it.each([0, 40])('keeps the outside of RectBend square and the inside curved (radius=%s)', (radius) => {
+    const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeRectBend(FdPoint3d(),-vz,-vy,sides,false,80,100,120,7,${radius});`).meshes;
+    const top = mesh.vertices.filter((v) => v.y === -50);
+    containsPoint(mesh, new DVec3(40, -50, radius + 120));
+    containsPoint(mesh, new DVec3(-40 - radius, -50, radius + 120));
+    containsPoint(mesh, new DVec3(-40 - radius, -50, radius));
+    expect(top.filter((v) => Math.abs(v.x - 40) < 0.0001 || Math.abs(v.z - radius - 120) < 0.0001)).toHaveLength(3);
+    expect(top).toHaveLength(radius === 0 ? 4 : 11);
+    expect(boundaryLoops(mesh)).toBe(radius === 0 ? 1 : 2);
+  });
+
+  it.each(['makeRectBend', 'makeSymetricBend'])(
+    'reflects %s at its inlet while preserving signed beginLength',
+    (api) => {
+      const source = (reverse: boolean, lead: number) => `
+bool sides[4]={true,true,true,true};
+${api}(FdPoint3d(11,23,37),-vz,-vy,sides,${reverse},${api === 'makeRectBend' ? '80,100,120,8,40,true' : `70,80,100,120,${lead},8,40,50,25,true`});`;
+
+      const original = build(source(false, 30)),
+        reversed = build(source(true, -30));
+      expect(reversed.meshes).toHaveLength(2);
+      original.meshes.forEach((mesh, i) => {
+        expect(reversed.meshes[i].vertices).toHaveLength(mesh.vertices.length);
+        for (const v of mesh.vertices) containsPoint(reversed.meshes[i], new DVec3(v.x, v.y, 74 - v.z));
+      });
+    },
+  );
+
+  it.each(['makeRectBend', 'makeSymetricBend'])('honors each of the four %s side flags', (api) => {
+    const source = (flags: string) => `
+bool sides[4]={${flags}};
+${api}(FdPoint3d(),-vz,-vy,sides,false,${api === 'makeRectBend' ? '80,100,120,8,40,false' : '90,80,100,120,30,8,40,25,false'});`;
+
+    const [full] = build(source('true,true,true,true')).meshes;
+    let count = 0;
+    for (let side = 0; side < 4; ++side) {
+      const [mesh] = build(source(Array.from({ length: 4 }, (_, i) => String(i === side)).join(','))).meshes;
+      expect(mesh.indices.length).toBeGreaterThan(0);
+      count += mesh.indices.length;
+      if (side === 0 || side === 2) {
+        const normal = new DVec3(0, side === 0 ? -1 : 1, 0);
+        expect(triangleAreas(mesh, normal).every((area) => area > 0)).toBe(true);
+        expect(mesh.indices.every((index) => mesh.vertices[index].y === normal.y * 50)).toBe(true);
+      }
+    }
+    expect(count).toBe(full.indices.length);
+  });
+
   it.each([45, 90])('joins makeSymmetricElbow sections at W=%s', (angle) => {
     const scene = build(`
 double a=100, b=80, e=100, f=120, w=${angle};
