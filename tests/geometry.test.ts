@@ -1226,19 +1226,49 @@ makeBox(1,p,ups,normals,widths,heights,sides,false,false,0,0,0);`);
 bool sides[4]={true,true,true,true};
 makeBend2(FdPoint3d(),-vz,-vy,sides,${reverse},90,90,80,100,120,8,30,70);`).meshes;
     near(average(mesh.vertices.slice(0, 4)), new DVec3());
-    near(average(mesh.vertices.slice(-4)), new DVec3(reverse ? 70 : -70, 0, 130));
+    near(average(mesh.vertices.slice(-4)), new DVec3(reverse ? 70 : -70, 0, reverse ? -130 : 130));
     expect(
       mesh.vertices
         .slice(-4)
         .map((v) => v.z)
         .sort((a, b) => a - b),
-    ).toEqual([70, 70, 190, 190]);
+    ).toEqual(reverse ? [-190, -190, -70, -70] : [70, 70, 190, 190]);
     expect(
       mesh.vertices
         .slice(-4)
         .map((v) => v.y)
         .sort((a, b) => a - b),
     ).toEqual([-50, -50, 50, 50]);
+  });
+
+  it.each([
+    ['-vz', new DVec3(0, -2, 0)],
+    ['vx', new DVec3(0, 0, 3)],
+    ['FdVector3d(1,2,3)', new DVec3(2, -1, 0)],
+    ['FdVector3d(1,2,3)', new DVec3(1, -2, 4)],
+  ])('rotates Bend2 vertices and normals 180 degrees around upVector (%s, %j)', (normal, up) => {
+    const center = new DVec3(11, -23, 37);
+    const axis = up.mul(1 / vectorLength(up));
+
+    const rotate = (v: DVec3) => axis.mul(2 * dot(axis, v)).sub(v);
+
+    for (const tail of ['30,70', '30,true,false']) {
+      const source = (reverse: boolean) => `
+bool sides[4]={true,false,true,true};
+makeBend2(FdPoint3d(11,-23,37),${normal},FdVector3d(${up.x},${up.y},${up.z}),
+          sides,${reverse},60,110,80,100,120,8,${tail});`;
+
+      const [original] = build(source(false)).meshes;
+      const [reversed] = build(source(true)).meshes;
+      expect(reversed.indices).toEqual(original.indices);
+      expect(reversed.vertices).toHaveLength(original.vertices.length);
+      original.vertices.forEach((v, i) => {
+        const actual = reversed.vertices[i];
+        near(point(actual), center.add(rotate(point(v).sub(center))));
+        near(new DVec3(actual.nx, actual.ny, actual.nz), rotate(new DVec3(v.nx, v.ny, v.nz)));
+      });
+      near(average(reversed.vertices.slice(0, 4)), center);
+    }
   });
 
   it('uses beta for the outer ellipse while preserving the inner endpoint', () => {
