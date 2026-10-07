@@ -1,7 +1,12 @@
 import { cross, dot, DVec3, length, normalized } from '@engine/math';
 import { FdBowlInfo, RuntimeArray } from '@engine/runtime';
 import { buildAnnulusMesh } from '@engine/geometry/builders/circularMeshes';
-import { buildBendProfileMesh, buildBoxMesh, buildPolygonFaceMesh } from '@engine/geometry/builders/rectangularMeshes';
+import {
+  buildBendProfileMesh,
+  buildBendStripMesh,
+  buildBoxMesh,
+  buildPolygonFaceMesh,
+} from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import { toFdVector, toPoint, toVec, deg, sdkPerpVector, sweepAlongArc } from '@engine/geometry/helpers/geometryMath';
 import { vertex } from '@engine/geometry/helpers/meshData';
@@ -228,64 +233,92 @@ function bend2({ scene, context, a }: DerivedSketch): void {
   scene.meshes.push(mesh);
 }
 
-function profileBend({ scene, context, a }: DerivedSketch, rectangular: boolean): void {
+function symetricBend({ scene, context, a }: DerivedSketch): void {
+  const angle = deg(a.num('alfa'));
+  if (angle <= 0) return;
+  if (angle >= Math.PI) throw new Error('bend angle must be less than 180 degrees');
+  const center = a.vector('centralPoint');
+  const normal = normalized(a.vector('vector'));
+  const up = normalized(a.vector('upVector'));
+  const right = normalized(cross(normal, up));
+  if (length(right) < 1e-9) throw new Error('vector and upVector must be nonzero and nonparallel');
+  const beginWidth = a.positive('beginWidth'),
+    endWidth = a.positive('endWidth'),
+    height = a.num('Height'),
+    innerRadius = a.num('R11'),
+    outerRadius = a.num('R12', innerRadius),
+    lead = a.num('beginLength'),
+    count = a.count('complexity'),
+    sides = a.flagArray('sides');
+  if (height < 0 || innerRadius < 0 || outerRadius < 0) throw new Error('bend height and radii cannot be negative');
+  if (sides.length < 4) throw new Error('sides needs 4 booleans');
+  const travel = cross(up, right).mul(a.bool('reverse') ? 1 : -1);
+
+  const radial = (theta: number) => right.mul(-Math.cos(theta)).add(travel.mul(Math.sin(theta)));
+
+  const innerCenter = center.add(right.mul(beginWidth / 2 + innerRadius));
+  const innerStart = center.add(right.mul(beginWidth / 2));
+  const outerStart = center.sub(right.mul(beginWidth / 2));
+  const innerEnd = innerCenter.add(radial(angle).mul(innerRadius));
+  const outerEnd = innerCenter.add(radial(angle).mul(innerRadius + endWidth));
+  const startTangent = cross(radial(0), up),
+    endTangent = cross(radial(angle), up);
+  const distance = dot(cross(outerEnd.sub(outerStart), endTangent), up) / dot(cross(startTangent, endTangent), up);
+  const intersection = outerStart.add(startTangent.mul(distance));
+  // The SDK bisects the rays from the tangent intersection toward B2 and E2.
+  const bisector = normalized(normalized(outerStart.sub(intersection)).add(normalized(outerEnd.sub(intersection))));
+  if (length(bisector) < 1e-9) throw new Error('outer bend center is undefined');
+  const outerCenter = intersection.add(bisector.mul(outerRadius / Math.sin((Math.PI - angle) / 2)));
+
+  const arc = (origin: DVec3, radius: number) =>
+    Array.from({ length: count + 1 }, (_, i) => origin.add(radial((angle * i) / count).mul(radius)));
+
+  const inner = [innerStart.add(normal.mul(lead)), ...arc(innerCenter, innerRadius), innerEnd];
+  const outer = [outerStart.add(normal.mul(lead)), ...arc(outerCenter, outerRadius), outerEnd];
+  scene.meshes.push(buildBendStripMesh(context, inner, outer, up, height, sides));
+}
+
+function rectBend({ scene, context, a }: DerivedSketch): void {
   const f = a.frame();
   const w0 = a.positive('beginWidth'),
     w1 = a.positive('endWidth'),
     height = a.num('Height');
-  const innerRadius = a.num('R11'),
-    outerRadius = rectangular ? 0 : a.num('R12', innerRadius);
-  const angle = deg(rectangular ? 90 : a.num('alfa'));
-  const lead = a.num('beginLength', 0),
-    tail = a.num('endBox', 0);
+  const innerRadius = a.num('R11');
+  const angle = deg(90);
   const count = a.count('complexity');
   const sides = a.flagArray('sides');
-  if (height < 0 || innerRadius < 0 || outerRadius < 0 || tail < 0)
-    throw new Error('bend height, radii and endBox cannot be negative');
-  if (angle <= 0 || angle >= Math.PI) throw new Error('bend angle must be between 0 and 180 degrees');
+  if (height < 0 || innerRadius < 0) throw new Error('bend height and radius cannot be negative');
   if (sides.length < 4) throw new Error('sides needs 4 booleans');
-  const sign = a.bool('reverse') ? -1 : 1;
-  const travel = f.normal.mul(-sign);
+  const travel = f.normal.mul(a.bool('reverse') ? 1 : -1);
   const c = Math.cos(angle),
     s = Math.sin(angle);
-  const tangent = f.right.mul(s).add(travel.mul(c));
 
   const toWorld = (x: number, y: number) => f.center.add(f.right.mul(x)).add(travel.mul(y));
 
   const centerX = w0 / 2 + innerRadius;
   const innerEnd = toWorld(centerX - innerRadius * c, innerRadius * s);
   const outerEnd = toWorld(centerX - (innerRadius + w1) * c, (innerRadius + w1) * s);
-  // The outer bend has its own radius and straight legs; it is not a concentric offset.
-  const outerLead = (innerRadius + w1 - outerRadius - (w0 + innerRadius - outerRadius) * c) / s;
+  const outerLead = (innerRadius + w1 - (w0 + innerRadius) * c) / s;
+  const arc = Array.from({ length: innerRadius === 0 ? 1 : count + 1 }, (_, i) => {
+    const theta = (angle * i) / count;
 
-  const arc = (x: number, y: number, radius: number) =>
-    Array.from({ length: radius === 0 ? 1 : count + 1 }, (_, i) => {
-      const theta = (angle * i) / count;
+    return toWorld(centerX - innerRadius * Math.cos(theta), innerRadius * Math.sin(theta));
+  });
 
-      return toWorld(x - radius * Math.cos(theta), y + radius * Math.sin(theta));
-    });
-
-  const inner = [toWorld(w0 / 2, -sign * lead), ...arc(centerX, 0, innerRadius), innerEnd.add(tangent.mul(tail))];
-  const outer = [
-    toWorld(-w0 / 2, -sign * lead),
-    ...arc(-w0 / 2 + outerRadius, outerLead, outerRadius),
-    outerEnd.add(tangent.mul(tail)),
-  ];
+  const inner = [toWorld(w0 / 2, 0), ...arc, innerEnd];
+  const outer = [toWorld(-w0 / 2, 0), toWorld(-w0 / 2, outerLead), outerEnd];
   scene.meshes.push(buildBendProfileMesh(context, inner, outer, f.up, height, sides));
   if (a.bool('endCon')) {
-    const offset = tangent.mul(tail),
-      up = f.up.mul(height / 2);
-    const p = innerEnd.add(offset),
-      q = outerEnd.add(offset);
-    appendStroke(scene, context, [p.add(up), q.add(up), q.sub(up), p.sub(up)], true);
+    const up = f.up.mul(height / 2);
+    appendStroke(scene, context, [innerEnd.add(up), outerEnd.add(up), outerEnd.sub(up), innerEnd.sub(up)], true);
   }
 }
 
 export const derivedAdapters: AdapterTable = {
   makeBend: derived(bend),
   makeBend2: derived(bend2),
-  makeRectBend: derived((d) => profileBend(d, true)),
-  makeSymetricBend: derived((d) => profileBend(d, false)),
+  makeRectBend: derived(rectBend),
+  makeSymetricBend: derived(symetricBend),
   makeEllipticalPlane: derived(ellipticalPlane),
   makeBowlWC: derived((d) => sanitaryBowl(d, [0.48, 0.6, 0.42])),
   makeBowlSink: derived((d) => sanitaryBowl(d, [0.58, 0.65, 0.32])),

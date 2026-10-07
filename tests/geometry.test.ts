@@ -1305,11 +1305,7 @@ makeSymetricBend(FdPoint3d(11,23,37),-vz,-vy,sides,false,${angle},80,100,120,70,
     const center = new DVec3(11, 23, 37);
     const theta = (angle * Math.PI) / 180;
     const radial = new DVec3(Math.cos(theta), 0, Math.sin(theta));
-    const tangent = new DVec3(-Math.sin(theta), 0, Math.cos(theta));
-    const exit = center
-      .add(new DVec3(-80, 0, 0))
-      .add(radial.mul(100))
-      .add(tangent.mul(80));
+    const exit = center.add(new DVec3(-80, 0, 0)).add(radial.mul(100));
     for (const sign of [-1, 1])
       for (const upper of [-1, 1]) {
         containsPoint(mesh, center.add(new DVec3(sign * 40, upper * 50, -70)));
@@ -1318,6 +1314,100 @@ makeSymetricBend(FdPoint3d(11,23,37),-vz,-vy,sides,false,${angle},80,100,120,70,
     containsPoint(mesh, center.add(new DVec3(-40, -50, 0)));
     expect(mesh.vertices.some((v) => v.z > center.z)).toBe(true);
     expect(boundaryLoops(mesh)).toBe(2);
+  });
+
+  it.each([
+    [1500, 1000, 45, 45, 45, 731.360389693, -22.14682732],
+    [1000, 1500, 45, 45, 45, 518.639610309, 1094.959953867],
+    [80, 120, 40, 60, 30, 56.076951546, 52.153903092],
+    [120, 80, 40, 60, 30, 43.923048454, 22.871870789],
+    [80, 120, 40, 60, 90, -20, 100],
+    [80, 120, 40, 60, 120, -20, 150.111069989],
+  ])(
+    'matches the SDK tangent bisector for widths %s/%s and radii %s/%s at %s degrees',
+    (beginWidth, endWidth, r1, r2, angle, outerX, outerZ) => {
+      const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,${angle},${beginWidth},100,${endWidth},500,8,${r1},${r2},0,false);`).meshes;
+      // Centers obtained from the supplied SDK's I -> IE/IB -> W construction.
+      for (let i = 0; i <= 8; ++i) {
+        const theta = (((angle * Math.PI) / 180) * i) / 8;
+        containsPoint(mesh, new DVec3(outerX + r2 * Math.cos(theta), -50, outerZ + r2 * Math.sin(theta)));
+      }
+    },
+  );
+
+  it('connects corresponding inner and outer samples as SDK polygon-mesh strips', () => {
+    const [mesh] = build(`
+bool sides[4]={true,false,false,false};
+makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,90,80,100,120,30,2,40,60,0,false);`).meshes;
+    const samples = [
+      [-40, -30, 40, -30],
+      [-40, 0, 40, 100],
+      [-80 + 40 * Math.SQRT1_2, 40 * Math.SQRT1_2, -20 + 60 * Math.SQRT1_2, 100 + 60 * Math.SQRT1_2],
+      [-80, 40, -20, 160],
+      [-80, 40, -80, 160],
+    ].map(([ix, iz, ox, oz]) => [new DVec3(ix, -50, iz), new DVec3(ox, -50, oz)]);
+    expect(mesh.indices).toHaveLength(21);
+    for (let i = 0; i < mesh.indices.length; i += 3) {
+      const triangle = mesh.indices.slice(i, i + 3).map((index) => point(mesh.vertices[index]));
+      expect(
+        samples.slice(1).some((section, j) => {
+          const corners = [...samples[j], ...section];
+
+          return triangle.every((p) => corners.some((q) => vectorLength(p.sub(q)) < 0.0001));
+        }),
+      ).toBe(true);
+    }
+    expect(triangleAreas(mesh, new DVec3(0, -1, 0)).every((area) => area > 0)).toBe(true);
+  });
+
+  it('keeps the SDK mesh unchanged by its unused endBox and endCon arguments', () => {
+    const source = (radii: string, endBox: number, endCon: boolean) => `
+bool sides[4]={true,true,true,true};
+makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,90,80,100,120,30,8,${radii},${endBox},${endCon});`;
+
+    const baseline = build(source('40', 0, false));
+    for (const radii of ['40', '40,40']) {
+      const scene = build(source(radii, 80, true));
+      expect(scene.meshes).toHaveLength(1);
+      expect(scene.meshes[0].vertices).toEqual(baseline.meshes[0].vertices);
+      expect(scene.meshes[0].indices).toEqual(baseline.meshes[0].indices);
+    }
+  });
+
+  it.each([0, -45])('returns without geometry when alfa=%s, as in the SDK', (angle) => {
+    const scene = build(`
+bool sides[4]={true,true,true,true};
+makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,${angle},80,100,120,30,8,40,0,false);`);
+    expect(scene.meshes).toEqual([]);
+  });
+
+  it.each([false, true])('uses the supplied frame and signed lead for reverse=%s', (reverse) => {
+    const [mesh] = build(`
+bool sides[4]={true,true,true,true};
+makeSymetricBend(FdPoint3d(11,23,37),FdVector3d(0,3,4),FdVector3d(2,0,0),sides,${reverse},90,80,100,120,30,8,40,60,0,false);`).meshes;
+    const center = new DVec3(11, 23, 37),
+      up = new DVec3(1, 0, 0);
+    const normal = new DVec3(0, 0.6, 0.8),
+      right = new DVec3(0, 0.8, -0.6);
+    const travel = normal.mul(reverse ? 1 : -1);
+    for (const sign of [-1, 1]) {
+      containsPoint(
+        mesh,
+        center
+          .add(right.mul(sign * 40))
+          .add(normal.mul(30))
+          .add(up.mul(50)),
+      );
+      containsPoint(
+        mesh,
+        center
+          .add(right.mul(80))
+          .add(travel.mul(100 + sign * 60))
+          .add(up.mul(50)),
+      );
+    }
   });
 
   it('copies the inner radius to the shifted outer curve in the one-radius overload', () => {
@@ -1371,7 +1461,7 @@ ${api}(FdPoint3d(11,23,37),-vz,-vy,sides,${reverse},${api === 'makeRectBend' ? '
 
       const original = build(source(false, 30)),
         reversed = build(source(true, -30));
-      expect(reversed.meshes).toHaveLength(2);
+      expect(reversed.meshes).toHaveLength(api === 'makeRectBend' ? 2 : 1);
       original.meshes.forEach((mesh, i) => {
         expect(reversed.meshes[i].vertices).toHaveLength(mesh.vertices.length);
         for (const v of mesh.vertices) containsPoint(reversed.meshes[i], new DVec3(v.x, v.y, 74 - v.z));

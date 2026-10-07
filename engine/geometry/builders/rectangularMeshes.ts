@@ -207,6 +207,64 @@ export function buildPolygonFaceMesh(context: MeshBuildContext, points: FdPoint3
   return mesh;
 }
 
+export function buildBendStripMesh(
+  context: MeshBuildContext,
+  inner: DVec3[],
+  outer: DVec3[],
+  up: DVec3,
+  height: number,
+  sides: boolean[],
+): PreviewMesh {
+  const mesh = context.createMesh();
+  const indices = new Map<string, number>();
+  const positions: DVec3[] = [];
+
+  const addVertex = (p: DVec3, sign: number) => {
+    const v = vertex(p.add(up.mul((sign * height) / 2)), up.mul(sign));
+    const key = `${v.x},${v.y},${v.z}`;
+    let index = indices.get(key);
+    if (index === undefined) {
+      index = mesh.vertices.length;
+      indices.set(key, index);
+      mesh.vertices.push(v);
+      positions.push(new DVec3(v.x, v.y, v.z));
+    }
+
+    return index;
+  };
+
+  const sections = inner.map((p, i) => [
+    addVertex(p, 1),
+    addVertex(outer[i], 1),
+    addVertex(outer[i], -1),
+    addVertex(p, -1),
+  ]);
+
+  const triangle = (a: number, b: number, c: number, normal: DVec3) => {
+    const area = cross(positions[b].sub(positions[a]), positions[c].sub(positions[a]));
+    if (length(area) <= kEps) return;
+    if (dot(area, normal) < 0) addTriangle(mesh, a, c, b);
+    else addTriangle(mesh, a, b, c);
+  };
+
+  for (let i = 0; i + 1 < sections.length; ++i) {
+    const outward = outer[i]
+      .add(outer[i + 1])
+      .sub(inner[i])
+      .sub(inner[i + 1]);
+    const normals = [up, outward, up.mul(-1), outward.mul(-1)];
+    for (let side = 0; side < 4; ++side) {
+      if (!sides[[0, 3, 2, 1][side]]) continue;
+      const next = (side + 1) % 4;
+      const [a, b, c, d] = [sections[i][side], sections[i][next], sections[i + 1][next], sections[i + 1][side]];
+      triangle(a, b, c, normals[side]);
+      triangle(a, c, d, normals[side]);
+    }
+  }
+
+  return mesh;
+}
+
 export function buildBendProfileMesh(
   context: MeshBuildContext,
   inner: DVec3[],
