@@ -115,11 +115,18 @@ export function prepareElementSource(files: readonly LibrarySource[], entry: str
         return false;
       },
     });
-    const macros = (withoutComments(file.code).match(/^[\t ]*#\s*define\b[^\n]*(?:\\\r?\n[^\n]*)*/gm) ?? []).filter(
-      (macro) => !predefinedNames.has(macro.match(/#\s*define\s+(\w+)/)?.[1] ?? ''),
+    const uncommented = withoutComments(file.code);
+    const guard = uncommented.match(
+      /^\s*#\s*(?:ifndef\s+(\w+)|if\s+!\s*defined\s*(?:\(\s*(\w+)\s*\)|(\w+)))[\t ]*\r?\n/,
     );
+    const guardName = guard?.[1] ?? guard?.[2] ?? guard?.[3];
+    const macros = (uncommented.match(/^[\t ]*#\s*define\b[^\n]*(?:\\\r?\n[^\n]*)*/gm) ?? []).filter((macro) => {
+      const name = macro.match(/#\s*define\s+(\w+)/)?.[1] ?? '';
+
+      return name !== guardName && !predefinedNames.has(name);
+    });
     const preamble = [...macros, ...declarations].join('\n\n');
-    if (file.name === main.file) prepared[0].code = preamble + '\n\n' + main.code;
+    if (file.name === main.file) prepared[0].code = [preamble, main.code].filter(Boolean).join('\n\n');
     else if (preamble) {
       const target = file.name.endsWith('.h') ? headers : sources;
       target.set(file.name, [preamble, ...(target.get(file.name) ?? [])]);

@@ -13,16 +13,12 @@ import type {
   LibraryResolution,
   LibraryVariant,
 } from '@/features/element-library/model/types';
-import { libraryPresetTable, type LibraryPresetRow } from '@/features/element-library/model/presetTable';
 
 export interface LibrarySample {
   id: string;
   files: LibrarySource[];
   values: ReadonlyMap<string, string>;
   connectors: LibraryElement['connectors'];
-  presets: LibraryPresetRow[];
-  presetIndex: number;
-  selectors: string[];
 }
 
 export class ElementLibraryModel extends Observable {
@@ -177,15 +173,6 @@ export class ElementLibraryModel extends Observable {
     if (this.#opened === this.elementId && this.canOpen) this.#publish(false);
   };
 
-  syncPreset(row: LibraryPresetRow): void {
-    this.elementId = row.elementId;
-    this.#opened = row.elementId;
-    const variant = this.element?.variants[row.variantIndex];
-    this.#selection = new Map(Object.entries(variant?.selection ?? {}));
-    this.#resolve();
-    this.changed();
-  }
-
   readonly open = (): void => {
     if (!this.canOpen) return;
     this.#opened = this.elementId;
@@ -194,18 +181,12 @@ export class ElementLibraryModel extends Observable {
 
   #publish(replaceSource: boolean): void {
     if (!this.element) return;
-    const { rows, selectors } = libraryPresetTable(this.elements, this.element);
     this.openRequested.emit(
       {
         id: this.elementId,
         files: this.#files,
         values: this.resolution.values,
         connectors: this.#variant?.connectors ?? this.element.connectors,
-        presets: rows,
-        presetIndex: rows.findIndex(
-          (row) => row.elementId === this.elementId && this.element?.variants[row.variantIndex] === this.#variant,
-        ),
-        selectors,
       },
       replaceSource,
     );
