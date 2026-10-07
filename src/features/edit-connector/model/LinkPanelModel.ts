@@ -89,6 +89,26 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     return this.#entries.map((entry) => copyDefinition(entry.definition));
   }
 
+  loadDefinitions(definitions: readonly ConnectorDefinition[]): void {
+    this.#entries = definitions.map((definition): Entry => {
+      try {
+        const preview = this.#evaluate ? buildConnectorPreview(definition, this.#evaluate) : null;
+
+        return { definition: copyDefinition(definition), preview, error: '', shown: !!preview };
+      } catch (error) {
+        return { definition: copyDefinition(definition), preview: null, error: what(error), shown: false };
+      }
+    });
+    this.#nextId = Math.max(0, ...definitions.map((definition) => definition.id)) + 1;
+    this.tableRows = [];
+    this.currentRow = definitions.length ? 0 : -1;
+    this.currentColumn = definitions.length ? 1 : -1;
+    this.#entries.forEach((_, row) => this.refreshRow(row));
+    this.loadSelection();
+    this.publish();
+    this.changed();
+  }
+
   #setCurrentCell(row: number, column: number): void {
     if (row === this.currentRow && column === this.currentColumn) return;
     this.currentRow = row;

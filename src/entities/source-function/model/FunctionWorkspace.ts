@@ -107,6 +107,20 @@ export class FunctionWorkspace {
     return this.#files.get(file) ?? '';
   }
 
+  replaceFiles(files: readonly { name: string; code: string }[]): void {
+    this.#files.clear();
+    this.#files.set('', '');
+    files.forEach(({ name, code }) => this.#files.set(name, code));
+    this.#activeFile = '';
+    this.#active = '';
+    this.#inputTab = '';
+    this.#error = '';
+    this.#definitions = undefined;
+    this.#calls.clear();
+    this.#occurrences.clear();
+    this.#inputs.clear();
+  }
+
   edit(code: string): void {
     if (code === this.source()) return;
     this.#files.set(this.#activeFile, code);

@@ -20,6 +20,7 @@ import { FunctionEditor } from '@/features/manage-functions';
 import { PreviewModeToggle } from '@/features/run-preview';
 import { SubParameterPanel } from '@/features/manage-functions';
 import { SubFunctionTrace } from '@/pages/workspace/ui/SubFunctionTrace';
+import { ElementLibraryPanel } from '@/features/element-library';
 
 type WorkspacePageProps = {
   theme: Theme;
@@ -35,7 +36,9 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
-      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={onToggleTheme} />
+      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={onToggleTheme}>
+        <ElementLibraryPanel model={workspace.library} />
+      </WorkspaceHeader>
       {workspace.files.message && (
         <div
           role={workspace.files.error ? 'alert' : 'status'}

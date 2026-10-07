@@ -150,6 +150,25 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#rebuildTable();
   }
 
+  loadValues(definitions: readonly RuntimeParameterRequest[], values: ReadonlyMap<string, string>): void {
+    this.#values.clear();
+    this.#userEditedKeys.clear();
+    this.#enabledInsulation.clear();
+    this.#tableTabs.clear();
+    this.dataSets = [];
+    this.dataSetIndex = -1;
+    this.pasteMessage = '';
+    this.activeTab = '';
+    for (const definition of definitions) {
+      const value = values.get(definition.name);
+      if (value === undefined) continue;
+      const key = parameterKey(definition);
+      this.#values.set(key, value);
+      this.#userEditedKeys.add(key);
+    }
+    this.setDefinitions(definitions);
+  }
+
   updateRuntimeResult(result: RuntimeResult): void {
     let changed = false;
     for (const request of result.parameterRequests) {

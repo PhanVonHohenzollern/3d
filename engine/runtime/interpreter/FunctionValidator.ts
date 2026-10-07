@@ -75,7 +75,7 @@ export class FunctionValidator implements StatementVisitor<void> {
         tokens[index + 1]?.text !== '(' ||
         ['.', '->', '::'].includes(tokens[index - 1]?.text) ||
         declarators.has(token) ||
-        ['sizeof', 'alignof', 'decltype'].includes(name) ||
+        ['sizeof', 'alignof', 'decltype', 'delete'].includes(name) ||
         builtinFunction(name) ||
         this.x.state.functionMacro(name) ||
         languageIntrinsic(name) ||

@@ -3,7 +3,7 @@ import { ModelFileControls } from '@/features/model-files';
 import { Button } from '@/shared/ui/button';
 import { Box, Moon, Sun } from 'lucide-react';
 
-export function WorkspaceHeader({ files, theme, onToggleTheme }: WorkspaceHeaderProps) {
+export function WorkspaceHeader({ children, files, theme, onToggleTheme }: WorkspaceHeaderProps) {
   const ThemeIcon = theme === 'light' ? Moon : Sun;
 
   return (
@@ -13,6 +13,7 @@ export function WorkspaceHeader({ files, theme, onToggleTheme }: WorkspaceHeader
       </div>
       <h1 className="truncate text-sm font-semibold tracking-tight sm:text-[15px]">Geometry Preview</h1>
       <div className="flex-1" />
+      {children}
       <ModelFileControls {...files} />
       <Button
         type="button"
