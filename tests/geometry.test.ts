@@ -1160,7 +1160,7 @@ makeTubeToTubeIntersection2(FdPoint3d(-60,0,0),vx,tube,branch,angles,2,false);`)
       api === 1
         ? `
 double tube[]={40,${diameter},120}, position[]={60,${offset}}, branch[]={80,25,25};
-double angles[]={${90 + tilt},90,0}; int n[]={${n},${bn}}; bool options[]={true,true};
+double angles[]={${90 + tilt},90,0}; int n[]={${n},${bn}}; bool options[]={false,false};
 makeTubeToTubeIntersection(FdPoint3d(-60,0,0),vx,vy,tube,position,branch,angles,n,options);`
         : `
 double tube[]={40,120}, branch[]={25,80,60,${offset}}, angles[]={${tilt},0};
@@ -1268,7 +1268,7 @@ makeTubeToTubeIntersection2(start,vx,${explicitUp ? 'vz,' : ''}tube,branch,angle
   it('still accepts an angle array that only sets the first angle', () => {
     const scene = build(
       `${frame} double tube[3] = {100,100,300}; double inter[3] = {200,50,50}; int cx[2] = {8,8};` +
-        ' bool opt[2] = {true,true}; double pos[2] = {100,0}; double ang[1] = {90};' +
+        ' bool opt[2] = {false,false}; double pos[2] = {100,0}; double ang[1] = {90};' +
         ' makeTubeToTubeIntersection(p, n, up, tube, pos, inter, ang, cx, opt);',
     );
     expect(scene.warnings).toEqual([]);
@@ -1699,7 +1699,7 @@ makeBend2(FdPoint3d(),-vz,-vy,sides,false,45,45,80,100,120,8,30,70);`).meshes;
     near(point(mesh.vertices.at(-1)!), new DVec3(-40, 0, 100 + sign * 40));
   });
 
-  const tee = (angles = '135,90,0', options = 'true,true', frame = 'vx,vy', offset = 10) =>
+  const tee = (angles = '135,90,0', options = 'false,false', frame = 'vx,vy', offset = 10) =>
     build(`
 double tube[3]={80,40,200}, position[2]={100,${offset}}, branch[3]={100,20,30};
 double angles[3]={${angles}}; int complexity[2]={4,4}; bool options[]={${options}};
@@ -1752,9 +1752,9 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     ['vx,vy', 0],
     ['vx,vy', 37],
     ['vx,vy', 180],
-  ] as const)('controls both main tube halves independently (frame=%s, rotation=%s)', (frame, rotation) => {
+  ] as const)('hides each main tube half when its option is true (frame=%s, rotation=%s)', (frame, rotation) => {
     const angles = `123,67,${rotation}`;
-    const full = tee(angles, 'true,true', frame);
+    const full = tee(angles, 'false,false', frame);
     const angle = ((67 + rotation) * Math.PI) / 180;
 
     const facing = (v: { y: number; z: number }) => v.y * Math.cos(angle) + v.z * Math.sin(angle);
@@ -1763,22 +1763,22 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     expect(full.meshes[0].vertices.some((v) => facing(v) > 1)).toBe(true);
     expect(full.meshes[0].vertices.some((v) => facing(v) < -1)).toBe(true);
 
-    for (const [upper, lower] of [
+    for (const [hideUpper, hideLower] of [
       [true, false],
       [false, true],
-      [false, false],
+      [true, true],
     ]) {
-      const scene = tee(angles, `${upper},${lower}`, frame);
+      const scene = tee(angles, `${hideUpper},${hideLower}`, frame);
       expect(scene.meshes.map((mesh) => mesh.apiName)).toEqual(
-        upper || lower
+        !hideUpper || !hideLower
           ? ['makeTubeToTubeIntersection.main', 'makeTubeToTubeIntersection.branch']
           : ['makeTubeToTubeIntersection.branch'],
       );
       const branch = scene.meshes.at(-1)!;
       expect(branch.vertices).toEqual(full.meshes[1].vertices);
       expect(branch.indices).toEqual(full.meshes[1].indices);
-      if (!upper && !lower) continue;
-      const sign = upper ? 1 : -1;
+      if (hideUpper && hideLower) continue;
+      const sign = hideUpper ? -1 : 1;
       const vertices = scene.meshes[0].vertices;
       expect(vertices.every((v) => sign * facing(v) >= -0.0001)).toBe(true);
       expect(vertices.some((v) => sign * facing(v) > 1)).toBe(true);
@@ -1790,8 +1790,8 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     ['vy', 'vx'],
     ['vz', 'vx'],
   ])('uses the SDK default up vector for %s', (normal, up) => {
-    const implicit = tee('135,90,0', 'true,true', normal);
-    const explicit = tee('135,90,0', 'true,true', `${normal},${up}`);
+    const implicit = tee('135,90,0', 'false,false', normal);
+    const explicit = tee('135,90,0', 'false,false', `${normal},${up}`);
     implicit.meshes.forEach((mesh, i) => expect(mesh.vertices).toEqual(explicit.meshes[i].vertices));
   });
 });

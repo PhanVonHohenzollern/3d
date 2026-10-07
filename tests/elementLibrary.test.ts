@@ -302,6 +302,18 @@ describe('prepared example library', () => {
     expect(connectors.map((connector) => connector.direction.y)).toEqual([-1, 1]);
   });
 
+  it.each(['BELIMO_EP_F', 'BELIMO_EV_F', 'BELIMO_R2_S', 'BELIMO_R3_S', 'BELIMO_R225FL_J'])(
+    'keeps the main tube in %s when both hide flags are false',
+    (symbol) => {
+      const { scene } = load('BELIMO', 'CBELIMO', symbol);
+      expect(scene.warnings).toEqual([]);
+      const main = scene.meshes.filter((mesh) => mesh.apiName === 'makeTubeToTubeIntersection.main');
+      expect(main).toHaveLength(1);
+      expect(main[0].indices.length).toBeGreaterThan(0);
+      expect(scene.meshes.filter((mesh) => mesh.apiName === 'makeTubeToTubeIntersection.branch')).toHaveLength(1);
+    },
+  );
+
   it('provides the alternate connection and actuator preset', () => {
     const { values } = load('CGeneral', 'CGeneral', 'BUTTV', { DN: '80', conn: 'tapped lugs', act: 'gear box' });
     expect(Object.fromEntries(values)).toMatchObject({ E: '46', L1: '179', H2: '89', act: 'gear box' });
