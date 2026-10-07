@@ -135,7 +135,21 @@ describe('prepared example library', () => {
         expect(scene.warnings, `${entry}/${type}`).toEqual([]);
         expect(scene.meshes.length).toBeGreaterThan(0);
         if (entry === 'make2WayValve' && ['4', '5', '6', '7'].includes(type)) {
-          expect(scene.meshes.filter((mesh) => mesh.apiName === 'makeTubeToTubeIntersection.main')).toHaveLength(1);
+          // The original types 6/7 call the intersection three times; opt[2]
+          // does not change the two hide flags in the current API contract.
+          const expectedCalls = type === '6' || type === '7' ? 3 : 1;
+          const calls = result.apiCalls.flatMap((call, index) =>
+            call.name === 'makeTubeToTubeIntersection' ? [index] : [],
+          );
+          expect(calls).toHaveLength(expectedCalls);
+          for (const index of calls) {
+            const meshes = scene.meshes.filter((mesh) => mesh.apiIndex === index);
+            expect(meshes.map((mesh) => mesh.apiName)).toEqual([
+              'makeTubeToTubeIntersection.main',
+              'makeTubeToTubeIntersection.branch',
+            ]);
+            expect(meshes.every((mesh) => mesh.indices.length > 0)).toBe(true);
+          }
         }
         for (const connector of selected.connectors) {
           const preview = buildConnectorPreview(connector, (expression) =>
