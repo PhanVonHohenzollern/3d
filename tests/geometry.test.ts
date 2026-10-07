@@ -499,6 +499,111 @@ makeEllipticalPlane(center, vx, vx.perpVector(), 40.5, 45.5, 4);`);
   });
 });
 
+describe('makeBox clockwise side flags', () => {
+  const build = (source: string) => {
+    const result = new GeometryRuntime().executeUpToLine(source, 999);
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expectFiniteScene(scene);
+
+    return scene.meshes[0];
+  };
+
+  it.each([
+    ['vz', 'vy', new DVec3(0, 0, 1), new DVec3(0, 1, 0)],
+    ['-vz', 'vy', new DVec3(0, 0, -1), new DVec3(0, 1, 0)],
+    ['FdVector3d(0,0.6,0.8)', 'vx', new DVec3(0, 0.6, 0.8), new DVec3(1, 0, 0)],
+  ])('selects top, positive width, bottom, negative width for normal %s', (normalCode, upCode, normal, up) => {
+    const center = new DVec3(11, 23, 37);
+    const right = cross(normal, up);
+    const outward = [up, right, up.mul(-1), right.mul(-1)];
+    for (let side = 0; side < 4; ++side) {
+      const mesh = build(`
+FdPoint3d p[2]={FdPoint3d(11,23,37),FdPoint3d(11,23,37)+(${normalCode})*70};
+FdVector3d normals[2]={${normalCode},${normalCode}}, ups[2]={${upCode},${upCode}};
+double widths[2]={40,40}, heights[2]={20,20};
+bool sides[4]={${[0, 1, 2, 3].map((i) => i === side).join(',')}};
+makeBox(1,p,normals,ups,widths,heights,sides,false,false,0,0,0);`);
+      expect(mesh.indices).toHaveLength(6);
+      for (const index of mesh.indices) {
+        const v = mesh.vertices[index];
+        expect(dot(new DVec3(v.x, v.y, v.z).sub(center), outward[side])).toBeCloseTo(side % 2 ? 20 : 10, 4);
+      }
+    }
+  });
+
+  it.each([
+    ['makeBox(1,p,n,u,w,h,sides,false,false,0,0,0)', 20],
+    ['makeBox(1,p,n,u,w,h,sides,edges,false,false,0,0,0)', 20],
+    ['makeBoxFromPlanes(1,p,n,u,w,h,sides,false,false,0,0,0)', 20],
+    ['makeBox(1,p,n,w,h,sides,conn)', -20],
+    ['makeBox(1,p,n,w,h,sides,edges,conn)', -20],
+    ['makeBox(1,p,w,h,sides,conn)', -20],
+  ])('keeps the documented positive-width side across overloads: %s', (call, z) => {
+    const mesh = build(`
+FdPoint3d p[2]={FdPoint3d(),FdPoint3d(70,0,0)};
+FdVector3d n[2]={vx,vx}, u[2]={vy,vy};
+double w[2]={40,40}, h[2]={20,20};
+bool sides[4]={false,true,false,false}, conn[2]={false,false};
+bool edges[1][4]={{true,true,true,true}};
+${call};`);
+    expect(mesh.indices).toHaveLength(6);
+    expect(mesh.indices.every((i) => mesh.vertices[i].z === z)).toBe(true);
+  });
+
+  it('keeps the outside wall of both sections in the Berliner cover', () => {
+    const mesh = build(`
+double r=45, d=1500, b=1000, a=600, alfa=45;
+double alfaRadianOn=alfa*ARX_PI/180, gamma=0, min=1e9;
+for(double i=1;i<alfa;i+=0.5) {
+  double dis=fabs((r+d)/cos(i*ARX_PI/180)-(r+b)/cos((alfa-i)*ARX_PI/180));
+  if(dis<min) { min=dis; gamma=i*ARX_PI/180; }
+}
+FdPoint3d centerRotatePoint(-0.5*d-r,0,0);
+FdPoint3d points[3]={centerRotatePoint,centerRotatePoint,centerRotatePoint};
+double maxLength=(r+d)/cos(gamma);
+points[0].x+=r+d-0.5*r;
+points[1].x+=(maxLength-0.5*r)*cos(gamma);
+points[1].z+=(maxLength-0.5*r)*sin(gamma);
+points[2].x+=r+b-0.5*r;
+points[2].rotateBy(alfaRadianOn,-vy,centerRotatePoint);
+FdVector3d nVs[3]={-vz,-vz,-vz};
+nVs[1].rotateBy(gamma,-vy); nVs[2].rotateBy(alfaRadianOn,-vy);
+FdVector3d uVs[3]={vy,vy,vy};
+double tabHeights[3]={r,r,r}, tabWidths[3]={a,a,a};
+bool sides[8]={true,true,true,false,true,true,true,false};
+makeBox(2,points,nVs,uVs,tabHeights,tabWidths,sides,false,false,0,0,0);`);
+    expect(mesh.vertices).toHaveLength(12);
+    expect(mesh.indices).toHaveLength(36);
+    const centers = [
+      new DVec3(727.5, 0, 0),
+      new DVec3(727.5034268589811, 0, 26.57539616925481),
+      new DVec3(-71.98331623670208, 0, 723.0166837631918),
+    ];
+    for (let segment = 0; segment < 2; ++segment)
+      for (const sign of [-1, 1]) {
+        const wall = [segment, segment + 1].flatMap((i) => {
+          const angle = ([0, 1, 45][i] * Math.PI) / 180;
+          const p = centers[i].add(new DVec3(Math.cos(angle), 0, Math.sin(angle)).mul(sign * 22.5));
+
+          return [p.add(new DVec3(0, 300, 0)), p.sub(new DVec3(0, 300, 0))];
+        });
+        let triangles = 0;
+        for (let i = 0; i < mesh.indices.length; i += 3)
+          if (
+            mesh.indices.slice(i, i + 3).every((index) => {
+              const v = mesh.vertices[index];
+
+              return wall.some((p) => vectorLength(p.sub(new DVec3(v.x, v.y, v.z))) < 0.0001);
+            })
+          )
+            ++triangles;
+        expect(triangles).toBe(sign === 1 ? 2 : 0);
+      }
+  });
+});
+
 describe('rectangular connector flanges', () => {
   const bounds = (mesh: PreviewMesh) =>
     (['x', 'y', 'z'] as const).map((axis) => [
