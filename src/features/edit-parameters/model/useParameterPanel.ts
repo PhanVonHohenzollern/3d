@@ -81,11 +81,7 @@ export function useParameterPanel({ model }: Pick<ParameterPanelProps, 'model'>)
         checkbox: !!row.checkbox,
         disabled: !!row.disabled,
         setChecked: (checked: boolean) => model.setCheckbox(row.key, checked),
-        options: model.dataSets.flatMap((data, rowIndex) => {
-          const option = data.get(row.key);
-
-          return option === undefined ? [] : [{ row: rowIndex, value: option }];
-        }),
+        options: model.dataOptions(row.key),
         selectedDataSet: model.dataSetIndex,
         selectDataSet: (dataSet: number) => model.selectDataSet(dataSet),
         beginEdit,

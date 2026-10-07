@@ -104,6 +104,29 @@ function discoverGetVal(
 export const connectorQueries: LanguageIntrinsic = {
   kind: 'language',
   names: ['get_fln_size', 'get_fln_thick', 'get_fln_diam', 'get_ldist', 'get_ext_diam'],
+  readsParameters: true,
+  discover(tokens) {
+    const requests: RuntimeParameterRequest[] = [];
+    for (let i = 0; i + 2 < tokens.length; ++i) {
+      const name = tokens[i].text;
+      const query = kFlangeQueries[name] ?? (connectorQueries.names.includes(name) ? name : undefined);
+      if (!query || !isSymbol(tokens[i + 1], '(') || tokens[i + 2].kind !== TokKind.String) continue;
+      const key = `${tokens[i + 2].text}:${query}`;
+      if (requests.some((request) => request.name === key)) continue;
+      requests.push({
+        functionName: '',
+        name: key,
+        type: 'double',
+        defaultValue: '0',
+        currentValue: '0',
+        sourceFunction: query,
+        variableName: '',
+        line: tokens[i].line,
+      });
+    }
+
+    return requests;
+  },
   statement({ state, evaluate, resolveLValue }, { name, argGroups, line }) {
     if (argGroups.length < 2) return 'done';
     const id = evaluate(argGroups[0]);

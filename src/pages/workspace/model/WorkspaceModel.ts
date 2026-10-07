@@ -27,6 +27,7 @@ import { emptyRuntimeResult, GeometryRuntime, what } from '@engine/runtime';
 export class WorkspaceModel extends Observable {
   readonly library = new ElementLibraryModel();
   #libraryValues: ReadonlyMap<string, string> | null = null;
+  #librarySample: LibrarySample | null = null;
   readonly variables = new VariablePanelModel();
   readonly parameters = new ParameterPanelModel();
   readonly mainApiTrace = new ApiTracePanelModel();
@@ -92,6 +93,13 @@ export class WorkspaceModel extends Observable {
     const { selection } = this;
     this.variables.selectionChanged.connect(selection.onVariableSelectionChanged);
     this.parameters.valuesChanged.connect(this.onParametersChanged);
+    this.parameters.presetSelected.connect((index) => {
+      const preset = this.#librarySample?.presets[index];
+      if (!preset) return;
+      this.#libraryValues = preset.values;
+      this.library.syncPreset(preset);
+      this.links.loadDefinitions(preset.connectors);
+    });
     this.parameters.setAvailability((parameters) => this.session.activeParameterKeys(parameters));
     this.session.parameterAvailabilityChanged.connect(() => this.parameters.refreshAvailability());
     for (const trace of [this.mainApiTrace, this.subApiTrace]) {
@@ -102,7 +110,7 @@ export class WorkspaceModel extends Observable {
     }
     this.links.setExpressionEvaluator((expression) => {
       if (!this.#libraryValues) return this.session.runtime.evaluateNumericExpression(expression);
-      const values = new Map(this.#libraryValues);
+      const values = this.parameters.hasPresets ? this.parameters.contextValues() : new Map(this.#libraryValues);
       for (const [key, value] of this.parameters.overrides()) values.set(key.split('::').at(-1)!, value);
 
       return evaluateLibraryExpression(expression, values);
@@ -125,7 +133,13 @@ export class WorkspaceModel extends Observable {
     }
     const program = this.functions.program();
     const definitions = this.session.discoverParameters(program, () => false);
-    this.parameters.loadValues(definitions, sample.values);
+    this.#librarySample = sample;
+    this.parameters.loadPresets(
+      definitions,
+      sample.presets.map((preset) => preset.values),
+      sample.presetIndex,
+      sample.selectors,
+    );
     this.#libraryValues = sample.values;
     this.links.loadDefinitions(sample.connectors);
     this.buildPreview();

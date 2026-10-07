@@ -7,6 +7,8 @@ export interface LibrarySource {
   code: string;
 }
 
+const predefinedNames = new Set(['vx', 'vy', 'vz', 'SEGNUM', 'RCFlange', 'cpx', 'concpx']);
+
 export function decodeLibraryAsset(bytes: Uint8Array): string {
   const encoding =
     bytes[0] === 0xff && bytes[1] === 0xfe ? 'utf-16le' : bytes[0] === 0xfe && bytes[1] === 0xff ? 'utf-16be' : 'utf-8';
@@ -88,6 +90,12 @@ export function prepareElementSource(files: readonly LibrarySource[], entry: str
         }
         if (node.name !== 'Declaration' && node.name !== 'FieldDeclaration') return;
         const code = file.code.slice(node.from, node.to);
+        const variables = node.getChildren('InitDeclarator').map((item) => item.getChild('Identifier'));
+        const predefined =
+          variables.length > 0 &&
+          variables.every(
+            (identifier) => identifier !== null && predefinedNames.has(file.code.slice(identifier.from, identifier.to)),
+          );
         if (declarator) {
           const nameNode = identifier ?? declarator.getChild('ScopedIdentifier')?.lastChild;
           if (!nameNode) return false;
@@ -98,7 +106,8 @@ export function prepareElementSource(files: readonly LibrarySource[], entry: str
           }
         } else if (
           node.parent?.name === 'Program' &&
-          !/\b(?:__GEO_NAME|__GEO_FN|__COUNT_FN|geometry_fn)\b/.test(withoutComments(code))
+          !/\b(?:__GEO_NAME|__GEO_FN|__COUNT_FN|geometry_fn)\b/.test(withoutComments(code)) &&
+          !predefined
         ) {
           declarations.push(code);
         }
@@ -106,7 +115,9 @@ export function prepareElementSource(files: readonly LibrarySource[], entry: str
         return false;
       },
     });
-    const macros = withoutComments(file.code).match(/^[\t ]*#\s*define\b[^\n]*(?:\\\r?\n[^\n]*)*/gm) ?? [];
+    const macros = (withoutComments(file.code).match(/^[\t ]*#\s*define\b[^\n]*(?:\\\r?\n[^\n]*)*/gm) ?? []).filter(
+      (macro) => !predefinedNames.has(macro.match(/#\s*define\s+(\w+)/)?.[1] ?? ''),
+    );
     const preamble = [...macros, ...declarations].join('\n\n');
     if (file.name === main.file) prepared[0].code = preamble + '\n\n' + main.code;
     else if (preamble) {

@@ -17,6 +17,7 @@ import type {
 
 // Every SDK function the interpreter implements. Source scanning discovers parameters in this order.
 const kIntrinsics: readonly Intrinsic[] = [
+  { kind: 'language', names: ['SEGNUM'], expression: () => ({ value: 16n }) },
   getVal,
   connectorQueries,
   insulationQueries,

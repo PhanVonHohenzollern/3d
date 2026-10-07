@@ -8,6 +8,8 @@ import type { SdkConstantDefinition, SdkTypeDefinition } from '@engine/runtime/S
 
 export const kSdkConstants: readonly SdkConstantDefinition[] = [
   ...generatedConstants,
+  { name: 'RCFlange', value: 45, integer: true },
+  { name: 'concpx', value: 5, integer: true },
   ...['enBowlTrStraight', 'enBowlTrSpline', 'enBowlTrEllipse'].flatMap((name, value) =>
     [name, 'enBowlTransition::' + name].map((name) => ({ name, value, integer: true })),
   ),
