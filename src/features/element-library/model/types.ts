@@ -2,7 +2,7 @@ import type { ConnectorDefinition } from '@engine/geometry';
 
 export interface LibraryAsset {
   name: string;
-  presets: string;
+  load: () => Promise<ElementLibrary>;
   sources: { name: string; path: string }[];
 }
 

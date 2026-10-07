@@ -13,7 +13,8 @@ export function seedSdkValues(state: RuntimeState): void {
     const value = constant.integer ? doubleToInt64(constant.value) : constant.value;
     // New immutable SDK constants need no variable lifetime/history. Preserve
     // existing trace identities when extending the SDK constant catalogue.
-    if (constant.name.startsWith('enBowl')) state.bindValue(constant.name, value);
+    if (constant.name.startsWith('enBowl') || constant.name === 'RCFlange' || constant.name === 'concpx')
+      state.bindValue(constant.name, value);
     else state.setVariable(constant.name, value, false);
   }
   state.setVariable('cpx', 10n, false);

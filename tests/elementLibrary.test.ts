@@ -9,9 +9,13 @@ import { FunctionWorkspace } from '@/entities/source-function';
 import { sourceFunctions } from '@/entities/source-function';
 import { buildConnectorPreview, PreviewGeometryEngine } from '@engine/geometry';
 import { ParameterPanelModel } from '@/features/edit-parameters';
+import { libraryPresetTable } from '@/features/element-library/model/presetTable';
+import CGeneral from '@/features/element-library/data/CGeneral';
+import GRUNDFOS from '@/features/element-library/data/GRUNDFOS';
+import BELIMO from '@/features/element-library/data/BELIMO';
 
 function catalog(name: string): ElementLibrary {
-  return JSON.parse(readFileSync(`public/demo/presets/${name}.json`, 'utf8'));
+  return { CGeneral, GRUNDFOS, BELIMO }[name as 'CGeneral' | 'GRUNDFOS' | 'BELIMO'];
 }
 
 function preset(element: LibraryElement, selection: Record<string, string> = {}) {
@@ -61,6 +65,131 @@ function load(library: string, stem: string, symbol: string, selection: Record<s
 }
 
 describe('prepared example library', () => {
+  it('uses predefined SDK axes and constants without inserting them into the editor', () => {
+    const sources = [
+      {
+        name: 'Example.cpp',
+        code: `
+      #define vx FdVector3d::kXAxis
+      #define vy FdVector3d::kYAxis
+      #define vz FdVector3d::kZAxis
+      #define SEGNUM(X) 16
+      #define RCFlange 45
+      const int cpx = 10;
+      const int concpx = 5;
+      short example() { makeSimpleTube(FdPoint3d(), FdPoint3d(RCFlange,0,0), concpx, cpx, SEGNUM(cpx)); return 0; }
+    `,
+      },
+    ];
+    const files = prepareElementSource(sources, 'example');
+    expect(files[0].code).not.toMatch(/#define|const int/);
+    const runtime = new GeometryRuntime();
+    const result = runtime.executeUpToLine(files[0].code, 1000, true);
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes.length).toBeGreaterThan(0);
+  });
+
+  it.each(['make2WayValve', 'makeSV', 'makeMF'])(
+    'loads the full table for %s and changes dependent dimensions with size and branch',
+    (entry) => {
+      const elements = catalog('CGeneral').elements;
+      const element = elements.find((item) => item.entry === entry)!;
+      const table = libraryPresetTable(elements, element);
+      const workspace = new FunctionWorkspace();
+      workspace.replaceFiles(
+        prepareElementSource(
+          ['h', 'cpp'].map((ext) => ({
+            name: `CGeneral.${ext}`,
+            code: decodeLibraryAsset(readFileSync(`public/demo/code/CGeneral/CGeneral.${ext}`)),
+          })),
+          entry,
+        ),
+      );
+      const program = workspace.program();
+      const runtime = new GeometryRuntime();
+      const definitions = runtime.discoverParameters(program.source, program.options);
+      const panel = new ParameterPanelModel();
+      const index = table.rows.findIndex((row) => row.elementId === element.id);
+      panel.loadPresets(
+        definitions,
+        table.rows.map((row) => row.values),
+        index,
+        table.selectors,
+      );
+
+      const edit = (name: string, value: string) => {
+        const row = panel.rows.findIndex((row) => row.texts[0] === name);
+        expect(row).toBeGreaterThanOrEqual(0);
+        expect(panel.edit(row, 3)).toBe(true);
+        panel.editorTextEdited(value);
+        panel.commitEditor();
+      };
+
+      const diameter = entry === 'make2WayValve' ? 'diam' : 'diam1';
+      edit(diameter, '65');
+      expect(panel.contextValues().get(diameter)).toBe('65');
+      const types = [...new Set(table.rows.map((row) => row.values.get('elType')!))];
+      for (const type of types) {
+        edit('elType', type);
+        expect(panel.contextValues().get(diameter)).toBe('65');
+        expect(panel.contextValues().get('elType')).toBe(type);
+        const selected = table.rows[panel.dataSetIndex];
+        expect(Object.fromEntries(panel.overrides())).toMatchObject(Object.fromEntries(selected.values));
+        runtime.setParameters(panel.overrides());
+        const result = runtime.executeUpToLine(program.source, 100000, true, program.options);
+        expect(result.diagnostics, `${entry}/${type}`).toEqual([]);
+        const scene = new PreviewGeometryEngine().build(result);
+        expect(scene.warnings, `${entry}/${type}`).toEqual([]);
+        expect(scene.meshes.length).toBeGreaterThan(0);
+        if (entry === 'make2WayValve' && ['4', '5', '6', '7'].includes(type)) {
+          expect(scene.meshes.filter((mesh) => mesh.apiName === 'makeTubeToTubeIntersection.main')).toHaveLength(1);
+        }
+        for (const connector of selected.connectors) {
+          const preview = buildConnectorPreview(connector, (expression) =>
+            evaluateLibraryExpression(expression, panel.contextValues()),
+          );
+          expect([preview.point.x, preview.point.y, preview.point.z].every(Number.isFinite)).toBe(true);
+        }
+      }
+      edit('elType', element.defaults.elType);
+      edit(diameter, '25');
+      expect(panel.contextValues().get(diameter)).toBe('25');
+      expect(panel.contextValues().get('L')).toBe(table.rows[panel.dataSetIndex].values.get('L'));
+      expect(panel.dataSets.length).toBe(table.rows.length);
+    },
+  );
+
+  it('keeps flange size editable and removes dimensions from the previous branch', () => {
+    const elements = catalog('CGeneral').elements;
+    const element = elements.find((item) => item.entry === 'make2WayValve' && item.defaults.elType === '7')!;
+    const table = libraryPresetTable(elements, element);
+    const source = `void main() { double size = GetFlgSize("L1"); short type; double d;
+      get_val("elType",type); get_val("d",d); makeSimpleTube(FdPoint3d(),FdPoint3d(size,0,0),d,d,cpx); }`;
+    const runtime = new GeometryRuntime();
+    const panel = new ParameterPanelModel();
+    const index = table.rows.findIndex((row) => row.elementId === element.id);
+    panel.loadPresets(
+      runtime.discoverParameters(source),
+      table.rows.map((row) => row.values),
+      index,
+      table.selectors,
+    );
+    const sizeRow = panel.rows.findIndex((row) => row.key === 'L1:get_fln_size');
+    expect(sizeRow).toBeGreaterThanOrEqual(0);
+    panel.edit(sizeRow, 3);
+    panel.editorTextEdited('12');
+    panel.commitEditor();
+    const noD = table.rows.findIndex((row) => row.values.get('elType') === '0');
+    panel.selectDataSet(noD);
+    expect(panel.overrides().has('d')).toBe(false);
+    expect(panel.overrides().get('L1:get_fln_size')).toBe('12');
+    runtime.setParameters(panel.overrides());
+    const result = runtime.executeUpToLine(source, 1000, true);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.parameterRequests.find((request) => request.name === 'L1:get_fln_size')?.currentValue).toBe('12');
+  });
   it('opens Main with only the element and links helper declarations, defaults and implementations', () => {
     const files = prepareElementSource(
       [
@@ -191,7 +320,7 @@ describe('prepared example library', () => {
   });
 
   it('contains ready values, not XML documents or table rules', () => {
-    expect(readdirSync('public/demo').sort()).toEqual(['code', 'presets']);
+    expect(readdirSync('public/demo').sort()).toEqual(['code']);
     for (const name of ['CGeneral', 'GRUNDFOS', 'BELIMO']) {
       const library = catalog(name);
       expect(new Set(library.elements.map((element) => element.id)).size).toBe(library.elements.length);
@@ -228,7 +357,7 @@ describe('prepared example library', () => {
   it('opens and changes presets without fetching or parsing XML', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const path = String(input);
-      expect(path).not.toMatch(/\.xml(?:$|\?)/);
+      expect(path).not.toMatch(/\.(xml|json)(?:$|\?)/);
       const body = readFileSync('public/' + path.replace(/^\//, ''));
 
       return {
@@ -258,7 +387,7 @@ describe('prepared example library', () => {
       model.selectValue('DN', '9999');
       expect(model.canOpen).toBe(false);
       expect(model.resolution.errors).toEqual(['No preset for this size/variant.']);
-      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(parser).not.toHaveBeenCalled();
     } finally {
       fetchMock.mockRestore();

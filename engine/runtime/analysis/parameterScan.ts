@@ -164,7 +164,7 @@ export function scanGetValParameters(code: string, options?: RuntimeExecutionOpt
     for (const [name, declaration] of scanScalarDeclarations(s.tokens))
       bindings.set(name, { ...declaration, requests: [] });
     for (const request of scanParameterTokens(s.tokens, bindings)) {
-      if (functionName) request.functionName = functionName;
+      if (functionName && request.functionName === undefined) request.functionName = functionName;
       const existing = out.find(
         (item) =>
           item.name === request.name &&
@@ -189,7 +189,7 @@ export function scanGetValParameters(code: string, options?: RuntimeExecutionOpt
     }
     // Queries may also be called directly inside an if condition.
     for (const request of scanParameterTokens(s.condition, bindings)) {
-      if (functionName) request.functionName = functionName;
+      if (functionName && request.functionName === undefined) request.functionName = functionName;
       if (
         !out.some(
           (item) =>

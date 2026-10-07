@@ -1135,7 +1135,7 @@ short CGeneralBlockCreator :: make2WayValve()
 			double interTubeParameters[3] = { ll, d1, d1 };
 			double angles[3] = { alfa, 90, 0 };
 			int n[2] = { cpx, cpx };
-			bool opt[3] = { false, false, false };
+			bool opt[2] = { true, true };
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			alfa = alfa * (ARX_PI / 180);
@@ -1199,7 +1199,7 @@ short CGeneralBlockCreator :: make2WayValve()
 			double interTubeParameters[3] = { ll, d1, d1 };
 			double angles[3] = { alfa, 90, 270 };
 			int n[2] = { cpx, cpx };
-			bool opt[3] = { false, false, false };
+			bool opt[2] = { true, true };
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			// big joint
@@ -1251,7 +1251,7 @@ short CGeneralBlockCreator :: make2WayValve()
 			double interTubeParameters[3] = { ll, d1, d1 };
 			double angles[3] = { alfa, 90, 0 };
 			int n[2] = { cpx, cpx };
-			bool opt[3] = { false, false, false };
+			bool opt[2] = { true, true };
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			// two smaller joints
@@ -1262,7 +1262,7 @@ short CGeneralBlockCreator :: make2WayValve()
 			angles[0] = 90 + beta;
 			angles[1] = 90;
 			angles[2] = gamma;
-			opt[2] = true;
+			opt[0] = opt[1] = false; // Main tube was created by the first intersection.
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			angles[2] = -gamma;
@@ -1382,7 +1382,7 @@ short CGeneralBlockCreator :: make2WayValve()
 			double interTubeParameters[3] = { ll, d1, d1 };
 			double angles[3] = { alfa, 90, 0 };
 			int n[2] = { cpx, cpx };
-			bool opt[3] = { false, false, false };
+			bool opt[2] = { true, true };
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			interTubePosition[0] = L / 2 + l5;
@@ -1392,7 +1392,7 @@ short CGeneralBlockCreator :: make2WayValve()
 			angles[0] = 90 + beta;
 			angles[1] = 90;
 			angles[2] = gamma;
-			opt[2] = true;
+			opt[0] = opt[1] = false; // Main tube was created by the first intersection.
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			angles[2] = -gamma;
@@ -1793,7 +1793,7 @@ short CGeneralBlockCreator :: makeMEF()
 			double interTubeParameters[3] = { l, diam, diam };
 			double angles[3] = { 180 - alfa, 90, 90 };
 			int n[2] = { cpx, cpx };
-			bool opt[3] = { false, false, false };
+			bool opt[2] = { true, true };
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			p1.set(-L / 2, 0, 0);
@@ -1852,7 +1852,7 @@ short CGeneralBlockCreator :: makeMEF()
 			double interTubeParameters[3] = { l - ft, diam, diam };
 			double angles[3] = { 180 - alfa, 90, 90 };
 			int n[2] = { cpx, cpx };
-			bool opt[3] = { false, false, false };
+			bool opt[2] = { true, true };
 			makeTubeToTubeIntersection(p1, vx, tubeParams, interTubePosition, interTubeParameters, angles, n, opt);
 
 			FdPoint3d p2(-x + x1, -y1, 0),
