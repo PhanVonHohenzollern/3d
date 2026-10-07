@@ -55,10 +55,11 @@ function sectionDimensions(a: NamedArguments, count: number, arrayName: string, 
 }
 
 function visibleSides(a: NamedArguments, count: number): boolean[] {
-  const sides = new Array<boolean>(stdMax(0, count) * 4).fill(true);
-  if (!a.has('sides')) return sides;
-  const supplied = a.flagArray('sides');
-  for (let i = 0; i < sides.length && i < supplied.length; ++i) sides[i] = supplied[i];
+  const supplied = a.has('sides') ? a.flagArray('sides') : [];
+  const sides: boolean[] = [];
+  // SDK flags run clockwise from the top; the mesh builder walks the corners in reverse.
+  for (let segment = 0; segment < count; ++segment)
+    for (const side of [0, 3, 2, 1]) sides.push(supplied[segment * 4 + side] ?? true);
 
   return sides;
 }
