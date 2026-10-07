@@ -9,7 +9,6 @@ import { FunctionWorkspace } from '@/entities/source-function';
 import { sourceFunctions } from '@/entities/source-function';
 import { buildConnectorPreview, PreviewGeometryEngine } from '@engine/geometry';
 import { ParameterPanelModel } from '@/features/edit-parameters';
-import { libraryPresetTable } from '@/features/element-library/model/presetTable';
 import CGeneral from '@/features/element-library/data/CGeneral';
 import GRUNDFOS from '@/features/element-library/data/GRUNDFOS';
 import BELIMO from '@/features/element-library/data/BELIMO';
@@ -92,11 +91,10 @@ describe('prepared example library', () => {
   });
 
   it.each(['make2WayValve', 'makeSV', 'makeMF'])(
-    'loads the full table for %s and changes dependent dimensions with size and branch',
+    'loads one editable default set for each %s branch without a parameter table',
     (entry) => {
       const elements = catalog('CGeneral').elements;
-      const element = elements.find((item) => item.entry === entry)!;
-      const table = libraryPresetTable(elements, element);
+      const family = elements.filter((item) => item.entry === entry && !item.error);
       const workspace = new FunctionWorkspace();
       workspace.replaceFiles(
         prepareElementSource(
@@ -111,13 +109,6 @@ describe('prepared example library', () => {
       const runtime = new GeometryRuntime();
       const definitions = runtime.discoverParameters(program.source, program.options);
       const panel = new ParameterPanelModel();
-      const index = table.rows.findIndex((row) => row.elementId === element.id);
-      panel.loadPresets(
-        definitions,
-        table.rows.map((row) => row.values),
-        index,
-        table.selectors,
-      );
 
       const edit = (name: string, value: string) => {
         const row = panel.rows.findIndex((row) => row.texts[0] === name);
@@ -128,14 +119,14 @@ describe('prepared example library', () => {
       };
 
       const diameter = entry === 'make2WayValve' ? 'diam' : 'diam1';
-      edit(diameter, '65');
-      expect(panel.contextValues().get(diameter)).toBe('65');
-      const types = [...new Set(table.rows.map((row) => row.values.get('elType')!))];
-      for (const type of types) {
-        edit('elType', type);
+      for (const element of family) {
+        const selected = preset(element, { [diameter]: '65' });
+        const type = element.defaults.elType;
+        panel.loadValues(definitions, selected.values);
         expect(panel.contextValues().get(diameter)).toBe('65');
         expect(panel.contextValues().get('elType')).toBe(type);
-        const selected = table.rows[panel.dataSetIndex];
+        expect(panel.dataSets).toEqual([]);
+        expect(panel.tabs.some((tab) => tab.label === 'Element')).toBe(false);
         expect(Object.fromEntries(panel.overrides())).toMatchObject(Object.fromEntries(selected.values));
         runtime.setParameters(panel.overrides());
         const result = runtime.executeUpToLine(program.source, 100000, true, program.options);
@@ -153,55 +144,71 @@ describe('prepared example library', () => {
           expect([preview.point.x, preview.point.y, preview.point.z].every(Number.isFinite)).toBe(true);
         }
       }
-      edit('elType', element.defaults.elType);
+      const length = panel.contextValues().get('L');
       edit(diameter, '25');
       expect(panel.contextValues().get(diameter)).toBe('25');
-      expect(panel.contextValues().get('L')).toBe(table.rows[panel.dataSetIndex].values.get('L'));
-      expect(panel.dataSets.length).toBe(table.rows.length);
+      expect(panel.contextValues().get('L')).toBe(length);
+      expect(panel.dataOptions(panel.rows[0].key)).toEqual([]);
     },
   );
 
-  it('keeps flange size editable and removes dimensions from the previous branch', () => {
+  it('keeps flange size editable in the function tab and resets to the opened defaults', () => {
     const elements = catalog('CGeneral').elements;
     const element = elements.find((item) => item.entry === 'make2WayValve' && item.defaults.elType === '7')!;
-    const table = libraryPresetTable(elements, element);
     const source = `void main() { double size = GetFlgSize("L1"); short type; double d;
       get_val("elType",type); get_val("d",d); makeSimpleTube(FdPoint3d(),FdPoint3d(size,0,0),d,d,cpx); }`;
     const runtime = new GeometryRuntime();
     const panel = new ParameterPanelModel();
-    const index = table.rows.findIndex((row) => row.elementId === element.id);
-    panel.loadPresets(
-      runtime.discoverParameters(source),
-      table.rows.map((row) => row.values),
-      index,
-      table.selectors,
-    );
+    panel.loadValues(runtime.discoverParameters(source), preset(element).values);
+    expect(panel.tabs.map((tab) => tab.id)).toEqual(['main']);
     const sizeRow = panel.rows.findIndex((row) => row.key === 'L1:get_fln_size');
     expect(sizeRow).toBeGreaterThanOrEqual(0);
     panel.edit(sizeRow, 3);
     panel.editorTextEdited('12');
     panel.commitEditor();
-    const noD = table.rows.findIndex((row) => row.values.get('elType') === '0');
-    panel.selectDataSet(noD);
-    expect(panel.overrides().has('d')).toBe(false);
     expect(panel.overrides().get('L1:get_fln_size')).toBe('12');
     runtime.setParameters(panel.overrides());
     const result = runtime.executeUpToLine(source, 1000, true);
     expect(result.diagnostics).toEqual([]);
     expect(result.parameterRequests.find((request) => request.name === 'L1:get_fln_size')?.currentValue).toBe('12');
+    panel.resetToSource();
+    expect(panel.contextValues().get('L1:get_fln_size')).toBe('0');
+    expect(panel.contextValues().get('elType')).toBe('7');
   });
+
+  it.each(['#ifndef GEO_COOL_H', '#if !defined(GEO_COOL_H)', '#if !defined GEO_COOL_H'])(
+    'does not create a header tab for a guard-only dependency: %s',
+    (guard) => {
+      const code = 'short Example::main() { return 0; }';
+      const files = prepareElementSource(
+        [
+          {
+            name: 'Example.h',
+            code: `// SDK header\n${guard}\n#define GEO_COOL_H\nclass Example { short main(); };\n#endif`,
+          },
+          { name: 'Example.cpp', code },
+        ],
+        'main',
+      );
+      expect(files).toEqual([{ name: '', code }]);
+    },
+  );
   it('opens Main with only the element and links helper declarations, defaults and implementations', () => {
     const files = prepareElementSource(
       [
         {
           name: 'Example.h',
-          code: `class Example {
+          code: `#ifndef EXAMPLE_H
+      #define EXAMPLE_H
+      #define EXTRA 1
+      class Example {
         public:
           short makePart();
           double twice(double value = 3);
           double increment(double value) { return value + 1; }
           void unused();
-      };`,
+      };
+      #endif`,
         },
         {
           name: 'Example.cpp',
@@ -212,7 +219,7 @@ describe('prepared example library', () => {
           makeSimpleTube(FdPoint3d(0,0,0), FdPoint3d(0,0,10), diameter, diameter, 8);
           return 0;
         }
-        double Example::twice(double value) { return increment(value) * FACTOR; }
+        double Example::twice(double value) { return increment(value) * FACTOR + EXTRA; }
         void Example::unused() { unknownFunction(); }`,
         },
       ],
@@ -225,6 +232,8 @@ describe('prepared example library', () => {
     expect(header).toContain('Example::twice(double value = 3)');
     expect(header).toContain('Example::increment(double value);');
     expect(header).not.toContain('return value');
+    expect(header).not.toContain('EXAMPLE_H');
+    expect(header).toContain('#define EXTRA 1');
     expect(
       sourceFunctions(source)
         .map((fn) => fn.name)

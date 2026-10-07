@@ -3,6 +3,7 @@ import { useParameterPanel } from '@/features/edit-parameters';
 import type { ParameterPanelProps } from '@/features/edit-parameters';
 import { Button } from '@/shared/ui/button';
 import { EditableComboBox } from '@/shared/ui/editable-combo-box';
+import { LineEdit } from '@/shared/ui/LineEdit';
 import { ParameterTableDialog } from '@/features/edit-parameters';
 
 export function ParameterPanel(props: ParameterPanelProps) {
@@ -14,23 +15,6 @@ export function ParameterPanel(props: ParameterPanelProps) {
       <div className="flex min-h-8 shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-1">
         <h3 className="text-xs font-semibold">Parameters</h3>
         <span className="font-code text-[10px]">{panel.fields.length}</span>
-        {panel.dataSetCount > 0 && (
-          <select
-            aria-label="Parameter data row"
-            className="rounded border border-input bg-base px-1 text-xs"
-            value={panel.dataSetIndex}
-            onChange={(event) => panel.selectDataSet(Number(event.target.value))}
-          >
-            <option value={-1} disabled>
-              Custom values
-            </option>
-            {Array.from({ length: panel.dataSetCount }, (_, index) => (
-              <option key={index} value={index}>
-                Row {index + 1} / {panel.dataSetCount}
-              </option>
-            ))}
-          </select>
-        )}
         <Button
           variant="ghost"
           size="icon"
@@ -141,6 +125,17 @@ export function ParameterPanel(props: ParameterPanelProps) {
                             }
                             disabled={field.disabled}
                             onChange={(event) => field.setChecked(event.target.checked)}
+                          />
+                        ) : field.options.length === 0 ? (
+                          <LineEdit
+                            className="w-full px-2"
+                            aria-label={field.label}
+                            value={field.value}
+                            disabled={field.disabled}
+                            onChange={(event) => field.change(event.target.value)}
+                            onFocus={field.beginEdit}
+                            onBlur={field.commit}
+                            onKeyDown={field.onKeyDown}
                           />
                         ) : (
                           <EditableComboBox

@@ -128,9 +128,6 @@ export function useParameterPanel({ model }: Pick<ParameterPanelProps, 'model'>)
     onPaste,
     pasteMessage: model.pasteMessage,
     pasteIsError: model.pasteIsError,
-    dataSetIndex: model.dataSetIndex,
-    dataSetCount: model.dataSets.length,
-    selectDataSet: (index: number) => model.selectDataSet(index),
     openTable: () => setDraft((current) => current ?? tableDraftFromText('')),
     tableDialog:
       draft &&

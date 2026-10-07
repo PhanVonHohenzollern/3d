@@ -14,7 +14,6 @@ import { isMacPlatform } from '@/shared/lib/platform';
 import { Observable, Signal } from '@/shared/lib/observable';
 import { parseParameterTable, tableImportSummary } from '@/entities/parameter';
 import { what } from '@engine/runtime';
-import { presetOptions, type PresetOption } from '@/features/edit-parameters/model/presetSelection';
 
 export type ParameterAvailability = (parameters: ReadonlyMap<string, string>) => ReadonlySet<string> | null;
 
@@ -51,7 +50,6 @@ export function isInsulationEnabledKey(key: string): boolean {
 export class ParameterPanelModel extends Observable implements ParameterPanelHandle {
   // Emitted when the user changes parameter values (not on every row rebuild).
   readonly valuesChanged = new Signal<[]>();
-  readonly presetSelected = new Signal<[index: number]>();
   rows: ParameterRow[] = [];
   selectedRow = -1;
   currentRow = -1;
@@ -69,7 +67,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   readonly #enabledInsulation = new Set<InsulationQuery>();
 
   get tabs() {
-    return [...new Set(this.#definitions.map((definition) => definition.functionName ?? ''))].map((id) => ({
+    return [...new Set(this.#definitions.map((definition) => this.#functionTab(definition)))].map((id) => ({
       id,
       label: id || 'Element',
       enabled: this.rows.some((row) => (row.functionName ?? '') === id && !row.disabled),
@@ -81,10 +79,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.commitEditor();
     this.#tableTabs.set(this.activeTab, { dataSets: this.dataSets, index: this.dataSetIndex });
     this.activeTab = id;
-    if (!this.#presets) {
-      this.dataSets = this.#tableTabs.get(id)?.dataSets ?? [];
-      this.dataSetIndex = this.#tableTabs.get(id)?.index ?? -1;
-    }
+    this.dataSets = this.#tableTabs.get(id)?.dataSets ?? [];
+    this.dataSetIndex = this.#tableTabs.get(id)?.index ?? -1;
     this.pasteMessage = '';
     this.changed();
   }
@@ -107,7 +103,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       if (!row) continue;
       row.disabled = isInsulationQuery(definition.sourceFunction)
         ? !this.#enabledInsulation.has(definition.sourceFunction)
-        : definition.sourceFunction !== 'example' && !!this.#activeKeys && !this.#activeKeys.has(key);
+        : !!this.#activeKeys && !this.#activeKeys.has(key);
     }
     this.changed();
   }
@@ -119,19 +115,16 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   #pressedCell: { row: number; column: number } | null = null;
   #pressedAlreadySelected = false;
   #pressClosedEditor = false;
-  #presets: readonly ReadonlyMap<string, string>[] | null = null;
-  #presetSelectors: string[] = [];
-  #initialPreset = 0;
-  #presetValues: ReadonlyMap<string, string> = new Map();
-  #presetMapKey = '';
-  #presetOptions: Map<string, PresetOption[]> | null = null;
+  #defaults: ReadonlyMap<string, string> | null = null;
+  #defaultFunction = '';
 
-  get hasPresets(): boolean {
-    return this.#presets !== null;
+  // Shared SDK queries belong with the opened function, not a synthetic Element tab.
+  #functionTab(definition: RuntimeParameterRequest): string {
+    return definition.functionName || this.#defaultFunction;
   }
 
   contextValues(): Map<string, string> {
-    const values = new Map(this.#presetValues);
+    const values = new Map(this.#defaults);
     for (const definition of this.#definitions) {
       const key = parameterKey(definition);
       const value = this.#values.get(key);
@@ -144,8 +137,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   setPlaceholderData(): void {
     this.#definitions = [];
     this.#activeKeys = null;
-    this.#presets = null;
-    this.#presetValues = new Map();
+    this.#defaults = null;
+    this.#defaultFunction = '';
     this.dataSets = [];
     this.dataSetIndex = -1;
     this.activeTab = '';
@@ -156,23 +149,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   setDefinitions(definitions: readonly RuntimeParameterRequest[]): void {
     this.#definitions = definitions.map((definition) => ({ ...definition }));
-    if (this.#presets) {
-      for (const name of this.#presetSelectors) {
-        if (this.#definitions.some((definition) => definition.name === name)) continue;
-        const value = this.#presetValues.get(name) ?? '';
-        this.#definitions.push({
-          name,
-          type: Number.isFinite(Number(value)) ? 'double' : 'string',
-          defaultValue: value,
-          currentValue: value,
-          sourceFunction: 'example',
-          variableName: '',
-          line: 0,
-        });
-        if (!this.#values.has(name)) this.#values.set(name, value);
-        this.#userEditedKeys.add(name);
-      }
-    }
+    this.#defaultFunction = this.#defaults
+      ? (definitions.find((definition) => definition.functionName)?.functionName ?? '')
+      : '';
     for (const query of this.#enabledInsulation)
       if (!this.#hasInsulationQuery(query)) this.#enabledInsulation.delete(query);
 
@@ -186,23 +165,18 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       }
     }
 
-    if (!this.#definitions.some((definition) => (definition.functionName ?? '') === this.activeTab)) {
+    if (!this.#definitions.some((definition) => this.#functionTab(definition) === this.activeTab)) {
       this.#tableTabs.set(this.activeTab, { dataSets: this.dataSets, index: this.dataSetIndex });
-      this.activeTab = this.#definitions[0]?.functionName ?? '';
-      if (!this.#presets) {
-        this.dataSets = this.#tableTabs.get(this.activeTab)?.dataSets ?? [];
-        this.dataSetIndex = this.#tableTabs.get(this.activeTab)?.index ?? -1;
-      }
+      this.activeTab = this.#definitions[0] ? this.#functionTab(this.#definitions[0]) : '';
+      this.dataSets = this.#tableTabs.get(this.activeTab)?.dataSets ?? [];
+      this.dataSetIndex = this.#tableTabs.get(this.activeTab)?.index ?? -1;
     }
-    this.#mapPresets();
     this.#refreshAvailability();
     this.#rebuildTable();
   }
 
   loadValues(definitions: readonly RuntimeParameterRequest[], values: ReadonlyMap<string, string>): void {
-    this.#presets = null;
-    this.#presetValues = new Map();
-    this.#presetMapKey = '';
+    this.#defaults = new Map(values);
     this.#values.clear();
     this.#userEditedKeys.clear();
     this.#enabledInsulation.clear();
@@ -221,60 +195,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.setDefinitions(definitions);
   }
 
-  loadPresets(
-    definitions: readonly RuntimeParameterRequest[],
-    presets: readonly ReadonlyMap<string, string>[],
-    index: number,
-    selectors: readonly string[],
-  ): void {
-    this.loadValues(definitions, presets[index] ?? new Map());
-    this.#presets = presets;
-    this.#presetSelectors = [...selectors];
-    this.#initialPreset = index;
-    this.#presetValues = presets[index] ?? new Map();
-    this.setDefinitions(definitions);
-    this.dataSetIndex = index;
-    this.changed();
-  }
-
-  #mapPresets(): void {
-    if (!this.#presets) return;
-    const key = JSON.stringify(this.#definitions.map((definition) => [parameterKey(definition), definition.name]));
-    if (key === this.#presetMapKey) return;
-    this.#presetMapKey = key;
-    this.#presetOptions = null;
-    this.dataSets = this.#presets.map(
-      (preset) =>
-        new Map(
-          this.#definitions.flatMap((definition) => {
-            const value = preset.get(definition.name);
-
-            return value === undefined ? [] : [[parameterKey(definition), value] as const];
-          }),
-        ),
-    );
-  }
-
-  // Preserve the other selectors (especially the current element branch) when a value
-  // appears in several rows. Imported user tables retain their explicit row selection.
-  #matchingPreset(key: string, value: string): number {
-    if (!this.#presets) return -1;
-
-    return this.dataOptions(key).find((option) => option.value === value)?.row ?? -1;
-  }
-
   dataOptions(key: string): { row: number; value: string }[] {
-    if (!this.#presets)
-      return this.dataSets.flatMap((data, row) => (data.has(key) ? [{ row, value: data.get(key)! }] : []));
-    this.#presetOptions ??= presetOptions(
-      this.dataSets,
-      this.#presets,
-      this.#presetSelectors,
-      this.contextValues(),
-      this.dataSetIndex,
-    );
-
-    return this.#presetOptions.get(key) ?? [];
+    return this.dataSets.flatMap((data, row) => (data.has(key) ? [{ row, value: data.get(key)! }] : []));
   }
 
   updateRuntimeResult(result: RuntimeResult): void {
@@ -307,7 +229,6 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   #rebuildTable(): void {
-    this.#presetOptions = null;
     let selectedKey = '';
     if (this.selectedRow >= 0 && this.selectedRow < this.rows.length) selectedKey = this.rows[this.selectedRow].key;
 
@@ -323,7 +244,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
           key: insulationEnabledKey(insulation),
           line: definition.line,
           checkbox: true,
-          functionName: definition.functionName,
+          functionName: this.#functionTab(definition),
           texts: [insulation, 'bool', '', String(this.#enabledInsulation.has(insulation)), String(definition.line)],
         });
       const row = this.rows.length;
@@ -332,13 +253,13 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       if (insulation) texts[0] = 'size';
       this.rows.push({
         key,
-        functionName: definition.functionName,
+        functionName: this.#functionTab(definition),
         line: definition.line,
         texts,
         checkbox: !!definition.checkbox,
         disabled: insulation
           ? !this.#enabledInsulation.has(insulation)
-          : definition.sourceFunction !== 'example' && !!this.#activeKeys && !this.#activeKeys.has(key),
+          : !!this.#activeKeys && !this.#activeKeys.has(key),
       });
       if (selectedKey !== '' && selectedKey === key) selectedRow = row;
     }
@@ -389,7 +310,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   overrides(): Map<string, string> {
     const values = new Map([
-      ...this.#presetValues,
+      ...(this.#defaults ?? []),
       ...this.#definitions
         .filter(
           (definition) =>
@@ -430,7 +351,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   previewTable(text: string) {
     return parseParameterTable(
       text,
-      this.#definitions.filter((definition) => (definition.functionName ?? '') === this.activeTab),
+      this.#definitions.filter((definition) => this.#functionTab(definition) === this.activeTab),
     );
   }
 
@@ -454,8 +375,6 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   importTable(text: string): boolean {
     try {
       const parsed = this.previewTable(text);
-      this.#presets = null;
-      this.#presetValues = new Map();
       this.dataSets = parsed.data;
       this.pasteIsError = false;
       this.pasteMessage = tableImportSummary(parsed);
@@ -476,17 +395,6 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     if (!data) return;
     this.dataSetIndex = index;
     this.editor = null;
-    if (this.#presets) {
-      this.pasteMessage = '';
-      this.#presetValues = this.#presets[index];
-      for (const definition of this.#definitions) {
-        if (isInsulationQuery(definition.sourceFunction)) continue;
-        const key = parameterKey(definition);
-        if (definition.sourceFunction === 'get_fln_size' && !data.has(key)) continue;
-        this.#userEditedKeys.delete(key);
-        this.#values.set(key, parameterSeed(definition));
-      }
-    }
     for (const [key, value] of data) {
       const definition = this.#definitions.find((item) => parameterKey(item) === key);
       if (
@@ -497,26 +405,22 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       this.#values.set(key, value);
       this.#userEditedKeys.add(key);
     }
-    if (this.#presets) this.presetSelected.emit(index);
     this.#refreshAvailability();
     this.#rebuildTable();
     this.valuesChanged.emit();
   }
 
   resetToSource(): void {
-    if (this.#presets) {
-      this.#enabledInsulation.clear();
-      this.#userEditedKeys.clear();
-      this.#values.clear();
-      this.selectDataSet(this.#initialPreset);
-
-      return;
-    }
     this.#enabledInsulation.clear();
     this.dataSetIndex = -1;
     this.#userEditedKeys.clear();
     this.#values.clear();
-    for (const definition of this.#definitions) this.#values.set(parameterKey(definition), parameterSeed(definition));
+    for (const definition of this.#definitions) {
+      const key = parameterKey(definition);
+      const value = this.#defaults?.get(definition.name);
+      this.#values.set(key, value ?? parameterSeed(definition));
+      if (value !== undefined) this.#userEditedKeys.add(key);
+    }
     this.#refreshAvailability();
     this.#rebuildTable();
     this.valuesChanged.emit();
@@ -528,12 +432,6 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     if (key === '') return;
 
     const value = row.texts[ValueColumn].trim();
-    const presetIndex = this.#matchingPreset(key, value);
-    if (presetIndex >= 0) {
-      this.selectDataSet(presetIndex);
-
-      return;
-    }
     const matches = this.dataSets.flatMap((data, index) => (data.get(key) === value ? [index] : []));
     if (matches.length === 1) {
       this.selectDataSet(matches[0]);
@@ -541,11 +439,6 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       return;
     }
     this.dataSetIndex = -1;
-
-    if (this.#presets && this.#presetSelectors.includes(row.texts[0])) {
-      this.pasteIsError = false;
-      this.pasteMessage = `No preset for ${row.texts[0]} = ${value}. Check the related dimensions before building.`;
-    }
 
     this.#values.set(key, value);
     this.#userEditedKeys.add(key);
