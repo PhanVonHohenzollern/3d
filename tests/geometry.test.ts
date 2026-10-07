@@ -1785,6 +1785,16 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
     }
   });
 
+  it.each(['vx', 'vx,vy'])('uses only the two declared hide flags (frame=%s)', (frame) => {
+    for (const options of ['false,false', 'true,false', 'false,true', 'true,true']) {
+      const expected = tee('135,90,0', options, frame);
+      for (const extra of ['false', 'true']) {
+        const actual = tee('135,90,0', `${options},${extra}`, frame);
+        expect(actual).toEqual(expected);
+      }
+    }
+  });
+
   it.each([
     ['vx', 'vy'],
     ['vy', 'vx'],
