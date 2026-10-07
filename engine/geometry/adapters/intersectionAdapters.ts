@@ -296,7 +296,7 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
         n = leadingReals(a, 'complexities', 2);
       const options = a.flagArray('options');
       if (options.length < 2) throw new Error('options needs 2 booleans');
-      mainHalves = [options[0], options[1]];
+      mainHalves = [!options[0], !options[1]];
       complexity = n[0];
       branchComplexity = n[1];
       main = cylinder(start, normal, up.rotateBy(deg(angles[2] ?? 0), normal), tube[0], tube[1], tube[2]);
