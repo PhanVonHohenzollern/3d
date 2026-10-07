@@ -39,6 +39,7 @@ export function useWorkspace() {
   }, [model]);
 
   return {
+    library: model.library,
     functions: {
       state: {
         active: functions.activeFile,

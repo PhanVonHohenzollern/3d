@@ -2,6 +2,7 @@ import { parameterSlotCount } from '@/entities/parameter';
 import { FunctionWorkspace } from '@/entities/source-function';
 import { LinkPanelModel } from '@/features/edit-connector';
 import { ParameterPanelModel } from '@/features/edit-parameters';
+import { ElementLibraryModel, evaluateLibraryExpression, type LibrarySample } from '@/features/element-library';
 import { FunctionTabsController } from '@/features/manage-functions';
 import { canExportModel, exportedObjText, type ImportedModel } from '@/features/model-files';
 import { PreviewSession, type PreviewMode } from '@/features/run-preview';
@@ -24,6 +25,8 @@ import { emptyRuntimeResult, GeometryRuntime, what } from '@engine/runtime';
 // one panel into updates of the others. The editor and viewport wrap DOM objects, so they are
 // bound when their components mount.
 export class WorkspaceModel extends Observable {
+  readonly library = new ElementLibraryModel();
+  #libraryValues: ReadonlyMap<string, string> | null = null;
   readonly variables = new VariablePanelModel();
   readonly parameters = new ParameterPanelModel();
   readonly mainApiTrace = new ApiTracePanelModel();
@@ -97,8 +100,38 @@ export class WorkspaceModel extends Observable {
       trace.functionActivated.connect(selection.onApiTraceFunctionActivated);
       trace.historySourceActivated.connect(selection.onApiTraceHistorySourceActivated);
     }
-    this.links.setExpressionEvaluator((expression) => this.session.runtime.evaluateNumericExpression(expression));
+    this.links.setExpressionEvaluator((expression) => {
+      if (!this.#libraryValues) return this.session.runtime.evaluateNumericExpression(expression);
+      const values = new Map(this.#libraryValues);
+      for (const [key, value] of this.parameters.overrides()) values.set(key.split('::').at(-1)!, value);
+
+      return evaluateLibraryExpression(expression, values);
+    });
     this.links.previewChanged.connect(this.onLinkPreviewChanged);
+    this.library.openRequested.connect((sample, replaceSource) => this.#loadLibrarySample(sample, replaceSource));
+  }
+
+  #loadLibrarySample(sample: LibrarySample, replaceSource: boolean): void {
+    this.previewTimer.stop();
+    this.session.setMode('build');
+    this.importedObj = null;
+    if (replaceSource) {
+      this.functions.replaceFiles(sample.files);
+      this.#setEditorSource(1);
+    } else {
+      this.functions.edit(this.editor.toPlainText());
+      this.functions.select('');
+      this.#setEditorSource(1);
+    }
+    const program = this.functions.program();
+    const definitions = this.session.discoverParameters(program, () => false);
+    this.parameters.loadValues(definitions, sample.values);
+    this.#libraryValues = sample.values;
+    this.links.loadDefinitions(sample.connectors);
+    this.buildPreview();
+    this.viewport.fitScene();
+    this.#raisedDock = 'ParametersDock';
+    this.changed();
   }
 
   statusBar(): StatusBarModel {
