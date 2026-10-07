@@ -1337,6 +1337,62 @@ makeSymetricBend(FdPoint3d(),-vz,-vy,sides,false,${angle},${beginWidth},100,${en
     },
   );
 
+  it.each([
+    [1500, 1000, 45, false, 500],
+    [1500, 1000, 45, true, -500],
+    [1000, 1200, 45, false, 500],
+    [1500, 1000, 30, false, 1000],
+    [1500, 1000, 90, false, 500],
+  ])(
+    'covers the bend using explicit insulation radii for widths %s/%s, angle=%s, reverse=%s, lead=%s',
+    (beginWidth, endWidth, angle, reverse, lead) => {
+      const source = `
+double d=${beginWidth}, a=600, b=${endWidth}, alfa=${angle}, r=60, size;
+bool side[4]={true,true,true,true};
+FdPoint3d cP(11,23,37);
+makeSymetricBend(cP,-vz,-vy,side,${reverse},alfa,d,a,b,${lead},10,r,false,false);
+if (getExtInsSize(size)) {
+  setMeshColor(1);
+  setPrimitiveMode(FLM3Geo::pmExtInsulation);
+  makeSymetricBend(cP,-vz,-vy,side,${reverse},alfa,d+2*size,a+2*size,b+2*size,${lead},10,r-size,r+size,false,false);
+}`;
+      const runtime = new GeometryRuntime();
+      runtime.setParameters(new Map([['getExtInsSize', '20']]));
+      const result = runtime.executeUpToLine(source, 999);
+      const scene = new PreviewGeometryEngine().build(result);
+      expect(result.diagnostics).toEqual([]);
+      expect(scene.warnings).toEqual([]);
+      expect(scene.meshes).toHaveLength(2);
+      expectFiniteScene(scene);
+      const [body, insulation] = scene.meshes;
+
+      const triangles = (mesh: PreviewMesh) =>
+        Array.from({ length: mesh.indices.length / 3 }, (_, i) =>
+          mesh.indices.slice(3 * i, 3 * i + 3).map((index) => point(mesh.vertices[index])),
+        );
+
+      const covering = triangles(insulation).filter((t) => t.every((v) => v.y === 23 - 320));
+
+      const inside = (p: DVec3, [a, b, c]: DVec3[]) => {
+        const edge = (u: DVec3, v: DVec3, q: DVec3) => (v.x - u.x) * (q.z - u.z) - (v.z - u.z) * (q.x - u.x);
+
+        const area = edge(a, b, c);
+        const weights = [edge(a, b, p) / area, edge(b, c, p) / area, edge(c, a, p) / area];
+
+        return weights.every((w) => w >= -1e-6 && w <= 1 + 1e-6);
+      };
+
+      for (const t of triangles(body)) {
+        const samples = [...t, ...t.map((p, i) => p.add(t[(i + 1) % 3]).mul(0.5)), average(t)];
+        for (const p of samples)
+          expect(
+            covering.some((triangle) => inside(p, triangle)),
+            JSON.stringify(p),
+          ).toBe(true);
+      }
+    },
+  );
+
   it('connects corresponding inner and outer samples as SDK polygon-mesh strips', () => {
     const [mesh] = build(`
 bool sides[4]={true,false,false,false};
