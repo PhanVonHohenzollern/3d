@@ -1,5 +1,5 @@
 import { FdPoint3d, FdVector3d } from '@engine/runtime';
-import { circularFaceCount, toVec, deg } from '@engine/geometry/helpers/geometryMath';
+import { circularFaceCount, toVec, deg, sdkOrthoVector } from '@engine/geometry/helpers/geometryMath';
 import { addTriangle, pushNonEmptyMesh, vertex } from '@engine/geometry/helpers/meshData';
 import type { PreviewMesh } from '@engine/geometry/previewScene';
 import type { AdapterTable, ApiMeshAdapter } from '@engine/geometry/adapters/types';
@@ -269,9 +269,7 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
     const up = a.has('upVector')
       ? a.fdVector('upVector')
       : variant === 'tubeParams'
-        ? Math.abs(normal.normal().x) < 0.9
-          ? new FdVector3d(1, 0, 0)
-          : new FdVector3d(0, 1, 0)
+        ? sdkOrthoVector(normal)
         : defaultUp(normal.normal());
     let main: Cylinder,
       branch: Cylinder,

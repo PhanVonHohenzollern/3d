@@ -61,6 +61,16 @@ export function sdkPerpVector(direction: FdVector3d): FdVector3d {
   return toFdVector(u);
 }
 
+// AcGeContext::gOrthoVector uses Y cross normal near Z, otherwise Z cross normal.
+// The signed cross product defines the orientation of overloads without an explicit frame.
+export function sdkOrthoVector(direction: FdVector3d): FdVector3d {
+  const axis = direction.normal();
+  const reference =
+    Math.abs(axis.x) < 1 / 64 && Math.abs(axis.y) < 1 / 64 ? new FdVector3d(0, 1, 0) : new FdVector3d(0, 0, 1);
+
+  return reference.crossProduct(axis).normal();
+}
+
 export function validDirection(v: FdVector3d): boolean {
   return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) > kEps;
 }
