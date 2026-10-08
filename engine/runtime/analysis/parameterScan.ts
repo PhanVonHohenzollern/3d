@@ -176,6 +176,16 @@ export function scanGetValParameters(code: string, options?: RuntimeExecutionOpt
       bindings.get(request.variableName)?.requests.push(request);
       if (request.type === 'bool') request.checkbox = true;
     }
+    const discreteCondition =
+      s.condition.some((token) => ['==', '!=', 'strcmp', 'stricmp'].includes(token.text)) ||
+      s.condition.every(
+        (token) => token.kind === TokKind.Identifier || ['!', '&&', '||', '(', ')'].includes(token.text),
+      );
+    if (s.kind === StatementKind.Switch || (s.kind === StatementKind.If && discreteCondition))
+      for (const token of s.condition)
+        for (const request of bindings.get(token.text)?.requests ?? [])
+          if (request.branchSelector !== 'switch')
+            request.branchSelector = s.kind === StatementKind.Switch ? 'switch' : 'condition';
     // Only boolean use is a checkbox; selectors such as roof_base == 2 remain numeric.
     if (
       s.kind === StatementKind.If &&

@@ -278,7 +278,15 @@ function circSimpleGrill(g: GrillSketch): void {
   }
 }
 
-function fanGrill(g: GrillSketch): void {
+function fanGrill(sketch: GrillSketch): void {
+  // Type1's placement diagram uses upVector as the fan axis and vectorD as a radial direction.
+  // Keep that frame for the hub, flange and blades, including the implicit perpendicular upVector.
+  const g = new GrillSketch(sketch.scene, sketch.context, sketch.a, {
+    center: sketch.f.center,
+    normal: sketch.f.up,
+    right: sketch.f.normal,
+    up: sketch.f.right,
+  });
   const { inner, radius, outer, count } = circularDimensions(g);
   const blades = g.a.count('m'),
     angle = bladeAngle(g);

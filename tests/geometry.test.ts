@@ -275,21 +275,47 @@ describe('grille SDK shapes and overloads', () => {
     const scene = build(`double L=800; FdPoint3d cp1(-5,0,0); makeGrillType1(cp1,vz,L/100,L-380,L-380,10,${n},12);`);
     const mesh = scene.meshes[0];
     expect(scene.meshes).toHaveLength(1);
-    const blades = mesh.vertices.filter((p) => p.nz < 0.999);
+    const blades = mesh.vertices.filter((p) => -p.nx < 0.999);
     expect(blades).toHaveLength(12 * 4);
     const normals = new Set(blades.map((p) => [p.nx, p.ny, p.nz].map((v) => v.toFixed(5)).join(',')));
     expect(normals.size).toBe(12);
     for (const p of blades) {
-      expect(p.nz).toBeCloseTo(Math.cos(Math.PI / 18), 5);
+      expect(-p.nx).toBeCloseTo(Math.cos(Math.PI / 18), 5);
       const radius = Math.hypot(p.x + 5, p.y, p.z);
       expect(Math.min(Math.abs(radius - 4), Math.abs(radius - 210))).toBeLessThan(0.0001);
     }
     expect(mesh.indices.length / 3).toBe(4 * n + 24);
-    expect(Math.min(...mesh.vertices.map((p) => p.z))).toBeCloseTo(0);
-    expect(Math.max(...mesh.vertices.map((p) => p.z))).toBeCloseTo(
+    // The inlet runs along X: the grille fills its YZ section, with only blade pitch along X.
+    expect(Math.max(...mesh.vertices.map((p) => p.x))).toBeCloseTo(-5);
+    expect(-5 - Math.min(...mesh.vertices.map((p) => p.x))).toBeCloseTo(
       210 * Math.sin(Math.PI / 6) * Math.sin(Math.PI / 18),
       4,
     );
+    for (const coordinate of ['y', 'z'] as const) {
+      expect(Math.min(...mesh.vertices.map((p) => p[coordinate]))).toBeCloseTo(-210);
+      expect(Math.max(...mesh.vertices.map((p) => p[coordinate]))).toBeCloseTo(210);
+    }
+  });
+
+  it.each([
+    ['vx', 'vz', new DVec3(0, 0, 1)],
+    ['vy', '-vx', new DVec3(-1, 0, 0)],
+    ['FdVector3d(2,1,0)', 'FdVector3d(0,0,4)', new DVec3(0, 0, 1)],
+    ['FdVector3d(1,1,0)', 'FdVector3d(1,-1,2)', new DVec3(1, -1, 2).mul(1 / Math.sqrt(6))],
+  ])('Type1 uses upVector as its axis (%s, %s)', (vector, upVector, axis) => {
+    const center = new DVec3(5, 7, 9);
+    const mesh = build(`makeGrillType1(FdPoint3d(5,7,9),${vector},${upVector},40,80,120,30,8,6);`).meshes[0];
+    let bladeVertices = 0;
+    for (const p of mesh.vertices) {
+      const direction = dot(new DVec3(p.nx, p.ny, p.nz), axis);
+      if (direction > 0.999) {
+        expect(dot(new DVec3(p.x, p.y, p.z).sub(center), axis)).toBeCloseTo(0, 5);
+      } else {
+        expect(direction).toBeCloseTo(Math.cos(Math.PI / 6), 5);
+        ++bladeVertices;
+      }
+    }
+    expect(bladeVertices).toBe(6 * 4);
   });
 
   it.each(['vx', 'vz', '-vz', 'FdVector3d(1,2,3)'])(
@@ -303,8 +329,10 @@ describe('grille SDK shapes and overloads', () => {
         ['makeGrillType7', '200,160,8,30,12'],
       ]) {
         const prefix = `FdVector3d axis=${axis}; `;
-        expect(geometry(prefix + `${name}(FdPoint3d(5,7,9),axis,${args});`)).toEqual(
+        expectSameJson(
+          geometry(prefix + `${name}(FdPoint3d(5,7,9),axis,${args});`),
           geometry(prefix + `${name}(FdPoint3d(5,7,9),axis,axis.perpVector(),${args});`),
+          { tolerance: 1e-12, looseTolerance: 1e-12 },
         );
       }
     },

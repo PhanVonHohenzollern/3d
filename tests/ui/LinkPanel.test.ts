@@ -25,6 +25,35 @@ function getVal(name: string, variableName: string, type = 'double'): RuntimePar
 }
 
 describe('LinkPanel', () => {
+  it('recovers a loaded connector after its missing parameter is supplied, without undoing Hide', () => {
+    const { model, published } = createPanel();
+    let diameter = 0;
+    model.setExpressionEvaluator((expression) => (expression === 'D' ? diameter : Number(expression)));
+    model.loadDefinitions([
+      {
+        id: 1,
+        name: 'Inlet',
+        pointName: 'linkPoint1',
+        type: 'Circular',
+        orientation: 'XPositive',
+        diameter: 'D',
+        aSize: '0',
+        bSize: '0',
+        position: ['0', '0', '0'],
+        angles: ['0', '0', '0'],
+      },
+    ]);
+    expect(model.statusIsError).toBe(true);
+    expect(published.at(-1)?.previews).toHaveLength(0);
+    diameter = 80;
+    model.updateRuntimeResult(emptyRuntimeResult());
+    expect(model.statusIsError).toBe(false);
+    expect(published.at(-1)?.previews).toHaveLength(1);
+    model.togglePreview(1);
+    diameter = 100;
+    model.updateRuntimeResult(emptyRuntimeResult());
+    expect(published.at(-1)?.previews).toHaveLength(0);
+  });
   it('Make lists only missing required fields and uses zero for empty position and rotation', () => {
     const { model, published } = createPanel();
     model.addConnector();
