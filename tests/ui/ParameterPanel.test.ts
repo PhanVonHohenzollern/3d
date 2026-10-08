@@ -43,6 +43,26 @@ function editValue(model: ParameterPanelModel, row: number, text: string): void 
 }
 
 describe('ParameterPanel', () => {
+  it('discovers case selectors through casts and distinguishes them from dimension comparisons', () => {
+    const requests = new GeometryRuntime().discoverParameters(`
+      short main() {
+        double type; get_val("Kind",type);
+        double h; get_val("Height",h);
+        if (h > 20) {}
+        switch ((int)type) {
+          case 0: { short sub; get_val("Shape",sub); switch(sub) { case 1: break; } break; }
+          case 1: break;
+        }
+        char* conn; get_val("Connection",conn); if (strcmp(conn,"Flanged") == 0) {}
+        return 0;
+      }`);
+    expect(Object.fromEntries(requests.map((request) => [request.name, request.branchSelector]))).toEqual({
+      Kind: 'switch',
+      Height: undefined,
+      Shape: 'switch',
+      Connection: 'condition',
+    });
+  });
   it('applies a whole data row before checking numeric and nested checkbox branches', () => {
     const source = `double mode=0; get_val("Mode",mode);
 if(mode==1) { bool enabled=false; get_val("Enabled",enabled);

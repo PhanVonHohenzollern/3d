@@ -116,11 +116,6 @@ export function ElementLibraryPanel({ model }: { model: ElementLibraryModel }) {
               {model.error || model.resolution.errors.join(' ')}
             </p>
           )}
-          {model.notice && (
-            <p role="status" className="text-xs text-muted-foreground">
-              {model.notice}
-            </p>
-          )}
           <div className="flex shrink-0 justify-end p-1">
             <Button size="sm" variant="outline" onClick={() => setOpen(false)}>
               Close

@@ -43,6 +43,7 @@ interface Entry {
   preview: ConnectorPreview | null;
   error: string;
   shown: boolean;
+  previewRequested: boolean;
 }
 
 export class LinkPanelModel extends Observable implements LinkPanelHandle {
@@ -94,9 +95,15 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       try {
         const preview = this.#evaluate ? buildConnectorPreview(definition, this.#evaluate) : null;
 
-        return { definition: copyDefinition(definition), preview, error: '', shown: !!preview };
+        return { definition: copyDefinition(definition), preview, error: '', shown: !!preview, previewRequested: true };
       } catch (error) {
-        return { definition: copyDefinition(definition), preview: null, error: what(error), shown: false };
+        return {
+          definition: copyDefinition(definition),
+          preview: null,
+          error: what(error),
+          shown: false,
+          previewRequested: true,
+        };
       }
     });
     this.#nextId = Math.max(0, ...definitions.map((definition) => definition.id)) + 1;
@@ -140,7 +147,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       this.#entries.map((entry) => entry.definition),
       definition.id,
     );
-    this.#entries.push({ definition, preview: null, error: '', shown: false });
+    this.#entries.push({ definition, preview: null, error: '', shown: false, previewRequested: false });
     const row = this.#entries.length - 1;
     this.tableRows.length = row + 1;
     this.refreshRow(row);
@@ -212,6 +219,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     if (connectorGeometryChanged(d, previous)) {
       entry.preview = null;
       entry.shown = false;
+      entry.previewRequested = false;
     } else if (entry.preview) entry.preview = { ...entry.preview, name: d.name };
     entry.error = '';
     this.refreshRow(row);
@@ -239,12 +247,14 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
         : 'Build or Debug the code first';
       entry.preview = null;
       entry.shown = false;
+      entry.previewRequested = false;
       this.refreshRow(row);
       this.showStatus();
       this.publish();
 
       return;
     }
+    entry.previewRequested = true;
     this.renamePoint();
     try {
       entry.preview = buildConnectorPreview(entry.definition, this.#evaluate);
@@ -271,6 +281,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       return;
     }
     entry.shown = false;
+    entry.previewRequested = false;
     this.refreshRow(row);
     this.showStatus();
     this.publish();
@@ -280,6 +291,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     this.renamePoint();
     for (let row = 0; row < this.#entries.length; ++row) {
       this.#entries[row].shown = false;
+      this.#entries[row].previewRequested = false;
       this.refreshRow(row);
     }
     this.publish();
@@ -322,10 +334,11 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     }
     for (let row = 0; row < this.#entries.length; ++row) {
       const entry = this.#entries[row];
-      if (!entry.preview || !this.#evaluate) continue;
+      if (!entry.previewRequested || !this.#evaluate) continue;
       try {
         entry.preview = buildConnectorPreview(entry.definition, this.#evaluate);
         entry.error = '';
+        entry.shown = true;
       } catch (e) {
         entry.preview = null;
         entry.shown = false;

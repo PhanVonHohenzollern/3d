@@ -4,3 +4,4 @@ export { ElementLibraryModel } from '@/features/element-library/model/ElementLib
 export type { LibrarySample } from '@/features/element-library/model/ElementLibraryModel';
 export { ElementLibraryPanel } from '@/features/element-library/ui/ElementLibraryPanel';
 export { evaluateLibraryExpression } from '@/features/element-library/model/expressions';
+export { LibraryDefaults, type LibraryDefaultState } from '@/features/element-library/model/LibraryDefaults';

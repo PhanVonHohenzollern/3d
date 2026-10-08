@@ -2,7 +2,13 @@ import { parameterSlotCount } from '@/entities/parameter';
 import { FunctionWorkspace } from '@/entities/source-function';
 import { LinkPanelModel } from '@/features/edit-connector';
 import { ParameterPanelModel } from '@/features/edit-parameters';
-import { ElementLibraryModel, evaluateLibraryExpression, type LibrarySample } from '@/features/element-library';
+import {
+  ElementLibraryModel,
+  evaluateLibraryExpression,
+  type LibrarySample,
+  type LibraryDefaults,
+  type LibraryDefaultState,
+} from '@/features/element-library';
 import { FunctionTabsController } from '@/features/manage-functions';
 import { canExportModel, exportedObjText, type ImportedModel } from '@/features/model-files';
 import { PreviewSession, type PreviewMode } from '@/features/run-preview';
@@ -27,6 +33,7 @@ import { emptyRuntimeResult, GeometryRuntime, what } from '@engine/runtime';
 export class WorkspaceModel extends Observable {
   readonly library = new ElementLibraryModel();
   #libraryValues: ReadonlyMap<string, string> | null = null;
+  #libraryDefaults: LibraryDefaults | null = null;
   readonly variables = new VariablePanelModel();
   readonly parameters = new ParameterPanelModel();
   readonly mainApiTrace = new ApiTracePanelModel();
@@ -92,6 +99,9 @@ export class WorkspaceModel extends Observable {
     const { selection } = this;
     this.variables.selectionChanged.connect(selection.onVariableSelectionChanged);
     this.parameters.valuesChanged.connect(this.onParametersChanged);
+    this.parameters.defaultsReset.connect(() => {
+      if (this.#libraryDefaults) this.#applyLibraryDefaults(this.#libraryDefaults.reset());
+    });
     this.parameters.setAvailability((parameters) => this.session.activeParameterKeys(parameters));
     this.session.parameterAvailabilityChanged.connect(() => this.parameters.refreshAvailability());
     for (const trace of [this.mainApiTrace, this.subApiTrace]) {
@@ -127,6 +137,8 @@ export class WorkspaceModel extends Observable {
     const definitions = this.session.discoverParameters(program, () => false);
     this.parameters.loadValues(definitions, sample.values);
     this.#libraryValues = sample.values;
+    this.#libraryDefaults = sample.defaults ?? null;
+    this.#libraryDefaults?.remember(this.parameters.overrides());
     this.links.loadDefinitions(sample.connectors);
     this.buildPreview();
     this.viewport.fitScene();
@@ -241,10 +253,23 @@ export class WorkspaceModel extends Observable {
   };
 
   readonly onParametersChanged = (): void => {
+    const defaults = this.#libraryDefaults?.change(this.parameters.overrides(), this.links.definitions());
+    if (defaults) this.#applyLibraryDefaults(defaults);
     this.session.markParametersChanged();
     this.changed();
     this.runPreview();
   };
+
+  #applyLibraryDefaults(defaults: LibraryDefaultState): void {
+    const program = this.functions.program();
+    const definitions = this.session.discoverParameters(program, () => false);
+    const tab = this.parameters.activeTab;
+    this.parameters.loadValues(definitions, defaults.values, defaults.parameters);
+    this.parameters.selectTab(tab);
+    this.#libraryValues = defaults.values;
+    this.#libraryDefaults?.remember(this.parameters.overrides());
+    this.links.loadDefinitions(defaults.connectors);
+  }
 
   readonly applyParameters = this.buildPreview;
 

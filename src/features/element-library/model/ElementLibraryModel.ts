@@ -2,6 +2,7 @@ import { FunctionWorkspace } from '@/entities/source-function';
 import { Observable, Signal } from '@/shared/lib/observable';
 import { GeometryRuntime, type RuntimeParameterRequest } from '@engine/runtime';
 import { libraries } from '@/features/element-library/config/libraries';
+import { LibraryDefaults } from '@/features/element-library/model/LibraryDefaults';
 import {
   decodeLibraryAsset,
   prepareElementSource,
@@ -19,6 +20,7 @@ export interface LibrarySample {
   files: LibrarySource[];
   values: ReadonlyMap<string, string>;
   connectors: LibraryElement['connectors'];
+  defaults?: LibraryDefaults;
 }
 
 export class ElementLibraryModel extends Observable {
@@ -29,7 +31,6 @@ export class ElementLibraryModel extends Observable {
   elements: LibraryElement[] = [];
   busy = false;
   error = '';
-  notice = '';
   resolution: LibraryResolution = { values: new Map(), choices: [], errors: [] };
   readonly #cache = new Map<string, { library: ElementLibrary; sources: LibrarySource[] }>();
   #sources: LibrarySource[] = [];
@@ -55,7 +56,6 @@ export class ElementLibraryModel extends Observable {
     this.elements = [];
     this.#files = [];
     this.error = '';
-    this.notice = '';
     this.resolution = { values: new Map(), choices: [], errors: [] };
     this.busy = true;
     this.changed();
@@ -100,7 +100,6 @@ export class ElementLibraryModel extends Observable {
     this.#files = [];
     this.#selection.clear();
     this.error = '';
-    this.notice = '';
     this.resolution = { values: new Map(), choices: [], errors: [] };
     try {
       const element = this.element;
@@ -143,16 +142,6 @@ export class ElementLibraryModel extends Observable {
       })),
       errors: this.#variant ? [] : ['No preset for this size/variant.'],
     };
-    const missing = [
-      ...new Set(
-        this.#parameters
-          .filter((parameter) => parameter.sourceFunction === 'get_val' && !this.resolution.values.has(parameter.name))
-          .map((parameter) => parameter.name),
-      ),
-    ];
-    this.notice = missing.length
-      ? `No preset value for: ${missing.join(', ')}. Check these parameters before building.`
-      : '';
   }
 
   readonly selectValue = (name: string, value: string): void => {
@@ -181,12 +170,18 @@ export class ElementLibraryModel extends Observable {
 
   #publish(replaceSource: boolean): void {
     if (!this.element) return;
+    const connectors = this.#variant?.connectors ?? this.element.connectors;
     this.openRequested.emit(
       {
         id: this.elementId,
         files: this.#files,
         values: this.resolution.values,
-        connectors: this.#variant?.connectors ?? this.element.connectors,
+        connectors,
+        defaults: new LibraryDefaults(
+          this.elements.filter((element) => element.entry === this.element!.entry && !element.error),
+          this.#parameters,
+          { values: this.resolution.values, connectors },
+        ),
       },
       replaceSource,
     );

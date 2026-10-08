@@ -50,6 +50,7 @@ export function isInsulationEnabledKey(key: string): boolean {
 export class ParameterPanelModel extends Observable implements ParameterPanelHandle {
   // Emitted when the user changes parameter values (not on every row rebuild).
   readonly valuesChanged = new Signal<[]>();
+  readonly defaultsReset = new Signal<[]>();
   rows: ParameterRow[] = [];
   selectedRow = -1;
   currentRow = -1;
@@ -175,7 +176,11 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#rebuildTable();
   }
 
-  loadValues(definitions: readonly RuntimeParameterRequest[], values: ReadonlyMap<string, string>): void {
+  loadValues(
+    definitions: readonly RuntimeParameterRequest[],
+    values: ReadonlyMap<string, string>,
+    parameters: ReadonlyMap<string, string> = values,
+  ): void {
     this.#defaults = new Map(values);
     this.#values.clear();
     this.#userEditedKeys.clear();
@@ -186,11 +191,17 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.pasteMessage = '';
     this.activeTab = '';
     for (const definition of definitions) {
-      const value = values.get(definition.name);
-      if (value === undefined) continue;
       const key = parameterKey(definition);
+      const value = parameters.get(key) ?? parameters.get(definition.name) ?? values.get(definition.name);
+      if (value === undefined) continue;
       this.#values.set(key, value);
       this.#userEditedKeys.add(key);
+      if (
+        parameters !== values &&
+        isInsulationQuery(definition.sourceFunction) &&
+        parameters.has(definition.sourceFunction)
+      )
+        this.#enabledInsulation.add(definition.sourceFunction);
     }
     this.setDefinitions(definitions);
   }
@@ -423,6 +434,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     }
     this.#refreshAvailability();
     this.#rebuildTable();
+    this.defaultsReset.emit();
     this.valuesChanged.emit();
   }
 

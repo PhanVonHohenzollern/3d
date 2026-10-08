@@ -55,6 +55,7 @@ export interface RuntimeApiCall {
 export interface RuntimeParameterRequest {
   functionName?: string;
   checkbox?: boolean;
+  branchSelector?: 'switch' | 'condition';
   name: string;
   type: string;
   defaultValue: string;
