@@ -1,6 +1,6 @@
 import { useRef, type PointerEvent, type RefObject } from 'react';
 import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
-import { NoButton, mouseButtonFromDom, mouseButtonsFromDom, mouseEventData } from '@/shared/lib/qt';
+import { NoButton, RightButton, mouseButtonFromDom, mouseButtonsFromDom, mouseEventData } from '@/shared/lib/qt';
 import { capturePointer } from '@/shared/lib/dom';
 import { preventDefault } from '@/shared/lib/events';
 
@@ -14,9 +14,10 @@ export function useViewportPointer(engine: ViewportEngine, hostRef: RefObject<HT
 
   const onPointerDown = (e: CanvasPointerEvent) => {
     hostRef.current?.focus({ preventScroll: true });
+    const button = mouseButtonFromDom(e.button);
+    if (button === RightButton) return;
     e.preventDefault();
     capturePointer(e.currentTarget, e.pointerId);
-    const button = mouseButtonFromDom(e.button);
     buttonsRef.current = mouseButtonsFromDom(e.buttons) | button;
     engine.mousePressEvent(data(e, button, buttonsRef.current));
   };
@@ -53,6 +54,5 @@ export function useViewportPointer(engine: ViewportEngine, hostRef: RefObject<HT
     onPointerLeave: () => engine.leaveEvent(),
     onMouseDown: preventDefault,
     onAuxClick: preventDefault,
-    onContextMenu: preventDefault,
   };
 }
