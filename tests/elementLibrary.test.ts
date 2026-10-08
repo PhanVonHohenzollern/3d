@@ -64,6 +64,48 @@ function load(library: string, stem: string, symbol: string, selection: Record<s
 }
 
 describe('prepared example library', () => {
+  it.each(CGeneral.elements.filter((element) => element.entry === 'makeTANK'))(
+    'builds both tank ends from the defaults for $name',
+    (element) => {
+      const sample = preset(element);
+      const workspace = new FunctionWorkspace();
+      workspace.replaceFiles(
+        prepareElementSource(
+          ['h', 'cpp'].map((extension) => ({
+            name: `CGeneral.${extension}`,
+            code: decodeLibraryAsset(readFileSync(`public/demo/code/CGeneral/CGeneral.${extension}`)),
+          })),
+          element.entry,
+        ),
+      );
+      const program = workspace.program();
+      const runtime = new GeometryRuntime();
+      const panel = new ParameterPanelModel();
+      panel.loadValues(runtime.discoverParameters(program.source, program.options), sample.values);
+      panel.setDefinitions(runtime.discoverParameters(program.source, program.options));
+      runtime.setParameters(panel.overrides());
+      const result = runtime.executeUpToLine(program.source, 100000, true, program.options);
+      const scene = new PreviewGeometryEngine().build(result);
+      expect(result.diagnostics).toEqual([]);
+      expect(scene.warnings).toEqual([]);
+      const height = Number(sample.values.get('H'));
+      if (sample.values.get('elType') === '0') {
+        expect(scene.meshes.every((mesh) => mesh.apiName === 'makeBox')).toBe(true);
+
+        return;
+      }
+      const radius = Number(sample.values.get('D')) / 2;
+      const ends = scene.meshes.filter((mesh) => mesh.apiName === 'makeSpheroidSection');
+      expect(ends).toHaveLength(2);
+      const left = ends[0].vertices.map((v) => v.y);
+      const right = ends[1].vertices.map((v) => v.y);
+      expect(Math.min(...left)).toBeCloseTo(-height / 2 - 0.01, 3);
+      expect(Math.max(...left)).toBeCloseTo(-height / 2 + radius - 0.01, 3);
+      expect(Math.min(...right)).toBeCloseTo(height / 2 - radius + 0.01, 3);
+      expect(Math.max(...right)).toBeCloseTo(height / 2 + 0.01, 3);
+    },
+  );
+
   it('uses predefined SDK axes and constants without inserting them into the editor', () => {
     const sources = [
       {
@@ -327,6 +369,33 @@ describe('prepared example library', () => {
       expect(scene.meshes.filter((mesh) => mesh.apiName === 'makeTubeToTubeIntersection.branch')).toHaveLength(1);
     },
   );
+
+  it.each(['BELIMO_EP_F', 'BELIMO_EV_F'])('connects the branch to the right actuator in %s', (symbol) => {
+    const element = catalog('BELIMO').elements.find((item) => item.symbol === symbol)!;
+    const sizes = new Set(element.variants.map((variant) => variant.selection.DN));
+    for (const DN of sizes) {
+      const { scene, values } = load('BELIMO', 'CBELIMO', symbol, { DN });
+      expect(scene.warnings, `${symbol}/${DN}`).toEqual([]);
+      const branch = scene.meshes.find((mesh) => mesh.apiName === 'makeTubeToTubeIntersection.branch')!;
+      const height = Number(values.get('H21'));
+      const centerX = Number(values.get('L')) - Number(values.get('L3'));
+      const radius = Number(values.get('D21')) / 2;
+      expect(
+        branch.vertices.every((v) => v.z > 0),
+        `${symbol}/${DN}`,
+      ).toBe(true);
+      expect(Math.max(...branch.vertices.map((v) => v.z))).toBeCloseTo(height, 4);
+      const rim = branch.vertices.filter((v) => Math.abs(v.z - height) < 0.0001);
+      expect(rim.length).toBeGreaterThan(4);
+      for (const v of rim) expect(Math.hypot(v.x - centerX, v.y)).toBeCloseTo(radius, 4);
+      // The upper end of the branch must meet the actual actuator base disc.
+      expect(
+        scene.meshes.some(
+          (mesh) => mesh.apiName === 'makeFlatDisc' && mesh.vertices.every((v) => Math.abs(v.z - height) < 0.0001),
+        ),
+      ).toBe(true);
+    }
+  });
 
   it('provides the alternate connection and actuator preset', () => {
     const { values } = load('CGeneral', 'CGeneral', 'BUTTV', { DN: '80', conn: 'tapped lugs', act: 'gear box' });

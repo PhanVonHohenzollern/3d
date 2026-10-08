@@ -1,4 +1,4 @@
-import { LeftButton, NoButton, NoModifier, RightButton } from '@/shared/lib/qt';
+import { LeftButton, MiddleButton, NoButton, NoModifier } from '@/shared/lib/qt';
 import type { KeyboardModifiers, MouseEventData, WheelEventData } from '@/shared/lib/qt';
 import { kClickDragThreshold } from '@/widgets/viewport/config/viewport';
 import type { QRect } from '@/widgets/viewport/lib/math/Rect';
@@ -62,6 +62,7 @@ export class ViewportInput {
       return;
     }
     this.clearHover();
+    if (!(event.buttons & (LeftButton | MiddleButton))) return;
     this.#dragDistance += delta.manhattanLength();
     if (this.#dragDistance < kClickDragThreshold) return;
     this.pickers.invalidate();
@@ -72,7 +73,7 @@ export class ViewportInput {
       this.host.rebuild(false);
       this.host.update();
     }
-    if (event.buttons & RightButton) {
+    if (event.buttons & MiddleButton) {
       this.view.camera.pan(delta);
       this.host.rebuild(true);
       this.host.update();

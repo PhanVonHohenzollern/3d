@@ -12,6 +12,7 @@ export {
 export type { ChildIndicatorPolicy, KeySequence, Modifiers, SelectionCommand } from '@/shared/lib/qt/qt';
 export {
   LeftButton,
+  MiddleButton,
   NoButton,
   NoModifier,
   RightButton,

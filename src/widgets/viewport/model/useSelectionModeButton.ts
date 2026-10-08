@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react';
 import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
-import { preventDefault } from '@/shared/lib/events';
 
 export function useSelectionModeButton(engine: ViewportEngine) {
   const { text, geometry } = useSyncExternalStore(engine.subscribeWidgets, engine.selectionModeButton);
@@ -21,6 +20,5 @@ export function useSelectionModeButton(engine: ViewportEngine) {
     onClick: () => engine.selectionModeButtonClicked(),
     onPointerEnter: () => engine.eventFilter('Enter'),
     onFocus: () => engine.eventFilter('FocusIn'),
-    onContextMenu: preventDefault,
   };
 }

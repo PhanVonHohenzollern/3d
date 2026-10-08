@@ -10,7 +10,7 @@ import { OverlayLayer } from '@/widgets/viewport/lib/render/OverlayLayer';
 import { PickingService } from '@/widgets/viewport/lib/render/PickingService';
 import { SceneRenderer } from '@/widgets/viewport/lib/render/SceneRenderer';
 import { SurfaceBinding } from '@/widgets/viewport/lib/render/SurfaceBinding';
-import type { SelectionModeButtonState, ViewportSurface } from '@/widgets/viewport/lib/render/types';
+import type { SelectionMode, SelectionModeButtonState, ViewportSurface } from '@/widgets/viewport/lib/render/types';
 import type { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
 import { ViewportInput, type InputHost, type ViewportCallbacks } from '@/widgets/viewport/lib/render/ViewportInput';
 import { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
@@ -72,8 +72,15 @@ export class ViewportEngine {
   }
 
   selectionModeButtonClicked(): void {
+    this.setSelectionMode(kNextSelectionMode[this.#state.selectionMode]);
+  }
+
+  selectionMode = (): SelectionMode => this.#state.selectionMode;
+
+  setSelectionMode(mode: SelectionMode): void {
+    if (this.#state.selectionMode === mode) return;
     this.#pickers.invalidate();
-    this.#state.selectionMode = kNextSelectionMode[this.#state.selectionMode];
+    this.#state.selectionMode = mode;
     this.#input.clearHover();
     this.#updateSelectionModeButton();
     this.#overlay.layout(this.#surface.width, this.#surface.height);

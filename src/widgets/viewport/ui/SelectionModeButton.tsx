@@ -49,14 +49,14 @@ export function SelectionModeButton({ engine }: SelectionModeButtonProps) {
             onClick={button.onClick}
             onPointerEnter={button.onPointerEnter}
             onFocus={button.onFocus}
-            onContextMenu={button.onContextMenu}
           >
             <Icon className="size-3.5" aria-hidden />
             {button.text}
           </Button>
         </TooltipTrigger>
         <TooltipContent side="top" align="start" sideOffset={8}>
-          Pick {button.text === 'Mesh' ? 'meshes' : `${button.text.toLowerCase()}s`} · click to cycle modes
+          Pick {button.text === 'Mesh' ? 'meshes' : `${button.text.toLowerCase()}s`} · click to cycle · right-click to
+          choose
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

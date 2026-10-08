@@ -11,7 +11,7 @@ import {
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
 import {
   kEps,
-  sdkPerpVector,
+  sdkOrthoVector,
   toFdVector,
   toPoint,
   toVec,
@@ -153,7 +153,7 @@ function appendSpheroidSection(scene: PreviewGeometryScene, context: MeshBuildCo
   const a = new NamedArguments(context, args);
   const center = a.point('centroid'),
     normal = a.fdVector('normal'),
-    bVector = a.has('bVector') ? a.fdVector('bVector') : sdkPerpVector(normal),
+    bVector = a.has('bVector') ? a.fdVector('bVector') : sdkOrthoVector(normal),
     latAngles = a.realArray('latAngles'),
     longAngles = a.realArray('longAngles'),
     diameters = a.realArray('diams'),

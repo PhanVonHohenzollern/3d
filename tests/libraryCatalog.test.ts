@@ -42,8 +42,11 @@ it.each([
       const values = new Map(Object.entries({ ...element.defaults, ...variant.selection, ...variant.defaults }));
       const runtime = new GeometryRuntime();
       const panel = new ParameterPanelModel();
-      panel.loadValues(runtime.discoverParameters(program.source, program.options), values);
-      runtime.setParameters(new Map([...values, ...panel.overrides()]));
+      const definitions = runtime.discoverParameters(program.source, program.options);
+      panel.loadValues(definitions, values);
+      panel.setDefinitions(definitions);
+      expect(Object.fromEntries(panel.overrides()), element.id).toMatchObject(Object.fromEntries(values));
+      runtime.setParameters(panel.overrides());
       const result = runtime.executeUpToLine(program.source, 100000, true, program.options);
       expect(result.diagnostics, element.id).toEqual([]);
       const scene = new PreviewGeometryEngine().build(result);

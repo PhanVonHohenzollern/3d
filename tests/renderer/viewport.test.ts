@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LeftButton, RightButton } from '@/shared/lib/qt';
+import { LeftButton, MiddleButton, RightButton } from '@/shared/lib/qt';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { boxMesh, click, createEngine, mouse, project, resultWithP0, scene } from '@tests/renderer/helpers';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
@@ -73,6 +73,28 @@ describe('Mesh mode', () => {
     }
     expect(texts).toEqual(['Point', 'Vector', 'Mesh', 'Point']);
   });
+
+  it('chooses a mode directly and uses it for the next click', () => {
+    const engine = createEngine();
+    engine.setGeometryScene(scene(boxMesh([-2, -2, -2], [2, 2, 2], 0)));
+    engine.setRuntimeResult(resultWithP0(0, 0, 0));
+    const onMesh = vi.fn();
+    const onPoint = vi.fn();
+    engine.setMeshSelectionCallback(onMesh);
+    engine.setSelectionChangedCallback(onPoint);
+    engine.setSelectionMode('Mesh');
+    expect(engine.selectionModeButton().text).toBe('Mesh');
+    click(engine, 400, 300);
+    expect(onMesh).toHaveBeenCalledWith(0, 1);
+    expect(onPoint).not.toHaveBeenCalled();
+    engine.setSelectionMode('Point');
+    click(engine, 400, 300);
+    expect(onPoint).toHaveBeenCalledWith(new Set(['p0']));
+    expect(onMesh).toHaveBeenCalledTimes(1);
+    engine.setSelectionMode('Vector');
+    expect(engine.selectionMode()).toBe('Vector');
+    expect(engine.selectionModeButton().text).toBe('Vector');
+  });
 });
 
 describe('debug points and clicks', () => {
@@ -143,13 +165,53 @@ describe('debug points and clicks', () => {
     expect(onSelection).toHaveBeenCalledTimes(1);
   });
 
-  it('right-drag pans the target in the view plane', () => {
+  it('middle-drag pans the target in the view plane without selecting', () => {
     const engine = createEngine();
-    engine.mousePressEvent(mouse(400, 300, RightButton, RightButton));
-    engine.mouseMoveEvent(mouse(400, 280, 0, RightButton));
+    engine.setRuntimeResult(resultWithP0(0, 0, 0));
+    const onSelection = vi.fn();
+    engine.setSelectionChangedCallback(onSelection);
+    engine.mousePressEvent(mouse(400, 300, MiddleButton, MiddleButton));
+    engine.mouseMoveEvent(mouse(400, 280, 0, MiddleButton));
+    engine.mouseReleaseEvent(mouse(400, 280, MiddleButton, 0));
     const target = engine.camera().target;
     expect(target.length()).toBeCloseTo(20 * 18 * 0.0018, 4);
     expect(target.z).toBeLessThan(0);
+    expect(engine.camera().yaw).toBe(-45);
+    expect(engine.camera().pitch).toBe(28);
+    expect(onSelection).not.toHaveBeenCalled();
+  });
+
+  it('right-click and right-drag leave camera and selection unchanged', () => {
+    const engine = createEngine();
+    engine.setRuntimeResult(resultWithP0(0, 0, 0));
+    const onSelection = vi.fn();
+    engine.setSelectionChangedCallback(onSelection);
+    for (const dy of [0, 20]) {
+      engine.mousePressEvent(mouse(400, 300, RightButton, RightButton));
+      engine.mouseMoveEvent(mouse(400, 300 + dy, 0, RightButton));
+      engine.mouseReleaseEvent(mouse(400, 300 + dy, RightButton, 0));
+    }
+    expect(engine.camera().target.length()).toBe(0);
+    expect(engine.camera().yaw).toBe(-45);
+    expect(engine.camera().pitch).toBe(28);
+    expect(engine.selectionMode()).toBe('Point');
+    expect(onSelection).not.toHaveBeenCalled();
+  });
+
+  it.each(['Mesh', 'Point', 'Vector'] as const)('left-drag orbits without sweep selection in %s mode', (mode) => {
+    const engine = createEngine();
+    engine.setRuntimeResult(resultWithP0(0, 0, 0));
+    engine.setSelectionMode(mode);
+    const onSelection = vi.fn();
+    engine.setSelectionChangedCallback(onSelection);
+    engine.setMeshSelectionCallback(onSelection);
+    engine.setConnectorSelectionCallback(onSelection);
+    engine.mousePressEvent(mouse(450, 300, LeftButton, LeftButton));
+    engine.mouseMoveEvent(mouse(350, 300, 0, LeftButton));
+    engine.mouseReleaseEvent(mouse(350, 300, LeftButton, 0));
+    expect(engine.camera().yaw).toBeCloseTo(-45 + 100 * 0.35);
+    expect(engine.camera().target.length()).toBe(0);
+    expect(onSelection).not.toHaveBeenCalled();
   });
 
   it('wheel zooms by 0.86 per notch', () => {

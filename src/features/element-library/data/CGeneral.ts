@@ -6832,12 +6832,12 @@ const table_FANUTAC_d_skr_1: ValueTable = {
 };
 
 const table_FANUTAC_A_C: ValueTable = {
-  columns: ['A', 'C'],
+  columns: ['A', 'C', 'D', 'E', 'G', 'H'],
   rows: [
-    ['520', '180'],
-    ['600', '180'],
-    ['870', '200'],
-    ['1170', '200'],
+    ['520', '180', '700', '760', '470', '580'],
+    ['600', '180', '780', '840', '550', '660'],
+    ['870', '200', '1070', '1130', '820', '930'],
+    ['1170', '200', '1370', '1430', '1120', '1230'],
   ],
 };
 
@@ -7045,7 +7045,13 @@ const table_CpPFLN_d: ValueTable = {
   ],
 };
 
-const table_FANUTAC_A: ValueTable = { columns: ['A'], rows: [['520'], ['600']] };
+const table_FANUTAC_A: ValueTable = {
+  columns: ['A', 'D', 'E', 'G', 'H'],
+  rows: [
+    ['520', '700', '760', '470', '580'],
+    ['600', '780', '840', '550', '660'],
+  ],
+};
 
 const table_RH_diam_tech: ValueTable = {
   columns: ['diam', 'tech', 'H1'],
@@ -17090,6 +17096,7 @@ export default defineLibrary('CGeneral', [
       J: '50',
       K: '200',
       length: '1180',
+      L: '1045',
       leng_conn: '60',
     },
     connectors: [
@@ -18016,6 +18023,7 @@ export default defineLibrary('CGeneral', [
       J: '50',
       K: '200',
       length: '935',
+      L: '1045',
       leng_conn: '60',
     },
     connectors: [
@@ -18681,6 +18689,7 @@ export default defineLibrary('CGeneral', [
       J: '50',
       K: '200',
       length: '935',
+      L: '1045',
       leng_conn: '60',
     },
     connectors: [

@@ -1797,12 +1797,54 @@ makeTubeToTubeIntersection(FdPoint3d(),${frame},tube,position,branch,angles,comp
 
   it.each([
     ['vx', 'vy'],
-    ['vy', 'vx'],
+    ['-vx', '-vy'],
+    ['vy', '-vx'],
+    ['-vy', 'vx'],
     ['vz', 'vx'],
+    ['-vz', '-vx'],
+    ['FdVector3d(2,4,6)', 'FdVector3d(-4,2,0)'],
+    ['FdVector3d(-2,-4,-6)', 'FdVector3d(4,-2,0)'],
+    ['FdVector3d(0.01,0.005,1)', 'FdVector3d(1,0,-0.01)'],
+    ['FdVector3d(0.02,0.01,1)', 'FdVector3d(-0.01,0.02,0)'],
   ])('uses the SDK default up vector for %s', (normal, up) => {
     const implicit = tee('135,90,0', 'false,false', normal);
     const explicit = tee('135,90,0', 'false,false', `${normal},${up}`);
-    implicit.meshes.forEach((mesh, i) => expect(mesh.vertices).toEqual(explicit.meshes[i].vertices));
+    expect(implicit.meshes).toHaveLength(explicit.meshes.length);
+    implicit.meshes.forEach((mesh, i) => {
+      const expected = explicit.meshes[i];
+      expect(mesh.indices).toEqual(expected.indices);
+      expect(mesh.vertices).toHaveLength(expected.vertices.length);
+      mesh.vertices.forEach((v, j) => near(point(v), point(expected.vertices[j])));
+    });
+  });
+});
+
+describe('makeSpheroidSection default frame', () => {
+  it.each([
+    ['vx', 'vy'],
+    ['-vx', '-vy'],
+    ['vy', '-vx'],
+    ['-vy', 'vx'],
+    ['vz', 'vx'],
+    ['-vz', '-vx'],
+    ['FdVector3d(2,4,6)', 'FdVector3d(-4,2,0)'],
+    ['FdVector3d(0.01,0.005,1)', 'FdVector3d(1,0,-0.01)'],
+    ['FdVector3d(0.02,0.01,1)', 'FdVector3d(-0.01,0.02,0)'],
+  ])('matches the SDK perpendicular for %s', (normal, bVector) => {
+    const result = new GeometryRuntime().executeUpToLine(
+      `double lat[2]={20,130}, lon[2]={30,170}, axes[3]={80,60,40};
+int n[2]={4,6};
+makeSpheroidSection(FdPoint3d(3,5,7), ${normal}, lat, lon, axes, n);
+makeSpheroidSection(FdPoint3d(3,5,7), ${normal}, ${bVector}, lat, lon, axes, n);`,
+      999,
+    );
+    expect(result.diagnostics).toEqual([]);
+    const scene = new PreviewGeometryEngine().build(result);
+    expect(scene.warnings).toEqual([]);
+    expect(scene.meshes).toHaveLength(2);
+    const [implicit, explicit] = scene.meshes;
+    expect(implicit.indices).toEqual(explicit.indices);
+    expect(implicit.vertices).toEqual(explicit.vertices);
   });
 });
 
