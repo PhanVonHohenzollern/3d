@@ -7,6 +7,55 @@ import { prepareElementSource, evaluateLibraryExpression } from '@/features/elem
 import { decodeLibraryAsset } from '@/features/element-library/model/sourceLibrary';
 import { libraries } from '@/features/element-library/config/libraries';
 import { ParameterPanelModel } from '@/features/edit-parameters';
+import { dot, DVec3, length } from '@engine/math';
+
+it.each([
+  [45, 0],
+  [75, 0],
+  [90, 0],
+  [105, 0],
+  [45, 20],
+  [75, 20],
+])('aligns makeRTTHR branch, cap and center line (alfa=%s, insulation=%s)', (alfa, insulation) => {
+  const sources = ['h', 'cpp'].map((extension) => ({
+    name: `CGeneral.${extension}`,
+    code: decodeLibraryAsset(readFileSync(`public/demo/code/CGeneral/CGeneral.${extension}`)),
+  }));
+  const workspace = new FunctionWorkspace();
+  workspace.replaceFiles(prepareElementSource(sources, 'makeRTTHR'));
+  const program = workspace.program();
+  const runtime = new GeometryRuntime();
+  const parameters = new Map([['alfa', String(alfa)]]);
+  if (insulation) parameters.set('getExtInsSize', String(insulation));
+  runtime.setParameters(parameters);
+  const result = runtime.executeUpToLine(program.source, 100000, true, program.options);
+  expect(result.diagnostics).toEqual([]);
+  const scene = new PreviewGeometryEngine().build(result);
+  expect(scene.warnings).toEqual([]);
+
+  const angle = (alfa * Math.PI) / 180;
+  const axis = new DVec3(Math.cos(angle), Math.sin(angle), 0);
+  const end = axis.mul(100);
+  const branches = scene.meshes.filter((mesh) => mesh.apiName === 'makeTubeToTubeIntersection2.branch');
+  const caps = scene.meshes.filter((mesh) => mesh.apiName === 'makeUniVectorTube');
+  expect(branches).toHaveLength(insulation ? 3 : 2);
+  expect(caps).toHaveLength(insulation ? 6 : 3);
+  for (const [i, branch] of branches.entries()) {
+    const cap = caps[i < 2 ? 2 : 5].vertices.map((v) => new DVec3(v.x, v.y, v.z));
+    expect(cap.every((p) => Math.abs(dot(p.sub(end), axis)) < 0.0001)).toBe(true);
+    const rim = branch.vertices
+      .map((v) => new DVec3(v.x, v.y, v.z))
+      .filter((p) => Math.abs(dot(p.sub(end), axis)) < 0.0001);
+    expect(rim.length).toBeGreaterThanOrEqual(40);
+    for (const point of rim) expect(Math.min(...cap.map((p) => length(p.sub(point))))).toBeLessThan(0.0001);
+  }
+  const centerLines = scene.meshes.filter((mesh) => mesh.apiName === 'addCenterLine');
+  expect(centerLines).toHaveLength(2);
+  const branchLine = centerLines[1].vertices.map((v) => new DVec3(v.x, v.y, v.z));
+  expect(branchLine.every((p) => length(p.sub(axis.mul(dot(p, axis)))) < 0.0001)).toBe(true);
+  expect(length(branchLine[0])).toBeLessThan(0.0001);
+  expect(length(branchLine.at(-1)!.sub(end))).toBeLessThan(0.0001);
+});
 
 it.each([
   ['CGeneral', 'CGeneral'],
