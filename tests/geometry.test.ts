@@ -1196,13 +1196,12 @@ makeTubeToTubeIntersection2(FdPoint3d(-60,0,0),vx,tube,branch,angles,${n},false)
     );
     expect(scene.warnings).toEqual([]);
     expect(scene.meshes).toHaveLength(2);
-    const angle = (tilt * Math.PI) / 180,
-      sign = api === 1 ? 1 : -1;
+    const angle = (tilt * Math.PI) / 180;
     expectJoined(
       scene.meshes[0],
       scene.meshes[1],
-      new DVec3(0, sign * offset, 0),
-      new DVec3(sign * Math.sin(angle), 0, Math.cos(angle)),
+      new DVec3(0, api === 1 ? offset : -offset, 0),
+      new DVec3(Math.sin(angle), 0, Math.cos(angle)),
       bn,
     );
   });
@@ -1282,6 +1281,12 @@ makeTubeToTubeIntersection2(start,vx,${explicitUp ? 'vz,' : ''}tube,branch,angle
       });
       const [full, half] = scenes;
       const angle = (rotation * Math.PI) / 180;
+      const branchAxis = new DVec3(0.5, (-Math.sqrt(3) / 2) * Math.sin(angle), (Math.sqrt(3) / 2) * Math.cos(angle));
+      const branchOrigin = new DVec3(107, 11, 13);
+      const rim = full.meshes[1].vertices.filter(
+        (v) => Math.abs(dot(new DVec3(v.x, v.y, v.z).sub(branchOrigin), branchAxis) - 100) < 0.0001,
+      );
+      expect(rim.length).toBeGreaterThanOrEqual(16);
 
       const facing = (v: { y: number; z: number }) => -(v.y - 11) * Math.sin(angle) + (v.z - 13) * Math.cos(angle);
 

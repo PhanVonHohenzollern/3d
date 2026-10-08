@@ -283,7 +283,8 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
       complexity = branchComplexity = a.real('n');
       mainHalves = [true, !a.flag('half')];
       main = cylinder(start, normal, up, tube[0], tube[0], tube[1]);
-      const direction = up.rotateBy(deg(angles[0] ?? 0), main.side).rotateBy(deg(angles[1] ?? 0), main.axis);
+      // Positive tilt leans the branch towards the main tube's forward axis.
+      const direction = main.up.rotateBy(-deg(angles[0] ?? 0), main.side).rotateBy(deg(angles[1] ?? 0), main.axis);
       const origin = start.add(main.axis.mul(inter[2])).add(main.side.mul(inter[3]));
       branch = cylinder(origin, direction, main.axis, inter[0], inter[0], inter[1]);
     } else {
