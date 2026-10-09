@@ -69,6 +69,12 @@ export class ViewportRenderer {
   private m_uniformLightingEnabled = false;
   private m_lineWidth = 1;
   private m_opacity = 1;
+  private m_backgroundColor: readonly [number, number, number] = [0.075, 0.078, 0.085];
+
+  setBackgroundColor(color: readonly [number, number, number]): void {
+    this.m_backgroundColor = color;
+    this.m_gl?.clearColor(...color, 1);
+  }
 
   setOpacity(opacity: number): void {
     this.m_opacity = opacity;
@@ -85,7 +91,7 @@ export class ViewportRenderer {
     this.m_gl = gl;
 
     gl.enable(gl.DEPTH_TEST);
-    gl.clearColor(0.075, 0.078, 0.085, 1.0);
+    gl.clearColor(...this.m_backgroundColor, 1);
 
     const program = createProgram(gl, kVertexShader, kFragmentShader);
     const lineProgram = createProgram(gl, kLineQuadVertexShader, kLineQuadFragmentShader);

@@ -16,12 +16,6 @@ export function VariablePanel(props: VariablePanelProps) {
       <div className="flex min-h-0 flex-1 flex-col">
         <TableView
           className="overflow-auto"
-          emptyTitle="Move the cursor below a declaration"
-          emptyMessage={
-            rows.length === 0
-              ? 'Try double width = 20; in the editor, then place the cursor on the next line.'
-              : undefined
-          }
           ref={tableRef}
           onMouseDown={onMouseDown}
           onMouseUp={onMouseUp}

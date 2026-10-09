@@ -33,6 +33,7 @@
   --destructive: #b91c1c;
   --warning: #a16207;
   --editor: #fafafa;
+  --viewport: #ffffff;
   --editor-gutter: var(--editor);
   --editor-line: #f4f4f5;
   --editor-selection: #2563eb;
@@ -64,6 +65,7 @@
   --destructive: #f87171;
   --warning: #fbbf24;
   --editor: #09090b;
+  --viewport: #131416;
   --editor-gutter: var(--editor);
   --editor-line: #222225;
   --syntax-keyword: #c4b5fd;
@@ -126,7 +128,7 @@
   --color-trace-selected-fg: var(--trace-foreground);
   --color-orientation-checked: var(--primary);
   --color-orientation-checked-fg: var(--primary-foreground);
-  --color-viewport: #131416;
+  --color-viewport: var(--viewport);
   --color-handle-hover: var(--strong-border);
   --color-tool-checked: var(--secondary);
   --color-branch: var(--muted-foreground);
@@ -139,7 +141,7 @@
   --color-editor: var(--editor);
   --radius-qt: 6px;
 
-  --color-viewport-clear: #131416;
+  --color-viewport-clear: var(--viewport);
   --color-viewport-button: #27272a;
   --color-viewport-button-hover: #3f3f46;
   --color-viewport-button-pressed: #52525b;
