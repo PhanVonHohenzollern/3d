@@ -36,6 +36,7 @@ export interface Viewport3DHandle {
 }
 
 export interface Viewport3DProps {
+  lightTheme?: boolean;
   onSelectionChanged?: (names: Set<string>) => void;
   onPointCreation?: (point: Vec3) => void;
   onMeshSelection?: (apiIndex: number, sourceLine: number) => void;

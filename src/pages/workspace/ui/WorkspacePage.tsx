@@ -95,7 +95,7 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                     <ToolBar items={workspace.toolbarItems} />
                   </PanelHeader>
                   <div className="workspace-surface relative min-h-0 flex-1 overflow-hidden bg-viewport">
-                    <Viewport3D {...workspace.viewport} />
+                    <Viewport3D {...workspace.viewport} lightTheme={theme === 'light'} />
                     {workspace.importedObj && (
                       <div className="absolute top-2 right-2 left-2 flex items-center gap-2 rounded-md border border-line bg-base/95 p-2 text-xs">
                         <span className="min-w-0 flex-1 truncate" title={workspace.importedObj.name}>

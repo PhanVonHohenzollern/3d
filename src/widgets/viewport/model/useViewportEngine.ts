@@ -27,5 +27,9 @@ export function useViewportEngine(ref: Ref<Viewport3DHandle> | undefined, props:
 
   useImperativeHandle(ref, () => createViewport3DHandle(engine), [engine]);
 
+  useLayoutEffect(() => {
+    engine.setLightTheme(props.lightTheme ?? false);
+  }, [engine, props.lightTheme]);
+
   return engine;
 }

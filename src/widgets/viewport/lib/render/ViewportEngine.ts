@@ -102,6 +102,11 @@ export class ViewportEngine {
 
   // Scene.
 
+  setLightTheme(light: boolean): void {
+    this.#scene.renderer.setBackgroundColor(light ? [1, 1, 1] : [0.075, 0.078, 0.085]);
+    this.update();
+  }
+
   setRuntimeResult(result: RuntimeResult): void {
     const state = this.#state;
     const build = buildDebugItems(result);
