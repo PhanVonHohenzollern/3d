@@ -85,11 +85,9 @@ export class CameraController {
       }
     }
     this.#addVisibleDebugItems(bounds);
-    if (!state.apiFocusActive) {
-      for (const connector of state.connectors) {
-        for (const mesh of connector.meshes) for (const v of mesh.vertices) bounds.addPoint(v);
-        bounds.addPoint(connectorTip(connector));
-      }
+    for (const connector of state.connectors) {
+      for (const mesh of connector.meshes) for (const v of mesh.vertices) bounds.addPoint(v);
+      bounds.addPoint(connectorTip(connector));
     }
     if (bounds.isEmpty()) this.fitDebugOverlay();
     else this.camera.fitBounds(bounds.minimum(), bounds.maximum());

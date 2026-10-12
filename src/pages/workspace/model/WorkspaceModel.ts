@@ -105,7 +105,10 @@ export class WorkspaceModel extends Observable {
     this.parameters.setAvailability((parameters) => this.session.activeParameterKeys(parameters));
     this.session.parameterAvailabilityChanged.connect(() => this.parameters.refreshAvailability());
     for (const trace of [this.mainApiTrace, this.subApiTrace]) {
-      trace.selectionChanged.connect(selection.onApiTraceSelectionChanged);
+      trace.selectionChanged.connect((apiIndex) => {
+        if (apiIndex >= 0) this.links.clearSelection();
+        selection.onApiTraceSelectionChanged(apiIndex);
+      });
       trace.sourceActivated.connect(selection.onApiTraceSourceActivated);
       trace.functionActivated.connect(selection.onApiTraceFunctionActivated);
       trace.historySourceActivated.connect(selection.onApiTraceHistorySourceActivated);
@@ -431,6 +434,14 @@ export class WorkspaceModel extends Observable {
   };
 
   readonly onViewportConnectorSelection = (id: number): void => {
+    if (id < 0) {
+      this.links.clearSelection();
+
+      return;
+    }
+    this.apiTrace.clearApiFocus();
+    this.viewport.setSelectedVariables(new Set());
+    this.viewport.setSelectedApiCall(-1);
     this.links.selectConnector(id);
     this.raiseDock('LinkDock');
   };
@@ -497,7 +508,7 @@ export class WorkspaceModel extends Observable {
 
       return;
     }
-    this.links.exitPreview();
+    if (this.links.clearSelection()) return;
     this.apiTrace.clearApiFocus();
   };
 

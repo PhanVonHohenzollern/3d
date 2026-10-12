@@ -16,6 +16,18 @@ export function connectorTip(connector: ConnectorPreview): FdPoint3d {
   return connector.point.add(connector.direction.mul(connector.length * 1.65));
 }
 
+export function connectorArrowSegments(connector: ConnectorPreview): [FdPoint3d, FdPoint3d][] {
+  const tip = connectorTip(connector);
+  const base = tip.sub(connector.direction.mul(connector.length * 0.22));
+  const segments: [FdPoint3d, FdPoint3d][] = [[connector.point, tip]];
+  for (const side of [connector.up, connector.direction.crossProduct(connector.up)]) {
+    segments.push([tip, base.add(side.mul(connector.length * 0.12))]);
+    segments.push([tip, base.sub(side.mul(connector.length * 0.12))]);
+  }
+
+  return segments;
+}
+
 export function connectorSceneScale(connectors: readonly ConnectorPreview[]): number {
   let scale = 0;
   for (const connector of connectors) {
@@ -61,13 +73,7 @@ export function appendConnectorVertices(
       vertices.appendLine(toVector(a), toVector(b), color.x, color.y, color.z);
 
     for (const [a, b] of connector.outline) line(a, b);
-    const tip = connectorTip(connector);
-    const base = tip.sub(connector.direction.mul(connector.length * 0.22));
-    line(connector.point, tip);
-    for (const side of [connector.up, connector.direction.crossProduct(connector.up)]) {
-      line(tip, base.add(side.mul(connector.length * 0.12)));
-      line(tip, base.sub(side.mul(connector.length * 0.12)));
-    }
+    for (const [a, b] of connectorArrowSegments(connector)) line(a, b);
   }
 
   return { vertexStart, vertexCount, lineStart, lineCount: vertices.size() - lineStart };

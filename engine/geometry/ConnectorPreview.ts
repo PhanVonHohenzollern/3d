@@ -76,6 +76,7 @@ export interface ConnectorPreview {
   name: string;
   pointName: string;
   point: FdPoint3d;
+  positionExpressions: readonly [string, string, string];
   direction: FdVector3d;
   up: FdVector3d;
   length: number;
@@ -126,6 +127,7 @@ export function buildConnectorPreview(
     name: definition.name,
     pointName: definition.pointName === '' ? `linkPoint${definition.id}` : definition.pointName,
     point,
+    positionExpressions: [...definition.position],
     direction: direction.normalize(),
     up: up.normalize(),
     length: Math.max(width, height) * 0.35,

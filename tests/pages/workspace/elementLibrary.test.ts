@@ -54,7 +54,7 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     expect(links.definitions()[1]).toMatchObject({ connectionType: '13' });
     checkConnection(12.5, 32.5, 2);
     const completeScene = mw.session.scene;
-    links.exitPreview();
+    for (const link of links.definitions()) links.togglePreview(link.id);
     expect(previews).toEqual([]);
     expect(mw.session.scene).toBe(completeScene);
     const exported = parseObj(mw.exportObj());

@@ -47,6 +47,13 @@ export class ViewportEngine {
     for (const panel of this.#overlay.panels) {
       panel.setParentUpdate(() => this.update());
       panel.setActivatedCallback((ids, additive) => {
+        if (panel === this.#overlay.connectorLabels) {
+          const id = [...ids].findLast((value) => Number(value) !== this.#state.selectedConnectorId) ?? [...ids].at(-1);
+          this.#callbacks.connectorSelection?.(id === undefined ? -1 : Number(id));
+
+          return;
+        }
+        if (this.#state.selectedConnectorId >= 0) this.#callbacks.connectorSelection?.(-1);
         const selected = additive ? new Set(this.#state.selectedVariables) : new Set<string>();
         for (const id of panel.itemIds()) selected.delete(id);
         for (const id of ids) selected.add(id);
@@ -155,7 +162,7 @@ export class ViewportEngine {
 
   setConnectorPreviews(connectors: readonly ConnectorPreview[], selectedId: number): void {
     this.#state.connectors = [...connectors];
-    this.#state.selectedConnectorId = selectedId;
+    this.#state.selectedConnectorId = connectors.some((connector) => connector.id === selectedId) ? selectedId : -1;
     this.#view.setConnectors(this.#state.connectors);
     this.#afterCameraMove();
   }
@@ -310,6 +317,10 @@ export class ViewportEngine {
 
   vectorLabelPanel(): DebugLabelPanel {
     return this.#overlay.vectorLabels;
+  }
+
+  connectorLabelPanel(): DebugLabelPanel {
+    return this.#overlay.connectorLabels;
   }
 
   // Surface lifecycle.

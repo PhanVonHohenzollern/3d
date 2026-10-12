@@ -26,6 +26,7 @@ import { drawWorldAxisLabels, placeWorldAxisLabels } from '@/widgets/viewport/li
 export class OverlayLayer {
   readonly pointLabels = new DebugLabelPanel(kPointLabels.title, qColor(...kPointLabels.color));
   readonly vectorLabels = new DebugLabelPanel(kVectorLabels.title, qColor(...kVectorLabels.color));
+  readonly connectorLabels = new DebugLabelPanel('Links', qColor(70, 205, 230));
   #selectionModeButton: SelectionModeButtonState = { text: '', geometry: new QRect() };
   #measurer: TextMeasurer = approximateTextMeasurer;
   #fontFamily = kDefaultFontFamily;
@@ -39,7 +40,7 @@ export class OverlayLayer {
   ) {}
 
   get panels(): readonly DebugLabelPanel[] {
-    return [this.pointLabels, this.vectorLabels];
+    return [this.pointLabels, this.vectorLabels, this.connectorLabels];
   }
 
   get measurer(): TextMeasurer {
@@ -107,23 +108,34 @@ export class OverlayLayer {
     }
     this.pointLabels.setEntries(points, this.state.selectedVariables);
     this.vectorLabels.setEntries(vectors, this.state.selectedVariables);
+    this.connectorLabels.setEntries(
+      this.state.connectors.map((connector) => ({
+        id: String(connector.id),
+        name: connector.pointName,
+        value: connector.positionExpressions.map((expression, axis) => `${'XYZ'[axis]} = ${expression}`).join('; '),
+      })),
+      new Set([String(this.state.selectedConnectorId)]),
+    );
     this.layout(width, height);
   }
 
   layout(width: number, height: number): void {
+    const showConnectors = this.state.connectors.some((connector) => connector.id === this.state.selectedConnectorId);
     const layout = debugLabelPanelsLayout({
       extraControlHeight: kExtraControlHeight,
       width,
       height,
-      pointContentHeight: this.pointLabels.contentHeight(),
+      pointContentHeight: (showConnectors ? this.connectorLabels : this.pointLabels).contentHeight(),
       vectorContentHeight: this.vectorLabels.contentHeight(),
       showLabels: this.state.showLabels,
       apiFocusActive: this.state.apiFocusActive,
     });
     this.setSelectionModeButton({ geometry: layout.button });
     this.pointLabels.setGeometry(layout.point.x, layout.point.y, layout.point.width, layout.point.height);
+    this.connectorLabels.setGeometry(layout.point.x, layout.point.y, layout.point.width, layout.point.height);
     this.vectorLabels.setGeometry(layout.vector.x, layout.vector.y, layout.vector.width, layout.vector.height);
-    this.pointLabels.setVisible(layout.pointVisible);
+    this.pointLabels.setVisible(layout.pointVisible && !showConnectors);
+    this.connectorLabels.setVisible(layout.pointVisible && showConnectors);
     this.vectorLabels.setVisible(layout.vectorVisible);
   }
 
@@ -137,15 +149,14 @@ export class OverlayLayer {
     const scene = this.#debugScene();
     drawDebugItems(painter, scene);
     drawPreselection(painter, { ...scene, isVisible: (item) => state.isDebugItemPickable(item) });
-    if (!state.apiFocusActive)
-      drawConnectorPoints(
-        painter,
-        state.connectors,
-        state.selectedConnectorId,
-        state.hoveredConnectorId,
-        this.#measurer,
-        view.projectToScreen,
-      );
+    drawConnectorPoints(
+      painter,
+      state.connectors,
+      state.selectedConnectorId,
+      state.hoveredConnectorId,
+      this.#measurer,
+      view.projectToScreen,
+    );
     drawWorldAxisLabels(painter, this.#axisLabels(width, height), this.#axisLabelFont());
   }
 
