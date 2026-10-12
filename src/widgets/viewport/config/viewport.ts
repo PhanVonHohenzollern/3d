@@ -42,6 +42,7 @@ export const kConnectorLineWidth = 2.0;
 export const kSelectedMeshColor = new QVector3D(0.2, 0.78, 0.95);
 export const kHoverTint = { amount: 0.65, lift: new QVector3D(0.35, 0.35, 0.35) } as const;
 export const kHoverOutlineColor = new QVector3D(0.7, 0.95, 1.0);
+export const kConnectorColor = new QVector3D(0.18, 0.5, 0.6);
 export const kSelectedMeshOutlineColor = new QVector3D(0.82, 1.0, 1.0);
 export const kSelectedApiOutlineColor = new QVector3D(1.0, 0.92, 0.18);
 export const kUniteOpacity = { focused: 0.7, other: 0.27 } as const;

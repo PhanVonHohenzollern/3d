@@ -288,15 +288,47 @@ describe('Viewport3D with the real pipeline', () => {
     engine.setConnectorPreviews(previews, 1);
     expect(panel.isVisible()).toBe(true);
     expect(panel.entries()).toEqual([
-      { id: '1', name: 'linkPoint1', value: 'X = -W/2; Y = 0; Z = 3*W' },
-      { id: '2', name: 'linkPoint2', value: 'X = W/2; Y = 0; Z = 3*W' },
+      {
+        id: '1',
+        name: 'linkPoint1',
+        value: '(-100, 0, 600)',
+        details: [
+          { name: 'X', value: '-W/2' },
+          { name: 'Y', value: '0' },
+          { name: 'Z', value: '3*W' },
+        ],
+      },
+      {
+        id: '2',
+        name: 'linkPoint2',
+        value: '(100, 0, 600)',
+        details: [
+          { name: 'X', value: 'W/2' },
+          { name: 'Y', value: '0' },
+          { name: 'Z', value: '3*W' },
+        ],
+      },
     ]);
     expect(panel.isRowSelected(0)).toBe(true);
     const onConnector = vi.fn((id: number) => engine.setConnectorPreviews(previews, id));
     engine.setConnectorSelectionCallback(onConnector);
     panel.mousePressEvent(20, panel.rowHeight() * 1.5, LeftButton, NoModifier);
+    panel.mouseReleaseEvent(20, panel.rowHeight() * 1.5, LeftButton, NoModifier);
     expect(onConnector).toHaveBeenCalledWith(2);
     expect(panel.isRowSelected(1)).toBe(true);
+    expect(panel.headerText()).toBe('Links  (2)');
+    expect(panel.geometry().width).toBeGreaterThan(440);
+    expect(panel.geometry().height).toBe(panel.contentHeight());
+    expect(panel.getSnapshot().rows.map((row) => [row.nameText, row.valueText])).toEqual([
+      ['linkPoint1', '(-100, 0, 600)'],
+      ['linkPoint2', '(100, 0, 600)'],
+      ['X', 'W/2'],
+      ['Y', '0'],
+      ['Z', '3*W'],
+    ]);
+    panel.keyPressEvent('Enter', NoModifier);
+    expect(panel.getSnapshot().rows).toHaveLength(2);
+    expect(panel.geometry().height).toBe(panel.contentHeight());
     engine.setConnectorPreviews(previews, -1);
     expect(panel.isVisible()).toBe(false);
     expect(engine.pointLabelPanel().isVisible()).toBe(true);

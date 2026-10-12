@@ -4,12 +4,22 @@ import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { kVertexFloats } from '@/widgets/viewport/lib/render/VertexArray';
 import { expandLineQuads, kLineQuadFloats } from '@/widgets/viewport/lib/render/lineQuads';
 import { buildGeometryVertices, buildGeometryWireVertices } from '@/widgets/viewport/lib/render/geometryVertices';
-import { boxMesh, scene } from '@tests/renderer/helpers';
+import { boxMesh, mouse, scene } from '@tests/renderer/helpers';
 import { GeometryRuntime } from '@engine/runtime';
-import { PreviewGeometryEngine } from '@engine/geometry';
+import { PreviewGeometryEngine, buildConnectorPreview, defaultConnectorDefinition } from '@engine/geometry';
 import { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import { SceneRenderer } from '@/widgets/viewport/lib/render/SceneRenderer';
 import { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
+import { OverlayLayer } from '@/widgets/viewport/lib/render/OverlayLayer';
+import { PickingService } from '@/widgets/viewport/lib/render/PickingService';
+import { ViewportInput } from '@/widgets/viewport/lib/render/ViewportInput';
+import { QRect } from '@/widgets/viewport/lib/math/Rect';
+import {
+  kConnectorColor,
+  kHoverOutlineColor,
+  kHoverTint,
+  kHighlightLineWidth,
+} from '@/widgets/viewport/config/viewport';
 
 function normalAt(data: Float32Array, vertex: number): QVector3D {
   const o = vertex * kVertexFloats;
@@ -151,5 +161,85 @@ describe('centerline rendering', () => {
     expect(draw.mock.calls).toHaveLength(2);
     expect(draw.mock.calls.every(([mode]) => mode === 'GL_LINES')).toBe(true);
     expect(draw.mock.calls[1][2]).toBe(state.geometryScene.meshes[0].indices.length);
+  });
+});
+
+describe('connector mesh hover', () => {
+  it.each([false, true])('highlights only the hovered Link and clears on leave (wireframe=%s)', (wireframe) => {
+    const state = new ViewportState();
+    state.selectionMode = 'Mesh';
+    state.geometryWireframe = wireframe;
+    state.connectors = [1, 2].map((id) =>
+      buildConnectorPreview(
+        {
+          ...defaultConnectorDefinition(),
+          id,
+          diameter: '40',
+          position: ['0', id === 1 ? '-100' : '100', '0'],
+        },
+        Number,
+      ),
+    );
+    const view = new CameraController(state);
+    view.camera.setViewportSize(800, 600);
+    view.setConnectors(state.connectors);
+    view.fitScene();
+    view.updateMatrices();
+    const overlay = new OverlayLayer(state, view, () => {});
+    const input = new ViewportInput(state, view, new PickingService(state, view), overlay, {
+      callbacks: { selectionChanged: null, pointCreation: null, meshSelection: null, connectorSelection: null },
+      bounds: () => new QRect(0, 0, 800, 600),
+      update: () => {},
+      setCursor: () => {},
+      rebuild: () => {},
+      selectDebugItems: () => {},
+      setSelectedVariables: () => {},
+    });
+    const sceneRenderer = new SceneRenderer(state, view);
+    const renderer = sceneRenderer.renderer;
+    vi.spyOn(renderer, 'beginFrame').mockReturnValue(true);
+    const upload = vi.spyOn(renderer, 'uploadVertexData').mockReturnValue(true);
+    let override = false;
+    let color = new QVector3D();
+    let width = 1;
+    const draws: { mode: string; override: boolean; color: QVector3D; width: number }[] = [];
+    vi.spyOn(renderer, 'setUniformValue').mockImplementation((name: string, value: boolean | QVector3D) => {
+      if (name === 'uUseOverrideColor' && typeof value === 'boolean') override = value;
+      if (name === 'uOverrideColor' && value instanceof QVector3D) color = value;
+    });
+    vi.spyOn(renderer, 'glLineWidth').mockImplementation((value) => {
+      width = value;
+    });
+    vi.spyOn(renderer, 'glDrawArrays').mockImplementation((mode) => {
+      draws.push({ mode, override, color, width });
+    });
+    sceneRenderer.rebuild();
+    sceneRenderer.paint();
+    expect(draws.every((draw) => !draw.override)).toBe(true);
+    draws.length = 0;
+
+    const mesh = state.connectors[0].meshes[0];
+    const face = mesh.indices.slice(0, 3).map((index) => mesh.vertices[index]);
+    const target = face
+      .reduce((point, vertex) => point.add(new QVector3D(vertex.x, vertex.y, vertex.z)), new QVector3D())
+      .mul(1 / 3);
+    const screen = view.projectToScreen(target)!;
+    input.move(mouse(screen.x, screen.y, 0, 0));
+    expect(state.hoveredConnectorId).toBe(1);
+    sceneRenderer.paint();
+    const highlighted = draws.filter((draw) => draw.override);
+    expect(highlighted.filter((draw) => draw.mode === 'GL_LINES')).toEqual([
+      { mode: 'GL_LINES', override: true, color: kHoverOutlineColor, width: kHighlightLineWidth },
+    ]);
+    expect(highlighted.filter((draw) => draw.mode === 'GL_TRIANGLES').map((draw) => draw.color)).toEqual(
+      wireframe ? [] : [kConnectorColor.mul(kHoverTint.amount).add(kHoverTint.lift)],
+    );
+    expect(upload).toHaveBeenCalledTimes(1);
+    state.selectedConnectorId = 2;
+    input.clearHover();
+    draws.length = 0;
+    sceneRenderer.paint();
+    expect(state.selectedConnectorId).toBe(2);
+    expect(draws.every((draw) => !draw.override)).toBe(true);
   });
 });

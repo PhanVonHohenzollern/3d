@@ -12,7 +12,7 @@ import type {
 } from '@/widgets/viewport/lib/render/types';
 import { QRect } from '@/widgets/viewport/lib/math/Rect';
 import { approximateTextMeasurer, fontHeight, fontWithPointSize, kDefaultFontFamily } from '@/shared/lib/text';
-import { labelRowLayout, sameEntries } from '@/widgets/viewport/lib/render/debugLabelRows';
+import { labelRowLayout, labelRowWidth, sameEntries } from '@/widgets/viewport/lib/render/debugLabelRows';
 import { ItemSelectionModel } from '@/widgets/viewport/lib/render/ItemSelectionModel';
 import {
   ClearAndSelect,
@@ -36,6 +36,9 @@ export class DebugLabelPanel {
   private m_selected = new Set<string>();
   private m_headerText = '';
   private m_entries: DebugLabelEntry[] = [];
+  private m_expanded = new Set<string>();
+  private m_detailPress = -1;
+  private m_detailsChanged: (() => void) | null = null;
   private m_activated: ((ids: Set<string>, additive: boolean) => void) | null = null;
 
   private m_geometry = new QRect(0, 0, 0, 0);
@@ -75,12 +78,27 @@ export class DebugLabelPanel {
     this.m_activated = callback;
   }
 
+  setDetailsChangedCallback(callback: () => void): void {
+    this.m_detailsChanged = callback;
+  }
+
+  toggleDetails(row: number): void {
+    const entry = this.m_entries[row];
+    if (!entry?.details?.length) return;
+    if (this.m_expanded.has(entry.id)) this.m_expanded.delete(entry.id);
+    else this.m_expanded.add(entry.id);
+    this.m_detailsChanged?.();
+    this.setScrollValue(this.m_scroll);
+    this.changed();
+  }
+
   setEntries(entries: readonly DebugLabelEntry[], selected: ReadonlySet<string>): void {
     const wasBlocked = this.m_signalsBlocked;
     this.m_signalsBlocked = true;
     if (!sameEntries(entries, this.m_entries)) {
       const scroll = this.m_scroll;
       this.m_entries = entries.map((entry) => ({ ...entry }));
+      this.m_expanded = new Set([...this.m_expanded].filter((id) => entries.some((entry) => entry.id === id)));
       this.m_selection.clear();
       this.m_currentRow = -1;
       this.m_currentSelectionStartRow = -1;
@@ -115,7 +133,13 @@ export class DebugLabelPanel {
   }
 
   contentHeight(): number {
-    return kDebugLabelHeaderHeight + this.m_entries.length * this.rowHeight();
+    return kDebugLabelHeaderHeight + this.displayRows().length * this.rowHeight();
+  }
+
+  preferredWidth(): number {
+    const font = { ...this.m_font, bold: true };
+
+    return Math.max(0, ...this.m_entries.map((entry) => labelRowWidth(entry, font, this.m_measurer)));
   }
 
   selectedRowRect(id: string): QRect {
@@ -199,7 +223,29 @@ export class DebugLabelPanel {
       rowHeight: this.rowHeight(),
       itemWidth: this.itemWidth(),
       scrollValue: this.m_scroll,
-      rows: this.m_entries.map((_, row) => this.rowLayout(row)),
+      rows: this.displayRows().map(({ row, detail }) => {
+        const entry = this.m_entries[row];
+        if (detail === undefined)
+          return {
+            ...this.rowLayout(row),
+            title: `${entry.name}: ${entry.value}`,
+            expanded: entry.details ? this.m_expanded.has(entry.id) : undefined,
+          };
+        const value = entry.details![detail];
+
+        return {
+          ...labelRowLayout(
+            { ...value, id: `${entry.id}:${detail}` },
+            this.isRowSelected(row),
+            this.itemWidth(),
+            this.m_font,
+            this.m_measurer,
+            true,
+          ),
+          title: `${value.name}: ${value.value}`,
+          detail: true,
+        };
+      }),
     };
 
     return this.m_snapshot;
@@ -226,11 +272,16 @@ export class DebugLabelPanel {
   }
 
   viewportHeight(): number {
-    return Math.max(0, this.m_geometry.height - kDebugLabelHeaderHeight);
+    const height = Math.max(0, this.m_geometry.height - kDebugLabelHeaderHeight);
+    const width =
+      this.m_geometry.width - (this.contentHeight() - kDebugLabelHeaderHeight > height ? kDebugLabelScrollBarWidth : 0);
+    const horizontalScroll = this.m_entries.some((entry) => entry.details) && this.preferredWidth() > width;
+
+    return Math.max(0, height - (horizontalScroll ? kDebugLabelScrollBarWidth : 0));
   }
 
   hasScrollBar(): boolean {
-    return this.m_entries.length * this.rowHeight() > this.viewportHeight();
+    return this.contentHeight() - kDebugLabelHeaderHeight > this.viewportHeight();
   }
 
   viewportWidth(): number {
@@ -238,7 +289,11 @@ export class DebugLabelPanel {
   }
 
   itemWidth(): number {
-    return Math.max(kItemMinimumWidth, this.viewportWidth());
+    return Math.max(
+      kItemMinimumWidth,
+      this.viewportWidth(),
+      this.m_entries.some((entry) => entry.details) ? this.preferredWidth() : 0,
+    );
   }
 
   scrollValue(): number {
@@ -254,13 +309,23 @@ export class DebugLabelPanel {
   }
 
   rowLayout(row: number): DebugLabelRowLayout {
-    return labelRowLayout(this.m_entries[row], this.isRowSelected(row), this.itemWidth(), this.m_font, this.m_measurer);
+    return labelRowLayout(
+      this.m_entries[row],
+      this.isRowSelected(row),
+      this.itemWidth(),
+      this.m_font,
+      this.m_measurer,
+      !!this.m_entries[row]?.details,
+    );
   }
 
   mousePressEvent(x: number, y: number, button: number, modifiers: KeyboardModifiers): void {
     this.m_additive = modifiers.control || modifiers.shift;
     this.m_handlingInput = true;
     const index = this.indexAt(x, y);
+    const displayed = this.displayRows()[Math.floor((y + this.m_scroll) / this.rowHeight())];
+    this.m_detailPress =
+      button === LeftButton && !modifiers.control && !modifiers.shift && displayed?.detail === undefined ? index : -1;
     this.m_rangePress = button === LeftButton && modifiers.shift && this.m_rangeAnchor >= 0 && index >= 0;
     if (this.m_rangePress) {
       this.setCurrentIndex(index);
@@ -281,6 +346,7 @@ export class DebugLabelPanel {
     if (!(buttons & LeftButton) || !this.m_basePressActive) return;
     const index = this.indexAt(x, y);
     if (index < 0) return;
+    if (index === this.m_pressedRow && !this.m_dragSelecting) return;
     this.m_dragSelecting = true;
     let command = this.selectionCommand(index, { type: 'move', modifiers });
     if (this.m_ctrlDragSelectionFlag !== null && command.op === 'Toggle')
@@ -290,6 +356,13 @@ export class DebugLabelPanel {
   }
 
   mouseReleaseEvent(x: number, y: number, button: number, modifiers: KeyboardModifiers): void {
+    const expand =
+      button === LeftButton &&
+      this.m_detailPress >= 0 &&
+      this.indexAt(x, y) === this.m_detailPress &&
+      !this.m_dragSelecting;
+    const detailRow = this.m_detailPress;
+    this.m_detailPress = -1;
     if (this.m_rangePress) {
       this.m_rangePress = false;
 
@@ -302,9 +375,26 @@ export class DebugLabelPanel {
     }
     this.m_dragSelecting = false;
     this.m_basePressActive = false;
+    if (expand) this.toggleDetails(detailRow);
   }
 
   keyPressEvent(key: string, modifiers: KeyboardModifiers): boolean {
+    const entry = this.m_entries[this.m_currentRow];
+    if ((key === 'ArrowRight' || key === 'ArrowLeft') && entry?.details) {
+      if ((key === 'ArrowRight') !== this.m_expanded.has(entry.id)) this.toggleDetails(this.m_currentRow);
+
+      return true;
+    }
+    if (
+      (key === 'Enter' || key === ' ') &&
+      !modifiers.control &&
+      !modifiers.shift &&
+      this.m_entries[this.m_currentRow]?.details
+    ) {
+      this.toggleDetails(this.m_currentRow);
+
+      return true;
+    }
     if (!isListKey(key, modifiers)) return false;
     this.m_additive = modifiers.control || modifiers.shift;
     this.m_handlingInput = true;
@@ -321,7 +411,7 @@ export class DebugLabelPanel {
   }
 
   private maximumScroll(): number {
-    return Math.max(0, this.m_entries.length * this.rowHeight() - this.viewportHeight());
+    return Math.max(0, this.contentHeight() - kDebugLabelHeaderHeight - this.viewportHeight());
   }
 
   private setScrollValue(value: number): void {
@@ -334,8 +424,9 @@ export class DebugLabelPanel {
 
   private visualItemRect(row: number): QRect {
     const h = this.rowHeight();
+    const index = this.displayRows().findIndex((item) => item.row === row);
 
-    return new QRect(0, row * h - this.m_scroll, this.itemWidth(), h);
+    return new QRect(0, index * h - this.m_scroll, this.itemWidth(), h);
   }
 
   private select(rows: readonly number[], command: SelectionCommand): void {
@@ -375,22 +466,33 @@ export class DebugLabelPanel {
 
   private indexAt(x: number, y: number): number {
     if (x < 0 || x >= this.viewportWidth() || y < 0 || y >= this.viewportHeight()) return -1;
-    const row = Math.floor((y + this.m_scroll) / this.rowHeight());
 
-    return row >= 0 && row < this.m_entries.length ? row : -1;
+    return this.rowAtContentY(y + this.m_scroll);
   }
 
   private setSelection(contentY1: number, contentY2: number, command: SelectionCommand): void {
-    const h = this.rowHeight();
-    const first = Math.max(0, Math.floor(Math.min(contentY1, contentY2) / h));
-    const last = Math.min(this.m_entries.length - 1, Math.floor(Math.max(contentY1, contentY2) / h));
+    const first = this.rowAtContentY(Math.max(0, Math.min(contentY1, contentY2)));
+    const last = this.rowAtContentY(
+      Math.min(this.contentHeight() - kDebugLabelHeaderHeight - 1, Math.max(contentY1, contentY2)),
+    );
     this.select(rowRange(first, last), command);
   }
 
   private rowCenterContentY(row: number): number {
     const h = this.rowHeight();
 
-    return row * h + Math.trunc((h - 1) / 2);
+    return this.visualItemRect(row).y + this.m_scroll + Math.trunc((h - 1) / 2);
+  }
+
+  private displayRows(): { row: number; detail?: number }[] {
+    return this.m_entries.flatMap((entry, row) => [
+      { row },
+      ...(this.m_expanded.has(entry.id) ? (entry.details?.map((_, detail) => ({ row, detail })) ?? []) : []),
+    ]);
+  }
+
+  private rowAtContentY(y: number): number {
+    return this.displayRows()[Math.floor(y / this.rowHeight())]?.row ?? -1;
   }
 
   private selectionStartContentY(): number {

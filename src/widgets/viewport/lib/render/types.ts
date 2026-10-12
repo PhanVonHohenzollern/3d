@@ -26,6 +26,14 @@ export interface ConnectorVertexRanges {
   vertexCount: number;
   lineStart: number;
   lineCount: number;
+  surfaces: ConnectorRange[];
+  outlines: ConnectorRange[];
+}
+
+export interface ConnectorRange {
+  id: number;
+  start: number;
+  count: number;
 }
 
 export type DebugKind = 'Point' | 'Vector';
@@ -64,6 +72,7 @@ export interface DebugLabelEntry {
   id: string;
   name: string;
   value: string;
+  details?: readonly { name: string; value: string }[];
 }
 
 export interface DebugLabelRowLayout {
@@ -76,6 +85,9 @@ export interface DebugLabelRowLayout {
   valueText: string;
   valueLeft: number;
   valueWidth: number;
+  title?: string;
+  expanded?: boolean;
+  detail?: boolean;
 }
 
 export interface DebugLabelPanelSnapshot {
