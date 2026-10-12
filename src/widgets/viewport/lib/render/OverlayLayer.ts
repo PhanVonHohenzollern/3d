@@ -1,4 +1,5 @@
 import { qColor } from '@/shared/lib/painting';
+import { debugValueText } from '@/entities/api-call';
 import type { FontSpec, TextMeasurer } from '@/shared/lib/text';
 import { approximateTextMeasurer, fontWithPointSize, kDefaultFontFamily, pointSizeToPixels } from '@/shared/lib/text';
 import {
@@ -112,7 +113,8 @@ export class OverlayLayer {
       this.state.connectors.map((connector) => ({
         id: String(connector.id),
         name: connector.pointName,
-        value: connector.positionExpressions.map((expression, axis) => `${'XYZ'[axis]} = ${expression}`).join('; '),
+        value: debugValueText(connector.point),
+        details: connector.positionExpressions.map((expression, axis) => ({ name: 'XYZ'[axis], value: expression })),
       })),
       new Set([String(this.state.selectedConnectorId)]),
     );
@@ -126,6 +128,7 @@ export class OverlayLayer {
       width,
       height,
       pointContentHeight: (showConnectors ? this.connectorLabels : this.pointLabels).contentHeight(),
+      pointPreferredWidth: showConnectors ? Math.max(560, this.connectorLabels.preferredWidth()) : undefined,
       vectorContentHeight: this.vectorLabels.contentHeight(),
       showLabels: this.state.showLabels,
       apiFocusActive: this.state.apiFocusActive,

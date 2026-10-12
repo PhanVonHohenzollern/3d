@@ -1,6 +1,7 @@
 import {
   kAxisLineWidth,
   kConnectorLineWidth,
+  kConnectorColor,
   kHighlightLineWidth,
   kHoverOutlineColor,
   kHoverTint,
@@ -18,7 +19,7 @@ import type { CameraController } from '@/widgets/viewport/lib/render/CameraContr
 import { appendConnectorVertices } from '@/widgets/viewport/lib/render/connectorOverlay';
 import { appendVectorArrow } from '@/widgets/viewport/lib/render/debugItems';
 import { buildGeometryVertices, buildGeometryWireVertices } from '@/widgets/viewport/lib/render/geometryVertices';
-import type { GeometryRange, GpuVertexLayout } from '@/widgets/viewport/lib/render/types';
+import type { ConnectorRange, GeometryRange, GpuVertexLayout } from '@/widgets/viewport/lib/render/types';
 import { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import { ViewportRenderer } from '@/widgets/viewport/lib/render/ViewportRenderer';
 import type { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
@@ -59,6 +60,8 @@ export class SceneRenderer {
   #selectedVectors = kNoSpan;
   #connectors = kNoSpan;
   #connectorLines = kNoSpan;
+  #connectorSurfaces: ConnectorRange[] = [];
+  #connectorOutlines: ConnectorRange[] = [];
   #dirty = true;
   #cache: GeometryVertexCache | null = null;
   #geometryVersion = 0;
@@ -109,6 +112,8 @@ export class SceneRenderer {
     const connectors = appendConnectorVertices(vertices, state.connectors, state.selectedConnectorId);
     this.#connectors = { start: connectors.vertexStart, count: connectors.vertexCount };
     this.#connectorLines = { start: connectors.lineStart, count: connectors.lineCount };
+    this.#connectorSurfaces = connectors.surfaces;
+    this.#connectorOutlines = connectors.outlines;
 
     this.#layout = {
       axesVertexCount: this.#axes.count,
@@ -247,14 +252,28 @@ export class SceneRenderer {
 
   #drawConnectors(): void {
     const { renderer, state } = this;
-    renderer.setUniformValue('uUseOverrideColor', false);
+    const hoveredId = state.selectionMode === 'Mesh' ? state.hoveredConnectorId : -1;
     renderer.setUniformValue('uLightingEnabled', true);
-    if (!state.geometryWireframe) renderer.glDrawArrays('GL_TRIANGLES', this.#connectors.start, this.#connectors.count);
+    if (!state.geometryWireframe) {
+      for (const range of this.#connectorSurfaces) {
+        const hovered = range.id === hoveredId && range.id !== state.selectedConnectorId;
+        renderer.setUniformValue('uUseOverrideColor', hovered);
+        if (hovered)
+          renderer.setUniformValue('uOverrideColor', kConnectorColor.mul(kHoverTint.amount).add(kHoverTint.lift));
+        renderer.glDrawArrays('GL_TRIANGLES', range.start, range.count);
+      }
+    }
     renderer.setUniformValue('uLightingEnabled', false);
-    renderer.glLineWidth(kConnectorLineWidth);
     renderer.setDepthTest(false);
     renderer.setDepthMask(false);
-    renderer.glDrawArrays('GL_LINES', this.#connectorLines.start, this.#connectorLines.count);
+    for (const range of this.#connectorOutlines) {
+      const hovered = range.id === hoveredId;
+      renderer.setUniformValue('uUseOverrideColor', hovered);
+      if (hovered) renderer.setUniformValue('uOverrideColor', kHoverOutlineColor);
+      renderer.glLineWidth(hovered ? kHighlightLineWidth : kConnectorLineWidth);
+      renderer.glDrawArrays('GL_LINES', range.start, range.count);
+    }
+    renderer.setUniformValue('uUseOverrideColor', false);
     renderer.setDepthMask(true);
     renderer.setDepthTest(true);
   }

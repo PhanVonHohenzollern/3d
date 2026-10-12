@@ -14,6 +14,7 @@ export interface DebugLabelPanelsLayoutInput {
   width: number;
   height: number;
   pointContentHeight: number;
+  pointPreferredWidth?: number;
   vectorContentHeight: number;
   showLabels: boolean;
   apiFocusActive: boolean;
@@ -39,7 +40,10 @@ export function debugLabelPanelsLayout(input: DebugLabelPanelsLayoutInput): Debu
   const vectorVisible = show && input.apiFocusActive && vectorHeight >= 50 && vectorContentHeight > kHeaderOnlyHeight;
   const pointWidth = Math.max(
     0,
-    Math.min(kMaximumPointColumnWidth, width - 2 * kPanelMargin - (vectorVisible ? columnWidth + kPanelMargin : 0)),
+    Math.min(
+      input.pointPreferredWidth ?? kMaximumPointColumnWidth,
+      width - 2 * kPanelMargin - (vectorVisible ? columnWidth + kPanelMargin : 0),
+    ),
   );
 
   return {

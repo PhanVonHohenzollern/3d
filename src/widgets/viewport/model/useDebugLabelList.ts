@@ -60,7 +60,9 @@ export function useDebugLabelList(panel: DebugLabelPanel, listRef: RefObject<HTM
     if (panel.keyPressEvent(e.key, modifiersFromEvent(e))) e.preventDefault();
   };
 
-  const onScroll = (e: UIEvent<HTMLDivElement>) => panel.setScrollValueFromView(e.currentTarget.scrollTop);
+  const onScroll = (e: UIEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) panel.setScrollValueFromView(e.currentTarget.scrollTop);
+  };
 
   const onMouseDown = (e: MouseEvent) => {
     if (isDomMiddleButton(e.button)) e.preventDefault();
@@ -73,6 +75,7 @@ export function useDebugLabelList(panel: DebugLabelPanel, listRef: RefObject<HTM
     title: snapshot.title,
     headerText: snapshot.headerText,
     visible,
+    expandable: snapshot.rows.some((row) => row.expanded !== undefined),
     panelStyle: {
       left: geometry.x,
       top: geometry.y,
@@ -94,7 +97,9 @@ export function useDebugLabelList(panel: DebugLabelPanel, listRef: RefObject<HTM
     rows: snapshot.rows.map((row, index) => ({
       id: row.id,
       selected: row.selected,
-      title: `${panel.entries()[index].name}: ${panel.entries()[index].value}`,
+      expanded: row.expanded,
+      detail: row.detail,
+      title: row.title,
       style: { top: index * rowHeight, height: rowHeight, width: row.width, lineHeight: `${rowHeight}px` },
       dotStyle: { top: dotTop, backgroundColor: row.selected ? undefined : panelColor },
       nameText: row.nameText,

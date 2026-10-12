@@ -1,6 +1,7 @@
 import { debugValueText } from '@/entities/api-call';
 import type { TextMeasurer } from '@/shared/lib/text';
-import type { ConnectorVertexRanges } from '@/widgets/viewport/lib/render/types';
+import type { ConnectorRange, ConnectorVertexRanges } from '@/widgets/viewport/lib/render/types';
+import { kConnectorColor } from '@/widgets/viewport/config/viewport';
 import { Qt, qColor, qPen } from '@/shared/lib/painting';
 import { QRectF } from '@/widgets/viewport/lib/math/Rect';
 import { fontHeight, horizontalAdvance } from '@/shared/lib/text';
@@ -46,9 +47,12 @@ export function appendConnectorVertices(
   selectedId: number,
 ): ConnectorVertexRanges {
   const vertexStart = vertices.size();
+  const surfaces: ConnectorRange[] = [];
+  const outlines: ConnectorRange[] = [];
   for (const connector of connectors) {
+    const start = vertices.size();
     const selected = connector.id === selectedId;
-    const color = selected ? new QVector3D(0.35, 0.85, 1.0) : new QVector3D(0.18, 0.5, 0.6);
+    const color = selected ? new QVector3D(0.35, 0.85, 1.0) : kConnectorColor;
     for (const mesh of connector.meshes) {
       for (let i = 0; i + 2 < mesh.indices.length; i += 3) {
         const a = mesh.vertices[mesh.indices[i]];
@@ -63,10 +67,12 @@ export function appendConnectorVertices(
           vertices.push(v.x, v.y, v.z, color.x, color.y, color.z, normal.x, normal.y, normal.z);
       }
     }
+    surfaces.push({ id: connector.id, start, count: vertices.size() - start });
   }
   const vertexCount = vertices.size() - vertexStart;
   const lineStart = vertices.size();
   for (const connector of connectors) {
+    const start = vertices.size();
     const color = connector.id === selectedId ? new QVector3D(1.0, 0.96, 0.45) : new QVector3D(0.35, 0.7, 0.8);
 
     const line = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) =>
@@ -74,9 +80,10 @@ export function appendConnectorVertices(
 
     for (const [a, b] of connector.outline) line(a, b);
     for (const [a, b] of connectorArrowSegments(connector)) line(a, b);
+    outlines.push({ id: connector.id, start, count: vertices.size() - start });
   }
 
-  return { vertexStart, vertexCount, lineStart, lineCount: vertices.size() - lineStart };
+  return { vertexStart, vertexCount, lineStart, lineCount: vertices.size() - lineStart, surfaces, outlines };
 }
 
 export function drawConnectorPoints(

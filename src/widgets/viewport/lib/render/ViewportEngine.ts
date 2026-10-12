@@ -44,6 +44,10 @@ export class ViewportEngine {
 
   constructor() {
     this.#updateSelectionModeButton();
+    this.#overlay.connectorLabels.setDetailsChangedCallback(() => {
+      this.#overlay.layout(this.#surface.width, this.#surface.height);
+      this.update();
+    });
     for (const panel of this.#overlay.panels) {
       panel.setParentUpdate(() => this.update());
       panel.setActivatedCallback((ids, additive) => {

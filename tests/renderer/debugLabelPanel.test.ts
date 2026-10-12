@@ -56,6 +56,49 @@ describe('DebugLabelPanel', () => {
     expect(panel.itemIds()).toEqual(new Set(['id0', 'id1', 'id2']));
   });
 
+  it('expands coordinate expressions without truncating Link names or changing numeric values', () => {
+    const { panel, activated } = panelWith(2, 25 + 8 * ROW);
+    const longName = 'linkPoint_supply_connection_2';
+    const expression = '(r*tan(alfa*0.5))*cos(90-alfa)+l1*cos(90-alfa)';
+    const links = entries(2).map((entry, index) => ({
+      ...entry,
+      name: index === 0 ? longName : entry.name,
+      details: [
+        { name: 'X', value: expression },
+        { name: 'Y', value: '-l1' },
+        { name: 'Z', value: '0' },
+      ],
+    }));
+    panel.setEntries(links, new Set(['id0']));
+    click(panel, 0);
+    const rows = panel.getSnapshot().rows;
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toMatchObject({ nameText: longName, valueText: '(0, 0, 0)', expanded: true });
+    expect(rows[0].nameWidth).toBeGreaterThanOrEqual(fixedMeasurer.horizontalAdvance(longName, panel.font()));
+    expect(rows.slice(1, 4).map((row) => [row.nameText, row.valueText])).toEqual([
+      ['X', expression],
+      ['Y', '-l1'],
+      ['Z', '0'],
+    ]);
+    click(panel, 2);
+    expect(activated).toHaveBeenLastCalledWith(new Set(['id0']), false);
+    expect(panel.getSnapshot().rows).toHaveLength(5);
+    click(panel, 4);
+    expect(activated).toHaveBeenLastCalledWith(new Set(['id1']), false);
+    expect(panel.getSnapshot().rows).toHaveLength(8);
+    const updated = links.map((entry) => ({
+      ...entry,
+      details: entry.details.map((detail) => ({ ...detail, value: 'updated' })),
+    }));
+    panel.setEntries(updated, new Set(['id1']));
+    expect(panel.getSnapshot().rows[1].valueText).toBe('updated');
+    expect(panel.keyPressEvent('Enter', NoModifier)).toBe(true);
+    expect(panel.getSnapshot().rows).toHaveLength(5);
+    panel.setEntries([updated[1]], new Set(['id1']));
+    expect(panel.getSnapshot().rows).toHaveLength(1);
+    expect(panel.headerText()).toBe('Points  (1)');
+  });
+
   it('click selects one row', () => {
     const { panel, activated } = panelWith(5);
     click(panel, 2);
