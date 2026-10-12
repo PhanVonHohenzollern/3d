@@ -94,6 +94,7 @@ export function useDebugLabelList(panel: DebugLabelPanel, listRef: RefObject<HTM
     rows: snapshot.rows.map((row, index) => ({
       id: row.id,
       selected: row.selected,
+      title: `${panel.entries()[index].name}: ${panel.entries()[index].value}`,
       style: { top: index * rowHeight, height: rowHeight, width: row.width, lineHeight: `${rowHeight}px` },
       dotStyle: { top: dotTop, backgroundColor: row.selected ? undefined : panelColor },
       nameText: row.nameText,

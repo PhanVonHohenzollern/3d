@@ -167,7 +167,7 @@ export class SceneRenderer {
       renderer.glDrawArrays('GL_LINES', this.#selectedVectors.start, this.#selectedVectors.count);
     }
 
-    if (!state.apiFocusActive && this.#connectors.count > 0) this.#drawConnectors();
+    if (this.#connectors.count > 0) this.#drawConnectors();
     renderer.endFrame();
   }
 

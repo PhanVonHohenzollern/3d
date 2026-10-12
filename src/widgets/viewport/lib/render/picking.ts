@@ -7,6 +7,7 @@ import type { PreviewMesh } from '@engine/geometry';
 import type { DebugItem } from '@/widgets/viewport/lib/render/DebugItem';
 import type { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import type { ScreenRay } from '@/widgets/viewport/lib/render/ViewportCamera';
+import { connectorArrowSegments } from '@/widgets/viewport/lib/render/connectorOverlay';
 
 type Projection = (world: QVector3D) => QPointF | null;
 type LinePick = { screen: QPointF; project: Projection };
@@ -142,19 +143,30 @@ export function pickDebugItemsAt(
     .map((hit) => hit.name);
 }
 
-export function pickConnectorAt(connectors: readonly ConnectorPreview[], screen: QPointF, project: Projection): number {
-  let best = kConnectorPickRadius * kConnectorPickRadius;
-  let result = -1;
+export function pickConnectorsAt(
+  connectors: readonly ConnectorPreview[],
+  kind: DebugKind,
+  screen: QPointF,
+  project: Projection,
+): number[] {
+  const radius = kind === 'Point' ? kConnectorPickRadius : kVectorPickRadius;
+  const hits: { id: number; distance: number }[] = [];
   for (const connector of connectors) {
-    const point = project(new QVector3D(connector.point.x, connector.point.y, connector.point.z));
-    if (!point) continue;
-    const delta = screen.sub(point);
-    const distance = QPointF.dotProduct(delta, delta);
-    if (distance < best) {
-      best = distance;
-      result = connector.id;
+    let distance = radius;
+    if (kind === 'Point') {
+      const point = project(new QVector3D(connector.point.x, connector.point.y, connector.point.z));
+      if (!point) continue;
+      const delta = screen.sub(point);
+      distance = Math.hypot(delta.x, delta.y);
+    } else {
+      for (const [start, end] of connectorArrowSegments(connector)) {
+        const a = project(new QVector3D(start.x, start.y, start.z));
+        const b = project(new QVector3D(end.x, end.y, end.z));
+        if (a && b) distance = Math.min(distance, distancePointToSegment(screen, a, b));
+      }
     }
+    if (distance < radius) hits.push({ id: connector.id, distance });
   }
 
-  return result;
+  return hits.sort((a, b) => a.distance - b.distance).map((hit) => hit.id);
 }

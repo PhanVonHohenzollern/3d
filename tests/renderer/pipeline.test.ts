@@ -6,9 +6,9 @@ import { appendConnectorVertices } from '@/widgets/viewport/lib/render/connector
 import { pickMeshAlongRay } from '@/widgets/viewport/lib/render/picking';
 import { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import { isApiDebugItemId } from '@/entities/api-call';
-import { LeftButton } from '@/shared/lib/qt';
+import { LeftButton, NoModifier } from '@/shared/lib/qt';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
-import { click, createEngine, project, updateCamera } from '@tests/renderer/helpers';
+import { boxMesh, click, createEngine, project, scene, updateCamera } from '@tests/renderer/helpers';
 
 const source = `FdPoint3d p0(0, 0, 0);
 double W = 200;
@@ -188,7 +188,14 @@ describe('Viewport3D with the real pipeline', () => {
     expect(onMesh).toHaveBeenCalledTimes(1);
   });
 
-  it('connector tests: points are pickable in Point mode and hidden under API focus', () => {
+  it.each([
+    ['Circular', 'Point'],
+    ['Circular', 'Vector'],
+    ['Circular', 'Mesh'],
+    ['Rectangular', 'Point'],
+    ['Rectangular', 'Vector'],
+    ['Rectangular', 'Mesh'],
+  ] as const)('picks %s connectors in %s mode until they are explicitly hidden', (type, mode) => {
     const { runtime, engine } = run();
     const definition = {
       ...defaultConnectorDefinition(),
@@ -196,21 +203,102 @@ describe('Viewport3D with the real pipeline', () => {
       name: 'c',
       pointName: 'linkPoint1',
       diameter: '100',
+      type,
+      aSize: '120',
+      bSize: '80',
       position: ['0', '0', '600'] as [string, string, string],
     };
     const preview = buildConnectorPreview(definition, (e) => runtime.evaluateNumericExpression(e));
     engine.setConnectorPreviews([preview], -1);
+    engine.setSelectionMode(mode);
     const ranges = appendConnectorVertices(new VertexArray(), [preview], -1);
     expect(ranges.vertexCount).toBeGreaterThan(0);
     expect(ranges.lineCount).toBeGreaterThan(0);
     const onConnector = vi.fn();
     engine.setConnectorSelectionCallback(onConnector);
     engine.fitScene();
-    const screen = project(engine, new QVector3D(preview.point.x, preview.point.y, preview.point.z));
-    click(engine, screen.x + 10, screen.y);
+    const triangle = preview.meshes[0].indices.slice(0, 3).map((index) => preview.meshes[0].vertices[index]);
+    const facePoint = triangle.reduce((sum, p) => sum.add(new QVector3D(p.x, p.y, p.z)), new QVector3D()).mul(1 / 3);
+    const target =
+      mode === 'Point'
+        ? preview.point
+        : mode === 'Vector'
+          ? preview.point.add(preview.direction.mul(preview.length * 1.4))
+          : facePoint;
+    const screen = project(engine, new QVector3D(target.x, target.y, target.z));
+    click(engine, screen.x, screen.y);
     expect(onConnector).toHaveBeenCalledWith(3);
     engine.setApiFocusIndices(new Set([0]));
     click(engine, screen.x, screen.y);
-    expect(onConnector).toHaveBeenCalledTimes(1);
+    expect(onConnector).toHaveBeenCalledTimes(2);
+    engine.setConnectorPreviews([], -1);
+    click(engine, screen.x, screen.y);
+    expect(onConnector).toHaveBeenCalledTimes(2);
+  });
+
+  it('Mesh picking compares connector surfaces with element meshes by depth', () => {
+    const engine = createEngine();
+    const preview = buildConnectorPreview({ ...defaultConnectorDefinition(), id: 7, diameter: '4' }, Number);
+    engine.setConnectorPreviews([preview], -1);
+    engine.setSelectionMode('Mesh');
+    engine.fitScene();
+    const triangle = preview.meshes[0].indices.slice(0, 3).map((index) => preview.meshes[0].vertices[index]);
+    const target = triangle.reduce((sum, p) => sum.add(new QVector3D(p.x, p.y, p.z)), new QVector3D()).mul(1 / 3);
+    const foreground = engine.camera().cameraPosition().add(target).mul(0.5);
+    engine.setGeometryScene(
+      scene(
+        boxMesh(
+          [foreground.x - 1, foreground.y - 1, foreground.z - 1],
+          [foreground.x + 1, foreground.y + 1, foreground.z + 1],
+          3,
+        ),
+      ),
+    );
+    const onMesh = vi.fn();
+    const onConnector = vi.fn();
+    engine.setMeshSelectionCallback(onMesh);
+    engine.setConnectorSelectionCallback(onConnector);
+    const screen = project(engine, target);
+    click(engine, screen.x, screen.y);
+    expect(onMesh).toHaveBeenCalledWith(3, 4);
+    expect(onConnector).not.toHaveBeenCalled();
+    engine.setShowGeometry(false);
+    click(engine, screen.x, screen.y);
+    expect(onConnector).toHaveBeenCalledWith(7);
+  });
+
+  it('shows original position expressions for every displayed Link and selects from the corner panel', () => {
+    const { engine, runtime } = run();
+    const previews = [1, 2].map((id) =>
+      buildConnectorPreview(
+        {
+          ...defaultConnectorDefinition(),
+          id,
+          pointName: `linkPoint${id}`,
+          diameter: '100',
+          position: [id === 1 ? '-W/2' : 'W/2', '0', '3*W'],
+        },
+        (e) => runtime.evaluateNumericExpression(e),
+      ),
+    );
+    engine.setConnectorPreviews(previews, -1);
+    const panel = engine.connectorLabelPanel();
+    expect(panel.isVisible()).toBe(false);
+    expect(previews[0].point).toMatchObject({ x: -100, y: 0, z: 600 });
+    engine.setConnectorPreviews(previews, 1);
+    expect(panel.isVisible()).toBe(true);
+    expect(panel.entries()).toEqual([
+      { id: '1', name: 'linkPoint1', value: 'X = -W/2; Y = 0; Z = 3*W' },
+      { id: '2', name: 'linkPoint2', value: 'X = W/2; Y = 0; Z = 3*W' },
+    ]);
+    expect(panel.isRowSelected(0)).toBe(true);
+    const onConnector = vi.fn((id: number) => engine.setConnectorPreviews(previews, id));
+    engine.setConnectorSelectionCallback(onConnector);
+    panel.mousePressEvent(20, panel.rowHeight() * 1.5, LeftButton, NoModifier);
+    expect(onConnector).toHaveBeenCalledWith(2);
+    expect(panel.isRowSelected(1)).toBe(true);
+    engine.setConnectorPreviews(previews, -1);
+    expect(panel.isVisible()).toBe(false);
+    expect(engine.pointLabelPanel().isVisible()).toBe(true);
   });
 });

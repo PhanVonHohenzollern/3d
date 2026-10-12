@@ -18,6 +18,7 @@ export function useViewport3D(
     overlayHandlers,
     pointPanel: engine.pointLabelPanel(),
     vectorPanel: engine.vectorLabelPanel(),
+    connectorPanel: engine.connectorLabelPanel(),
     onChildEnter: () => engine.eventFilter('Enter'),
     onChildFocus: () => engine.eventFilter('FocusIn'),
   };

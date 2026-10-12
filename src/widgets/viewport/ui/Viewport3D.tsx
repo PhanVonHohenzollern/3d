@@ -26,6 +26,11 @@ export function Viewport3D({ ref, ...props }: Viewport3DProps & { ref?: Ref<View
         />
         <DebugLabelList panel={viewport.pointPanel} onEnter={viewport.onChildEnter} onFocus={viewport.onChildFocus} />
         <DebugLabelList panel={viewport.vectorPanel} onEnter={viewport.onChildEnter} onFocus={viewport.onChildFocus} />
+        <DebugLabelList
+          panel={viewport.connectorPanel}
+          onEnter={viewport.onChildEnter}
+          onFocus={viewport.onChildFocus}
+        />
         <SelectionModeButton engine={viewport.engine} />
       </div>
     </SelectionModeMenu>

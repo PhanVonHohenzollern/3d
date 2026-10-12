@@ -113,8 +113,9 @@ export class ViewportInput {
     }
     this.view.updateMatrices();
     const mode = state.selectionMode;
-    const connectorId = mode === 'Point' ? pickers.pickConnectorPoint(screen) : -1;
-    const meshIndex = mode === 'Mesh' ? pickers.pickMesh(screen) : -1;
+    const mesh = mode === 'Mesh' ? pickers.pickMesh(screen) : undefined;
+    const connectorId = mode === 'Mesh' ? (mesh?.connectorId ?? -1) : pickers.pickConnector(screen, mode);
+    const meshIndex = mesh?.meshIndex ?? -1;
     const debugItem =
       mode !== 'Mesh' && connectorId < 0 ? pickers.pickDebugItem(screen, mode === 'Point' ? 'Point' : 'Vector') : '';
     if (
@@ -135,8 +136,12 @@ export class ViewportInput {
     const { callbacks } = host;
     const control = this.#pressModifiers.control;
     this.view.updateMatrices();
-    const connectorId = state.selectionMode === 'Point' ? pickers.pickConnectorPoint(position) : -1;
-    if (connectorId >= 0 && !control) {
+    const mode = state.selectionMode;
+    const mesh = mode === 'Mesh' ? pickers.pickMesh(position, true) : undefined;
+    const connectorId = mode === 'Mesh' ? (mesh?.connectorId ?? -1) : pickers.pickConnector(position, mode, true);
+    if (connectorId >= 0 && !(mode === 'Point' && control)) {
+      state.selectedMeshIndex = -1;
+      host.setSelectedVariables(new Set());
       callbacks.connectorSelection?.(connectorId);
     } else if (state.selectionMode === 'Point' && control) {
       const point = this.view.camera.screenToGroundPlane(position);
@@ -144,17 +149,19 @@ export class ViewportInput {
     } else if (state.selectionMode !== 'Mesh') {
       const name = pickers.pickDebugItem(position, state.selectionMode === 'Point' ? 'Point' : 'Vector', true);
       if (name === '') return;
+      if (state.selectedConnectorId >= 0) callbacks.connectorSelection?.(-1);
       const selected = this.#pressModifiers.shift ? new Set(state.selectedVariables) : new Set<string>();
       if (selected.has(name)) selected.delete(name);
       else selected.add(name);
       host.selectDebugItems(selected);
     } else {
-      const meshIndex = pickers.pickMesh(position, true);
+      const meshIndex = mesh?.meshIndex ?? -1;
       if (meshIndex < 0) return;
+      if (state.selectedConnectorId >= 0) callbacks.connectorSelection?.(-1);
       state.selectedMeshIndex = meshIndex;
       host.setSelectedVariables(new Set());
-      const mesh = state.geometryScene.meshes[meshIndex];
-      callbacks.meshSelection?.(mesh.apiIndex, mesh.sourceLine);
+      const pickedMesh = state.geometryScene.meshes[meshIndex];
+      callbacks.meshSelection?.(pickedMesh.apiIndex, pickedMesh.sourceLine);
       host.update();
     }
   }

@@ -126,7 +126,7 @@ describe('LinkPanel', () => {
     expect(model.definitions()[1].pointName).toBe('pA');
   });
 
-  it('tests the selected point, keeps it on rename and invalidates it on geometry edits', () => {
+  it('keeps shown connectors visible while editing their geometry and names', () => {
     const { model, published } = createPanel();
     model.addConnector();
     model.testSelection();
@@ -147,11 +147,16 @@ describe('LinkPanel', () => {
     expect(model.tableRows[0].buttonText).toBe('Hide');
 
     model.orientationClicked(3);
-    expect(model.tableRows[0].buttonText).toBe('Show');
-    expect(published.at(-1)?.previews).toHaveLength(0);
+    expect(model.tableRows[0].buttonText).toBe('Hide');
+    expect(published.at(-1)?.previews[0].direction).toMatchObject({ x: 0, y: 1, z: 0 });
+    model.positionEdited(0, '24');
+    expect(published.at(-1)?.previews[0]).toMatchObject({
+      point: { x: 24, y: 0, z: 0 },
+      positionExpressions: ['24', '0', '0'],
+    });
   });
 
-  it('Show/Hide toggles per row and Esc (exitPreview) hides every connector but keeps them', () => {
+  it('clears selection without hiding connectors, and preserves Show/Hide through updates and edits', () => {
     const { model, published } = createPanel();
     model.addConnector();
     model.sizeTextChanged('diameter', '4');
@@ -163,9 +168,19 @@ describe('LinkPanel', () => {
     model.togglePreview(1);
     expect(published.at(-1)?.previews.map((p) => p.id)).toEqual([2]);
     expect(model.currentRow).toBe(0);
-    model.exitPreview();
-    expect(published.at(-1)?.previews).toEqual([]);
-    expect(model.tableRows.map((row) => row.buttonText)).toEqual(['Show', 'Show']);
+    expect(model.clearSelection()).toBe(true);
+    expect(model.clearSelection()).toBe(false);
+    expect(published.at(-1)?.selectedId).toBe(-1);
+    expect(published.at(-1)?.previews.map((p) => p.id)).toEqual([2]);
+    expect(model.tableRows.map((row) => row.buttonText)).toEqual(['Show', 'Hide']);
+    model.updateRuntimeResult(emptyRuntimeResult());
+    expect(published.at(-1)?.selectedId).toBe(-1);
+    expect(published.at(-1)?.previews.map((p) => p.id)).toEqual([2]);
+    model.selectConnector(1);
+    model.positionEdited(0, '15');
+    expect(published.at(-1)?.previews.map((p) => p.id)).toEqual([2]);
+    model.togglePreview(1);
+    expect(published.at(-1)?.previews.map((p) => p.id)).toEqual([1, 2]);
     expect(model.definitions()).toHaveLength(2);
   });
 

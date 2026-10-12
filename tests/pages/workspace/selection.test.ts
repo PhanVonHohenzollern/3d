@@ -157,7 +157,7 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     mw.dispose();
   });
 
-  it('Esc exits the Link preview and clears the API focus', () => {
+  it('Esc clears only Link selection, while API focus can still be cleared without hiding Links', () => {
     const { mw, log, editor, apiTrace, links } = createWorkspace();
     mw.start();
     editor.type(kSource, 6);
@@ -168,13 +168,32 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     expect(log).toContain('setConnectorPreviews([1], 1)');
     expect(log.at(-1)).toBe('fitScene()');
 
-    apiTrace.selectMeshApiCall(0);
     log.length = 0;
     mw.handleKeyDown(keyEvent('Escape'));
-    expect(log).toContain('setConnectorPreviews([0], 1)');
+    expect(log).toContain('setConnectorPreviews([1], -1)');
+    expect(log).not.toContain('clearApiFocus()');
+    expect(links.currentRow).toBe(-1);
+    expect(links.tableRows[0].buttonText).toBe('Hide');
+    mw.onViewportConnectorSelection(1);
+    expect(links.currentRow).toBe(0);
+
+    apiTrace.selectMeshApiCall(0);
+    expect(links.currentRow).toBe(-1);
+    links.selectConnector(1);
+    log.length = 0;
+    mw.handleKeyDown(keyEvent('Escape'));
+    expect(log).toContain('setConnectorPreviews([1], -1)');
+    expect(log).not.toContain('clearApiFocus()');
+    expect(apiTrace.selectedApiCall()).toBe(0);
+    log.length = 0;
+    mw.handleKeyDown(keyEvent('Escape'));
+    expect(log).not.toContain('setConnectorPreviews([0], 1)');
     expect(log).toContain('clearApiFocus()');
     expect(apiTrace.selectedApiCall()).toBe(-1);
     expect(apiTrace.meshApiCall()).toBe(-1);
+    expect(links.tableRows[0].buttonText).toBe('Hide');
+    links.togglePreview(1);
+    expect(log).toContain('setConnectorPreviews([0], 1)');
     mw.dispose();
   });
 });

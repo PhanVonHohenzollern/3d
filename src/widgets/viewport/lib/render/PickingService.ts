@@ -1,7 +1,7 @@
 import { kRepeatPickDistance } from '@/widgets/viewport/config/viewport';
 import type { QPointF } from '@/widgets/viewport/lib/math/Vector3D';
 import type { CameraController } from '@/widgets/viewport/lib/render/CameraController';
-import { pickConnectorAt, pickDebugItemsAt, pickMeshesAlongRay } from '@/widgets/viewport/lib/render/picking';
+import { pickConnectorsAt, pickDebugItemsAt, pickMeshesAlongRay } from '@/widgets/viewport/lib/render/picking';
 import type { DebugKind } from '@/widgets/viewport/lib/render/types';
 import type { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
 
@@ -20,22 +20,33 @@ export class PickingService {
     this.#lastPick = null;
   }
 
-  pickMesh(screen: QPointF, advance = false): number {
+  pickMesh(screen: QPointF, advance = false): { meshIndex: number; connectorId: number } | undefined {
     const { state } = this;
-    if (!state.showGeometry) return -1;
     const ray = this.view.camera.screenRay(screen);
-    if (!ray) return -1;
-
-    return (
-      this.#cycle(
-        pickMeshesAlongRay(state.geometryScene.meshes, ray, (apiIndex) => state.isGeometryApiVisible(apiIndex), {
-          screen,
-          project: this.view.projectToScreen,
-        }),
-        screen,
-        advance,
-      ) ?? -1
+    if (!ray) return;
+    const targets = state.geometryScene.meshes
+      .map((mesh, meshIndex) => ({ mesh, meshIndex, connectorId: -1 }))
+      .filter(({ mesh }) => state.showGeometry && state.isGeometryApiVisible(mesh.apiIndex));
+    for (const connector of state.connectors)
+      for (const mesh of connector.meshes) targets.push({ mesh, meshIndex: -1, connectorId: connector.id });
+    const hits = pickMeshesAlongRay(
+      targets.map((target) => target.mesh),
+      ray,
+      () => true,
+      { screen, project: this.view.projectToScreen },
     );
+    const seen = new Set<number>();
+    const candidates = hits.filter((index) => {
+      const { connectorId } = targets[index];
+      if (connectorId < 0) return true;
+      if (seen.has(connectorId)) return false;
+      seen.add(connectorId);
+
+      return true;
+    });
+    const index = this.#cycle(candidates, screen, advance);
+
+    return index === undefined ? undefined : targets[index];
   }
 
   pickDebugItem(screen: QPointF, kind: DebugKind, advance = false): string {
@@ -58,10 +69,11 @@ export class PickingService {
     );
   }
 
-  pickConnectorPoint(screen: QPointF): number {
-    if (this.state.apiFocusActive) return -1;
-
-    return pickConnectorAt(this.state.connectors, screen, this.view.projectToScreen);
+  pickConnector(screen: QPointF, kind: DebugKind, advance = false): number {
+    return (
+      this.#cycle(pickConnectorsAt(this.state.connectors, kind, screen, this.view.projectToScreen), screen, advance) ??
+      -1
+    );
   }
 
   #cycle<T extends string | number>(candidates: T[], screen: QPointF, advance: boolean): T | undefined {

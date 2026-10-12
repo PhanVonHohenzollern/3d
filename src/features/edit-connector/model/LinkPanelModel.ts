@@ -29,7 +29,7 @@ import { Observable, Signal } from '@/shared/lib/observable';
 export interface LinkPanelHandle {
   updateRuntimeResult(result: RuntimeResult): void;
   selectConnector(id: number): void;
-  exitPreview(): void;
+  clearSelection(): boolean;
 }
 
 export interface LinkTableRow {
@@ -216,12 +216,12 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
       d.position[i] = this.positionTexts[i].trim() || '0';
       d.angles[i] = this.angleTexts[i].trim() || '0';
     }
+    entry.error = '';
     if (connectorGeometryChanged(d, previous)) {
       entry.preview = null;
       entry.shown = false;
-      entry.previewRequested = false;
+      if (entry.previewRequested) this.#refreshPreview(entry);
     } else if (entry.preview) entry.preview = { ...entry.preview, name: d.name };
-    entry.error = '';
     this.refreshRow(row);
     this.showStatus();
     this.publish();
@@ -256,15 +256,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     }
     entry.previewRequested = true;
     this.renamePoint();
-    try {
-      entry.preview = buildConnectorPreview(entry.definition, this.#evaluate);
-      entry.shown = true;
-      entry.error = '';
-    } catch (e) {
-      entry.preview = null;
-      entry.shown = false;
-      entry.error = what(e);
-    }
+    this.#refreshPreview(entry);
     this.refreshRow(row);
     this.showStatus();
     this.publish(entry.preview !== null);
@@ -287,14 +279,12 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     this.publish();
   }
 
-  exitPreview(): void {
+  clearSelection(): boolean {
+    if (this.currentRow < 0) return false;
     this.renamePoint();
-    for (let row = 0; row < this.#entries.length; ++row) {
-      this.#entries[row].shown = false;
-      this.#entries[row].previewRequested = false;
-      this.refreshRow(row);
-    }
-    this.publish();
+    this.#setCurrentCell(-1, -1);
+
+    return true;
   }
 
   renamePoint(): void {
@@ -335,15 +325,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     for (let row = 0; row < this.#entries.length; ++row) {
       const entry = this.#entries[row];
       if (!entry.previewRequested || !this.#evaluate) continue;
-      try {
-        entry.preview = buildConnectorPreview(entry.definition, this.#evaluate);
-        entry.error = '';
-        entry.shown = true;
-      } catch (e) {
-        entry.preview = null;
-        entry.shown = false;
-        entry.error = what(e);
-      }
+      this.#refreshPreview(entry);
       this.refreshRow(row);
     }
     this.showStatus();
@@ -353,6 +335,19 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   updateSizeFields(): void {
     this.circularFields = this.typeIndex === 0;
     this.changed();
+  }
+
+  #refreshPreview(entry: Entry): void {
+    if (!this.#evaluate) return;
+    try {
+      entry.preview = buildConnectorPreview(entry.definition, this.#evaluate);
+      entry.shown = true;
+      entry.error = '';
+    } catch (error) {
+      entry.preview = null;
+      entry.shown = false;
+      entry.error = what(error);
+    }
   }
 
   refreshRow(row: number): void {

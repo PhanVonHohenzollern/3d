@@ -44,6 +44,7 @@ export function DebugLabelList({ panel, onEnter, onFocus }: DebugLabelListProps)
               key={row.id}
               role="option"
               aria-selected={row.selected}
+              title={row.title}
               className={cn(
                 'absolute left-0 overflow-hidden',
                 row.selected
