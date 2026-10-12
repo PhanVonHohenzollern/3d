@@ -13,7 +13,7 @@ import type { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 const toVector = (p: { x: number; y: number; z: number }) => new QVector3D(p.x, p.y, p.z);
 
 export function connectorTip(connector: ConnectorPreview): FdPoint3d {
-  return connector.point.add(connector.direction.mul(connector.length * 1.65));
+  return connector.point.add(connector.direction.mul(connector.markerLength * 1.65));
 }
 
 export function connectorSceneScale(connectors: readonly ConnectorPreview[]): number {
@@ -62,11 +62,11 @@ export function appendConnectorVertices(
 
     for (const [a, b] of connector.outline) line(a, b);
     const tip = connectorTip(connector);
-    const base = tip.sub(connector.direction.mul(connector.length * 0.22));
+    const base = tip.sub(connector.direction.mul(connector.markerLength * 0.22));
     line(connector.point, tip);
     for (const side of [connector.up, connector.direction.crossProduct(connector.up)]) {
-      line(tip, base.add(side.mul(connector.length * 0.12)));
-      line(tip, base.sub(side.mul(connector.length * 0.12)));
+      line(tip, base.add(side.mul(connector.markerLength * 0.12)));
+      line(tip, base.sub(side.mul(connector.markerLength * 0.12)));
     }
   }
 
