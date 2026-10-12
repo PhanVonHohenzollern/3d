@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
 import type { ConnectorPreview } from '@engine/geometry';
+import { parseObj } from '@engine/formats/obj';
 import { createWorkspace } from '@tests/pages/workspace/harness';
 
 function mockLibraryFetch() {
@@ -14,7 +15,7 @@ function mockLibraryFetch() {
   });
 }
 
-it('joins TFMN and TFMT bodies to their XML connector points and restores lengths across cases', async () => {
+it('keeps TFMN/TFMT source geometry separate from connector previews across parameter and case changes', async () => {
   vi.useFakeTimers();
   const fetchMock = mockLibraryFetch();
   const { mw, editor, parameters, links } = createWorkspace();
@@ -33,37 +34,47 @@ it('joins TFMN and TFMT bodies to their XML connector points and restores length
       parameters.commitEditor();
     };
 
-    const checkConnection = (bodyEnd: number, point: number) => {
+    const checkConnection = (bodyEnd: number, point: number, bodyCount: number) => {
       expect(mw.session.lastResult.diagnostics).toEqual([]);
       expect(mw.session.scene.warnings).toEqual([]);
-      const body = mw.session.scene.meshes.filter((mesh) => mesh.apiName === 'makeScrew2');
+      const body = mw.session.scene.meshes.filter((mesh) => mesh.primitive !== 'lines');
+      expect(body).toHaveLength(bodyCount);
+      expect(body.every((mesh) => mesh.apiName === 'makeScrew2')).toBe(true);
       expect(Math.max(...body.flatMap((mesh) => mesh.vertices.map((p) => p.x)))).toBeCloseTo(bodyEnd);
       const right = previews.find((preview) => preview.id === 2)!;
       expect(right.point).toMatchObject({ x: point, y: 0, z: 0 });
       expect(right.direction).toMatchObject({ x: 1, y: 0, z: 0 });
-      expect(right.length).toBeCloseTo(point - bodyEnd);
-      const meshX = right.meshes.flatMap((mesh) => mesh.vertices.map((p) => p.x));
-      const outlineX = right.outline.flatMap((edge) => edge.map((p) => p.x));
-      for (const coordinates of [meshX, outlineX]) {
-        expect(Math.min(...coordinates)).toBeCloseTo(bodyEnd);
-        expect(Math.max(...coordinates)).toBeCloseTo(point);
-      }
+      expect(right.length).toBeCloseTo(25 * 0.35);
+      const overlayX = right.meshes.flatMap((mesh) => mesh.vertices.map((p) => p.x));
+      expect(Math.min(...overlayX)).toBeCloseTo(point);
+      expect(Math.max(...overlayX)).toBeCloseTo(point + 25 * 0.35);
       expect(links.statusIsError).toBe(false);
     };
 
-    expect(links.definitions()[1]).toMatchObject({ connectionType: '13', length: 'L-C-C1' });
-    checkConnection(12.5, 32.5);
+    expect(links.definitions()[1]).toMatchObject({ connectionType: '13' });
+    checkConnection(12.5, 32.5, 2);
+    const completeScene = mw.session.scene;
+    links.exitPreview();
+    expect(previews).toEqual([]);
+    expect(mw.session.scene).toBe(completeScene);
+    const exported = parseObj(mw.exportObj());
+    const exportedPart = exported.meshes
+      .filter((mesh) => mesh.primitive !== 'lines')
+      .flatMap((mesh) => mesh.vertices)
+      .filter((vertex) => vertex.x > 12.5 + 1e-6);
+    expect(exportedPart).toEqual([]);
+    links.togglePreview(2);
     edit('L', '85');
     edit('C', '30');
     edit('C1', '10');
     mw.applyParameters();
-    checkConnection(-2.5, 42.5);
+    checkConnection(-2.5, 42.5, 2);
 
     edit('elType3d', '1');
     mw.applyParameters();
     expect(mw.library.element?.name).toBe('Threaded male-male nipple');
     expect(links.definitions().map((link) => link.connectionType)).toEqual(['14', '14']);
-    expect(links.definitions().every((link) => link.length === undefined)).toBe(true);
+    checkConnection(32.5, 32.5, 3);
     expect(previews).toHaveLength(2);
     expect(previews[1].length).toBeCloseTo(25 * 0.35);
     expect(mw.session.lastResult.diagnostics).toEqual([]);
@@ -71,15 +82,15 @@ it('joins TFMN and TFMT bodies to their XML connector points and restores length
 
     edit('elType3d', '0');
     mw.applyParameters();
-    checkConnection(-2.5, 42.5);
+    checkConnection(-2.5, 42.5, 2);
     expect(editor.text).toBe(source);
     parameters.resetToSource();
     mw.applyParameters();
-    checkConnection(12.5, 32.5);
+    checkConnection(12.5, 32.5, 2);
 
     mw.library.openElement(mw.library.elements.find((element) => element.entry === 'makeTFMT')!.id);
-    expect(links.definitions()[1]).toMatchObject({ connectionType: '13', length: 'L-C' });
-    checkConnection(0, 20);
+    expect(links.definitions()[1]).toMatchObject({ connectionType: '13' });
+    checkConnection(0, 20, 1);
   } finally {
     mw.dispose();
     fetchMock.mockRestore();

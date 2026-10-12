@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildConnectorPreview, defaultConnectorDefinition } from '@engine/geometry/ConnectorPreview';
 import { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
-import { appendConnectorVertices, connectorTip } from '@/widgets/viewport/lib/render/connectorOverlay';
+import { appendConnectorVertices } from '@/widgets/viewport/lib/render/connectorOverlay';
 import { pickMeshAlongRay } from '@/widgets/viewport/lib/render/picking';
 import { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import { isApiDebugItemId } from '@/entities/api-call';
@@ -186,50 +186,6 @@ describe('Viewport3D with the real pipeline', () => {
     engine.setApiFocusIndices(new Set([pickedMesh.apiIndex + 100]));
     click(engine, screen.x, screen.y);
     expect(onMesh).toHaveBeenCalledTimes(1);
-  });
-
-  it.each(['Circular', 'Rectangular'] as const)(
-    'uses the inward length of a rotated %s connector while the arrow remains outward',
-    (type) => {
-      const preview = buildConnectorPreview(
-        {
-          ...defaultConnectorDefinition(),
-          type,
-          orientation: 'YNegative',
-          diameter: '12',
-          aSize: '12',
-          bSize: '8',
-          length: '20',
-          position: ['12', '34', '56'],
-          angles: ['0', '0', '90'],
-        },
-        Number,
-      );
-      expect(preview.point).toMatchObject({ x: 12, y: 34, z: 56 });
-      expect(preview.direction.x).toBeCloseTo(-1);
-      const xs = preview.meshes.flatMap((mesh) => mesh.vertices.map((v) => v.x));
-      expect(Math.min(...xs)).toBeCloseTo(12);
-      expect(Math.max(...xs)).toBeCloseTo(32);
-      expect(connectorTip(preview).x).toBeLessThan(12);
-      expect(connectorTip(preview).y).toBeCloseTo(34);
-      const ranges = appendConnectorVertices(new VertexArray(), [preview], -1);
-      expect(ranges.vertexCount).toBeGreaterThan(0);
-      expect(ranges.lineCount).toBeGreaterThan(0);
-    },
-  );
-
-  it('keeps a zero-length connector outline and arrow without generating a degenerate tube', () => {
-    const definition = { ...defaultConnectorDefinition(), diameter: '25', length: '0' };
-    const preview = buildConnectorPreview(definition, Number);
-    expect(preview.length).toBe(0);
-    expect(preview.meshes).toEqual([]);
-    expect(preview.outline).toHaveLength(64);
-    expect(preview.outline.flat().every((point) => point.x === 0)).toBe(true);
-    expect(connectorTip(preview).x).toBeLessThan(0);
-    expect(appendConnectorVertices(new VertexArray(), [preview], -1).lineCount).toBeGreaterThan(0);
-    for (const length of ['-1', 'NaN', 'Infinity']) {
-      expect(() => buildConnectorPreview({ ...definition, length }, Number)).toThrow(/Length/);
-    }
   });
 
   it('connector tests: points are pickable in Point mode and hidden under API focus', () => {

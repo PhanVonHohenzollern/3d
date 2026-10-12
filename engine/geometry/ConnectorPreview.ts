@@ -48,8 +48,6 @@ export interface ConnectorDefinition {
   // SDK connection identity is independent of the circular/rectangular profile.
   connectionType?: string;
   technology?: string;
-  // XML FLENGTH: distance from the connection point back into the element.
-  length?: string;
   orientation: ConnectorOrientation;
   diameter: string;
   aSize: string;
@@ -81,7 +79,6 @@ export interface ConnectorPreview {
   direction: FdVector3d;
   up: FdVector3d;
   length: number;
-  markerLength: number;
   meshes: PreviewMesh[];
   outline: [FdPoint3d, FdPoint3d][];
 }
@@ -109,76 +106,65 @@ export function buildConnectorPreview(
   if (width <= 1e-6 || height <= 1e-6)
     throw new CppException('runtime_error', 'Diameter / A / B must be greater than 0.000001');
 
-  const result: ConnectorPreview = {
-    id: 0,
-    name: '',
-    pointName: '',
-    point: new FdPoint3d(),
-    direction: new FdVector3d(),
-    up: new FdVector3d(),
-    length: 0,
-    markerLength: 0,
-    meshes: [],
-    outline: [],
-  };
-  result.id = definition.id;
-  result.name = definition.name;
-  result.pointName = definition.pointName === '' ? `linkPoint${definition.id}` : definition.pointName;
-  result.point = new FdPoint3d(
+  const point = new FdPoint3d(
     field(definition.position[0], 'X'),
     field(definition.position[1], 'Y'),
     field(definition.position[2], 'Z'),
   );
-  result.direction = previewOrientationDirection(definition.orientation);
-  result.up = Math.abs(result.direction.z) > 0.5 ? new FdVector3d(0, 1, 0) : new FdVector3d(0, 0, 1);
+  let direction = previewOrientationDirection(definition.orientation);
+  let up = Math.abs(direction.z) > 0.5 ? new FdVector3d(0, 1, 0) : new FdVector3d(0, 0, 1);
   const axes = [new FdVector3d(1, 0, 0), new FdVector3d(0, 1, 0), new FdVector3d(0, 0, 1)];
   const angleNames = ['a (degrees)', 'b (degrees)', 'gamma (degrees)'];
   for (let i = 0; i < axes.length; ++i) {
     const angle = deg(field(definition.angles[i], angleNames[i]));
-    result.direction = result.direction.rotateBy(angle, axes[i]);
-    result.up = result.up.rotateBy(angle, axes[i]);
+    direction = direction.rotateBy(angle, axes[i]);
+    up = up.rotateBy(angle, axes[i]);
   }
-  result.direction = result.direction.normalize();
-  result.up = result.up.normalize();
-  result.markerLength = Math.max(width, height) * 0.35;
-  result.length = definition.length === undefined ? result.markerLength : field(definition.length, 'Length');
-  if (result.length < 0) throw new CppException('runtime_error', 'Length must be non-negative');
-  const start = definition.length === undefined ? result.point : result.point.sub(result.direction.mul(result.length));
-  const end = definition.length === undefined ? result.point.add(result.direction.mul(result.length)) : result.point;
 
-  if (result.length > 0) {
-    const call = emptyApiCall();
-    if (definition.type === 'Circular') {
-      call.name = 'makeVerySimpleTube';
-      call.arguments = [start, end, width, 64n];
-    } else {
-      call.name = 'makeBox';
-      call.arguments = [
-        1n,
-        array('FdPoint3d', [start, end]),
-        array('FdVector3d', [result.direction, result.direction]),
-        array('FdVector3d', [result.up, result.up]),
-        array('double', [width, width]),
-        array('double', [height, height]),
-        array('bool', [true, true, true, true]),
-        false,
-        false,
-        0n,
-        0n,
-        0.0,
-      ];
-    }
-    call.signature = resolveApiSignature(call);
-    const runtime = emptyRuntimeResult();
-    runtime.apiCalls.push(call);
-    const geometry = new PreviewGeometryEngine().build(runtime);
-    if (geometry.warnings.length !== 0) throw new CppException('runtime_error', geometry.warnings[0]);
-    if (geometry.meshes.length === 0) throw new CppException('runtime_error', 'connector test produced no geometry');
-    result.meshes = geometry.meshes;
-    for (const mesh of result.meshes) {
-      mesh.apiIndex = -1;
-      mesh.color = { r: Math.fround(0.2), g: Math.fround(0.78), b: Math.fround(0.9) };
-    }
+  const result: ConnectorPreview = {
+    id: definition.id,
+    name: definition.name,
+    pointName: definition.pointName === '' ? `linkPoint${definition.id}` : definition.pointName,
+    point,
+    direction: direction.normalize(),
+    up: up.normalize(),
+    length: Math.max(width, height) * 0.35,
+    meshes: [],
+    outline: [],
+  };
+  const end = result.point.add(result.direction.mul(result.length));
+
+  const call = emptyApiCall();
+  if (definition.type === 'Circular') {
+    call.name = 'makeVerySimpleTube';
+    call.arguments = [result.point, end, width, 64n];
+  } else {
+    call.name = 'makeBox';
+    call.arguments = [
+      1n,
+      array('FdPoint3d', [result.point, end]),
+      array('FdVector3d', [result.direction, result.direction]),
+      array('FdVector3d', [result.up, result.up]),
+      array('double', [width, width]),
+      array('double', [height, height]),
+      array('bool', [true, true, true, true]),
+      false,
+      false,
+      0n,
+      0n,
+      0.0,
+    ];
+  }
+  call.signature = resolveApiSignature(call);
+  const runtime = emptyRuntimeResult();
+  runtime.apiCalls.push(call);
+  const geometry = new PreviewGeometryEngine().build(runtime);
+  if (geometry.warnings.length !== 0) throw new CppException('runtime_error', geometry.warnings[0]);
+  if (geometry.meshes.length === 0) throw new CppException('runtime_error', 'connector test produced no geometry');
+  result.meshes = geometry.meshes;
+  for (const mesh of result.meshes) {
+    mesh.apiIndex = -1;
+    mesh.color = { r: Math.fround(0.2), g: Math.fround(0.78), b: Math.fround(0.9) };
   }
 
   const right = result.direction.crossProduct(result.up).normal();
@@ -204,10 +190,10 @@ export function buildConnectorPreview(
   }
   for (let i = 0; i < perimeter.length; ++i) {
     const next = perimeter[(i + 1) % perimeter.length];
-    result.outline.push([start.add(perimeter[i]), start.add(next)]);
-    if (result.length === 0) continue;
+    result.outline.push([result.point.add(perimeter[i]), result.point.add(next)]);
     result.outline.push([end.add(perimeter[i]), end.add(next)]);
-    if (perimeter.length === 4 || i % 16 === 0) result.outline.push([start.add(perimeter[i]), end.add(perimeter[i])]);
+    if (perimeter.length === 4 || i % 16 === 0)
+      result.outline.push([result.point.add(perimeter[i]), end.add(perimeter[i])]);
   }
 
   return result;
