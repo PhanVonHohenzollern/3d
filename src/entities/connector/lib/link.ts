@@ -26,6 +26,7 @@ export function copyDefinition(d: ConnectorDefinition): ConnectorDefinition {
 export function connectorGeometryChanged(d: ConnectorDefinition, previous: ConnectorDefinition): boolean {
   return (
     d.type !== previous.type ||
+    d.length !== previous.length ||
     d.orientation !== previous.orientation ||
     d.diameter !== previous.diameter ||
     d.aSize !== previous.aSize ||

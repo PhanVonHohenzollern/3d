@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, it, vi } from 'vitest';
+import type { ConnectorPreview } from '@engine/geometry';
 import { createWorkspace } from '@tests/pages/workspace/harness';
 
 function mockLibraryFetch() {
@@ -12,6 +13,79 @@ function mockLibraryFetch() {
     } as Response;
   });
 }
+
+it('joins TFMN and TFMT bodies to their XML connector points and restores lengths across cases', async () => {
+  vi.useFakeTimers();
+  const fetchMock = mockLibraryFetch();
+  const { mw, editor, parameters, links } = createWorkspace();
+  let previews: readonly ConnectorPreview[] = [];
+  links.previewChanged.connect((value) => (previews = value));
+  try {
+    mw.start();
+    await mw.library.selectLibrary('CGeneral');
+    mw.library.openElement(mw.library.elements.find((element) => element.name === 'Threaded female-male nipple')!.id);
+    const source = editor.text;
+
+    const edit = (name: string, value: string) => {
+      const row = parameters.rows.findIndex((row) => row.texts[0] === name);
+      expect(parameters.edit(row, 3), name).toBe(true);
+      parameters.editorTextEdited(value);
+      parameters.commitEditor();
+    };
+
+    const checkConnection = (bodyEnd: number, point: number) => {
+      expect(mw.session.lastResult.diagnostics).toEqual([]);
+      expect(mw.session.scene.warnings).toEqual([]);
+      const body = mw.session.scene.meshes.filter((mesh) => mesh.apiName === 'makeScrew2');
+      expect(Math.max(...body.flatMap((mesh) => mesh.vertices.map((p) => p.x)))).toBeCloseTo(bodyEnd);
+      const right = previews.find((preview) => preview.id === 2)!;
+      expect(right.point).toMatchObject({ x: point, y: 0, z: 0 });
+      expect(right.direction).toMatchObject({ x: 1, y: 0, z: 0 });
+      expect(right.length).toBeCloseTo(point - bodyEnd);
+      const meshX = right.meshes.flatMap((mesh) => mesh.vertices.map((p) => p.x));
+      const outlineX = right.outline.flatMap((edge) => edge.map((p) => p.x));
+      for (const coordinates of [meshX, outlineX]) {
+        expect(Math.min(...coordinates)).toBeCloseTo(bodyEnd);
+        expect(Math.max(...coordinates)).toBeCloseTo(point);
+      }
+      expect(links.statusIsError).toBe(false);
+    };
+
+    expect(links.definitions()[1]).toMatchObject({ connectionType: '13', length: 'L-C-C1' });
+    checkConnection(12.5, 32.5);
+    edit('L', '85');
+    edit('C', '30');
+    edit('C1', '10');
+    mw.applyParameters();
+    checkConnection(-2.5, 42.5);
+
+    edit('elType3d', '1');
+    mw.applyParameters();
+    expect(mw.library.element?.name).toBe('Threaded male-male nipple');
+    expect(links.definitions().map((link) => link.connectionType)).toEqual(['14', '14']);
+    expect(links.definitions().every((link) => link.length === undefined)).toBe(true);
+    expect(previews).toHaveLength(2);
+    expect(previews[1].length).toBeCloseTo(25 * 0.35);
+    expect(mw.session.lastResult.diagnostics).toEqual([]);
+    expect(links.statusIsError).toBe(false);
+
+    edit('elType3d', '0');
+    mw.applyParameters();
+    checkConnection(-2.5, 42.5);
+    expect(editor.text).toBe(source);
+    parameters.resetToSource();
+    mw.applyParameters();
+    checkConnection(12.5, 32.5);
+
+    mw.library.openElement(mw.library.elements.find((element) => element.entry === 'makeTFMT')!.id);
+    expect(links.definitions()[1]).toMatchObject({ connectionType: '13', length: 'L-C' });
+    checkConnection(0, 20);
+  } finally {
+    mw.dispose();
+    fetchMock.mockRestore();
+    vi.useRealTimers();
+  }
+});
 
 it('opens one default set and keeps manual edits independent until Reset', async () => {
   vi.useFakeTimers();
