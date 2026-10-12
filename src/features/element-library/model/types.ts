@@ -24,6 +24,8 @@ export interface LibraryElement {
   entry: string;
   defaults: Record<string, string>;
   selectors: LibrarySelector[];
+  // XML selectors passed through helper functions may not appear in a C++ switch.
+  controls?: string[];
   variants: LibraryVariant[];
   connectors: ConnectorDefinition[];
   error?: string;

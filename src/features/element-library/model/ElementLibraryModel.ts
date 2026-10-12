@@ -2,7 +2,7 @@ import { FunctionWorkspace } from '@/entities/source-function';
 import { Observable, Signal } from '@/shared/lib/observable';
 import { GeometryRuntime, type RuntimeParameterRequest } from '@engine/runtime';
 import { libraries } from '@/features/element-library/config/libraries';
-import { LibraryDefaults } from '@/features/element-library/model/LibraryDefaults';
+import { LibraryDefaults, type LibraryDefaultState } from '@/features/element-library/model/LibraryDefaults';
 import {
   decodeLibraryAsset,
   prepareElementSource,
@@ -37,7 +37,6 @@ export class ElementLibraryModel extends Observable {
   #files: LibrarySource[] = [];
   #variant: LibraryVariant | undefined;
   #parameters: RuntimeParameterRequest[] = [];
-  #selection = new Map<string, string>();
   #opened = '';
   #sequence = 0;
 
@@ -98,7 +97,6 @@ export class ElementLibraryModel extends Observable {
   readonly selectElement = (id: string): void => {
     this.elementId = id;
     this.#files = [];
-    this.#selection.clear();
     this.error = '';
     this.resolution = { values: new Map(), choices: [], errors: [] };
     try {
@@ -122,41 +120,91 @@ export class ElementLibraryModel extends Observable {
     this.open();
   };
 
-  #resolve(): void {
+  #resolve(selection = new Map<string, string>(), changed?: string): void {
     const element = this.element;
     if (!element) return;
-    this.#variant = element.variants.find((variant) =>
-      [...this.#selection].every(([name, value]) => variant.selection[name] === value),
+
+    const matches = (variant: LibraryVariant) =>
+      [...selection].filter(([name, value]) => variant.selection[name] === value).length;
+
+    this.#variant = element.variants
+      .filter((variant) => !changed || variant.selection[changed] === selection.get(changed))
+      .sort((a, b) => matches(b) - matches(a))[0];
+    const values = new Map(
+      Object.entries({ ...element.defaults, ...this.#variant?.selection, ...this.#variant?.defaults }),
     );
     this.resolution = {
-      values: new Map(Object.entries({ ...element.defaults, ...this.#variant?.selection, ...this.#variant?.defaults })),
-      choices: element.selectors.map((selector) => ({
-        ...selector,
-        values: [
-          ...new Set(
-            element.variants.flatMap((variant) =>
-              variant.selection[selector.name] === undefined ? [] : [variant.selection[selector.name]],
-            ),
-          ),
-        ],
-      })),
+      values,
+      choices: this.#choices(values),
       errors: this.#variant ? [] : ['No preset for this size/variant.'],
     };
   }
 
+  #choices(values: ReadonlyMap<string, string>): LibraryResolution['choices'] {
+    const element = this.element;
+    if (!element) return [];
+    // Discrete choices determine the available sizes. A size must not hide the
+    // other technologies: switching technology preserves compatible selections.
+    const controls = element.selectors.filter((selector) =>
+      element.variants.some((variant) => {
+        const value = variant.selection[selector.name];
+
+        return value !== undefined && !Number.isFinite(Number(value));
+      }),
+    );
+
+    return element.selectors.map((selector) => {
+      const index = controls.findIndex((control) => control.name === selector.name);
+      const dependencies = index < 0 ? controls : controls.slice(0, index);
+      const available = element.variants.filter((variant) =>
+        dependencies.every((control) => variant.selection[control.name] === values.get(control.name)),
+      );
+
+      return {
+        ...selector,
+        values: [
+          ...new Set(
+            available.flatMap((variant) => {
+              const value = variant.selection[selector.name];
+
+              return value === undefined ? [] : [value];
+            }),
+          ),
+        ],
+      };
+    });
+  }
+
+  syncDefaults(state: LibraryDefaultState): void {
+    if (!this.elements.some((element) => element.id === state.elementId)) return;
+    this.elementId = state.elementId;
+    this.#opened = state.elementId;
+    this.resolution = {
+      values: new Map(state.values),
+      choices: this.#choices(state.values),
+      errors: [],
+    };
+    this.#variant = this.element?.variants.find((variant) =>
+      Object.entries(variant.selection).every(([name, value]) => state.values.get(name) === value),
+    );
+    this.changed();
+  }
+
   readonly selectValue = (name: string, value: string): void => {
-    this.#selection.set(name, value);
-    this.#resolve();
-    if (this.resolution.errors.length) {
-      this.#selection = new Map([[name, value]]);
-      this.#resolve();
-    }
+    const selection = new Map(
+      this.element?.selectors.flatMap((selector) => {
+        const selected = this.resolution.values.get(selector.name);
+
+        return selected === undefined ? [] : [[selector.name, selected] as const];
+      }),
+    );
+    selection.set(name, value);
+    this.#resolve(selection, name);
     this.changed();
     if (this.#opened === this.elementId && this.canOpen) this.#publish(false);
   };
 
   readonly reset = (): void => {
-    this.#selection.clear();
     this.#resolve();
     this.changed();
     if (this.#opened === this.elementId && this.canOpen) this.#publish(false);
@@ -180,7 +228,7 @@ export class ElementLibraryModel extends Observable {
         defaults: new LibraryDefaults(
           this.elements.filter((element) => element.entry === this.element!.entry && !element.error),
           this.#parameters,
-          { values: this.resolution.values, connectors },
+          { elementId: this.element.id, values: this.resolution.values, connectors },
         ),
       },
       replaceSource,

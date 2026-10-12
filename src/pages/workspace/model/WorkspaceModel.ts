@@ -267,6 +267,7 @@ export class WorkspaceModel extends Observable {
     this.parameters.loadValues(definitions, defaults.values, defaults.parameters);
     this.parameters.selectTab(tab);
     this.#libraryValues = defaults.values;
+    this.library.syncDefaults(defaults);
     this.#libraryDefaults?.remember(this.parameters.overrides());
     this.links.loadDefinitions(defaults.connectors);
   }

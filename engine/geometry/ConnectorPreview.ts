@@ -45,6 +45,9 @@ export interface ConnectorDefinition {
   name: string;
   pointName: string;
   type: ConnectorType;
+  // SDK connection identity is independent of the circular/rectangular profile.
+  connectionType?: string;
+  technology?: string;
   orientation: ConnectorOrientation;
   diameter: string;
   aSize: string;

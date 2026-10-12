@@ -48,7 +48,7 @@ it('opens one default set and keeps manual edits independent until Reset', async
     expect(mw.session.scene).toBe(originalScene);
     expect(editor.text).toBe(code);
     edit('elType', '0');
-    expect(mw.library.element?.defaults.elType).toBe('7');
+    expect(mw.library.element?.defaults.elType).toBe('0');
     expect(parameters.contextValues().get('diam')).toBe('65');
     expect(links.definitions()).toEqual(connectors);
     expect(links.statusIsError).toBe(false);
@@ -68,6 +68,105 @@ it('opens one default set and keeps manual edits independent until Reset', async
     expect(mw.functions.fileNames).toEqual([]);
     expect(parameters.tabs.map((tab) => tab.label)).toEqual(['makeFMRTHR']);
     expect(parameters.rows.some((row) => row.texts[0] === 'tech')).toBe(false);
+  } finally {
+    mw.dispose();
+    fetchMock.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
+it('updates CHIL helper selectors and keeps the selected element across shared cases', async () => {
+  vi.useFakeTimers();
+  const fetchMock = mockLibraryFetch();
+  const { mw, editor, parameters, links } = createWorkspace();
+  try {
+    mw.start();
+    await mw.library.selectLibrary('CGeneral');
+    const water = mw.library.elements.find((element) => element.name === 'Water cooled chiller')!;
+    mw.library.openElement(water.id);
+    const source = editor.text;
+
+    const edit = (name: string, value: string) => {
+      const row = parameters.rows.findIndex((row) => row.texts[0] === name);
+      expect(parameters.edit(row, 3), name).toBe(true);
+      parameters.editorTextEdited(value);
+      parameters.commitEditor();
+    };
+
+    edit('A', '900');
+    links.positionEdited(0, '123');
+    const edited = links.definitions();
+    for (const ftype of ['1', '2', '0']) {
+      edit('ftype', ftype);
+      expect(mw.library.elementId).toBe(water.id);
+      expect(links.definitions()).toHaveLength(4);
+      expect(parameters.contextValues().get('ftype')).toBe(ftype);
+    }
+    expect(parameters.contextValues().get('A')).toBe('900');
+    expect(links.definitions()).toEqual(edited);
+    edit('elType', '0');
+    expect(links.definitions()).toHaveLength(2);
+    edit('elType', '1');
+    expect(mw.library.elementId).toBe(water.id);
+    expect(links.definitions()).toEqual(edited);
+    edit('elType', '2');
+    expect(mw.library.element?.name).toBe('Floor standing fancoil');
+    edit('elType', '1');
+    expect(mw.library.elementId).toBe(water.id);
+    expect(links.definitions()).toEqual(edited);
+    expect(editor.text).toBe(source);
+
+    const floor = mw.library.elements.find((element) => element.name === 'Floor standing fancoil')!;
+    mw.library.openElement(floor.id);
+    for (const [ftype, names] of [
+      ['1', ['C2', 'H2']],
+      ['2', ['C3', 'H3']],
+      ['0', ['C1', 'H1']],
+    ] as const) {
+      edit('ftype', ftype);
+      expect(mw.library.elementId).toBe(floor.id);
+      expect(links.definitions().map((link) => link.name)).toEqual(names);
+    }
+    expect(mw.library.resolution.choices.find((choice) => choice.name === 'system_label')?.values).toContain('4-pipe');
+    mw.library.selectValue('system_label', '4-pipe');
+    expect(links.definitions().map((link) => link.name)).toEqual(['C4', 'H4', 'C5', 'H5']);
+    expect(parameters.contextValues().get('ftype')).toBe('2');
+    mw.library.selectValue('system_label', '2-pipe');
+    expect(links.definitions().map((link) => link.name)).toEqual(['C3', 'H3']);
+    expect(links.statusIsError).toBe(false);
+  } finally {
+    mw.dispose();
+    fetchMock.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
+it('matches CHIL diameter and connection technology together without changing the source', async () => {
+  vi.useFakeTimers();
+  const fetchMock = mockLibraryFetch();
+  const { mw, editor, parameters, links } = createWorkspace();
+  try {
+    mw.start();
+    await mw.library.selectLibrary('CGeneral');
+    mw.library.openElement(mw.library.elements.find((element) => element.name === 'Air cooled chiller')!.id);
+    const source = editor.text;
+    mw.library.selectValue('diam', '25');
+    mw.library.selectValue('__conn', 'int. thread');
+    expect(links.definitions()[0]).toMatchObject({ connectionType: 'F', technology: 'THR_STEEL', diameter: 'diam' });
+    mw.library.selectValue('tech', 'welded steel');
+    expect(parameters.contextValues().get('diam')).toBe('25');
+    expect(parameters.contextValues().get('__conn')).toBe('');
+    expect(links.definitions()[0]).toMatchObject({ connectionType: 'N', technology: 'WLD_STEEL' });
+    expect(mw.library.resolution.choices.find((choice) => choice.name === 'diam')?.values).toContain('500');
+    mw.library.selectValue('tech', 'copper');
+    expect(mw.library.resolution.choices.find((choice) => choice.name === 'diam')?.values).not.toContain('500');
+    mw.library.selectValue('diam', '15');
+    mw.library.selectValue('__conn', 'female');
+    expect(parameters.contextValues().get('diam')).toBe('15');
+    expect(links.definitions()[0]).toMatchObject({ connectionType: 'F', technology: 'COPPER' });
+    expect(links.tableRows[0].texts[3]).toBe('(327.5, -165, -137.5)');
+    expect(links.statusIsError).toBe(false);
+    expect(editor.text).toBe(source);
   } finally {
     mw.dispose();
     fetchMock.mockRestore();

@@ -2,6 +2,46 @@ import { readdirSync, statSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { defineLibrary, type TableElement } from '@/features/element-library/model/valueTables';
 import { libraries } from '@/features/element-library/config/libraries';
+import CGeneral from '@/features/element-library/data/CGeneral';
+
+it.each(CGeneral.elements.filter((element) => element.entry === 'makeCHIL'))(
+  'retains every conditional diameter/technology pair for $name',
+  (element) => {
+    const sizes = (tech: string) => [
+      ...new Set(element.variants.filter((v) => v.selection.tech === tech).map((v) => v.selection.diam)),
+    ];
+
+    expect(sizes('threaded steel')).toHaveLength(15);
+    expect(sizes('welded steel')).toHaveLength(19);
+    expect(sizes('flanged steel')).toHaveLength(16);
+    expect(sizes('copper')).toHaveLength(15);
+    expect(sizes('glued plastic')).toHaveLength(19);
+    expect(sizes('socked-welded plastic')).toHaveLength(19);
+    expect(sizes('butt-welded plastic')).toHaveLength(19);
+    expect(sizes('welded steel')).toContain('25');
+    expect(sizes('flanged steel')).toContain('25');
+    expect(sizes('copper')).toContain('15');
+    for (const variant of element.variants) {
+      expect(variant.connectors?.every((link) => !!link.connectionType && !!link.technology)).toBe(true);
+    }
+  },
+);
+
+it('uses the XML fancoil dimension columns and four-pipe spacing for the selected technology', () => {
+  const element = CGeneral.elements.find((element) => element.name === 'Floor standing fancoil')!;
+
+  const defaults = (diam: string, tech: string, system: string) =>
+    element.variants.find(
+      (v) => v.selection.diam === diam && v.selection.tech === tech && v.selection.system_label === system,
+    )!;
+
+  expect(defaults('25', 'threaded steel', '2-pipe').defaults.d).toBe('39.7');
+  expect(defaults('25', 'welded steel', '2-pipe').defaults.d).toBe('33.7');
+  expect(defaults('25', 'flanged steel', '2-pipe').defaults.d).toBe('115');
+  const fourPipe = defaults('150', 'flanged steel', '4-pipe');
+  expect(fourPipe.defaults).toMatchObject({ B: '750', H: '750', d: '285', ftype: '2' });
+  expect(fourPipe.connectors).toHaveLength(4);
+});
 
 it('joins compatible size rows and keeps independent options without inventing combinations', () => {
   const element: TableElement = {

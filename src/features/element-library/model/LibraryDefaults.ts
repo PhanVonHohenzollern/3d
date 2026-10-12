@@ -2,6 +2,7 @@ import { parameterKey, type RuntimeParameterRequest } from '@engine/runtime';
 import type { LibraryElement } from '@/features/element-library/model/types';
 
 export interface LibraryDefaultState {
+  elementId: string;
   values: ReadonlyMap<string, string>;
   connectors: LibraryElement['connectors'];
   parameters?: ReadonlyMap<string, string>;
@@ -36,6 +37,7 @@ export class LibraryDefaults {
   ) {
     this.#presets = elements.flatMap((element) =>
       element.variants.map((variant) => ({
+        elementId: element.id,
         values: new Map(Object.entries({ ...element.defaults, ...variant.selection, ...variant.defaults })),
         connectors: variant.connectors ?? element.connectors,
         selectors: element.selectors.map((selector) => selector.name),
@@ -46,6 +48,7 @@ export class LibraryDefaults {
     const controls = new Set(
       definitions.filter((definition) => definition.branchSelector).map((definition) => definition.name),
     );
+    for (const element of elements) for (const name of element.controls ?? []) controls.add(name);
     for (const preset of this.#presets)
       for (const name of preset.selectors) {
         const value = preset.values.get(name);
@@ -65,8 +68,8 @@ export class LibraryDefaults {
     return values.get(this.#keys.get(name) ?? name) ?? values.get(name);
   }
 
-  #key(values: ReadonlyMap<string, string>): string {
-    return JSON.stringify(this.#controls.map((name) => comparable(this.#value(values, name))));
+  #key(elementId: string, values: ReadonlyMap<string, string>): string {
+    return JSON.stringify([elementId, ...this.#controls.map((name) => comparable(this.#value(values, name)))]);
   }
 
   remember(parameters: ReadonlyMap<string, string>): void {
@@ -93,16 +96,22 @@ export class LibraryDefaults {
 
       return null;
     }
-    const previousKey = this.#key(this.#parameters);
+    const previousKey = this.#key(this.#current.elementId, this.#parameters);
     this.#saved.delete(previousKey);
     this.#saved.set(previousKey, {
       ...this.#current,
       parameters: this.#parameters,
       connectors: structuredClone(connectors),
     });
-    const candidates = this.#presets.filter((preset) =>
+    let candidates = this.#presets.filter((preset) =>
       changed.every((name) => comparable(preset.values.get(name)) === comparable(this.#value(parameters, name))),
     );
+    // A function/case is not an element identity. Stay in the selected catalogue
+    // element whenever it supports the requested controls (e.g. a four-port CHIL).
+    const current = candidates.filter((preset) => preset.elementId === this.#current.elementId);
+    const initial = candidates.filter((preset) => preset.elementId === this.#initial.elementId);
+    if (current.length) candidates = current;
+    else if (initial.length) candidates = initial;
 
     const matches = (preset: LibraryDefaultState, names: readonly string[]) =>
       names.filter((name) => comparable(preset.values.get(name)) === comparable(this.#value(parameters, name))).length;
@@ -112,18 +121,8 @@ export class LibraryDefaults {
         matches(b, this.#controls) - matches(a, this.#controls) || matches(b, b.selectors) - matches(a, a.selectors),
     );
     const preset = candidates[0];
-    const saved = [...this.#saved.values()]
-      .reverse()
-      .filter((state) =>
-        changed.every(
-          (name) =>
-            comparable(this.#value(state.parameters ?? state.values, name)) ===
-            comparable(this.#value(parameters, name)),
-        ),
-      )
-      .sort((a, b) => matches(b, this.#controls) - matches(a, this.#controls))[0];
-    const next =
-      saved && (!preset || matches(saved, this.#controls) >= matches(preset, this.#controls)) ? saved : preset;
+    const saved = preset ? this.#saved.get(this.#key(preset.elementId, preset.values)) : undefined;
+    const next = saved ?? preset;
     if (!next) {
       // Preserve editable values and connectors until a matching preset is selected.
       this.remember(parameters);

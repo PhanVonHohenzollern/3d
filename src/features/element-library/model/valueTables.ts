@@ -3,6 +3,7 @@ import type { ElementLibrary, LibraryElement, LibraryVariant } from '@/features/
 export interface ValueTable {
   columns: string[];
   rows: (string | null)[][];
+  controls?: string[];
 }
 
 export interface TableElement extends Omit<LibraryElement, 'variants'> {
@@ -45,25 +46,36 @@ export function defineLibrary(name: string, definitions: TableElement[]): Elemen
 
       return {
         ...element,
+        controls: [...new Set([...(element.controls ?? []), ...tables.flatMap((table) => table.controls ?? [])])],
         // Listing FLM elements does not expand size combinations. Build them only
         // for an opened function, and reuse the result while switching its sizes.
         get variants() {
           return (variants ??= element.error
             ? []
             : tableValues(tables).map((row) => {
-                const { $connectors, ...parameters } = row;
+                const { $connectors, $connectionType, $technology, ...parameters } = row;
                 const defaults = Object.fromEntries(
                   Object.entries(parameters).filter((entry): entry is [string, string] => entry[1] !== null),
                 );
                 const values = { ...element.defaults, ...defaults };
                 Object.assign(defaults, derive?.(values));
+                const connectors =
+                  $connectors != null && connectorSets ? connectorSets[Number($connectors)] : element.connectors;
+                const connection = {
+                  ...($connectionType != null ? { connectionType: $connectionType } : {}),
+                  ...($technology != null ? { technology: $technology } : {}),
+                };
 
                 return {
                   selection: Object.fromEntries(
                     element.selectors.flatMap(({ name }) => (name in values ? [[name, values[name]]] : [])),
                   ),
                   defaults,
-                  ...($connectors != null && connectorSets ? { connectors: connectorSets[Number($connectors)] } : {}),
+                  ...($connectionType != null || $technology != null
+                    ? { connectors: connectors.map((connector) => ({ ...connector, ...connection })) }
+                    : $connectors != null && connectorSets
+                      ? { connectors }
+                      : {}),
                 };
               }));
         },
