@@ -90,6 +90,7 @@ export function useWorkspace() {
       onPointCreation: model.onViewportPointCreation,
       onMeshSelection: model.selection.onViewportMeshSelection,
       onConnectorSelection: model.onViewportConnectorSelection,
+      onSelectionCleared: model.exitPreviewFocus,
     },
     variables: { model: model.variables },
     parameters: { model: model.parameters, onApply: model.applyParameters },

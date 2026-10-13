@@ -9,7 +9,6 @@ import {
   kSelectedMeshColor,
   kSelectedMeshOutlineColor,
   kSelectedVectorLineWidth,
-  kUniteOpacity,
   kVectorLineWidth,
   kWireLineWidth,
 } from '@/widgets/viewport/config/viewport';
@@ -65,6 +64,7 @@ export class SceneRenderer {
   #dirty = true;
   #cache: GeometryVertexCache | null = null;
   #geometryVersion = 0;
+  #meshCenters: QVector3D[] = [];
 
   constructor(
     private readonly state: ViewportState,
@@ -150,6 +150,7 @@ export class SceneRenderer {
     renderer.setMatrices(view.camera.viewProjection().times(model), view.camera.view.normalMatrix());
     renderer.setUniformValue('uUseOverrideColor', false);
     renderer.setUniformValue('uLightingEnabled', false);
+    renderer.setOpacity(1);
 
     renderer.glLineWidth(kAxisLineWidth);
     if (this.#axes.count > 0) renderer.glDrawArrays('GL_LINES', 0, this.#axes.count);
@@ -186,26 +187,34 @@ export class SceneRenderer {
     renderer.setDepthMask(false);
     renderer.glLineWidth(kWireLineWidth);
     for (const range of this.#wireRanges) {
-      if (!state.isGeometryApiVisible(range.apiIndex)) continue;
+      if (!state.isMeshVisible(range.meshIndex)) continue;
+      renderer.setOpacity(state.meshOpacity(range.meshIndex));
       renderer.glDrawArrays('GL_LINES', range.start, range.count);
     }
+    renderer.setOpacity(1);
   }
 
   #drawSolid(): void {
     const { renderer, state } = this;
-    const unite = state.selectionPresentation === 'Unite';
-    if (unite) {
-      renderer.setDepthTest(false);
-      renderer.setDepthMask(false);
-    }
+    const back = viewDirection(this.view);
+    const ranges = [...this.#geometryRanges].sort((a, b) => {
+      const opacityOrder = state.meshOpacity(b.meshIndex) - state.meshOpacity(a.meshIndex);
+
+      return (
+        opacityOrder || QVector3D.dotProduct(this.#meshCenters[a.meshIndex].sub(this.#meshCenters[b.meshIndex]), back)
+      );
+    });
+    renderer.setDepthTest(true);
     renderer.glLineWidth(kWireLineWidth);
-    for (const range of this.#geometryRanges) {
-      if (!state.isGeometryApiVisible(range.apiIndex)) continue;
+    for (const range of ranges) {
+      if (!state.isMeshVisible(range.meshIndex)) continue;
       const lines = state.geometryScene.meshes[range.meshIndex].primitive === 'lines';
       renderer.setUniformValue('uLightingEnabled', !lines);
       const selected = state.isMeshSelected(range.meshIndex);
       const hovered = state.isMeshInGroup(range.meshIndex, state.hoveredMeshIndex);
-      if (unite) renderer.setOpacity(selected || hovered ? kUniteOpacity.focused : kUniteOpacity.other);
+      const opacity = state.meshOpacity(range.meshIndex);
+      renderer.setDepthMask(opacity === 1);
+      renderer.setOpacity(opacity);
       renderer.setUniformValue('uUseOverrideColor', selected || hovered);
       if (selected) renderer.setUniformValue('uOverrideColor', kSelectedMeshColor);
       else if (hovered) {
@@ -217,7 +226,8 @@ export class SceneRenderer {
       }
       renderer.glDrawArrays(lines ? 'GL_LINES' : 'GL_TRIANGLES', range.start, range.count);
     }
-    if (unite) renderer.setOpacity(1);
+    renderer.setOpacity(1);
+    renderer.setDepthMask(true);
     renderer.setUniformValue('uLightingEnabled', false);
     renderer.setUniformValue('uUseOverrideColor', false);
   }
@@ -226,9 +236,11 @@ export class SceneRenderer {
     const { renderer, state } = this;
     if (state.selectedApiIndex < 0 && state.selectedMeshIndex < 0 && state.hoveredMeshIndex < 0) return;
     renderer.setUniformValue('uUseOverrideColor', true);
+    renderer.setDepthTest(false);
+    renderer.setDepthMask(false);
     renderer.glLineWidth(kHighlightLineWidth);
     for (const range of this.#wireRanges) {
-      if (!state.isGeometryApiVisible(range.apiIndex)) continue;
+      if (!state.isMeshVisible(range.meshIndex)) continue;
       const selectedDirectly =
         state.selectedMeshIndex >= 0
           ? state.isMeshSelected(range.meshIndex)
@@ -256,6 +268,10 @@ export class SceneRenderer {
     renderer.setUniformValue('uLightingEnabled', true);
     if (!state.geometryWireframe) {
       for (const range of this.#connectorSurfaces) {
+        if (!state.isConnectorVisible(range.id)) continue;
+        const opacity = state.hasSelection() && range.id !== state.selectedConnectorId ? 0.2 : 1;
+        renderer.setOpacity(opacity);
+        renderer.setDepthMask(opacity === 1);
         const hovered = range.id === hoveredId && range.id !== state.selectedConnectorId;
         renderer.setUniformValue('uUseOverrideColor', hovered);
         if (hovered)
@@ -267,6 +283,8 @@ export class SceneRenderer {
     renderer.setDepthTest(false);
     renderer.setDepthMask(false);
     for (const range of this.#connectorOutlines) {
+      if (!state.isConnectorVisible(range.id)) continue;
+      renderer.setOpacity(state.hasSelection() && range.id !== state.selectedConnectorId ? 0.2 : 1);
       const hovered = range.id === hoveredId;
       renderer.setUniformValue('uUseOverrideColor', hovered);
       if (hovered) renderer.setUniformValue('uOverrideColor', kHoverOutlineColor);
@@ -274,6 +292,7 @@ export class SceneRenderer {
       renderer.glDrawArrays('GL_LINES', range.start, range.count);
     }
     renderer.setUniformValue('uUseOverrideColor', false);
+    renderer.setOpacity(1);
     renderer.setDepthMask(true);
     renderer.setDepthTest(true);
   }
@@ -281,6 +300,16 @@ export class SceneRenderer {
   #geometryCache(): GeometryVertexCache {
     if (this.#cache && this.#cache.version === this.#geometryVersion) return this.#cache;
     const scene = this.state.geometryScene;
+    this.#meshCenters = scene.meshes.map((mesh) => {
+      let min = new QVector3D(Infinity, Infinity, Infinity);
+      let max = new QVector3D(-Infinity, -Infinity, -Infinity);
+      for (const vertex of mesh.vertices) {
+        min = new QVector3D(Math.min(min.x, vertex.x), Math.min(min.y, vertex.y), Math.min(min.z, vertex.z));
+        max = new QVector3D(Math.max(max.x, vertex.x), Math.max(max.y, vertex.y), Math.max(max.z, vertex.z));
+      }
+
+      return mesh.vertices.length ? min.add(max).mul(0.5) : new QVector3D();
+    });
     const triangles = buildGeometryVertices(scene);
     const wires = buildGeometryWireVertices(scene);
     this.#cache = {
@@ -300,4 +329,8 @@ export class SceneRenderer {
 
     return ranges.map((range) => ({ ...range, start: range.start + base }));
   }
+}
+
+function viewDirection(view: CameraController): QVector3D {
+  return view.camera.cameraPosition().sub(view.camera.target).normalized();
 }

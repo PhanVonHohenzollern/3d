@@ -94,18 +94,18 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                   <PanelHeader icon={Box} title="3D Viewport">
                     <ToolBar items={workspace.toolbarItems} />
                   </PanelHeader>
+                  {workspace.importedObj && (
+                    <div className="flex shrink-0 items-center gap-2 border-b border-line bg-base p-2 text-xs">
+                      <span className="min-w-0 flex-1 truncate" title={workspace.importedObj.name}>
+                        OBJ preview · {workspace.importedObj.name}
+                      </span>
+                      <Button size="sm" variant="outline" onClick={workspace.returnToCodePreview}>
+                        Return to code
+                      </Button>
+                    </div>
+                  )}
                   <div className="workspace-surface relative min-h-0 flex-1 overflow-hidden bg-viewport">
                     <Viewport3D {...workspace.viewport} lightTheme={theme === 'light'} />
-                    {workspace.importedObj && (
-                      <div className="absolute top-2 right-2 left-2 flex items-center gap-2 rounded-md border border-line bg-base/95 p-2 text-xs">
-                        <span className="min-w-0 flex-1 truncate" title={workspace.importedObj.name}>
-                          OBJ preview · {workspace.importedObj.name}
-                        </span>
-                        <Button size="sm" variant="outline" onClick={workspace.returnToCodePreview}>
-                          Return to code
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 </section>
                 <ResizeHandle

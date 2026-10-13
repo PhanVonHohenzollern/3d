@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { LeftButton, MiddleButton, RightButton } from '@/shared/lib/qt';
+import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { boxMesh, click, createEngine, mouse, project, resultWithP0, scene } from '@tests/renderer/helpers';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 
 function meshModeEngine() {
   const engine = createEngine();
-  engine.selectionModeButtonClicked();
-  engine.selectionModeButtonClicked();
+  engine.setSelectionMode('Mesh');
   const onMesh = vi.fn();
   engine.setMeshSelectionCallback(onMesh);
 
@@ -15,12 +15,34 @@ function meshModeEngine() {
 }
 
 describe('Mesh mode', () => {
-  it('Unite cycles through occluded meshes without clearing API focus', () => {
+  it.each(['Mesh', 'Point', 'Vector'] as const)(
+    'empty click clears selection in %s mode without changing the camera',
+    (mode) => {
+      const engine = createEngine();
+      engine.setGeometryScene(scene(boxMesh([-1, -1, -1], [1, 1, 1], 0)));
+      engine.setSelectedApiCall(0);
+      engine.setApiFocusIndices(new Set([0]));
+      engine.setSelectedVariable('p0');
+      engine.toggleIsolation();
+      engine.setSelectionMode(mode);
+      const camera = engine.camera();
+      const before = [camera.target, camera.orientation, camera.distance];
+      const cleared = vi.fn();
+      engine.setSelectionClearedCallback(cleared);
+      click(engine, 790, 590);
+      expect(cleared).toHaveBeenCalledOnce();
+      expect(engine.hasApiFocus()).toBe(false);
+      expect(engine.selectedDebugItems().size).toBe(0);
+      expect(engine.isSelectionIsolated()).toBe(false);
+      expect(engine.isMeshSelected(0)).toBe(false);
+      expect([camera.target, camera.orientation, camera.distance]).toEqual(before);
+    },
+  );
+  it('Context selection cycles through occluded meshes without clearing API focus', () => {
     const { engine, onMesh } = meshModeEngine();
     engine.setGeometryScene(scene(boxMesh([-2, -2, -2], [2, 2, 2], 0), boxMesh([-1, -1, -1], [1, 1, 1], 1)));
     engine.setApiFocusIndices(new Set([0]));
-    engine.toggleSelectionPresentation();
-    expect(engine.selectionPresentation()).toBe('Unite');
+    expect(engine.isSelectionIsolated()).toBe(false);
     click(engine, 400, 300);
     expect(onMesh).toHaveBeenLastCalledWith(0, 1);
     engine.setApiFocusIndices(new Set([0]));
@@ -29,8 +51,8 @@ describe('Mesh mode', () => {
     engine.setApiFocusIndices(new Set([1]));
     click(engine, 400, 300);
     expect(onMesh).toHaveBeenLastCalledWith(0, 1);
-    engine.toggleSelectionPresentation();
-    expect(engine.selectionPresentation()).toBe('Separate');
+    engine.toggleIsolation();
+    expect(engine.isSelectionIsolated()).toBe(true);
     click(engine, 400, 300);
     expect(onMesh).toHaveBeenLastCalledWith(1, 2);
   });
@@ -53,6 +75,7 @@ describe('Mesh mode', () => {
     const { engine, onMesh } = meshModeEngine();
     engine.setGeometryScene(scene(boxMesh([-1, -1, -1], [1, 1, 1], 0)));
     engine.setApiFocusIndices(new Set([5]));
+    engine.toggleIsolation();
     click(engine, 400, 300);
     expect(onMesh).not.toHaveBeenCalled();
     engine.clearApiFocus();
@@ -71,12 +94,13 @@ describe('Mesh mode', () => {
       engine.selectionModeButtonClicked();
       texts.push(engine.selectionModeButton().text);
     }
-    expect(texts).toEqual(['Point', 'Vector', 'Mesh', 'Point']);
+    expect(texts).toEqual(['Mesh', 'Point', 'Vector', 'Mesh']);
   });
 
   it('chooses a mode directly and uses it for the next click', () => {
     const engine = createEngine();
     engine.setGeometryScene(scene(boxMesh([-2, -2, -2], [2, 2, 2], 0)));
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const onMesh = vi.fn();
     const onPoint = vi.fn();
@@ -98,25 +122,28 @@ describe('Mesh mode', () => {
 });
 
 describe('debug points and clicks', () => {
-  it.each(['Point', 'Vector'] as const)('Unite selects overlapping %s snapshots across API calls', (kind) => {
-    const engine = createEngine();
-    const source = 'makeFlatDisc(FdPoint3d(0,0,0), vz, 2, 8);\nmakeFlatDisc(FdPoint3d(0,0,0), vz, 3, 8);';
-    engine.setRuntimeResult(new GeometryRuntime().executeUpToLine(source, 999));
-    engine.setGeometryScene(scene(boxMesh([-2, -2, -2], [2, 2, 2], 8)));
-    engine.setApiFocusIndices(new Set([0]));
-    engine.toggleSelectionPresentation();
-    if (kind === 'Vector') engine.selectionModeButtonClicked();
-    const selected = vi.fn();
-    engine.setSelectionChangedCallback(selected);
-    click(engine, 400, 300);
-    expect([...engine.selectedDebugItems()][0]).toContain(`@api0:${kind.toLowerCase()}:`);
-    engine.setApiFocusIndices(new Set([0]));
-    click(engine, 400, 300);
-    expect([...engine.selectedDebugItems()][0]).toContain(`@api1:${kind.toLowerCase()}:`);
-    expect(selected).toHaveBeenCalledTimes(2);
-  });
+  it.each(['Point', 'Vector'] as const)(
+    'Context selection cycles overlapping %s snapshots across API calls',
+    (kind) => {
+      const engine = createEngine();
+      const source = 'makeFlatDisc(FdPoint3d(0,0,0), vz, 2, 8);\nmakeFlatDisc(FdPoint3d(0,0,0), vz, 3, 8);';
+      engine.setRuntimeResult(new GeometryRuntime().executeUpToLine(source, 999));
+      engine.setGeometryScene(scene(boxMesh([-2, -2, -2], [2, 2, 2], 8)));
+      engine.setApiFocusIndices(new Set([0]));
+      engine.setSelectionMode(kind);
+      const selected = vi.fn();
+      engine.setSelectionChangedCallback(selected);
+      click(engine, 400, 300);
+      expect([...engine.selectedDebugItems()][0]).toContain(`@api0:${kind.toLowerCase()}:`);
+      engine.setApiFocusIndices(new Set([0]));
+      click(engine, 400, 300);
+      expect([...engine.selectedDebugItems()][0]).toContain(`@api1:${kind.toLowerCase()}:`);
+      expect(selected).toHaveBeenCalledTimes(2);
+    },
+  );
   it('click selects p0; Shift-click toggles it', () => {
     const engine = createEngine();
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const onSelection = vi.fn();
     engine.setSelectionChangedCallback(onSelection);
@@ -129,6 +156,7 @@ describe('debug points and clicks', () => {
 
   it('Ctrl-click in Point mode creates a ground point instead of selecting', () => {
     const engine = createEngine();
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const onPoint = vi.fn();
     const onSelection = vi.fn();
@@ -146,6 +174,7 @@ describe('debug points and clicks', () => {
 
   it('a drag of 5 or more pixels orbits instead of clicking', () => {
     const engine = createEngine();
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const onSelection = vi.fn();
     engine.setSelectionChangedCallback(onSelection);
@@ -153,20 +182,20 @@ describe('debug points and clicks', () => {
 
     engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
     engine.mouseMoveEvent(mouse(404, 300, 0, LeftButton));
-    expect(camera.yaw).toBe(-45);
+    expect(camera.orientation).toEqual(ViewportCamera.homeOrientation());
     engine.mouseReleaseEvent(mouse(404, 300, LeftButton, 0));
     expect(onSelection).toHaveBeenCalledTimes(1);
 
     engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
     engine.mouseMoveEvent(mouse(410, 296, 0, LeftButton));
-    expect(camera.yaw).toBeCloseTo(-45 - 10 * 0.35);
-    expect(camera.pitch).toBeCloseTo(28 - 4 * 0.35);
+    expect(camera.orientation).not.toEqual(ViewportCamera.homeOrientation());
     engine.mouseReleaseEvent(mouse(410, 296, LeftButton, 0));
     expect(onSelection).toHaveBeenCalledTimes(1);
   });
 
   it('middle-drag pans the target in the view plane without selecting', () => {
     const engine = createEngine();
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const onSelection = vi.fn();
     engine.setSelectionChangedCallback(onSelection);
@@ -176,13 +205,13 @@ describe('debug points and clicks', () => {
     const target = engine.camera().target;
     expect(target.length()).toBeCloseTo(20 * 18 * 0.0018, 4);
     expect(target.z).toBeLessThan(0);
-    expect(engine.camera().yaw).toBe(-45);
-    expect(engine.camera().pitch).toBe(28);
+    expect(engine.camera().orientation).toEqual(ViewportCamera.homeOrientation());
     expect(onSelection).not.toHaveBeenCalled();
   });
 
   it('right-click and right-drag leave camera and selection unchanged', () => {
     const engine = createEngine();
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const onSelection = vi.fn();
     engine.setSelectionChangedCallback(onSelection);
@@ -192,14 +221,14 @@ describe('debug points and clicks', () => {
       engine.mouseReleaseEvent(mouse(400, 300 + dy, RightButton, 0));
     }
     expect(engine.camera().target.length()).toBe(0);
-    expect(engine.camera().yaw).toBe(-45);
-    expect(engine.camera().pitch).toBe(28);
+    expect(engine.camera().orientation).toEqual(ViewportCamera.homeOrientation());
     expect(engine.selectionMode()).toBe('Point');
     expect(onSelection).not.toHaveBeenCalled();
   });
 
   it.each(['Mesh', 'Point', 'Vector'] as const)('left-drag orbits without sweep selection in %s mode', (mode) => {
     const engine = createEngine();
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     engine.setSelectionMode(mode);
     const onSelection = vi.fn();
@@ -209,7 +238,7 @@ describe('debug points and clicks', () => {
     engine.mousePressEvent(mouse(450, 300, LeftButton, LeftButton));
     engine.mouseMoveEvent(mouse(350, 300, 0, LeftButton));
     engine.mouseReleaseEvent(mouse(350, 300, LeftButton, 0));
-    expect(engine.camera().yaw).toBeCloseTo(-45 + 100 * 0.35);
+    expect(engine.camera().orientation).not.toEqual(ViewportCamera.homeOrientation());
     expect(engine.camera().target.length()).toBe(0);
     expect(onSelection).not.toHaveBeenCalled();
   });
@@ -252,6 +281,7 @@ describe('debug points and clicks', () => {
 
   it('lays out the lists above the floating selection button', () => {
     const engine = createEngine(1000, 700);
+    engine.setSelectionMode('Point');
     engine.setRuntimeResult(resultWithP0(0, 0, 0));
     const button = engine.selectionModeButton().geometry;
     expect([button.x, button.y, button.width, button.height]).toEqual([8, 700 - 8 - 32, 96, 32]);

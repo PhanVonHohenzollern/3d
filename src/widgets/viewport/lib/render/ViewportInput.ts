@@ -14,6 +14,7 @@ export interface ViewportCallbacks {
   pointCreation: ((point: Vec3) => void) | null;
   meshSelection: ((apiIndex: number, sourceLine: number) => void) | null;
   connectorSelection: ((id: number) => void) | null;
+  selectionCleared?: (() => void) | null;
 }
 
 // What input needs from the viewport that owns it.
@@ -27,6 +28,7 @@ export interface InputHost {
   // Selects debug items and reports the new selection.
   selectDebugItems(names: ReadonlySet<string>): void;
   setSelectedVariables(names: ReadonlySet<string>): void;
+  clearSelection(): void;
 }
 
 // Mouse input: dragging moves the camera, a click picks or creates, and moving shows what is
@@ -54,6 +56,7 @@ export class ViewportInput {
   move(event: MouseEventData): void {
     const position = new QPointF(event.x, event.y);
     const currentPosition = position.toPoint();
+    const previousPosition = this.#lastMousePosition;
     const delta = currentPosition.sub(this.#lastMousePosition);
     this.#lastMousePosition = currentPosition;
     if (event.buttons === NoButton) {
@@ -69,7 +72,7 @@ export class ViewportInput {
 
     const creatingPoint = this.state.selectionMode === 'Point' && this.#pressModifiers.control;
     if (event.buttons & LeftButton && !creatingPoint) {
-      this.view.camera.orbit(delta);
+      this.view.camera.orbit(new QPointF(previousPosition.x, previousPosition.y), position);
       this.host.rebuild(false);
       this.host.update();
     }
@@ -134,6 +137,7 @@ export class ViewportInput {
   #click(position: QPointF): void {
     const { state, pickers, host } = this;
     const { callbacks } = host;
+    if (this.overlay.covers(position.toPoint())) return;
     const control = this.#pressModifiers.control;
     this.view.updateMatrices();
     const mode = state.selectionMode;
@@ -148,7 +152,11 @@ export class ViewportInput {
       if (point) callbacks.pointCreation?.({ x: point.x, y: point.y, z: point.z });
     } else if (state.selectionMode !== 'Mesh') {
       const name = pickers.pickDebugItem(position, state.selectionMode === 'Point' ? 'Point' : 'Vector', true);
-      if (name === '') return;
+      if (name === '') {
+        host.clearSelection();
+
+        return;
+      }
       if (state.selectedConnectorId >= 0) callbacks.connectorSelection?.(-1);
       const selected = this.#pressModifiers.shift ? new Set(state.selectedVariables) : new Set<string>();
       if (selected.has(name)) selected.delete(name);
@@ -156,7 +164,11 @@ export class ViewportInput {
       host.selectDebugItems(selected);
     } else {
       const meshIndex = mesh?.meshIndex ?? -1;
-      if (meshIndex < 0) return;
+      if (meshIndex < 0) {
+        host.clearSelection();
+
+        return;
+      }
       if (state.selectedConnectorId >= 0) callbacks.connectorSelection?.(-1);
       state.selectedMeshIndex = meshIndex;
       host.setSelectedVariables(new Set());

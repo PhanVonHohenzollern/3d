@@ -79,13 +79,14 @@ export class CameraController {
     const { state } = this;
     const bounds = new Bounds3D();
     if (state.showGeometry) {
-      for (const mesh of state.geometryScene.meshes) {
-        if (!state.isGeometryApiVisible(mesh.apiIndex)) continue;
+      for (const [index, mesh] of state.geometryScene.meshes.entries()) {
+        if (!state.isMeshVisible(index)) continue;
         for (const v of mesh.vertices) bounds.addPoint(v);
       }
     }
     this.#addVisibleDebugItems(bounds);
     for (const connector of state.connectors) {
+      if (!state.isConnectorVisible(connector.id)) continue;
       for (const mesh of connector.meshes) for (const v of mesh.vertices) bounds.addPoint(v);
       bounds.addPoint(connectorTip(connector));
     }

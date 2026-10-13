@@ -16,12 +16,14 @@ export function useViewportEngine(ref: Ref<Viewport3DHandle> | undefined, props:
     engine.setPointCreationCallback((point) => propsRef.current.onPointCreation?.(point));
     engine.setMeshSelectionCallback((apiIndex, sourceLine) => propsRef.current.onMeshSelection?.(apiIndex, sourceLine));
     engine.setConnectorSelectionCallback((id) => propsRef.current.onConnectorSelection?.(id));
+    engine.setSelectionClearedCallback(() => propsRef.current.onSelectionCleared?.());
 
     return () => {
       engine.setSelectionChangedCallback(null);
       engine.setPointCreationCallback(null);
       engine.setMeshSelectionCallback(null);
       engine.setConnectorSelectionCallback(null);
+      engine.setSelectionClearedCallback(null);
     };
   }, [engine]);
 

@@ -111,11 +111,12 @@ in vec3 vColor;
 
 uniform bool uUseOverrideColor;
 uniform vec3 uOverrideColor;
+uniform float uOpacity;
 
 out vec4 fragColor;
 
 void main()
 {
-    fragColor = vec4(uUseOverrideColor ? uOverrideColor : vColor, 1.0);
+    fragColor = vec4(uUseOverrideColor ? uOverrideColor : vColor, uOpacity);
 }
 `;

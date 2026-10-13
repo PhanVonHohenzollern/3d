@@ -23,17 +23,16 @@ export function SelectionModeButton({ engine }: SelectionModeButtonProps) {
             className="absolute z-3 border-viewport-button-line bg-viewport-button px-2 text-xs text-viewport-button-fg shadow-md hover:bg-viewport-button-hover"
             style={button.presentationStyle}
             onClick={button.togglePresentation}
-            aria-label={`Selection display: ${button.presentation}`}
+            aria-label="Isolate selection"
+            aria-pressed={button.isolated}
             onPointerEnter={button.onPointerEnter}
             onFocus={button.onFocus}
           >
-            {button.presentation}
+            {button.isolated ? 'Show all' : 'Isolate'}
           </Button>
         </TooltipTrigger>
         <TooltipContent side="top">
-          {button.presentation === 'Separate'
-            ? 'Selected part only · click for Unite'
-            : "See-through meshes · click a spot again to pick what's behind"}
+          {button.isolated ? 'Restore surrounding geometry' : 'Show only the selected part'}
         </TooltipContent>
       </Tooltip>
       <Tooltip>

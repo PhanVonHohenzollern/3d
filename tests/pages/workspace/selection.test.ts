@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createViewport3DHandle } from '@/widgets/viewport/model/viewportHandle';
-import { createEngine } from '@tests/renderer/helpers';
+import { click, createEngine } from '@tests/renderer/helpers';
 import { createWorkspace, keyEvent, kSource } from '@tests/pages/workspace/harness';
 
 describe('Workspace: selection sync between the editor, viewport, Variables and API Trace', () => {
@@ -11,14 +11,48 @@ describe('Workspace: selection sync between the editor, viewport, Variables and 
     vi.useRealTimers();
   });
 
-  it.each(['Separate', 'Unite'] as const)(
+  it('selects geometry by its source line in Build without rebuilding, then clears everything on empty click', () => {
+    const { mw, editor, apiTrace, links } = createWorkspace();
+    const engine = createEngine();
+    mw.bindViewport(createViewport3DHandle(engine));
+    engine.setSelectionClearedCallback(mw.exitPreviewFocus);
+    mw.start();
+    editor.type('FdPoint3d p0;\nmakeFlatDisc(p0,vz,4,8);\nmakeFlatDisc(FdPoint3d(8,0,0),vz,2,8);', 1);
+    mw.buildPreview();
+    const built = mw.session.scene;
+    editor.moveTo(2);
+    expect(apiTrace.selectedApiCall()).toBe(0);
+    expect(engine.isMeshSelected(0)).toBe(true);
+    expect(engine.isMeshSelected(1)).toBe(false);
+    editor.moveTo(3);
+    expect(apiTrace.selectedApiCall()).toBe(1);
+    expect(engine.isMeshSelected(1)).toBe(true);
+    expect(editor.traceLines.lines).toEqual([3]);
+    expect(mw.session.scene).toBe(built);
+    links.addConnector();
+    links.sizeTextChanged('diameter', '2');
+    links.testSelection();
+    expect(links.tableRows[0].buttonText).toBe('Hide');
+    const before = [engine.camera().target, engine.cameraOrientation(), engine.camera().distance];
+    click(engine, 790, 590);
+    expect(links.currentRow).toBe(-1);
+    expect(links.tableRows[0].buttonText).toBe('Hide');
+    expect(apiTrace.selectedApiCall()).toBe(-1);
+    expect(editor.traceLines.lines).toEqual([]);
+    expect(engine.hasApiFocus()).toBe(false);
+    expect([engine.camera().target, engine.cameraOrientation(), engine.camera().distance]).toEqual(before);
+    expect(mw.session.scene).toBe(built);
+    mw.dispose();
+  });
+
+  it.each(['Isolate', 'Context'] as const)(
     '%s shows only input points for sub-function calls in Main and opens their editor on double-click',
     (presentation) => {
       const { mw, editor, apiTrace } = createWorkspace();
       const engine = createEngine();
       mw.bindViewport(createViewport3DHandle(engine));
       mw.start();
-      if (presentation === 'Unite') engine.toggleSelectionPresentation();
+      if (presentation === 'Isolate') engine.toggleIsolation();
       editor.type(
         `void element() {
 FdPoint3d cP(1,2,3), points[2] = {cP, FdPoint3d(4,5,6)};
@@ -157,7 +191,7 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     mw.dispose();
   });
 
-  it('Esc clears only Link selection, while API focus can still be cleared without hiding Links', () => {
+  it('Esc clears selection and API focus in one step without hiding Links', () => {
     const { mw, log, editor, apiTrace, links } = createWorkspace();
     mw.start();
     editor.type(kSource, 6);
@@ -171,7 +205,7 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     log.length = 0;
     mw.handleKeyDown(keyEvent('Escape'));
     expect(log).toContain('setConnectorPreviews([1], -1)');
-    expect(log).not.toContain('clearApiFocus()');
+    expect(log).toContain('clearSelection()');
     expect(links.currentRow).toBe(-1);
     expect(links.tableRows[0].buttonText).toBe('Hide');
     mw.onViewportConnectorSelection(1);
@@ -183,8 +217,8 @@ void withPoints(FdPoint3d points[2]) { makeFlatDisc(points[0], vz, 3, 8); }`,
     log.length = 0;
     mw.handleKeyDown(keyEvent('Escape'));
     expect(log).toContain('setConnectorPreviews([1], -1)');
-    expect(log).not.toContain('clearApiFocus()');
-    expect(apiTrace.selectedApiCall()).toBe(0);
+    expect(log).toContain('clearSelection()');
+    expect(apiTrace.selectedApiCall()).toBe(-1);
     log.length = 0;
     mw.handleKeyDown(keyEvent('Escape'));
     expect(log).not.toContain('setConnectorPreviews([0], 1)');

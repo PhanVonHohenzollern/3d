@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
-import { QPoint, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { QPoint, QPointF, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { createEngine, project, updateCamera } from '@tests/renderer/helpers';
 
 describe('ViewportCamera', () => {
@@ -47,13 +48,35 @@ describe('ViewportCamera', () => {
     expect(camera.projectToScreen(behind)).toBeNull();
   });
 
-  it('orbits 0.35 degrees per pixel and clamps the pitch', () => {
+  it('orbits through the poles, upside down, and back without clamping or changing the target', () => {
     const camera = new ViewportCamera();
-    camera.orbit(new QPoint(10, -4));
-    expect(camera.yaw).toBeCloseTo(-45 - 3.5);
-    expect(camera.pitch).toBeCloseTo(28 - 1.4);
-    camera.orbit(new QPoint(0, 1000));
-    expect(camera.pitch).toBe(89);
+    camera.setViewportSize(800, 600);
+    camera.orientation = Quaternion.lookingFrom(new QVector3D(0, -1, 0));
+    const initial = camera.cameraPosition();
+    const from = new QPointF(400, 300),
+      to = new QPointF(400, 200);
+    const positions = [];
+    for (let i = 0; i < 12; i++) {
+      camera.orbit(from, to);
+      camera.updateViewMatrix();
+      positions.push(camera.cameraPosition());
+      expect([...camera.view.data].every(Number.isFinite)).toBe(true);
+      expect(camera.cameraPosition().length()).toBeCloseTo(18, 8);
+    }
+    expect(positions.some((p) => p.y > 10)).toBe(true);
+    expect(positions.some((p) => p.z < -10)).toBe(true);
+    for (let i = 0; i < 12; i++) camera.orbit(to, from);
+    expect(camera.cameraPosition().sub(initial).length()).toBeLessThan(1e-8);
+    expect(camera.target.length()).toBe(0);
+  });
+
+  it('pans in the screen plane after camera roll', () => {
+    const camera = new ViewportCamera();
+    camera.orientation = Quaternion.axisAngle(new QVector3D(0, 0, 1), Math.PI / 2);
+    camera.pan(new QPoint(10, 20));
+    expect(camera.target.x).toBeCloseTo(-20 * 18 * 0.0018);
+    expect(camera.target.y).toBeCloseTo(-10 * 18 * 0.0018);
+    expect(camera.target.z).toBeCloseTo(0);
   });
 
   it('zooms by 0.86 per wheel notch within its guard band', () => {
