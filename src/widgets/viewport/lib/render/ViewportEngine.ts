@@ -3,6 +3,8 @@ import { setsEqual } from '@/shared/lib/sets';
 import type { TextMeasurer } from '@/shared/lib/text';
 import { kNextSelectionMode, kSelectionModeNames } from '@/widgets/viewport/config/viewport';
 import type { QRect } from '@/widgets/viewport/lib/math/Rect';
+import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
+import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import type { DebugLabelPanel } from '@/widgets/viewport/lib/render/DebugLabelPanel';
 import { buildDebugItems } from '@/widgets/viewport/lib/render/debugItems';
@@ -11,7 +13,7 @@ import { PickingService } from '@/widgets/viewport/lib/render/PickingService';
 import { SceneRenderer } from '@/widgets/viewport/lib/render/SceneRenderer';
 import { SurfaceBinding } from '@/widgets/viewport/lib/render/SurfaceBinding';
 import type { SelectionMode, SelectionModeButtonState, ViewportSurface } from '@/widgets/viewport/lib/render/types';
-import type { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
+import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
 import { ViewportInput, type InputHost, type ViewportCallbacks } from '@/widgets/viewport/lib/render/ViewportInput';
 import { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
 import type { Vec3 } from '@/widgets/viewport/model/types';
@@ -41,6 +43,7 @@ export class ViewportEngine {
     clearHover: () => this.#input.clearHover(),
   });
   #hasFitOnce = false;
+  #cameraAnimation: number | null = null;
 
   constructor() {
     this.#updateSelectionModeButton();
@@ -70,11 +73,11 @@ export class ViewportEngine {
 
   // Selection presentation and mode.
 
-  selectionPresentation = (): 'Separate' | 'Unite' => this.#state.selectionPresentation;
+  isSelectionIsolated = (): boolean => this.#state.isolateSelection;
 
-  toggleSelectionPresentation(): void {
+  toggleIsolation(): void {
     const state = this.#state;
-    state.selectionPresentation = state.selectionPresentation === 'Separate' ? 'Unite' : 'Separate';
+    state.isolateSelection = !state.isolateSelection;
     this.#pickers.invalidate();
     this.#input.clearHover();
     this.#rebuildGpuVertices();
@@ -173,6 +176,21 @@ export class ViewportEngine {
 
   // API and mesh selection.
 
+  clearSelection(): void {
+    const state = this.#state;
+    state.selectedMeshIndex = -1;
+    state.selectedApiIndex = -1;
+    state.selectedConnectorId = -1;
+    state.meshFocusActive = false;
+    state.apiFocusActive = false;
+    state.apiFocusIndices.clear();
+    state.debugFocusIndices.clear();
+    state.selectedVariables.clear();
+    state.isolateSelection = false;
+    this.#pickers.invalidate();
+    this.#rebuildAndUpdate();
+  }
+
   setSelectedApiCall(apiIndex: number, keepMeshSelection = false): void {
     const state = this.#state;
     state.meshFocusActive = keepMeshSelection && state.selectedMeshIndex >= 0;
@@ -214,13 +232,63 @@ export class ViewportEngine {
   }
 
   fitScene(): void {
+    this.#stopCameraAnimation();
     this.#view.fitScene();
     this.#afterCameraMove();
   }
 
   fitDebugOverlay(): void {
+    this.#stopCameraAnimation();
     this.#view.fitDebugOverlay();
     this.#afterCameraMove();
+  }
+
+  // Camera views.
+
+  cameraOrientation = (): Quaternion => this.#view.camera.orientation;
+
+  setViewDirection(direction: QVector3D): void {
+    this.#animateCamera(Quaternion.lookingFrom(direction));
+  }
+
+  homeView(): void {
+    this.#view.fitScene();
+    this.#animateCamera(ViewportCamera.homeOrientation());
+  }
+
+  rollView(angle: number): void {
+    this.#animateCamera(this.#view.camera.orientation.multiply(Quaternion.axisAngle(new QVector3D(0, 0, 1), angle)));
+  }
+
+  #animateCamera(target: Quaternion): void {
+    this.#stopCameraAnimation();
+    this.#pickers.invalidate();
+    const camera = this.#view.camera;
+    if (
+      typeof requestAnimationFrame === 'undefined' ||
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
+      camera.orientation = target;
+      this.#afterCameraMove();
+
+      return;
+    }
+    const from = camera.orientation;
+    const started = performance.now();
+
+    const step = (now: number): void => {
+      const t = Math.min(1, (now - started) / 180);
+      camera.orientation = from.slerp(target, t * t * (3 - 2 * t));
+      this.#afterCameraMove();
+      this.#cameraAnimation = t < 1 ? requestAnimationFrame(step) : null;
+    };
+
+    this.#cameraAnimation = requestAnimationFrame(step);
+  }
+
+  #stopCameraAnimation(): void {
+    if (this.#cameraAnimation !== null) cancelAnimationFrame(this.#cameraAnimation);
+    this.#cameraAnimation = null;
   }
 
   // Debug points and vectors.
@@ -297,6 +365,10 @@ export class ViewportEngine {
     this.#callbacks.connectorSelection = callback;
   }
 
+  setSelectionClearedCallback(callback: (() => void) | null): void {
+    this.#callbacks.selectionCleared = callback;
+  }
+
   // Accessors.
 
   width(): number {
@@ -334,6 +406,7 @@ export class ViewportEngine {
   }
 
   detach(): void {
+    this.#stopCameraAnimation();
     this.#surface.detach();
   }
 
@@ -347,11 +420,13 @@ export class ViewportEngine {
 
   update(): void {
     this.#surface.update();
+    this.#notifyWidgets();
   }
 
   // Input.
 
   mousePressEvent(event: MouseEventData): void {
+    this.#stopCameraAnimation();
     this.#input.press(event);
   }
 
@@ -364,6 +439,7 @@ export class ViewportEngine {
   }
 
   wheelEvent(event: WheelEventData): void {
+    this.#stopCameraAnimation();
     this.#input.wheel(event);
   }
 
@@ -390,6 +466,10 @@ export class ViewportEngine {
         this.#selectionChanged();
       },
       setSelectedVariables: (names) => this.setSelectedVariables(names),
+      clearSelection: () => {
+        this.clearSelection();
+        this.#callbacks.selectionCleared?.();
+      },
     };
   }
 

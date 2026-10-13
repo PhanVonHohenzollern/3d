@@ -18,6 +18,7 @@ import { DebugLabelPanel } from '@/widgets/viewport/lib/render/DebugLabelPanel';
 import { drawDebugItems, drawPreselection, type DebugOverlayScene } from '@/widgets/viewport/lib/render/debugOverlay';
 import { OverlayPainter } from '@/widgets/viewport/lib/render/OverlayPainter';
 import { debugLabelPanelsLayout } from '@/widgets/viewport/lib/render/panelLayout';
+import { kViewCubeSize } from '@/widgets/viewport/lib/render/viewCube';
 import type { AxisLabel, DebugLabelEntry, SelectionModeButtonState } from '@/widgets/viewport/lib/render/types';
 import type { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
 import { drawWorldAxisLabels, placeWorldAxisLabels } from '@/widgets/viewport/lib/render/worldAxes';
@@ -32,6 +33,7 @@ export class OverlayLayer {
   #measurer: TextMeasurer = approximateTextMeasurer;
   #fontFamily = kDefaultFontFamily;
   #fontPixelSize = pointSizeToPixels(kWidgetFontPointSize);
+  #viewCubeRect = new QRect();
 
   constructor(
     private readonly state: ViewportState,
@@ -78,6 +80,7 @@ export class OverlayLayer {
   covers(p: QPoint): boolean {
     if (this.#selectionModeButton.geometry.contains(p)) return true;
     if (this.presentationButtonRect().contains(p)) return true;
+    if (this.#viewCubeRect.contains(p)) return true;
 
     return this.panels.some((panel) => panel.isVisible() && panel.geometry().contains(p));
   }
@@ -122,9 +125,11 @@ export class OverlayLayer {
   }
 
   layout(width: number, height: number): void {
+    this.#viewCubeRect = new QRect(width - kViewCubeSize - 8, 8, kViewCubeSize, kViewCubeSize);
     const showConnectors = this.state.connectors.some((connector) => connector.id === this.state.selectedConnectorId);
     const layout = debugLabelPanelsLayout({
       extraControlHeight: kExtraControlHeight,
+      topRightInset: kViewCubeSize + 8,
       width,
       height,
       pointContentHeight: (showConnectors ? this.connectorLabels : this.pointLabels).contentHeight(),
@@ -154,7 +159,7 @@ export class OverlayLayer {
     drawPreselection(painter, { ...scene, isVisible: (item) => state.isDebugItemPickable(item) });
     drawConnectorPoints(
       painter,
-      state.connectors,
+      state.connectors.filter((connector) => state.isConnectorVisible(connector.id)),
       state.selectedConnectorId,
       state.hoveredConnectorId,
       this.#measurer,
@@ -182,6 +187,7 @@ export class OverlayLayer {
   #axisLabels(width: number, height: number): AxisLabel[] {
     const margin = kWidgetMargin;
     const occupied: QRectF[] = [];
+    occupied.push(QRectF.fromRect(this.#viewCubeRect));
     for (const panel of this.panels)
       if (panel.isVisible())
         occupied.push(QRectF.fromRect(panel.geometry()).adjusted(-margin, -margin, margin, margin));

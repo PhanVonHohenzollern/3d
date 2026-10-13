@@ -30,6 +30,7 @@ interface LineProgram {
   uLineWidth: WebGLUniformLocation | null;
   uUseOverrideColor: WebGLUniformLocation | null;
   uOverrideColor: WebGLUniformLocation | null;
+  uOpacity: WebGLUniformLocation | null;
 }
 
 interface QuadStream {
@@ -113,6 +114,7 @@ export class ViewportRenderer {
         uLineWidth: gl.getUniformLocation(lineProgram, 'uLineWidth'),
         uUseOverrideColor: gl.getUniformLocation(lineProgram, 'uUseOverrideColor'),
         uOverrideColor: gl.getUniformLocation(lineProgram, 'uOverrideColor'),
+        uOpacity: gl.getUniformLocation(lineProgram, 'uOpacity'),
       };
     }
 
@@ -337,6 +339,7 @@ export class ViewportRenderer {
     gl.uniformMatrix4fv(program.uMvp, false, this.m_mvp.data);
     gl.uniform2f(program.uViewport, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.uniform1f(program.uLineWidth, this.m_lineWidth);
+    gl.uniform1f(program.uOpacity, this.m_opacity);
     gl.uniform1i(program.uUseOverrideColor, this.m_uniformUseOverrideColor ? 1 : 0);
     const c = this.m_uniformOverrideColor;
     gl.uniform3f(program.uOverrideColor, c.x, c.y, c.z);

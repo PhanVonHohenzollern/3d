@@ -1,5 +1,6 @@
 import { QMatrix4x4 } from '@/widgets/viewport/lib/math/Matrix4x4';
 import { clamp, radians } from '@/widgets/viewport/lib/math/math';
+import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { QPointF, QVector3D, QVector4D, type QPoint } from '@/widgets/viewport/lib/math/Vector3D';
 
 export interface ScreenRay {
@@ -9,8 +10,7 @@ export interface ScreenRay {
 
 export class ViewportCamera {
   target = new QVector3D(0, 0, 0);
-  yaw = -45;
-  pitch = 28;
+  orientation = ViewportCamera.homeOrientation();
   distance = 18;
   readonly projection = new QMatrix4x4();
   readonly view = new QMatrix4x4();
@@ -23,24 +23,26 @@ export class ViewportCamera {
   }
 
   cameraPosition(): QVector3D {
-    const yaw = radians(this.yaw);
-    const pitch = radians(this.pitch);
+    return this.target.add(this.orientation.rotate(new QVector3D(0, 0, this.distance)));
+  }
 
-    const cp = Math.cos(pitch);
-    const offset = new QVector3D(
-      this.distance * cp * Math.cos(yaw),
-      this.distance * cp * Math.sin(yaw),
-      this.distance * Math.sin(pitch),
+  static homeOrientation(): Quaternion {
+    const pitch = radians(28);
+
+    return Quaternion.lookingFrom(
+      new QVector3D(Math.cos(pitch) / Math.SQRT2, -Math.cos(pitch) / Math.SQRT2, Math.sin(pitch)),
     );
+  }
 
-    return this.target.add(offset);
+  upDirection(): QVector3D {
+    return this.orientation.rotate(new QVector3D(0, 1, 0));
   }
 
   updateViewMatrix(): void {
     const eye = this.cameraPosition();
 
     this.view.setToIdentity();
-    this.view.lookAt(eye, this.target, new QVector3D(0, 0, 1));
+    this.view.lookAt(eye, this.target, this.upDirection());
   }
 
   updateProjectionMatrix(sceneScale: number): void {
@@ -104,22 +106,23 @@ export class ViewportCamera {
     return new QVector3D(world.x, world.y, 0);
   }
 
-  orbit(delta: QPoint): void {
-    this.yaw -= delta.x * 0.35;
-    this.pitch += delta.y * 0.35;
-    this.pitch = clamp(this.pitch, -89, 89);
+  orbit(from: QPointF, to: QPointF): void {
+    const project = (point: QPointF): QVector3D => {
+      const radius = Math.max(1, Math.min(this.m_width, this.m_height) * 0.4);
+      const x = (point.x - this.m_width / 2) / radius;
+      const y = (this.m_height / 2 - point.y) / radius;
+      const lengthSquared = x * x + y * y;
+      const z = lengthSquared <= 0.5 ? Math.sqrt(1 - lengthSquared) : 0.5 / Math.sqrt(lengthSquared);
+
+      return new QVector3D(x, y, z).normalized();
+    };
+
+    this.orientation = this.orientation.multiply(Quaternion.between(project(to), project(from))).normalized();
   }
 
   pan(delta: QPoint): void {
-    const eye = this.cameraPosition();
-    const forward = this.target.sub(eye).normalized();
-    let right = QVector3D.crossProduct(forward, new QVector3D(0, 0, 1));
-    if (right.lengthSquared() < 0.000001) {
-      right = new QVector3D(1, 0, 0);
-    } else {
-      right = right.normalize();
-    }
-    const up = QVector3D.crossProduct(right, forward).normalized();
+    const right = this.orientation.rotate(new QVector3D(1, 0, 0));
+    const up = this.upDirection();
 
     const scale = this.distance * 0.0018;
     this.target = this.target.sub(right.mul(delta.x * scale));
@@ -142,6 +145,7 @@ export class ViewportCamera {
   }
 
   reset(): void {
+    this.orientation = ViewportCamera.homeOrientation();
     this.target = new QVector3D(0, 0, 0);
     this.distance = 18;
   }

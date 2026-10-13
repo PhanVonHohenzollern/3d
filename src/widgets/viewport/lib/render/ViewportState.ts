@@ -17,8 +17,8 @@ export class ViewportState {
   showGeometry = true;
   geometryWireframe = false;
 
-  selectionMode: SelectionMode = 'Point';
-  selectionPresentation: 'Separate' | 'Unite' = 'Separate';
+  selectionMode: SelectionMode = 'Mesh';
+  isolateSelection = false;
   selectedVariables = new Set<string>();
   selectedApiIndex = -1;
   selectedMeshIndex = -1;
@@ -42,16 +42,33 @@ export class ViewportState {
   }
 
   isMeshSelected(meshIndex: number): boolean {
-    return this.isMeshInGroup(meshIndex, this.selectedMeshIndex);
+    const apiIndex = this.geometryScene.meshes[meshIndex]?.apiIndex;
+    if (apiIndex === undefined) return false;
+    if (this.apiFocusActive && apiIndex >= 0) return this.apiFocusIndices.has(apiIndex);
+    if (this.selectedMeshIndex >= 0) return this.isMeshInGroup(meshIndex, this.selectedMeshIndex);
+
+    return apiIndex >= 0 && apiIndex === this.selectedApiIndex;
   }
 
-  isGeometryApiVisible(apiIndex: number): boolean {
+  hasSelection(): boolean {
     return (
-      this.selectionPresentation === 'Unite' ||
-      !this.apiFocusActive ||
-      this.apiFocusIndices.size === 0 ||
-      this.apiFocusIndices.has(apiIndex)
+      this.selectedConnectorId >= 0 ||
+      this.selectedMeshIndex >= 0 ||
+      this.selectedApiIndex >= 0 ||
+      this.apiFocusIndices.size > 0
     );
+  }
+
+  meshOpacity(meshIndex: number): number {
+    return this.hasSelection() && !this.isMeshSelected(meshIndex) ? 0.2 : 1;
+  }
+
+  isMeshVisible(meshIndex: number): boolean {
+    return !this.isolateSelection || !this.hasSelection() || this.isMeshSelected(meshIndex);
+  }
+
+  isConnectorVisible(id: number): boolean {
+    return !this.isolateSelection || !this.hasSelection() || id === this.selectedConnectorId;
   }
 
   isDebugItemVisible(item: DebugItem): boolean {
@@ -70,9 +87,9 @@ export class ViewportState {
   }
 
   isDebugItemPickable(item: DebugItem): boolean {
-    if (this.selectionPresentation !== 'Unite') return this.isDebugItemVisible(item);
+    if (this.isolateSelection) return this.isDebugItemVisible(item);
 
-    // Unite can pick other API calls without displaying all their points and vectors.
+    // Other calls remain pickable without displaying every point and vector.
     if (!item.apiSnapshot && item.name !== kOverviewPointName) return false;
     if (this.hiddenDebugItems.has(item.name)) return false;
 

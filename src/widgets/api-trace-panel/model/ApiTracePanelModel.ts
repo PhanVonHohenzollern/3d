@@ -34,6 +34,7 @@ export interface ApiTracePanelHandle {
   setPlaceholderData(): void;
   setRuntimeResult(result: RuntimeResult): void;
   selectMeshApiCall(apiIndex: number): void;
+  selectApiCall(apiIndex: number): void;
   meshApiCall(): number;
   selectDebugItems(names: ReadonlySet<string>): void;
   clearApiFocus(): void;
@@ -350,6 +351,14 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
   }
 
   selectMeshApiCall(apiIndex: number): void {
+    this.#selectApiCall(apiIndex, true);
+  }
+
+  selectApiCall(apiIndex: number): void {
+    this.#selectApiCall(apiIndex, false);
+  }
+
+  #selectApiCall(apiIndex: number, mesh: boolean): void {
     const tree = this.m_tree;
     let call: TreeWidgetItem | null = null;
     for (const item of tree.allItems()) {
@@ -365,11 +374,15 @@ export class ApiTracePanelModel extends Observable implements ApiTracePanelHandl
     }
     const blocked = tree.blockSignals(true);
     this.#clearMeshFilter();
-    this.#meshApiIndex = apiIndex;
+    this.#meshApiIndex = mesh ? apiIndex : -1;
     const ancestors = new Set<TreeWidgetItem>();
     for (let parent = call.parent(); parent; parent = parent.parent()) ancestors.add(parent);
-    for (const item of tree.allItems()) item.setHidden(item.dataInt(0, UserRole) !== apiIndex && !ancestors.has(item));
-    tree.setRootItem(call.parent());
+    if (mesh) {
+      for (const item of tree.allItems())
+        item.setHidden(item.dataInt(0, UserRole) !== apiIndex && !ancestors.has(item));
+      tree.setRootItem(call.parent());
+    }
+    for (const ancestor of ancestors) ancestor.setExpanded(true);
     tree.setCurrentItem(call, 0, 'ClearAndSelect');
     this.#selectedApiIndex = apiIndex;
     this.#updateSelectionAppearance();

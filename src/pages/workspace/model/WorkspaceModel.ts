@@ -252,6 +252,11 @@ export class WorkspaceModel extends Observable {
     if (this.selection.navigating) return;
     this.editor.setTraceSourceLines(new Set());
     this.selection.browsingTrace = false;
+    if (this.session.mode === 'build' && !this.importedObj) {
+      this.selection.selectEditorLine(this.editor.currentLine());
+
+      return;
+    }
     this.schedulePreview();
   };
 
@@ -502,14 +507,12 @@ export class WorkspaceModel extends Observable {
   }
 
   readonly exitPreviewFocus = (): void => {
-    if (this.importedObj) {
-      this.viewport.setSelectedApiCall(-1);
-      this.viewport.clearApiFocus();
-
-      return;
-    }
-    if (this.links.clearSelection()) return;
-    this.apiTrace.clearApiFocus();
+    this.links.clearSelection();
+    this.mainApiTrace.clearApiFocus();
+    this.subApiTrace.clearApiFocus();
+    this.variables.selectVariable('');
+    this.viewport.clearSelection();
+    this.editor.setTraceSourceLines(new Set());
   };
 
   schedulePreview(): void {

@@ -86,12 +86,11 @@ describe('Workspace: OBJ import and export', () => {
     const engine = createEngine();
     mw.bindViewport(createViewport3DHandle(engine));
     engine.setMeshSelectionCallback(mw.selection.onViewportMeshSelection);
-    engine.selectionModeButtonClicked();
-    engine.selectionModeButtonClicked();
+    engine.setSelectionMode('Mesh');
     const imported = parseObj(writeObj(scene(boxMesh([-1, -1, -1], [1, 1, 1]), boxMesh([4, -1, -1], [6, 1, 1]))));
     mw.replacePreviewWithObj(imported, 'two-meshes.obj');
     const camera = engine.camera();
-    const before = { target: camera.target, distance: camera.distance, yaw: camera.yaw, pitch: camera.pitch };
+    const before = { target: camera.target, distance: camera.distance, orientation: camera.orientation };
     const first = project(engine, new QVector3D(0, 0, 0));
     click(engine, first.x, first.y);
     expect(engine.selectedMeshIndex()).toBe(0);
@@ -112,7 +111,7 @@ describe('Workspace: OBJ import and export', () => {
     expect(engine.selectedMeshIndex()).toBe(0);
     mw.handleKeyDown(keyEvent('Escape'));
     expect(camera.target).toEqual(before.target);
-    expect([camera.distance, camera.yaw, camera.pitch]).toEqual([before.distance, before.yaw, before.pitch]);
+    expect([camera.distance, camera.orientation]).toEqual([before.distance, before.orientation]);
     expect(mw.importedObj?.scene).toBe(imported);
     expect(editor.text).toBe('');
     mw.dispose();

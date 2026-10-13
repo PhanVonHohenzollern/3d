@@ -4,6 +4,7 @@ import type { Viewport3DHandle, Viewport3DProps } from '@/widgets/viewport/model
 import { DebugLabelList } from '@/widgets/viewport/ui/DebugLabelList';
 import { SelectionModeButton } from '@/widgets/viewport/ui/SelectionModeButton';
 import { SelectionModeMenu } from '@/widgets/viewport/ui/SelectionModeMenu';
+import { ViewCube } from '@/widgets/viewport/ui/ViewCube';
 
 export function Viewport3D({ ref, ...props }: Viewport3DProps & { ref?: Ref<Viewport3DHandle> }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -32,6 +33,7 @@ export function Viewport3D({ ref, ...props }: Viewport3DProps & { ref?: Ref<View
           onFocus={viewport.onChildFocus}
         />
         <SelectionModeButton engine={viewport.engine} />
+        <ViewCube engine={viewport.engine} />
       </div>
     </SelectionModeMenu>
   );

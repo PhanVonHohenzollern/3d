@@ -104,6 +104,10 @@ export function fakeViewport(log: string[]): Viewport3DHandle {
 
   return {
     setRuntimeResult: record('setRuntimeResult'),
+    clearSelection: () => {
+      apiFocus = false;
+      record('clearSelection')();
+    },
     setShowPoints: record('setShowPoints'),
     setShowVectors: record('setShowVectors'),
     setShowLabels: record('setShowLabels'),

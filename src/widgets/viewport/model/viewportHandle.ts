@@ -3,6 +3,7 @@ import type { Viewport3DHandle } from '@/widgets/viewport/model/types';
 
 export function createViewport3DHandle(engine: ViewportEngine): Viewport3DHandle {
   return {
+    clearSelection: () => engine.clearSelection(),
     setRuntimeResult: (result) => engine.setRuntimeResult(result),
     setShowPoints: (visible) => engine.setShowPoints(visible),
     setShowVectors: (visible) => engine.setShowVectors(visible),

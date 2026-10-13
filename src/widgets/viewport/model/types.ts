@@ -9,6 +9,7 @@ export interface Vec3 {
 }
 
 export interface Viewport3DHandle {
+  clearSelection(): void;
   setRuntimeResult(result: RuntimeResult): void;
   setShowPoints(visible: boolean): void;
   setShowVectors(visible: boolean): void;
@@ -36,6 +37,7 @@ export interface Viewport3DHandle {
 }
 
 export interface Viewport3DProps {
+  onSelectionCleared?: () => void;
   lightTheme?: boolean;
   onSelectionChanged?: (names: Set<string>) => void;
   onPointCreation?: (point: Vec3) => void;

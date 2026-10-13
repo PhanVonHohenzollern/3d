@@ -1,3 +1,4 @@
+import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { describe, expect, it } from 'vitest';
 import { connectorOrientations, previewOrientationDirection } from '@engine/geometry/ConnectorPreview';
 import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
@@ -115,8 +116,7 @@ describe('world axis labels', () => {
 
   it('clips axes behind the camera before projecting', () => {
     const engine = createEngine(800, 600);
-    engine.camera().yaw = 0;
-    engine.camera().pitch = 0;
+    engine.camera().orientation = Quaternion.lookingFrom(new QVector3D(1, 0, 0));
     const labels = labelsOf(engine);
     for (const label of labels) {
       expect(Number.isFinite(label.anchor.x)).toBe(true);

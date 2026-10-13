@@ -43,6 +43,13 @@ export class VariablePanelModel extends Observable implements VariablePanelHandl
   }
 
   selectVariable(name: string): void {
+    if (name === '') {
+      this.#selectedName = '';
+      this.selectedRow = -1;
+      this.changed();
+
+      return;
+    }
     const row = this.#findRow(name);
     if (row < 0) return;
 

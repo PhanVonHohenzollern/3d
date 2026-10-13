@@ -83,6 +83,24 @@ export class SelectionSync {
     this.navigateToSource(sourceLine, new Set([sourceLine]));
   };
 
+  selectEditorLine(localLine: number): void {
+    const { session, functions, apiTrace } = this.host;
+    if (session.debugBlocked) return;
+    const location = session.program?.locations.find(
+      (entry) =>
+        entry.name === functions.activeFile &&
+        localLine >= entry.localStart &&
+        localLine <= entry.localStart + entry.end - entry.start,
+    );
+    if (session.program && !location) return;
+    const line = location ? localLine - location.localStart + location.start : localLine;
+    const calls = session.lastResult.apiCalls;
+    const selected = apiTrace.selectedApiCall();
+    // Keep the chosen invocation when several iterations share one source line.
+    const index = calls[selected]?.line === line ? selected : calls.findIndex((call) => call.line === line);
+    if (index >= 0) apiTrace.selectApiCall(index);
+  }
+
   // Trace locations use combined-program lines; the editor shows lines in the original file.
   navigateToSource(line: number, lines: ReadonlySet<number>): void {
     const { session, functions, editor } = this.host;
@@ -124,7 +142,7 @@ export class SelectionSync {
     return new Set(
       [...lines]
         .filter((line) => !location || (line >= location.start && line <= location.end))
-        .map((line) => (location ? line - location.start + 1 : line)),
+        .map((line) => (location ? line - location.start + location.localStart : line)),
     );
   }
 

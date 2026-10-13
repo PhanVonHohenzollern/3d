@@ -40,6 +40,55 @@ function foldedPair(degrees: number, apiName = 'makeTube'): PreviewMesh {
 }
 
 describe('geometry triangles', () => {
+  it('keeps unselected scenes opaque, dims context for trace/helper selection, and restores after clearing', () => {
+    const state = new ViewportState();
+    state.geometryScene = scene(boxMesh([-2, -2, -2], [2, 2, 2], 0), boxMesh([-1, -1, -1], [1, 1, 1], 1));
+    const view = new CameraController(state);
+    const sceneRenderer = new SceneRenderer(state, view);
+    const renderer = sceneRenderer.renderer;
+    vi.spyOn(renderer, 'beginFrame').mockReturnValue(true);
+    vi.spyOn(renderer, 'uploadVertexData').mockReturnValue(true);
+    let opacity = 1;
+    let depthWrite = true;
+    const draws: { opacity: number; depthWrite: boolean }[] = [];
+    vi.spyOn(renderer, 'setOpacity').mockImplementation((value) => {
+      opacity = value;
+    });
+    vi.spyOn(renderer, 'setDepthMask').mockImplementation((value) => {
+      depthWrite = value;
+    });
+    vi.spyOn(renderer, 'glDrawArrays').mockImplementation((mode) => {
+      if (mode === 'GL_TRIANGLES') draws.push({ opacity, depthWrite });
+    });
+    sceneRenderer.rebuild();
+    sceneRenderer.paint();
+    expect(draws).toEqual([
+      { opacity: 1, depthWrite: true },
+      { opacity: 1, depthWrite: true },
+    ]);
+    draws.length = 0;
+    state.selectedApiIndex = 8;
+    state.apiFocusActive = true;
+    state.apiFocusIndices = new Set([8, 1]);
+    sceneRenderer.paint();
+    expect(draws).toEqual([
+      { opacity: 1, depthWrite: true },
+      { opacity: 0.2, depthWrite: false },
+    ]);
+    state.isolateSelection = true;
+    draws.length = 0;
+    sceneRenderer.paint();
+    expect(draws).toEqual([{ opacity: 1, depthWrite: true }]);
+    state.selectedApiIndex = -1;
+    state.apiFocusActive = false;
+    state.apiFocusIndices.clear();
+    draws.length = 0;
+    sceneRenderer.paint();
+    expect(draws).toEqual([
+      { opacity: 1, depthWrite: true },
+      { opacity: 1, depthWrite: true },
+    ]);
+  });
   it('derives flat normals for box walls (90 degree creases are kept)', () => {
     const { vertices, ranges } = buildGeometryVertices(scene(boxMesh([0, 0, 0], [2, 1, 1])));
     expect(vertices.size()).toBe(36);
@@ -194,6 +243,7 @@ describe('connector mesh hover', () => {
       rebuild: () => {},
       selectDebugItems: () => {},
       setSelectedVariables: () => {},
+      clearSelection: () => {},
     });
     const sceneRenderer = new SceneRenderer(state, view);
     const renderer = sceneRenderer.renderer;

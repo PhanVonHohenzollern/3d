@@ -76,7 +76,7 @@ describe('Viewport3D with the real pipeline', () => {
     ).toEqual(['p0']);
   });
 
-  it('Unite keeps the same focused point/vector lists as Separate', () => {
+  it('Isolation preserves the focused point/vector lists', () => {
     const { result, engine } = run();
 
     const panels = () => ({
@@ -87,7 +87,7 @@ describe('Viewport3D with the real pipeline', () => {
     });
 
     const overview = panels();
-    engine.toggleSelectionPresentation();
+    engine.toggleIsolation();
     expect(panels()).toEqual(overview);
 
     for (const name of ['makeBox', 'makeSimpleTube']) {
@@ -98,9 +98,9 @@ describe('Viewport3D with the real pipeline', () => {
       for (const entry of [...focused.points, ...focused.vectors]) {
         expect(entry.id.startsWith(`@api${apiIndex}:`)).toBe(true);
       }
-      engine.toggleSelectionPresentation();
+      engine.toggleIsolation();
       expect(panels()).toEqual(focused);
-      engine.toggleSelectionPresentation();
+      engine.toggleIsolation();
       expect(panels()).toEqual(focused);
     }
 
@@ -168,8 +168,7 @@ describe('Viewport3D with the real pipeline', () => {
     const { geometry, engine } = run();
     const onMesh = vi.fn();
     engine.setMeshSelectionCallback(onMesh);
-    engine.selectionModeButtonClicked();
-    engine.selectionModeButtonClicked();
+    engine.setSelectionMode('Mesh');
     const mesh = geometry.meshes[0];
     const v = mesh.vertices;
     const centroid = new QVector3D(
@@ -184,6 +183,7 @@ describe('Viewport3D with the real pipeline', () => {
     const pickedMesh = geometry.meshes[picked];
     expect(onMesh).toHaveBeenCalledWith(pickedMesh.apiIndex, pickedMesh.sourceLine);
     engine.setApiFocusIndices(new Set([pickedMesh.apiIndex + 100]));
+    engine.toggleIsolation();
     click(engine, screen.x, screen.y);
     expect(onMesh).toHaveBeenCalledTimes(1);
   });

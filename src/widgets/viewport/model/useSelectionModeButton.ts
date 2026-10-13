@@ -3,19 +3,19 @@ import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngin
 
 export function useSelectionModeButton(engine: ViewportEngine) {
   const { text, geometry } = useSyncExternalStore(engine.subscribeWidgets, engine.selectionModeButton);
-  const presentation = useSyncExternalStore(engine.subscribeWidgets, engine.selectionPresentation);
+  const isolated = useSyncExternalStore(engine.subscribeWidgets, engine.isSelectionIsolated);
   const presentationRect = engine.presentationButtonRect();
 
   return {
     text,
-    presentation,
+    isolated,
     presentationStyle: {
       left: presentationRect.x,
       top: presentationRect.y,
       width: presentationRect.width,
       height: presentationRect.height,
     },
-    togglePresentation: () => engine.toggleSelectionPresentation(),
+    togglePresentation: () => engine.toggleIsolation(),
     style: { left: geometry.x, top: geometry.y, width: geometry.width, height: geometry.height },
     onClick: () => engine.selectionModeButtonClicked(),
     onPointerEnter: () => engine.eventFilter('Enter'),
