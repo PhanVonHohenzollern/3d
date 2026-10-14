@@ -14,11 +14,14 @@ import { OverlayLayer } from '@/widgets/viewport/lib/render/OverlayLayer';
 import { PickingService } from '@/widgets/viewport/lib/render/PickingService';
 import { ViewportInput } from '@/widgets/viewport/lib/render/ViewportInput';
 import { QRect } from '@/widgets/viewport/lib/math/Rect';
+import { LinkPanelModel } from '@/features/edit-connector';
+import { emptyRuntimeResult } from '@engine/runtime/RuntimeTypes';
 import {
   kConnectorColor,
   kHoverOutlineColor,
   kHoverTint,
   kHighlightLineWidth,
+  kSelectedMeshColor,
 } from '@/widgets/viewport/config/viewport';
 
 function normalAt(data: Float32Array, vertex: number): QVector3D {
@@ -40,6 +43,87 @@ function foldedPair(degrees: number, apiName = 'makeTube'): PreviewMesh {
 }
 
 describe('geometry triangles', () => {
+  it('keeps loaded Links unselected and the model opaque until an explicit selection', () => {
+    const state = new ViewportState();
+    state.geometryScene = scene(boxMesh([-1, -1, -1], [1, 1, 1]));
+    const links = new LinkPanelModel();
+    links.setExpressionEvaluator(Number);
+    links.previewChanged.connect((previews, selectedId) => {
+      state.connectors = [...previews];
+      state.selectedConnectorId = selectedId;
+    });
+    const definitions = [1, 2].map((id) => ({ ...defaultConnectorDefinition(), id, diameter: '4' }));
+    links.loadDefinitions(definitions);
+    links.updateRuntimeResult(emptyRuntimeResult());
+    expect(state.connectors).toHaveLength(2);
+    expect(links.currentRow).toBe(-1);
+    expect(state.hasSelection()).toBe(false);
+    expect(state.meshOpacity(0)).toBe(1);
+    links.selectConnector(1);
+    expect(state.hasSelection()).toBe(true);
+    expect(state.meshOpacity(0)).toBe(0.2);
+    links.clearSelection();
+    expect(state.meshOpacity(0)).toBe(1);
+    expect(state.connectors).toHaveLength(2);
+    links.selectConnector(2);
+    links.loadDefinitions(definitions);
+    expect(state.hasSelection()).toBe(false);
+    expect(state.meshOpacity(0)).toBe(1);
+  });
+
+  it.each([false, true])('highlights surfaces without adding a wire overlay (wireframe=%s)', (wireframe) => {
+    const state = new ViewportState();
+    state.geometryScene = scene(boxMesh([-2, -2, -2], [2, 2, 2], 0), boxMesh([4, 4, 4], [5, 5, 5], 1));
+    state.geometryWireframe = wireframe;
+    const sceneRenderer = new SceneRenderer(state, new CameraController(state));
+    const renderer = sceneRenderer.renderer;
+    vi.spyOn(renderer, 'beginFrame').mockReturnValue(true);
+    vi.spyOn(renderer, 'uploadVertexData').mockReturnValue(true);
+    let override = false;
+    let color = new QVector3D();
+    let opacity = 1;
+    let depthTest = true;
+    const draws: { mode: string; override: boolean; color: QVector3D; opacity: number; depthTest: boolean }[] = [];
+    vi.spyOn(renderer, 'setUniformValue').mockImplementation((name: string, value: boolean | QVector3D) => {
+      if (name === 'uUseOverrideColor' && typeof value === 'boolean') override = value;
+      if (name === 'uOverrideColor' && value instanceof QVector3D) color = value;
+    });
+    vi.spyOn(renderer, 'setOpacity').mockImplementation((value) => {
+      opacity = value;
+    });
+    vi.spyOn(renderer, 'setDepthTest').mockImplementation((value) => {
+      depthTest = value;
+    });
+    vi.spyOn(renderer, 'glDrawArrays').mockImplementation((mode) => {
+      draws.push({ mode, override, color, opacity, depthTest });
+    });
+    sceneRenderer.rebuild();
+    for (const selected of [false, true]) {
+      state.hoveredMeshIndex = selected ? -1 : 0;
+      state.selectedApiIndex = selected ? 0 : -1;
+      draws.length = 0;
+      sceneRenderer.paint();
+      // Only axes and the two model draws; no second pass over mesh edges.
+      expect(draws).toHaveLength(3);
+      const geometryDraws = draws.slice(1);
+      expect(geometryDraws.every((draw) => draw.mode === (wireframe ? 'GL_LINES' : 'GL_TRIANGLES'))).toBe(true);
+      expect(geometryDraws.every((draw) => draw.depthTest === !wireframe)).toBe(true);
+      const highlighted = geometryDraws.filter((draw) => draw.override);
+      expect(highlighted).toHaveLength(1);
+      const meshColor = state.geometryScene.meshes[0].color;
+      expect(highlighted[0].color).toEqual(
+        selected
+          ? kSelectedMeshColor
+          : new QVector3D(meshColor.r, meshColor.g, meshColor.b).mul(kHoverTint.amount).add(kHoverTint.lift),
+      );
+      expect(geometryDraws.map((draw) => draw.opacity)).toEqual(selected ? [1, 0.2] : [1, 1]);
+    }
+    state.selectedApiIndex = -1;
+    draws.length = 0;
+    sceneRenderer.paint();
+    expect(draws.every((draw) => !draw.override && draw.opacity === 1)).toBe(true);
+  });
+
   it('keeps unselected scenes opaque, dims context for trace/helper selection, and restores after clearing', () => {
     const state = new ViewportState();
     state.geometryScene = scene(boxMesh([-2, -2, -2], [2, 2, 2], 0), boxMesh([-1, -1, -1], [1, 1, 1], 1));

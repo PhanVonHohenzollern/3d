@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { LeftButton, MiddleButton, RightButton } from '@/shared/lib/qt';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
-import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { QPoint, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { boxMesh, click, createEngine, mouse, project, resultWithP0, scene } from '@tests/renderer/helpers';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { buildConnectorPreview, defaultConnectorDefinition } from '@engine/geometry/ConnectorPreview';
@@ -226,6 +226,51 @@ describe('debug points and clicks', () => {
     expect(orientations[0]).not.toEqual(ViewportCamera.homeOrientation());
     expect(orientations[1]).toEqual(orientations[0]);
     expect(orientations[2]).toEqual(orientations[0]);
+  });
+
+  it.each([
+    [100, 36, 100, 0], // Just inside the 20 degree horizontal band.
+    [100, 37, 100, 37],
+    [36, 100, 0, 100], // Just inside the 20 degree vertical band.
+    [37, 100, 37, 100],
+    [100, 0, 100, 0],
+    [0, 100, 0, 100],
+    [100, 100, 100, 100],
+  ])('constrains the initial drag (%s, %s) to (%s, %s)', (dx, dy, expectedX, expectedY) => {
+    for (const sx of [-1, 1])
+      for (const sy of [-1, 1]) {
+        const engine = createEngine();
+        const expected = new ViewportCamera();
+        expected.setViewportSize(800, 600);
+        expected.orbit(new QPoint(sx * expectedX, sy * expectedY));
+        engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
+        engine.mouseMoveEvent(mouse(400 + sx * dx, 300 + sy * dy, 0, LeftButton));
+        expect(engine.camera().orientation).toEqual(expected.orientation);
+      }
+  });
+
+  it('uses accumulated initial motion to choose an axis and keeps it until release', () => {
+    const engine = createEngine();
+    const expected = new ViewportCamera();
+    expected.setViewportSize(800, 600);
+    engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
+    engine.mouseMoveEvent(mouse(402, 300, 0, LeftButton));
+    engine.mouseMoveEvent(mouse(404, 300, 0, LeftButton));
+    expect(engine.camera().orientation).toEqual(expected.orientation);
+    // This single event is diagonal, but the total drag (6, 2) is horizontal.
+    engine.mouseMoveEvent(mouse(406, 302, 0, LeftButton));
+    expected.orbit(new QPoint(6, 0));
+    expect(engine.camera().orientation).toEqual(expected.orientation);
+    engine.mouseMoveEvent(mouse(406, 402, 0, LeftButton));
+    expect(engine.camera().orientation).toEqual(expected.orientation);
+    engine.mouseMoveEvent(mouse(426, 452, 0, LeftButton));
+    expected.orbit(new QPoint(20, 0));
+    expect(engine.camera().orientation).toEqual(expected.orientation);
+    engine.mouseReleaseEvent(mouse(426, 452, LeftButton, 0));
+    engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
+    engine.mouseMoveEvent(mouse(402, 330, 0, LeftButton));
+    expected.orbit(new QPoint(0, 30));
+    expect(engine.camera().orientation).toEqual(expected.orientation);
   });
 
   it('orbits an off-origin model around its center after Pan/Zoom, ignoring distant debug items and connectors', () => {

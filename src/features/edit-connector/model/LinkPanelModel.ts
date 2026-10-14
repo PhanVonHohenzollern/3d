@@ -108,8 +108,8 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     });
     this.#nextId = Math.max(0, ...definitions.map((definition) => definition.id)) + 1;
     this.tableRows = [];
-    this.currentRow = definitions.length ? 0 : -1;
-    this.currentColumn = definitions.length ? 1 : -1;
+    this.currentRow = -1;
+    this.currentColumn = -1;
     this.#entries.forEach((_, row) => this.refreshRow(row));
     this.loadSelection();
     this.publish();
@@ -372,6 +372,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     const row = this.currentRow;
     if (row < 0 || row >= this.#entries.length) {
       this.statusText = '';
+      this.statusIsError = false;
       this.changed();
 
       return;

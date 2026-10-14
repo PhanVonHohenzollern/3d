@@ -5,6 +5,8 @@ import type { SelectionMode } from '@/widgets/viewport/lib/render/types';
 
 // A press that moves less than this many pixels is a click, not a drag.
 export const kClickDragThreshold = 5;
+// Initial drag directions within this angle of horizontal/vertical lock to that axis.
+export const kOrbitAxisSnapDegrees = 20;
 // A second click within this many pixels of the last one cycles to the next pick under the cursor.
 export const kRepeatPickDistance = 5;
 
@@ -43,8 +45,6 @@ export const kSelectedMeshColor = new QVector3D(0.2, 0.78, 0.95);
 export const kHoverTint = { amount: 0.65, lift: new QVector3D(0.35, 0.35, 0.35) } as const;
 export const kHoverOutlineColor = new QVector3D(0.7, 0.95, 1.0);
 export const kConnectorColor = new QVector3D(0.18, 0.5, 0.6);
-export const kSelectedMeshOutlineColor = new QVector3D(0.82, 1.0, 1.0);
-export const kSelectedApiOutlineColor = new QVector3D(1.0, 0.92, 0.18);
 
 // Smallest scene radius the camera and axes are sized for.
 export const kMinimumSceneScale = 10;

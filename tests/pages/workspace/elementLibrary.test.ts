@@ -3,6 +3,8 @@ import { expect, it, vi } from 'vitest';
 import type { ConnectorPreview } from '@engine/geometry';
 import { parseObj } from '@engine/formats/obj';
 import { createWorkspace } from '@tests/pages/workspace/harness';
+import { createViewport3DHandle } from '@/widgets/viewport/model/viewportHandle';
+import { click, createEngine } from '@tests/renderer/helpers';
 
 function mockLibraryFetch() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -14,6 +16,42 @@ function mockLibraryFetch() {
     } as Response;
   });
 }
+
+it('loads FLM elements with visible connectors and no automatic mesh or Link selection', async () => {
+  vi.useFakeTimers();
+  const fetchMock = mockLibraryFetch();
+  const { mw, links } = createWorkspace();
+  const engine = createEngine();
+  mw.bindViewport(createViewport3DHandle(engine));
+  engine.setSelectionClearedCallback(mw.exitPreviewFocus);
+  const connectors = vi.spyOn(engine, 'setConnectorPreviews');
+  try {
+    mw.start();
+    await mw.library.selectLibrary('CGeneral');
+    for (const entry of ['makeTFMN', 'makeTFMT']) {
+      mw.library.openElement(mw.library.elements.find((element) => element.entry === entry)!.id);
+      expect(mw.session.scene.meshes.length).toBeGreaterThan(0);
+      expect(engine.hasApiFocus()).toBe(false);
+      expect(mw.apiTrace.selectedApiCall()).toBe(-1);
+      expect(mw.session.scene.meshes.every((_, index) => !engine.isMeshSelected(index))).toBe(true);
+      expect(links.currentRow).toBe(-1);
+      const [previews, selectedId] = connectors.mock.calls.at(-1)!;
+      expect(previews.length).toBeGreaterThan(0);
+      expect(selectedId).toBe(-1);
+      links.selectConnector(previews[0].id);
+      expect(connectors.mock.calls.at(-1)![1]).toBe(previews[0].id);
+      click(engine, 790, 590);
+      expect(connectors.mock.calls.at(-1)![1]).toBe(-1);
+      expect(connectors.mock.calls.at(-1)![0]).toHaveLength(previews.length);
+      // Loading the next element must also clear a previous explicit Link selection.
+      links.selectConnector(previews[0].id);
+    }
+  } finally {
+    mw.dispose();
+    fetchMock.mockRestore();
+    vi.useRealTimers();
+  }
+});
 
 it('keeps TFMN/TFMT source geometry separate from connector previews across parameter and case changes', async () => {
   vi.useFakeTimers();
