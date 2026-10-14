@@ -1,7 +1,7 @@
 import type { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 
-export const kViewCubeSize = 160;
+export const kViewCubeSize = 112;
 const center = 80;
 
 function circlePoint(radius: number, angle: number): string {
