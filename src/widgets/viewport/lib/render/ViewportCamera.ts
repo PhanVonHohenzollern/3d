@@ -6,6 +6,8 @@ import { QPointF, QVector3D, QVector4D, type QPoint } from '@/widgets/viewport/l
 const kVerticalFieldOfView = 45;
 const kFitPadding = 1.12;
 
+export type CameraProjection = 'perspective' | 'orthographic';
+
 export interface ScreenRay {
   nearPoint: QVector3D;
   farPoint: QVector3D;
@@ -15,6 +17,8 @@ export class ViewportCamera {
   target = new QVector3D(0, 0, 0);
   orientation = ViewportCamera.homeOrientation();
   distance = 18;
+  projectionMode: CameraProjection = 'perspective';
+  orthographicHeight = 2 * this.distance * Math.tan(radians(kVerticalFieldOfView * 0.5));
   readonly projection = new QMatrix4x4();
   readonly view = new QMatrix4x4();
   private m_width = 0;
@@ -23,6 +27,18 @@ export class ViewportCamera {
   setViewportSize(width: number, height: number): void {
     this.m_width = width;
     this.m_height = height;
+  }
+
+  setProjectionMode(mode: CameraProjection): void {
+    if (this.projectionMode === mode) return;
+    if (mode === 'orthographic') this.orthographicHeight = this.viewHeight();
+    this.projectionMode = mode;
+  }
+
+  viewHeight(): number {
+    return this.projectionMode === 'orthographic'
+      ? this.orthographicHeight
+      : 2 * this.distance * Math.tan(radians(kVerticalFieldOfView * 0.5));
   }
 
   cameraPosition(): QVector3D {
@@ -57,7 +73,11 @@ export class ViewportCamera {
     const farPlane = Math.max(1000, this.distance + sceneReach, nearPlane * 1000);
 
     this.projection.setToIdentity();
-    this.projection.perspective(kVerticalFieldOfView, aspect, nearPlane, farPlane);
+    if (this.projectionMode === 'orthographic') {
+      const halfHeight = this.orthographicHeight / 2;
+      const halfWidth = halfHeight * aspect;
+      this.projection.ortho(-halfWidth, halfWidth, -halfHeight, halfHeight, nearPlane, farPlane);
+    } else this.projection.perspective(kVerticalFieldOfView, aspect, nearPlane, farPlane);
   }
 
   viewProjection(): QMatrix4x4 {
@@ -127,7 +147,10 @@ export class ViewportCamera {
     const right = this.orientation.rotate(new QVector3D(1, 0, 0));
     const up = this.upDirection();
 
-    const scale = this.distance * 0.0018;
+    const scale =
+      this.projectionMode === 'orthographic'
+        ? this.orthographicHeight / Math.max(1, this.m_height)
+        : this.distance * 0.0018;
     this.target = this.target.sub(right.mul(delta.x * scale));
     this.target = this.target.add(up.mul(delta.y * scale));
   }
@@ -135,7 +158,9 @@ export class ViewportCamera {
   zoom(angleDeltaY: number): void {
     const steps = angleDeltaY / 120;
     const zoomFactor = Math.pow(0.86, steps);
-    this.distance = clamp(this.distance * zoomFactor, 0.01, 1.0e8);
+    if (this.projectionMode === 'orthographic')
+      this.orthographicHeight = clamp(this.orthographicHeight * zoomFactor, 0.01, 1.0e8);
+    else this.distance = clamp(this.distance * zoomFactor, 0.01, 1.0e8);
   }
 
   fitBounds(minP: QVector3D, maxP: QVector3D): void {
@@ -146,12 +171,14 @@ export class ViewportCamera {
     const toCamera = this.orientation.conjugate();
     const depthMargin = Math.max(0.01, maxP.sub(minP).length() * 0.01);
     let distance = 0.05;
+    let halfHeight = 0.005;
     // Solve the perspective-frustum constraints for every bounding-box corner.
     // Its camera-space depth matters as well as its horizontal/vertical extent.
     for (const x of [minP.x, maxP.x])
       for (const y of [minP.y, maxP.y])
         for (const z of [minP.z, maxP.z]) {
           const p = toCamera.rotate(new QVector3D(x, y, z).sub(this.target));
+          halfHeight = Math.max(halfHeight, Math.abs(p.x) / aspect, Math.abs(p.y));
           distance = Math.max(
             distance,
             p.z +
@@ -162,6 +189,12 @@ export class ViewportCamera {
               ),
           );
         }
+    if (this.projectionMode === 'orthographic') {
+      this.orthographicHeight = clamp(2 * halfHeight * kFitPadding, 0.01, 1.0e8);
+      // Screen scale is independent of depth. Keep the eye outside the bounding
+      // sphere so a subsequent Orbit cannot cut through the model.
+      distance = Math.max(0.05, maxP.sub(minP).length() / 2 + depthMargin);
+    }
     this.distance = clamp(distance, 0.05, 1.0e8);
   }
 
@@ -169,5 +202,7 @@ export class ViewportCamera {
     this.orientation = ViewportCamera.homeOrientation();
     this.target = new QVector3D(0, 0, 0);
     this.distance = 18;
+    this.projectionMode = 'perspective';
+    this.orthographicHeight = this.viewHeight();
   }
 }

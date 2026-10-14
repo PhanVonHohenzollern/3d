@@ -249,10 +249,16 @@ export class ViewportEngine {
   cameraOrientation = (): Quaternion => this.#view.camera.orientation;
 
   setViewDirection(direction: QVector3D): void {
+    // A principal view is a flat elevation: depth must not change screen size
+    // or make the third world axis appear as a diagonal.
+    const normal = direction.normalized();
+    const principalView = [normal.x, normal.y, normal.z].filter((value) => Math.abs(value) > 1e-8).length === 1;
+    this.#view.camera.setProjectionMode(principalView ? 'orthographic' : 'perspective');
     this.#animateCamera(Quaternion.lookingFrom(direction), true);
   }
 
   homeView(): void {
+    this.#view.camera.setProjectionMode('perspective');
     this.#animateCamera(ViewportCamera.homeOrientation(), true);
   }
 

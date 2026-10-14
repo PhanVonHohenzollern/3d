@@ -22,7 +22,7 @@ function labelsOf(engine: ViewportEngine): AxisLabel[] {
   const camera = updateCamera(engine);
 
   return placeWorldAxisLabels({
-    axes: axesVertices(engine.sceneScale(), camera.target, camera.distance),
+    axes: axesVertices(engine.sceneScale(), camera.target, Math.max(camera.distance, camera.viewHeight())),
     transform: camera.viewProjection(),
     width: engine.width(),
     height: engine.height(),
@@ -123,5 +123,19 @@ describe('world axis labels', () => {
       expect(Number.isFinite(label.anchor.y)).toBe(true);
     }
     expect(labels.some((label) => label.text[0] === 'X')).toBe(false);
+  });
+
+  it.each([
+    [new QVector3D(1, 0, 0), 'YZ'],
+    [new QVector3D(-1, 0, 0), 'YZ'],
+    [new QVector3D(0, 1, 0), 'XZ'],
+    [new QVector3D(0, -1, 0), 'XZ'],
+    [new QVector3D(0, 0, 1), 'XY'],
+    [new QVector3D(0, 0, -1), 'XY'],
+  ])('shows only the two in-plane axes for a principal view %s', (direction, axes) => {
+    const engine = createEngine();
+    engine.camera().target = new QVector3D(2, -1, 3);
+    engine.setViewDirection(direction);
+    expect([...new Set(labelsOf(engine).map((label) => label.text[0]))].sort().join('')).toBe(axes);
   });
 });

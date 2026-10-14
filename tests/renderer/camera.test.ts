@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
 import { QPoint, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
-import { createEngine, project, updateCamera } from '@tests/renderer/helpers';
+import { boxMesh, createEngine, project, scene, updateCamera } from '@tests/renderer/helpers';
 
 describe('ViewportCamera', () => {
   it('projects the camera target to the viewport center', () => {
@@ -121,6 +121,29 @@ describe('ViewportCamera', () => {
     expect(camera.distance).toBeCloseTo(18 * 0.86, 9);
     camera.zoom(-120 * 400);
     expect(camera.distance).toBe(1.0e8);
+  });
+
+  it('pans in pixels and zooms the orthographic span independently of clipping distance', () => {
+    const engine = createEngine();
+    engine.setGeometryScene(scene(boxMesh([-10, -20, -30], [10, 20, 30])));
+    engine.setViewDirection(new QVector3D(0, 0, 1));
+    const camera = engine.camera();
+    const point = new QVector3D(4, 5, 0);
+    const before = project(engine, point);
+    camera.pan(new QPoint(30, 20));
+    const after = project(engine, point);
+    expect(after.x - before.x).toBeCloseTo(30, 3);
+    expect(after.y - before.y).toBeCloseTo(20, 3);
+    const distance = camera.distance;
+    const height = camera.viewHeight();
+    camera.zoom(120);
+    const zoomed = project(engine, point);
+    expect(camera.distance).toBe(distance);
+    expect(camera.viewHeight()).toBeCloseTo(height * 0.86);
+    expect(zoomed.x - 400).toBeCloseTo((after.x - 400) / 0.86, 3);
+    expect(zoomed.y - 300).toBeCloseTo((after.y - 300) / 0.86, 3);
+    camera.reset();
+    expect(camera.projectionMode).toBe('perspective');
   });
 
   it.each([
