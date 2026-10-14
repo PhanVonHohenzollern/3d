@@ -36,16 +36,6 @@ export function ParameterPanel(props: ParameterPanelProps) {
         >
           <RotateCcw className="size-3" aria-hidden /> Reset
         </Button>
-        <Button
-          size="sm"
-          className="h-7 px-3 text-[11px]"
-          aria-label="Apply parameter values"
-          title="Build with these values"
-          disabled={panel.fields.length === 0 || !props.onApply}
-          onClick={props.onApply}
-        >
-          OK
-        </Button>
       </div>
       {panel.tabs.length > 1 && (
         <div

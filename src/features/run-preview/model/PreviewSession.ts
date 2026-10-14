@@ -119,9 +119,7 @@ export class PreviewSession {
   get previewStatus(): string {
     if (this.#mode === 'debug') return 'Debug · live preview';
     const errors = this.#feedback.diagnostics.length + (this.#feedback.externalDiagnostics?.length ?? 0);
-    const pending = this.#codeDirty
-      ? 'code changes pending — press Build'
-      : 'parameter changes pending — press OK in Parameters';
+    const pending = this.#codeDirty ? 'code changes pending — press Build' : 'parameter changes pending — press Build';
 
     return `Build #${this.#buildNumber} · ${this.#previewDirty ? pending : errors ? `${errors} error(s)` : `${this.#scene.meshes.length} mesh(es)`}`;
   }
@@ -139,6 +137,8 @@ export class PreviewSession {
 
   markParametersChanged(): void {
     this.#previewDirty = true;
+    // Every function shares these parameters; cached tabs must not restore old geometry.
+    this.#tabBuilds.clear();
   }
 
   // Parameters are found before execution because the Parameter panel turns them into the

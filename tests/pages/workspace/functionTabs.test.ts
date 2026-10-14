@@ -98,14 +98,21 @@ describe('Workspace: source files and sub-function debugging', () => {
     expect(parameters.tabs.map((tab) => tab.id)).toEqual(['element', 'helper']);
     parameters.selectTab('helper');
     parameters.importTable('D\n30');
-    mw.applyParameters();
     expect(mw.session.runtime.evaluateNumericExpression('result')).toBe(90);
     mw.selectFunction('helper');
     expect(editor.text).toBe(mode === 'inline' ? source : helper);
     expect(editor.currentLine()).toBe(mode === 'inline' ? 2 : 1);
     expect(mw.functions.inputValues('helper', 'x', ['0'])).toEqual(['3']);
     expect(mw.session.runtime.evaluateNumericExpression('D')).toBe(30);
+    parameters.edit(
+      parameters.rows.findIndex((row) => row.key === 'helper::D'),
+      3,
+    );
+    parameters.editorTextEdited('40');
+    parameters.commitEditor();
+    expect(mw.session.runtime.evaluateNumericExpression('D')).toBe(40);
     mw.selectFunction('');
+    expect(mw.session.runtime.evaluateNumericExpression('result')).toBe(120);
     expect(editor.text).toBe(source);
     mw.dispose();
   });
@@ -241,7 +248,7 @@ describe('Workspace: source files and sub-function debugging', () => {
     mw.dispose();
   });
 
-  it('keeps Build frozen during parameter edits and tab switching until OK', () => {
+  it('preserves applied parameters when switching between Main and helper tabs', () => {
     const { mw, editor, parameters } = createWorkspace();
     mw.start();
     const source =
@@ -256,13 +263,13 @@ describe('Workspace: source files and sub-function debugging', () => {
     parameters.editorTextEdited('30');
     parameters.commitEditor();
     vi.advanceTimersByTime(1000);
-    expect(mw.exportObj()).toBe(before);
+    expect(mw.exportObj()).not.toBe(before);
+    const updated = mw.exportObj();
     mw.selectFunction('helper');
-    expect(mw.functions.inputValues('helper', 'x', ['0'])).toEqual(['10']);
-    expect(mw.session.runtime.evaluateNumericExpression('x')).toBe(10);
+    expect(mw.functions.inputValues('helper', 'x', ['0'])).toEqual(['30']);
+    expect(mw.session.runtime.evaluateNumericExpression('x')).toBe(30);
     mw.selectFunction('');
-    expect(mw.exportObj()).toBe(before);
-    mw.applyParameters();
+    expect(mw.exportObj()).toBe(updated);
     expect(mw.exportObj()).not.toBe(before);
     mw.selectFunction('helper');
     mw.buildPreview();
