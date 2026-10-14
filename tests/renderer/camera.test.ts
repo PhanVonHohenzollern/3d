@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
-import { QPoint, QPointF, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { QPoint, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { createEngine, project, updateCamera } from '@tests/renderer/helpers';
 
@@ -53,21 +53,57 @@ describe('ViewportCamera', () => {
     camera.setViewportSize(800, 600);
     camera.orientation = Quaternion.lookingFrom(new QVector3D(0, -1, 0));
     const initial = camera.cameraPosition();
-    const from = new QPointF(400, 300),
-      to = new QPointF(400, 200);
+    const delta = new QPoint(0, -100);
     const positions = [];
+    const upDirections = [];
     for (let i = 0; i < 12; i++) {
-      camera.orbit(from, to);
+      camera.orbit(delta);
       camera.updateViewMatrix();
       positions.push(camera.cameraPosition());
+      upDirections.push(camera.upDirection());
       expect([...camera.view.data].every(Number.isFinite)).toBe(true);
       expect(camera.cameraPosition().length()).toBeCloseTo(18, 8);
     }
     expect(positions.some((p) => p.y > 10)).toBe(true);
     expect(positions.some((p) => p.z < -10)).toBe(true);
-    for (let i = 0; i < 12; i++) camera.orbit(to, from);
+    expect(upDirections.some((up) => up.z < -0.99)).toBe(true);
+    expect(camera.cameraPosition().sub(initial).length()).toBeLessThan(1e-8);
+    for (let i = 0; i < 12; i++) camera.orbit(new QPoint(0, 100));
     expect(camera.cameraPosition().sub(initial).length()).toBeLessThan(1e-8);
     expect(camera.target.length()).toBe(0);
+  });
+
+  it.each([new QVector3D(0, 0, 1), new QVector3D(0, 0, -1)])(
+    'allows horizontal and vertical rotation from a pole without singularities',
+    (direction) => {
+      for (const delta of [new QPoint(80, 0), new QPoint(0, 80), new QPoint(80, 80)]) {
+        const camera = new ViewportCamera();
+        camera.setViewportSize(800, 600);
+        camera.orientation = Quaternion.lookingFrom(direction);
+        const initial = camera.cameraPosition();
+        const up = camera.upDirection();
+        camera.orbit(delta);
+        camera.updateViewMatrix();
+        expect(camera.cameraPosition().sub(initial).length()).toBeGreaterThan(1);
+        expect([...camera.view.data].every(Number.isFinite)).toBe(true);
+        camera.orbit(new QPoint(-delta.x, -delta.y));
+        expect(camera.cameraPosition().sub(initial).length()).toBeLessThan(1e-8);
+        expect(camera.upDirection().sub(up).length()).toBeLessThan(1e-8);
+      }
+    },
+  );
+
+  it('keeps horizontal drag relative to the screen after flipping upside down', () => {
+    const camera = new ViewportCamera();
+    camera.setViewportSize(800, 600);
+    camera.orientation = Quaternion.lookingFrom(new QVector3D(0, -1, 0));
+    camera.orbit(new QPoint(0, 600));
+    expect(camera.upDirection().z).toBeCloseTo(-1, 8);
+    const initial = camera.cameraPosition();
+    const right = camera.orientation.rotate(new QVector3D(1, 0, 0));
+    camera.orbit(new QPoint(80, 0));
+    expect(QVector3D.dotProduct(camera.cameraPosition().sub(initial), right)).toBeLessThan(0);
+    expect(camera.upDirection().z).toBeCloseTo(-1, 8);
   });
 
   it('pans in the screen plane after camera roll', () => {
@@ -87,12 +123,27 @@ describe('ViewportCamera', () => {
     expect(camera.distance).toBe(1.0e8);
   });
 
-  it('fits bounds with the fixed 45 degree field of view', () => {
+  it.each([
+    [1200, 400],
+    [400, 1200],
+    [600, 600],
+  ])('fits all corners in a %s × %s viewport with padding', (width, height) => {
     const camera = new ViewportCamera();
+    camera.setViewportSize(width, height);
     camera.fitBounds(new QVector3D(10, 10, 0), new QVector3D(14, 12, 2));
     expect([camera.target.x, camera.target.y, camera.target.z]).toEqual([12, 11, 1]);
-    const radius = 0.5 * Math.hypot(4, 2, 2);
-    expect(camera.distance).toBeCloseTo((radius / Math.tan((22.5 * Math.PI) / 180)) * 1.18 + 2, 9);
+    camera.updateViewMatrix();
+    camera.updateProjectionMatrix(20);
+    for (const x of [10, 14])
+      for (const y of [10, 12])
+        for (const z of [0, 2]) {
+          const p = camera.projectToScreen(new QVector3D(x, y, z));
+          expect(p).not.toBeNull();
+          expect(p!.x).toBeGreaterThan(width * 0.04);
+          expect(p!.x).toBeLessThan(width * 0.96);
+          expect(p!.y).toBeGreaterThan(height * 0.04);
+          expect(p!.y).toBeLessThan(height * 0.96);
+        }
     camera.reset();
     expect(camera.distance).toBe(18);
     expect(camera.target.length()).toBe(0);

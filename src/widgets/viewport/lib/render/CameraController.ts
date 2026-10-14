@@ -74,22 +74,43 @@ export class CameraController {
     return arrow;
   }
 
-  // Fits the visible geometry, debug items and connectors; falls back to fitDebugOverlay.
-  fitScene(): void {
+  // Shared by Fit and ViewCube; hidden/isolate-filtered geometry is excluded.
+  sceneBounds(): Bounds3D {
     const { state } = this;
-    const bounds = new Bounds3D();
-    if (state.showGeometry) {
-      for (const [index, mesh] of state.geometryScene.meshes.entries()) {
-        if (!state.isMeshVisible(index)) continue;
-        for (const v of mesh.vertices) bounds.addPoint(v);
-      }
-    }
+    const bounds = this.#geometryBounds();
     this.#addVisibleDebugItems(bounds);
     for (const connector of state.connectors) {
       if (!state.isConnectorVisible(connector.id)) continue;
       for (const mesh of connector.meshes) for (const v of mesh.vertices) bounds.addPoint(v);
       bounds.addPoint(connectorTip(connector));
     }
+
+    return bounds;
+  }
+
+  orbitPivot(): QVector3D {
+    let bounds = this.#geometryBounds();
+    // Debug points and connector arrows must not displace a model's rotation center.
+    // They are the fallback only when no geometry is visible.
+    if (bounds.isEmpty()) bounds = this.sceneBounds();
+
+    return bounds.isEmpty() ? this.camera.target : bounds.minimum().add(bounds.maximum()).mul(0.5);
+  }
+
+  #geometryBounds(): Bounds3D {
+    const bounds = new Bounds3D();
+    if (this.state.showGeometry) {
+      for (const [index, mesh] of this.state.geometryScene.meshes.entries()) {
+        if (!this.state.isMeshVisible(index)) continue;
+        for (const v of mesh.vertices) bounds.addPoint(v);
+      }
+    }
+
+    return bounds;
+  }
+
+  fitScene(): void {
+    const bounds = this.sceneBounds();
     if (bounds.isEmpty()) this.fitDebugOverlay();
     else this.camera.fitBounds(bounds.minimum(), bounds.maximum());
   }

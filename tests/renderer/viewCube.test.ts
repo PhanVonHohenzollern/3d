@@ -1,22 +1,57 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
+import type { PreviewMesh } from '@engine/geometry';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
-import { projectViewCube } from '@/widgets/viewport/lib/render/viewCube';
+import { navigationViews, projectViewCube } from '@/widgets/viewport/lib/render/viewCube';
 import { boxMesh, createEngine, mouse, scene, updateCamera } from '@tests/renderer/helpers';
 
 const directions: QVector3D[] = [];
 for (const x of [-1, 0, 1])
   for (const y of [-1, 0, 1]) for (const z of [-1, 0, 1]) if (x || y || z) directions.push(new QVector3D(x, y, z));
 
+function expectMeshInsideFrame(engine: ViewportEngine, mesh: PreviewMesh): void {
+  const camera = updateCamera(engine);
+  for (const vertex of mesh.vertices) {
+    const point = camera.projectToScreen(new QVector3D(vertex.x, vertex.y, vertex.z));
+    expect(point).not.toBeNull();
+    expect(point!.x).toBeGreaterThan(engine.width() * 0.04);
+    expect(point!.x).toBeLessThan(engine.width() * 0.96);
+    expect(point!.y).toBeGreaterThan(engine.height() * 0.04);
+    expect(point!.y).toBeLessThan(engine.height() * 0.96);
+  }
+}
+
 describe('ViewCube camera directions', () => {
+  it.each([
+    [1200, 400],
+    [400, 1200],
+    [600, 600],
+  ])('refits panned/zoomed geometry for every view in a %s × %s viewport', (width, height) => {
+    const engine = createEngine(width, height);
+    const mesh = boxMesh([-800, 170, -60], [800, 200, 200]);
+    engine.setGeometryScene(scene(mesh));
+    engine.setSelectedApiCall(0);
+    engine.setApiFocusIndices(new Set([0]));
+    for (const direction of directions) {
+      engine.camera().target = new QVector3D(10000, 20000, -5000);
+      engine.camera().distance = 1;
+      engine.setViewDirection(direction);
+      expect(engine.camera().target).toEqual(new QVector3D(0, 185, 70));
+      expectMeshInsideFrame(engine, mesh);
+      expect(engine.hasApiFocus()).toBe(true);
+    }
+    engine.homeView();
+    expectMeshInsideFrame(engine, mesh);
+  });
+
   it('supports all 26 faces, edges and corners, including both poles', () => {
     const engine = createEngine();
     const camera = engine.camera();
     camera.target = new QVector3D(5, 8, -2);
     camera.distance = 35;
     const target = camera.target;
-    const available = new Set<string>();
     for (const direction of directions) {
       engine.setViewDirection(direction);
       updateCamera(engine);
@@ -28,13 +63,27 @@ describe('ViewCube camera directions', () => {
       expect([...camera.view.data].every(Number.isFinite)).toBe(true);
       const faces = projectViewCube(camera.orientation);
       expect(faces).toHaveLength([direction.x, direction.y, direction.z].filter(Boolean).length);
-      for (const face of faces)
-        for (const patch of face.patches) {
-          available.add(patch.name);
-          expect(patch.points).not.toMatch(/NaN|Infinity/);
-        }
+      for (const face of faces) expect(face.points).not.toMatch(/NaN|Infinity/);
     }
-    expect(available.size).toBe(26);
+  });
+
+  it('provides eight distinct ring views around the horizontal plane', () => {
+    const engine = createEngine();
+    expect(navigationViews).toHaveLength(8);
+    expect(new Set(navigationViews.map((view) => view.name)).size).toBe(8);
+    for (const view of navigationViews) {
+      engine.setViewDirection(view.direction);
+      const camera = engine.camera();
+      expect(
+        camera.cameraPosition().sub(camera.target).normalized().sub(view.direction.normalized()).length(),
+      ).toBeLessThan(1e-8);
+      expect(
+        camera
+          .upDirection()
+          .sub(new QVector3D(0, 0, 1))
+          .length(),
+      ).toBeLessThan(1e-8);
+    }
   });
 
   it('rolls around the viewing axis and Home restores orientation and fits the model', () => {
@@ -67,7 +116,9 @@ describe('ViewCube camera directions', () => {
     });
     vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
     try {
-      const engine = createEngine();
+      const engine = createEngine(320, 900);
+      const mesh = boxMesh([-2000, -400, -100], [400, 100, 300]);
+      engine.setGeometryScene(scene(mesh));
       const initial = engine.cameraOrientation();
       const started = performance.now();
       engine.setViewDirection(new QVector3D(0, 0, -1));
@@ -77,9 +128,26 @@ describe('ViewCube camera directions', () => {
       callback(started + 90);
       expect(engine.cameraOrientation()).not.toEqual(initial);
       expect(Math.hypot(...Object.values(engine.cameraOrientation()))).toBeCloseTo(1, 8);
+      expectMeshInsideFrame(engine, mesh);
       engine.mousePressEvent(mouse(400, 300, 1, 1));
       expect(frames.size).toBe(0);
       engine.detach();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('fits immediately when reduced motion is enabled', () => {
+    const frame = vi.fn();
+    vi.stubGlobal('requestAnimationFrame', frame);
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    try {
+      const engine = createEngine(300, 900);
+      const mesh = boxMesh([-1000, -50, -10], [1000, 50, 10]);
+      engine.setGeometryScene(scene(mesh));
+      engine.setViewDirection(new QVector3D(0, -1, 0));
+      expectMeshInsideFrame(engine, mesh);
+      expect(frame).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();
     }

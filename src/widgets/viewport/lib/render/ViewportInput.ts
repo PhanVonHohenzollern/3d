@@ -2,7 +2,7 @@ import { LeftButton, MiddleButton, NoButton, NoModifier } from '@/shared/lib/qt'
 import type { KeyboardModifiers, MouseEventData, WheelEventData } from '@/shared/lib/qt';
 import { kClickDragThreshold } from '@/widgets/viewport/config/viewport';
 import type { QRect } from '@/widgets/viewport/lib/math/Rect';
-import { QPoint, QPointF } from '@/widgets/viewport/lib/math/Vector3D';
+import { QPoint, QPointF, type QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import type { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import type { OverlayLayer } from '@/widgets/viewport/lib/render/OverlayLayer';
 import type { PickingService } from '@/widgets/viewport/lib/render/PickingService';
@@ -37,6 +37,7 @@ export class ViewportInput {
   #lastMousePosition = new QPoint();
   #dragDistance = 0;
   #pressModifiers: KeyboardModifiers = NoModifier;
+  #orbitPivot: QVector3D | null = null;
 
   constructor(
     private readonly state: ViewportState,
@@ -51,12 +52,12 @@ export class ViewportInput {
     this.#lastMousePosition = new QPointF(event.x, event.y).toPoint();
     this.#pressModifiers = event.modifiers;
     this.#dragDistance = 0;
+    this.#orbitPivot = null;
   }
 
   move(event: MouseEventData): void {
     const position = new QPointF(event.x, event.y);
     const currentPosition = position.toPoint();
-    const previousPosition = this.#lastMousePosition;
     const delta = currentPosition.sub(this.#lastMousePosition);
     this.#lastMousePosition = currentPosition;
     if (event.buttons === NoButton) {
@@ -72,8 +73,9 @@ export class ViewportInput {
 
     const creatingPoint = this.state.selectionMode === 'Point' && this.#pressModifiers.control;
     if (event.buttons & LeftButton && !creatingPoint) {
-      this.view.camera.orbit(new QPointF(previousPosition.x, previousPosition.y), position);
-      this.host.rebuild(false);
+      this.#orbitPivot ??= this.view.orbitPivot();
+      this.view.camera.orbit(delta, this.#orbitPivot);
+      this.host.rebuild(true);
       this.host.update();
     }
     if (event.buttons & MiddleButton) {
@@ -84,6 +86,7 @@ export class ViewportInput {
   }
 
   release(event: MouseEventData): void {
+    this.#orbitPivot = null;
     const position = new QPointF(event.x, event.y);
     if (event.button === LeftButton && this.#dragDistance < kClickDragThreshold) this.#click(position);
     if (this.host.bounds().contains(position.toPoint())) this.updateHover(position);
