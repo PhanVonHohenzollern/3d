@@ -12,6 +12,7 @@ const functions: Record<string, (...values: number[]) => number> = {
   sin: (x) => Math.sin((x * Math.PI) / 180),
   cos: (x) => Math.cos((x * Math.PI) / 180),
   tan: (x) => Math.tan((x * Math.PI) / 180),
+  cot: (x) => 1 / Math.tan((x * Math.PI) / 180),
   asin: (x) => (Math.asin(x) * 180) / Math.PI,
   acos: (x) => (Math.acos(x) * 180) / Math.PI,
   atan: (x) => (Math.atan(x) * 180) / Math.PI,

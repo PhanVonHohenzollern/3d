@@ -6,10 +6,15 @@ export function useEditableComboBox(
   onTextChanged: (text: string) => void,
   onItemSelected?: (index: number) => void,
   selectedIndex?: number,
+  searchable = false,
 ) {
   const [open, setOpen] = useState(false);
   const [popupRect, setPopupRect] = useState({ left: 0, top: 0, width: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState('');
+  const visibleItems = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !searchable || item.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
 
   useEffect(() => {
     if (!open) return;
@@ -55,11 +60,12 @@ export function useEditableComboBox(
     }
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && items.length && !event.altKey) {
       event.preventDefault();
-      const index = selectedIndex ?? items.indexOf(value);
-      const next = event.key === 'ArrowDown' ? Math.min(index + 1, items.length - 1) : Math.max(index - 1, 0);
-      if (items[next] !== undefined) {
-        if (onItemSelected) onItemSelected(next);
-        else if (items[next] !== value) onTextChanged(items[next]);
+      const index = visibleItems.findIndex((item) => item.index === (selectedIndex ?? items.indexOf(value)));
+      const next = event.key === 'ArrowDown' ? Math.min(index + 1, visibleItems.length - 1) : Math.max(index - 1, 0);
+      const selected = visibleItems[next];
+      if (selected !== undefined) {
+        if (onItemSelected) onItemSelected(selected.index);
+        else if (selected.item !== value) onTextChanged(selected.item);
       }
     } else if (event.key === 'ArrowDown' && event.altKey) {
       event.preventDefault();
@@ -73,8 +79,19 @@ export function useEditableComboBox(
     popupRect,
     close: () => setOpen(false),
     onKeyDown,
-    onChange: (event: ChangeEvent<HTMLInputElement>) => onTextChanged(event.target.value),
-    toggle: () => (open ? setOpen(false) : openPopup()),
+    visibleItems,
+    onChange: (event: ChangeEvent<HTMLInputElement>) => {
+      if (searchable) {
+        setQuery(event.target.value);
+        openPopup();
+      }
+      onTextChanged(event.target.value);
+    },
+    toggle: () => {
+      setQuery('');
+      if (open) setOpen(false);
+      else openPopup();
+    },
     choose: (index: number) => () => {
       setOpen(false);
       if (onItemSelected) onItemSelected(index);

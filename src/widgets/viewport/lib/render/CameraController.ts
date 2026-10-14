@@ -19,6 +19,7 @@ export class CameraController {
   #geometrySceneScale = kMinimumSceneScale;
   #connectorSceneScale = 0;
   #sceneScale = kMinimumSceneScale;
+  #geometryCenter: QVector3D | null = null;
 
   constructor(private readonly state: ViewportState) {
     this.rebuildAxes();
@@ -34,10 +35,16 @@ export class CameraController {
   }
 
   setGeometryScene(scene: PreviewGeometryScene): void {
+    const bounds = new Bounds3D();
     this.#geometrySceneScale = kMinimumSceneScale;
-    for (const mesh of scene.meshes)
+    for (const mesh of scene.meshes) {
       for (const v of mesh.vertices)
         this.#geometrySceneScale = Math.max(this.#geometrySceneScale, Math.hypot(v.x, v.y, v.z));
+      // Scene vertices already include the geometry transforms. Only vertices
+      // used by mesh surfaces contribute; symbol lines and unused points do not.
+      if (mesh.primitive !== 'lines') for (const index of mesh.indices) bounds.addPoint(mesh.vertices[index]);
+    }
+    this.#geometryCenter = bounds.isEmpty() ? null : bounds.minimum().add(bounds.maximum()).mul(0.5);
     this.#updateSceneScale();
   }
 
@@ -93,12 +100,9 @@ export class CameraController {
   }
 
   orbitPivot(): QVector3D {
-    let bounds = this.#geometryBounds();
-    // Debug points and connector arrows must not displace a model's rotation center.
-    // They are the fallback only when no geometry is visible.
-    if (bounds.isEmpty()) bounds = this.sceneBounds();
-
-    return bounds.isEmpty() ? this.camera.target : bounds.minimum().add(bounds.maximum()).mul(0.5);
+    // Keep the whole model's center independent of code selection, isolation,
+    // visibility and connector/debug overlays. Recomputed only with geometry.
+    return this.#geometryCenter ?? this.camera.target;
   }
 
   #geometryBounds(): Bounds3D {

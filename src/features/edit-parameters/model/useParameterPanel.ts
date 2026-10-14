@@ -82,6 +82,11 @@ export function useParameterPanel({ model }: Pick<ParameterPanelProps, 'model'>)
         disabled: !!row.disabled,
         setChecked: (checked: boolean) => model.setCheckbox(row.key, checked),
         options: model.dataOptions(row.key),
+        xmlOptions: model.valueOptions(row.texts[0]),
+        selectValue: (value: string) => {
+          change(value);
+          commit();
+        },
         selectedDataSet: model.dataSetIndex,
         selectDataSet: (dataSet: number) => model.selectDataSet(dataSet),
         beginEdit,

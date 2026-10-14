@@ -126,6 +126,20 @@ export function ParameterPanel(props: ParameterPanelProps) {
                             disabled={field.disabled}
                             onChange={(event) => field.setChecked(event.target.checked)}
                           />
+                        ) : field.xmlOptions.length > 0 && field.options.length === 0 ? (
+                          <EditableComboBox
+                            label={field.label}
+                            compact
+                            searchable
+                            value={field.value}
+                            disabled={field.disabled}
+                            items={field.xmlOptions}
+                            onItemSelected={(index) => field.selectValue(field.xmlOptions[index])}
+                            onTextChanged={field.change}
+                            onFocus={field.beginEdit}
+                            onBlur={field.commit}
+                            onKeyDown={field.onKeyDown}
+                          />
                         ) : field.options.length === 0 ? (
                           <LineEdit
                             className="w-full px-2"

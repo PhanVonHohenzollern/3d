@@ -2,7 +2,7 @@ import { LeftButton, MiddleButton, NoButton, NoModifier } from '@/shared/lib/qt'
 import type { KeyboardModifiers, MouseEventData, WheelEventData } from '@/shared/lib/qt';
 import { kClickDragThreshold, kOrbitAxisSnapDegrees } from '@/widgets/viewport/config/viewport';
 import type { QRect } from '@/widgets/viewport/lib/math/Rect';
-import { QPoint, QPointF, type QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { QPoint, QPointF } from '@/widgets/viewport/lib/math/Vector3D';
 import type { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import type { OverlayLayer } from '@/widgets/viewport/lib/render/OverlayLayer';
 import type { PickingService } from '@/widgets/viewport/lib/render/PickingService';
@@ -38,7 +38,7 @@ export class ViewportInput {
   #pressPosition = new QPoint();
   #dragDistance = 0;
   #pressModifiers: KeyboardModifiers = NoModifier;
-  #orbitPivot: QVector3D | null = null;
+  #orbitStarted = false;
 
   constructor(
     private readonly state: ViewportState,
@@ -54,7 +54,7 @@ export class ViewportInput {
     this.#pressPosition = this.#lastMousePosition;
     this.#pressModifiers = event.modifiers;
     this.#dragDistance = 0;
-    this.#orbitPivot = null;
+    this.#orbitStarted = false;
   }
 
   move(event: MouseEventData): void {
@@ -76,7 +76,7 @@ export class ViewportInput {
     const creatingPoint = this.state.selectionMode === 'Point' && this.#pressModifiers.control;
     if (event.buttons & LeftButton && !creatingPoint) {
       let orbitDelta = delta;
-      if (this.#orbitPivot === null) {
+      if (!this.#orbitStarted) {
         // Accumulate the startup motion until it is a drag rather than a click.
         orbitDelta = currentPosition.sub(this.#pressPosition);
         if (Math.hypot(orbitDelta.x, orbitDelta.y) < kClickDragThreshold) return;
@@ -85,8 +85,8 @@ export class ViewportInput {
       const angle = (Math.atan2(Math.abs(orbitDelta.y), Math.abs(orbitDelta.x)) * 180) / Math.PI;
       if (angle <= kOrbitAxisSnapDegrees) orbitDelta = new QPoint(orbitDelta.x, 0);
       else if (angle >= 90 - kOrbitAxisSnapDegrees) orbitDelta = new QPoint(0, orbitDelta.y);
-      this.#orbitPivot ??= this.view.orbitPivot();
-      this.view.camera.orbit(orbitDelta, this.#orbitPivot);
+      this.#orbitStarted = true;
+      this.view.camera.orbit(orbitDelta, this.view.orbitPivot());
       this.host.rebuild(true);
       this.host.update();
     }
@@ -98,7 +98,7 @@ export class ViewportInput {
   }
 
   release(event: MouseEventData): void {
-    this.#orbitPivot = null;
+    this.#orbitStarted = false;
     const position = new QPointF(event.x, event.y);
     if (event.button === LeftButton && this.#dragDistance < kClickDragThreshold) this.#click(position);
     if (this.host.bounds().contains(position.toPoint())) this.updateHover(position);

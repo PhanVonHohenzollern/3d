@@ -118,6 +118,16 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   #pressClosedEditor = false;
   #defaults: ReadonlyMap<string, string> | null = null;
   #defaultFunction = '';
+  #valueOptions: ReadonlyMap<string, string[]> = new Map();
+
+  setValueOptions(options: ReadonlyMap<string, string[]>): void {
+    this.#valueOptions = options;
+    this.changed();
+  }
+
+  valueOptions(name: string): readonly string[] {
+    return this.#valueOptions.get(name) ?? [];
+  }
 
   // Shared SDK queries belong with the opened function, not a synthetic Element tab.
   #functionTab(definition: RuntimeParameterRequest): string {
@@ -136,6 +146,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   setPlaceholderData(): void {
+    this.#valueOptions = new Map();
     this.#definitions = [];
     this.#activeKeys = null;
     this.#defaults = null;

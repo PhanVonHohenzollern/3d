@@ -1,4 +1,8 @@
-import { defineLibrary, type ValueTable } from '@/features/element-library/model/valueTables';
+import rules from '@/features/element-library/data/rules/GRUNDFOS.json';
+import type { XmlCatalog } from '@/features/element-library/model/xmlRules';
+import { libraryWithXml, type ValueTable } from '@/features/element-library/model/valueTables';
+
+const defineLibrary = libraryWithXml(rules as unknown as XmlCatalog);
 
 // Prepared geometry values from the SDK XML. Shared tables keep each size row once.
 

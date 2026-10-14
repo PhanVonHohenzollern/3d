@@ -1,4 +1,8 @@
-import { defineLibrary, type ValueTable } from '@/features/element-library/model/valueTables';
+import rules from '@/features/element-library/data/rules/CGeneral.json';
+import type { XmlCatalog } from '@/features/element-library/model/xmlRules';
+import { libraryWithXml, type ValueTable } from '@/features/element-library/model/valueTables';
+
+const defineLibrary = libraryWithXml(rules as unknown as XmlCatalog);
 
 // Prepared geometry values from the SDK XML. Shared tables keep each size row once.
 
@@ -18600,17 +18604,6 @@ export default defineLibrary('CGeneral', [
     tables: [],
   },
   {
-    id: '06334143-5DFD-4F50-BA9F-3F22641B24AC',
-    name: 'Endcap with external thread',
-    symbol: 'CpECTHR',
-    entry: '',
-    defaults: {},
-    selectors: [],
-    connectors: [],
-    error: 'No prepared defaults for this element; its source data needs review.',
-    tables: [],
-  },
-  {
     id: '1BEF141F-D8DB-4FB0-9598-9B2352B8ADAC',
     name: 'Inductive Fancoil',
     symbol: 'CHIL',
@@ -18633,17 +18626,6 @@ export default defineLibrary('CGeneral', [
     tables: [],
   },
   {
-    id: '449BBF11-4DFC-49EB-970C-186F7639E5F7',
-    name: 'Endcap',
-    symbol: 'CpECFLN',
-    entry: '',
-    defaults: {},
-    selectors: [],
-    connectors: [],
-    error: 'No prepared defaults for this element; its source data needs review.',
-    tables: [],
-  },
-  {
     id: 'B78F967D-E796-4C53-A52D-92430C04C17D',
     name: 'Ducting fancoil',
     symbol: 'CHIL',
@@ -18655,31 +18637,9 @@ export default defineLibrary('CGeneral', [
     tables: [],
   },
   {
-    id: 'C97BFA29-2BD6-4C28-BCD2-5510663F6904',
-    name: 'Endcap',
-    symbol: 'CpECWLD',
-    entry: '',
-    defaults: {},
-    selectors: [],
-    connectors: [],
-    error: 'No prepared defaults for this element; its source data needs review.',
-    tables: [],
-  },
-  {
     id: 'CAE62076-E530-4EC6-8B0B-2FD8FDDD015F',
     name: 'Floor standing fancoil',
     symbol: 'CHIL',
-    entry: '',
-    defaults: {},
-    selectors: [],
-    connectors: [],
-    error: 'No prepared defaults for this element; its source data needs review.',
-    tables: [],
-  },
-  {
-    id: 'E062F9B1-76DE-464B-9A49-D06F4084A1E6',
-    name: 'Coupling with internal thread',
-    symbol: 'CpCTHR',
     entry: '',
     defaults: {},
     selectors: [],

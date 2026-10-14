@@ -29,6 +29,13 @@ export interface LibraryElement {
   variants: LibraryVariant[];
   connectors: ConnectorDefinition[];
   error?: string;
+  resolve?: (values?: ReadonlyMap<string, string>, changed?: readonly string[]) => LibraryValues;
+}
+
+export interface LibraryValues {
+  values: Map<string, string>;
+  connectors: ConnectorDefinition[];
+  options: Map<string, string[]>;
 }
 
 export interface ElementLibrary {
