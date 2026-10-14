@@ -144,6 +144,7 @@ export class ViewportEngine {
   }
 
   setGeometryScene(scene: PreviewGeometryScene): void {
+    this.#stopCameraAnimation();
     const state = this.#state;
     this.#pickers.invalidate();
     state.selectedMeshIndex = -1;
@@ -248,28 +249,35 @@ export class ViewportEngine {
   cameraOrientation = (): Quaternion => this.#view.camera.orientation;
 
   setViewDirection(direction: QVector3D): void {
-    this.#animateCamera(Quaternion.lookingFrom(direction));
+    this.#animateCamera(Quaternion.lookingFrom(direction), true);
   }
 
   homeView(): void {
-    this.#view.fitScene();
-    this.#animateCamera(ViewportCamera.homeOrientation());
+    this.#animateCamera(ViewportCamera.homeOrientation(), true);
   }
 
   rollView(angle: number): void {
     this.#animateCamera(this.#view.camera.orientation.multiply(Quaternion.axisAngle(new QVector3D(0, 0, 1), angle)));
   }
 
-  #animateCamera(target: Quaternion): void {
+  #animateCamera(target: Quaternion, fitToScene = false): void {
     this.#stopCameraAnimation();
     this.#pickers.invalidate();
     const camera = this.#view.camera;
+    // Collect mesh bounds once; only eight corners need fitting during animation.
+    const bounds = fitToScene ? this.#view.sceneBounds() : null;
+
+    const applyOrientation = (orientation: Quaternion): void => {
+      camera.orientation = orientation;
+      if (bounds && !bounds.isEmpty()) camera.fitBounds(bounds.minimum(), bounds.maximum());
+      this.#afterCameraMove();
+    };
+
     if (
       typeof requestAnimationFrame === 'undefined' ||
       globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     ) {
-      camera.orientation = target;
-      this.#afterCameraMove();
+      applyOrientation(target);
 
       return;
     }
@@ -278,8 +286,7 @@ export class ViewportEngine {
 
     const step = (now: number): void => {
       const t = Math.min(1, (now - started) / 180);
-      camera.orientation = from.slerp(target, t * t * (3 - 2 * t));
-      this.#afterCameraMove();
+      applyOrientation(from.slerp(target, t * t * (3 - 2 * t)));
       this.#cameraAnimation = t < 1 ? requestAnimationFrame(step) : null;
     };
 

@@ -3,6 +3,9 @@ import { clamp, radians } from '@/widgets/viewport/lib/math/math';
 import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { QPointF, QVector3D, QVector4D, type QPoint } from '@/widgets/viewport/lib/math/Vector3D';
 
+const kVerticalFieldOfView = 45;
+const kFitPadding = 1.12;
+
 export interface ScreenRay {
   nearPoint: QVector3D;
   farPoint: QVector3D;
@@ -54,7 +57,7 @@ export class ViewportCamera {
     const farPlane = Math.max(1000, this.distance + sceneReach, nearPlane * 1000);
 
     this.projection.setToIdentity();
-    this.projection.perspective(45, aspect, nearPlane, farPlane);
+    this.projection.perspective(kVerticalFieldOfView, aspect, nearPlane, farPlane);
   }
 
   viewProjection(): QMatrix4x4 {
@@ -106,18 +109,18 @@ export class ViewportCamera {
     return new QVector3D(world.x, world.y, 0);
   }
 
-  orbit(from: QPointF, to: QPointF): void {
-    const project = (point: QPointF): QVector3D => {
-      const radius = Math.max(1, Math.min(this.m_width, this.m_height) * 0.4);
-      const x = (point.x - this.m_width / 2) / radius;
-      const y = (this.m_height / 2 - point.y) / radius;
-      const lengthSquared = x * x + y * y;
-      const z = lengthSquared <= 0.5 ? Math.sqrt(1 - lengthSquared) : 0.5 / Math.sqrt(lengthSquared);
-
-      return new QVector3D(x, y, z).normalized();
-    };
-
-    this.orientation = this.orientation.multiply(Quaternion.between(project(to), project(from))).normalized();
+  orbit(delta: QPoint, pivot: QVector3D = this.target): void {
+    const movement = Math.hypot(delta.x, delta.y);
+    if (movement === 0) return;
+    // Screen-horizontal/vertical motion always uses the camera's up/right axes,
+    // even at the poles or upside down. Cursor position never introduces roll.
+    const angle = (movement * Math.PI) / Math.max(1, Math.min(this.m_width, this.m_height));
+    const rotation = Quaternion.axisAngle(new QVector3D(-delta.y, -delta.x, 0), angle);
+    const orientation = this.orientation.multiply(rotation).normalized();
+    const worldRotation = orientation.multiply(this.orientation.conjugate());
+    // Rotate the eye and its target together around the geometry, preserving Pan.
+    this.target = pivot.add(worldRotation.rotate(this.target.sub(pivot)));
+    this.orientation = orientation;
   }
 
   pan(delta: QPoint): void {
@@ -136,12 +139,30 @@ export class ViewportCamera {
   }
 
   fitBounds(minP: QVector3D, maxP: QVector3D): void {
-    const size = maxP.sub(minP);
     this.target = minP.add(maxP).mul(0.5);
-    const radius = Math.max(1, 0.5 * size.length());
-    const halfFov = radians(45 * 0.5);
-    const fitDistance = radius / Math.max(0.05, Math.tan(halfFov));
-    this.distance = clamp(fitDistance * 1.18 + Math.max(2, radius * 0.05), 0.05, 1.0e8);
+    const tanVertical = Math.tan(radians(kVerticalFieldOfView * 0.5));
+    const aspect = Math.max(1, this.m_width) / Math.max(1, this.m_height);
+    const tanHorizontal = tanVertical * aspect;
+    const toCamera = this.orientation.conjugate();
+    const depthMargin = Math.max(0.01, maxP.sub(minP).length() * 0.01);
+    let distance = 0.05;
+    // Solve the perspective-frustum constraints for every bounding-box corner.
+    // Its camera-space depth matters as well as its horizontal/vertical extent.
+    for (const x of [minP.x, maxP.x])
+      for (const y of [minP.y, maxP.y])
+        for (const z of [minP.z, maxP.z]) {
+          const p = toCamera.rotate(new QVector3D(x, y, z).sub(this.target));
+          distance = Math.max(
+            distance,
+            p.z +
+              Math.max(
+                (kFitPadding * Math.abs(p.x)) / tanHorizontal,
+                (kFitPadding * Math.abs(p.y)) / tanVertical,
+                depthMargin,
+              ),
+          );
+        }
+    this.distance = clamp(distance, 0.05, 1.0e8);
   }
 
   reset(): void {

@@ -4,6 +4,7 @@ import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { boxMesh, click, createEngine, mouse, project, resultWithP0, scene } from '@tests/renderer/helpers';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
+import { buildConnectorPreview, defaultConnectorDefinition } from '@engine/geometry/ConnectorPreview';
 
 function meshModeEngine() {
   const engine = createEngine();
@@ -209,6 +210,91 @@ describe('debug points and clicks', () => {
     expect(onSelection).not.toHaveBeenCalled();
   });
 
+  it('uses the same orbit motion at the center and edges of the viewport', () => {
+    const orientations = [];
+    for (const [x, y] of [
+      [400, 300],
+      [10, 10],
+      [790, 590],
+    ]) {
+      const engine = createEngine();
+      engine.mousePressEvent(mouse(x, y, LeftButton, LeftButton));
+      engine.mouseMoveEvent(mouse(x + 30, y - 40, 0, LeftButton));
+      engine.mouseReleaseEvent(mouse(x + 30, y - 40, LeftButton, 0));
+      orientations.push(engine.camera().orientation);
+    }
+    expect(orientations[0]).not.toEqual(ViewportCamera.homeOrientation());
+    expect(orientations[1]).toEqual(orientations[0]);
+    expect(orientations[2]).toEqual(orientations[0]);
+  });
+
+  it('orbits an off-origin model around its center after Pan/Zoom, ignoring distant debug items and connectors', () => {
+    const engine = createEngine();
+    engine.setGeometryScene(scene(boxMesh([10, 20, 30], [20, 30, 40])));
+    engine.setRuntimeResult(resultWithP0(1000, 0, 0));
+    engine.setConnectorPreviews(
+      [buildConnectorPreview({ ...defaultConnectorDefinition(), diameter: '4', position: ['2000', '0', '0'] }, Number)],
+      -1,
+    );
+    const camera = engine.camera();
+    const center = new QVector3D(15, 25, 35);
+    camera.fitBounds(new QVector3D(10, 20, 30), new QVector3D(20, 30, 40));
+    engine.mousePressEvent(mouse(400, 300, MiddleButton, MiddleButton));
+    engine.mouseMoveEvent(mouse(440, 320, 0, MiddleButton));
+    engine.mouseReleaseEvent(mouse(440, 320, MiddleButton, 0));
+    engine.wheelEvent({ x: 440, y: 320, angleDeltaY: 120 });
+    const initialCenter = project(engine, center);
+    const initialEye = camera.cameraPosition();
+    const radius = initialEye.sub(center).length();
+    const distance = camera.distance;
+    engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
+    expect(camera.cameraPosition()).toEqual(initialEye);
+    for (const [x, y] of [
+      [450, 350],
+      [500, 500],
+      [200, 500],
+      [100, 100],
+    ]) {
+      engine.mouseMoveEvent(mouse(x, y, 0, LeftButton));
+      const projectedCenter = project(engine, center);
+      expect(projectedCenter.x).toBeCloseTo(initialCenter.x, 3);
+      expect(projectedCenter.y).toBeCloseTo(initialCenter.y, 3);
+      expect(camera.cameraPosition().sub(center).length()).toBeCloseTo(radius, 8);
+      expect(camera.distance).toBe(distance);
+    }
+    expect(camera.cameraPosition().sub(initialEye).length()).toBeGreaterThan(1);
+    engine.mouseReleaseEvent(mouse(100, 100, LeftButton, 0));
+  });
+
+  it('updates the orbit center to visible geometry when isolation changes between drags', () => {
+    const engine = createEngine();
+    engine.setGeometryScene(scene(boxMesh([-30, -1, -1], [-20, 1, 1], 0), boxMesh([20, -1, -1], [30, 1, 1], 1)));
+    engine.fitScene();
+    engine.setSelectedApiCall(1);
+    for (const center of [new QVector3D(), new QVector3D(25, 0, 0)]) {
+      const before = project(engine, center);
+      engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
+      engine.mouseMoveEvent(mouse(450, 340, 0, LeftButton));
+      engine.mouseReleaseEvent(mouse(450, 340, LeftButton, 0));
+      const after = project(engine, center);
+      expect(after.x).toBeCloseTo(before.x, 3);
+      expect(after.y).toBeCloseTo(before.y, 3);
+      engine.toggleIsolation();
+    }
+  });
+
+  it('orbits visible debug items when geometry is hidden', () => {
+    const engine = createEngine();
+    engine.setGeometryScene(scene(boxMesh([100, 100, 100], [110, 110, 110])));
+    engine.setRuntimeResult(resultWithP0(1, 2, 3));
+    engine.setShowGeometry(false);
+    engine.fitScene();
+    engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
+    engine.mouseMoveEvent(mouse(450, 350, 0, LeftButton));
+    engine.mouseReleaseEvent(mouse(450, 350, LeftButton, 0));
+    expect(engine.camera().target).toEqual(new QVector3D(1, 2, 3));
+  });
+
   it('right-click and right-drag leave camera and selection unchanged', () => {
     const engine = createEngine();
     engine.setSelectionMode('Point');
@@ -253,13 +339,18 @@ describe('debug points and clicks', () => {
 
   it('fitScene() frames the visible geometry', () => {
     const engine = createEngine();
-    engine.setGeometryScene(scene(boxMesh([10, 10, 0], [14, 12, 2], 0)));
+    const mesh = boxMesh([10, 10, 0], [14, 12, 2], 0);
+    engine.setGeometryScene(scene(mesh));
     engine.fitScene();
-    const { target, distance } = engine.camera();
+    const { target } = engine.camera();
     expect([target.x, target.y, target.z]).toEqual([12, 11, 1]);
-    const radius = 0.5 * Math.hypot(4, 2, 2);
-    const expected = (radius / Math.tan((22.5 * Math.PI) / 180)) * 1.18 + Math.max(2, radius * 0.05);
-    expect(distance).toBeCloseTo(expected, 5);
+    for (const vertex of mesh.vertices) {
+      const point = project(engine, new QVector3D(vertex.x, vertex.y, vertex.z));
+      expect(point.x).toBeGreaterThan(0);
+      expect(point.x).toBeLessThan(engine.width());
+      expect(point.y).toBeGreaterThan(0);
+      expect(point.y).toBeLessThan(engine.height());
+    }
   });
 
   it('fitDebugOverlay() resets the camera when nothing is visible', () => {
