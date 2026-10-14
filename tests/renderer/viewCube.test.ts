@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
-import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { QPoint, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
 import type { PreviewMesh } from '@engine/geometry';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
-import { navigationViews, projectViewCube } from '@/widgets/viewport/lib/render/viewCube';
+import { activeNavigationView, navigationViews, projectViewCube } from '@/widgets/viewport/lib/render/viewCube';
 import { boxMesh, createEngine, mouse, scene, updateCamera } from '@tests/renderer/helpers';
 
 const directions: QVector3D[] = [];
@@ -67,23 +67,68 @@ describe('ViewCube camera directions', () => {
     }
   });
 
-  it('provides eight distinct ring views around the horizontal plane', () => {
+  it('maps the outer ring to four elevations and four isometric views, with Top/Bottom inside', () => {
     const engine = createEngine();
-    expect(navigationViews).toHaveLength(8);
-    expect(new Set(navigationViews.map((view) => view.name)).size).toBe(8);
+    expect(navigationViews.map(({ name, direction }) => [name, direction.x, direction.y, direction.z])).toEqual([
+      ['Back', 0, 1, 0],
+      ['NE Isometric', 1, 1, 1],
+      ['Right', 1, 0, 0],
+      ['SE Isometric', 1, -1, 1],
+      ['Front', 0, -1, 0],
+      ['SW Isometric', -1, -1, 1],
+      ['Left', -1, 0, 0],
+      ['NW Isometric', -1, 1, 1],
+      ['Top', 0, 0, 1],
+      ['Bottom', 0, 0, -1],
+    ]);
     for (const view of navigationViews) {
       engine.setViewDirection(view.direction);
       const camera = engine.camera();
       expect(
         camera.cameraPosition().sub(camera.target).normalized().sub(view.direction.normalized()).length(),
       ).toBeLessThan(1e-8);
-      expect(
-        camera
-          .upDirection()
-          .sub(new QVector3D(0, 0, 1))
-          .length(),
-      ).toBeLessThan(1e-8);
+      expect(activeNavigationView(camera.orientation)).toBe(view.name);
+      if (view.direction.z === 0) expect(camera.upDirection().z).toBeCloseTo(1);
+      else if (view.direction.x !== 0) expect(camera.upDirection().z).toBeCloseTo(Math.sqrt(2 / 3));
     }
+  });
+
+  it.each(navigationViews)('keeps $name selected through Pan/Zoom, but clears it on Orbit or Roll', (view) => {
+    const engine = createEngine();
+    const camera = engine.camera();
+    engine.setViewDirection(view.direction);
+    camera.pan(new QPoint(15, -20));
+    camera.zoom(120);
+    expect(activeNavigationView(camera.orientation)).toBe(view.name);
+    const q = camera.orientation;
+    expect(activeNavigationView(new Quaternion(-q.x, -q.y, -q.z, -q.w))).toBe(view.name);
+    camera.orbit(new QPoint(5, 0));
+    expect(activeNavigationView(camera.orientation)).toBeNull();
+    engine.setViewDirection(view.direction);
+    engine.rollView(Math.PI / 6);
+    expect(activeNavigationView(camera.orientation)).toBeNull();
+    engine.homeView();
+    expect(activeNavigationView(camera.orientation)).toBeNull();
+  });
+
+  it.each([
+    [1200, 400],
+    [400, 1200],
+  ])('fits all ten presets with angle-dependent zoom in a %s × %s viewport', (width, height) => {
+    const engine = createEngine(width, height);
+    const mesh = boxMesh([-800, -30, -100], [800, 30, 100]);
+    engine.setGeometryScene(scene(mesh));
+    const distances = new Map<string, number>();
+    for (const view of navigationViews) {
+      engine.camera().target = new QVector3D(10000, 20000, -5000);
+      engine.camera().distance = 1;
+      engine.setViewDirection(view.direction);
+      expect(engine.camera().target).toEqual(new QVector3D(0, 0, 0));
+      expectMeshInsideFrame(engine, mesh);
+      distances.set(view.name, engine.camera().distance);
+    }
+    expect(distances.get('Front')).not.toBeCloseTo(distances.get('Right')!);
+    expect(distances.get('SE Isometric')).not.toBeCloseTo(distances.get('Front')!);
   });
 
   it('rolls around the viewing axis and Home restores orientation and fits the model', () => {
