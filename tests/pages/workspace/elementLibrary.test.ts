@@ -106,7 +106,11 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     edit('C', '30');
     edit('C1', '10');
     mw.applyParameters();
-    checkConnection(-2.5, 42.5, 2);
+    {
+      const values = parameters.contextValues();
+      const halfLength = Number(values.get('L')) / 2;
+      checkConnection(-halfLength + Number(values.get('C')) + Number(values.get('C1')), halfLength, 2);
+    }
 
     edit('elType3d', '1');
     mw.applyParameters();
@@ -120,7 +124,11 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
 
     edit('elType3d', '0');
     mw.applyParameters();
-    checkConnection(-2.5, 42.5, 2);
+    {
+      const values = parameters.contextValues();
+      const halfLength = Number(values.get('L')) / 2;
+      checkConnection(-halfLength + Number(values.get('C')) + Number(values.get('C1')), halfLength, 2);
+    }
     expect(editor.text).toBe(source);
     parameters.resetToSource();
     mw.applyParameters();
@@ -136,7 +144,7 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
   }
 });
 
-it('opens one default set and keeps manual edits independent until Reset', async () => {
+it('updates dependent XML sizes and keeps source edits until Reset', async () => {
   vi.useFakeTimers();
   const fetchMock = mockLibraryFetch();
   const { mw, editor, parameters, links } = createWorkspace();
@@ -160,20 +168,20 @@ it('opens one default set and keeps manual edits independent until Reset', async
     };
 
     const originalScene = mw.session.scene;
-    const defaults = parameters.contextValues();
-    const connectors = links.definitions();
     editor.type(editor.text + '\n// Keep this edit when choosing a size.', 1);
     const code = editor.text;
     edit('diam', '65');
-    expect(parameters.contextValues().get('l')).toBe(defaults.get('l'));
-    expect(parameters.contextValues().get('L1:get_fln_thick')).toBe(defaults.get('L1:get_fln_thick'));
-    expect(mw.library.resolution.values.get('diam')).toBe('25');
+    expect(parameters.contextValues().get('l')).toBe('180');
+    expect(parameters.contextValues().get('L1:get_fln_thick')).toBe('20');
+    expect(mw.library.resolution.values.get('diam')).toBe('65');
     expect(mw.session.scene).toBe(originalScene);
     expect(editor.text).toBe(code);
     edit('elType', '0');
     expect(mw.library.element?.defaults.elType).toBe('0');
     expect(parameters.contextValues().get('diam')).toBe('65');
-    expect(links.definitions()).toEqual(connectors);
+    expect(links.definitions().every((link) => link.technology === 'THR_STEEL' && link.connectionType === 'F')).toBe(
+      true,
+    );
     expect(links.statusIsError).toBe(false);
     mw.applyParameters();
     expect(mw.session.lastResult.diagnostics).toEqual([]);
@@ -334,9 +342,12 @@ it.each(['make2WayValve', 'makeSV', 'makeMF', 'makeTANK'])(
               ([name, value]) => name === 'tech' || value === initialValues.get(name),
             ),
           ) ?? element.variants[0];
-        const expected = { ...element.defaults, ...variant.defaults };
-        expect(Object.fromEntries(parameters.contextValues())).toMatchObject(expected);
-        expect(links.definitions()).toEqual(variant.connectors ?? element.connectors);
+        const expected = element.resolve!(
+          new Map(Object.entries({ ...element.defaults, ...variant.defaults })),
+          Object.keys(variant.selection),
+        );
+        expect(Object.fromEntries(parameters.contextValues())).toMatchObject(Object.fromEntries(expected.values));
+        expect(links.definitions()).toEqual(expected.connectors);
         mw.applyParameters();
         expect(mw.session.lastResult.diagnostics, element.name).toEqual([]);
         expect(mw.session.scene.warnings, element.name).toEqual([]);
@@ -349,7 +360,7 @@ it.each(['make2WayValve', 'makeSV', 'makeMF', 'makeTANK'])(
       expect(links.definitions()).toEqual(editedConnectors);
       parameters.resetToSource();
       expect(parameters.contextValues().get(dimension)).toBe(initialValues.get(dimension));
-      expect(links.definitions()).toEqual(first.variants[0].connectors ?? first.connectors);
+      expect(links.definitions()).toEqual(first.resolve!().connectors);
     } finally {
       mw.dispose();
       fetchMock.mockRestore();
@@ -429,7 +440,7 @@ it('preserves values and connectors while a manually entered selector has no mat
     expect(showMessage).not.toHaveBeenCalled();
     parameters.resetToSource();
     expect(parameters.contextValues()).toEqual(values);
-    expect(links.definitions()).toEqual(element.connectors);
+    expect(links.definitions()).toEqual(element.resolve!().connectors);
   } finally {
     mw.dispose();
     fetchMock.mockRestore();
@@ -455,7 +466,7 @@ it('loads all nested TANK shapes with their own connector count and dimensions',
       parameters.commitEditor();
       expect(parameters.contextValues().get('elType')).toBe('1');
       expect(Object.fromEntries(parameters.contextValues())).toMatchObject(element.defaults);
-      expect(links.definitions()).toEqual(element.connectors);
+      expect(links.definitions()).toEqual(element.resolve!().connectors);
       mw.applyParameters();
       expect(mw.session.lastResult.diagnostics).toEqual([]);
       expect(mw.session.scene.warnings).toEqual([]);
@@ -469,7 +480,7 @@ it('loads all nested TANK shapes with their own connector count and dimensions',
       parameters.commitEditor();
     }
     expect(parameters.contextValues().get('elType3d')).toBe(tanks[0].defaults.elType3d);
-    expect(links.definitions()).toEqual(tanks[0].connectors);
+    expect(links.definitions()).toEqual(tanks[0].resolve!().connectors);
   } finally {
     mw.dispose();
     fetchMock.mockRestore();

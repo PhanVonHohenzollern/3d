@@ -1,15 +1,13 @@
 import { parameterKey, type RuntimeParameterRequest } from '@engine/runtime';
 import type { LibraryElement } from '@/features/element-library/model/types';
+import { sameValue } from '@/features/element-library/model/xmlRules';
 
 export interface LibraryDefaultState {
   elementId: string;
   values: ReadonlyMap<string, string>;
   connectors: LibraryElement['connectors'];
   parameters?: ReadonlyMap<string, string>;
-}
-
-interface Preset extends LibraryDefaultState {
-  selectors: string[];
+  options?: ReadonlyMap<string, string[]>;
 }
 
 function comparable(value: string | undefined): string | undefined {
@@ -19,10 +17,10 @@ function comparable(value: string | undefined): string | undefined {
   return value?.trim() && Number.isFinite(Number(value)) ? String(Number(value)) : value;
 }
 
-// Reuse the prepared XML rows for functions shared by several catalogue elements.
-// Only branch/connection selectors change presets; ordinary dimensions remain editable.
+// Resolve the current XML rows after any edit, preserving independent values
+// and the saved state of each geometry case.
 export class LibraryDefaults {
-  readonly #presets: Preset[];
+  readonly #elements: readonly LibraryElement[];
   readonly #keys = new Map<string, string>();
   readonly #controls: string[];
   readonly #saved = new Map<string, LibraryDefaultState>();
@@ -35,29 +33,22 @@ export class LibraryDefaults {
     definitions: readonly RuntimeParameterRequest[],
     initial: LibraryDefaultState,
   ) {
-    this.#presets = elements.flatMap((element) =>
-      element.variants.map((variant) => ({
-        elementId: element.id,
-        values: new Map(Object.entries({ ...element.defaults, ...variant.selection, ...variant.defaults })),
-        connectors: variant.connectors ?? element.connectors,
-        selectors: element.selectors.map((selector) => selector.name),
-      })),
-    );
+    this.#elements = elements;
     for (const definition of definitions)
       if (!this.#keys.has(definition.name)) this.#keys.set(definition.name, parameterKey(definition));
     const controls = new Set(
       definitions.filter((definition) => definition.branchSelector).map((definition) => definition.name),
     );
     for (const element of elements) for (const name of element.controls ?? []) controls.add(name);
-    for (const preset of this.#presets)
-      for (const name of preset.selectors) {
-        const value = preset.values.get(name);
-        if (value && !Number.isFinite(Number(value))) controls.add(name);
+    for (const element of elements)
+      for (const selector of element.selectors) {
+        const value = element.resolve?.().values.get(selector.name);
+        if (value && !Number.isFinite(Number(value))) controls.add(selector.name);
       }
     this.#controls = [...controls].filter(
       (name) =>
         definitions.some((definition) => definition.name === name && definition.branchSelector === 'switch') ||
-        this.#presets.some((preset) => preset.values.has(name)),
+        elements.some((element) => element.resolve?.().options.has(name)),
     );
     this.#initial = initial;
     this.#current = initial;
@@ -76,20 +67,30 @@ export class LibraryDefaults {
     this.#parameters = new Map(parameters);
   }
 
+  get options(): ReadonlyMap<string, string[]> {
+    const options = new Map(this.#current.options);
+    for (const name of this.#controls) {
+      const choices = this.#elements.flatMap((element) => element.resolve?.().options.get(name) ?? []);
+      if (choices.length) options.set(name, [...new Set(choices)]);
+    }
+
+    return options;
+  }
+
   reset(): LibraryDefaultState {
     this.#saved.clear();
     this.#current = this.#initial;
     this.remember(this.#initial.values);
 
-    return this.#initial;
+    return { ...this.#initial, options: this.options };
   }
 
   change(
     parameters: ReadonlyMap<string, string>,
     connectors: LibraryElement['connectors'],
   ): LibraryDefaultState | null {
-    const changed = this.#controls.filter(
-      (name) => comparable(this.#value(parameters, name)) !== comparable(this.#value(this.#parameters, name)),
+    const changed = [...this.#keys.keys()].filter(
+      (name) => !sameValue(this.#value(parameters, name), this.#value(this.#parameters, name)),
     );
     if (!changed.length) {
       this.remember(parameters);
@@ -97,41 +98,66 @@ export class LibraryDefaults {
       return null;
     }
     const previousKey = this.#key(this.#current.elementId, this.#parameters);
-    this.#saved.delete(previousKey);
     this.#saved.set(previousKey, {
       ...this.#current,
-      parameters: this.#parameters,
+      parameters: new Map(this.#parameters),
       connectors: structuredClone(connectors),
     });
-    let candidates = this.#presets.filter((preset) =>
-      changed.every((name) => comparable(preset.values.get(name)) === comparable(this.#value(parameters, name))),
-    );
-    // A function/case is not an element identity. Stay in the selected catalogue
-    // element whenever it supports the requested controls (e.g. a four-port CHIL).
-    const current = candidates.filter((preset) => preset.elementId === this.#current.elementId);
-    const initial = candidates.filter((preset) => preset.elementId === this.#initial.elementId);
-    if (current.length) candidates = current;
-    else if (initial.length) candidates = initial;
+    let element = this.#elements.find((element) => element.id === this.#current.elementId)!;
+    const controls = changed.filter((name) => this.#controls.includes(name));
 
-    const matches = (preset: LibraryDefaultState, names: readonly string[]) =>
-      names.filter((name) => comparable(preset.values.get(name)) === comparable(this.#value(parameters, name))).length;
+    const supports = (candidate: LibraryElement) => {
+      const options = candidate.resolve?.().options;
 
-    candidates.sort(
-      (a, b) =>
-        matches(b, this.#controls) - matches(a, this.#controls) || matches(b, b.selectors) - matches(a, a.selectors),
-    );
-    const preset = candidates[0];
-    const saved = preset ? this.#saved.get(this.#key(preset.elementId, preset.values)) : undefined;
-    const next = saved ?? preset;
-    if (!next) {
-      // Preserve editable values and connectors until a matching preset is selected.
-      this.remember(parameters);
+      return controls.every((name) =>
+        options?.get(name)?.some((value) => sameValue(value, this.#value(parameters, name))),
+      );
+    };
 
-      return null;
+    if (controls.length && !supports(element))
+      element =
+        this.#elements.find((item) => item.id === this.#initial.elementId && supports(item)) ??
+        this.#elements.find(supports) ??
+        element;
+    const switching = element.id !== this.#current.elementId;
+    const values = new Map(switching ? element.resolve?.().values : this.#current.values);
+    if (switching) {
+      for (const selector of element.selectors) {
+        const value = this.#current.values.get(selector.name);
+        if (value !== undefined && element.resolve?.().options.get(selector.name)?.includes(value))
+          values.set(selector.name, value);
+      }
     }
-    this.#current = next;
+    if (!switching) {
+      for (const name of this.#keys.keys()) {
+        const value = this.#value(parameters, name);
+        if (value !== undefined) values.set(name, value);
+      }
+    }
+    for (const name of changed) {
+      const value = this.#value(parameters, name);
+      if (value !== undefined) values.set(name, value);
+    }
+    const selected = switching
+      ? element.selectors
+          .map((selector) => selector.name)
+          .filter((name) => !sameValue(values.get(name), element.resolve?.().values.get(name)))
+      : [];
+    const resolved = element.resolve!(values, [...new Set([...changed, ...selected])]);
+    if (JSON.stringify(resolved.connectors) === JSON.stringify(this.#current.connectors))
+      resolved.connectors = connectors;
+    const saved = switching ? this.#saved.get(this.#key(element.id, resolved.values)) : undefined;
+    const nextParameters = new Map(saved?.parameters ?? parameters);
+    for (const [name, key] of this.#keys) {
+      const value = saved?.values.get(name) ?? resolved.values.get(name);
+      if (value !== undefined) {
+        nextParameters.set(name, value);
+        nextParameters.set(key, value);
+      }
+    }
+    this.#current = saved ?? { elementId: element.id, ...resolved, parameters: nextParameters };
     this.remember(this.#current.parameters ?? this.#current.values);
 
-    return this.#current;
+    return { ...this.#current, options: this.options };
   }
 }

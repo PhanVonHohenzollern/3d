@@ -1,4 +1,5 @@
-import { readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { expect, it } from 'vitest';
 import { defineLibrary, type TableElement } from '@/features/element-library/model/valueTables';
 import { libraries } from '@/features/element-library/config/libraries';
@@ -7,9 +8,7 @@ import CGeneral from '@/features/element-library/data/CGeneral';
 it.each(CGeneral.elements.filter((element) => element.entry === 'makeCHIL'))(
   'retains every conditional diameter/technology pair for $name',
   (element) => {
-    const sizes = (tech: string) => [
-      ...new Set(element.variants.filter((v) => v.selection.tech === tech).map((v) => v.selection.diam)),
-    ];
+    const sizes = (tech: string) => element.resolve!(new Map([['tech', tech]]), ['tech']).options.get('diam') ?? [];
 
     expect(sizes('threaded steel')).toHaveLength(15);
     expect(sizes('welded steel')).toHaveLength(19);
@@ -21,9 +20,7 @@ it.each(CGeneral.elements.filter((element) => element.entry === 'makeCHIL'))(
     expect(sizes('welded steel')).toContain('25');
     expect(sizes('flanged steel')).toContain('25');
     expect(sizes('copper')).toContain('15');
-    for (const variant of element.variants) {
-      expect(variant.connectors?.every((link) => !!link.connectionType && !!link.technology)).toBe(true);
-    }
+    expect(element.resolve!().connectors.every((link) => !!link.connectionType && !!link.technology)).toBe(true);
   },
 );
 
@@ -109,7 +106,16 @@ it('retains the XML FANUTAC dimension pairs and UNION length constraints', async
 it('keeps the prepared tables small and removes the expanded JSON catalogue', () => {
   const directory = 'src/features/element-library/data';
   const files = readdirSync(directory);
-  expect(files.sort()).toEqual(['BELIMO.ts', 'CGeneral.ts', 'GRUNDFOS.ts']);
-  expect(files.reduce((total, file) => total + statSync(`${directory}/${file}`).size, 0)).toBeLessThan(800 * 1024);
+  expect(files.sort()).toEqual(['BELIMO.ts', 'CGeneral.ts', 'GRUNDFOS.ts', 'rules']);
+  expect(
+    files
+      .filter((file) => file.endsWith('.ts'))
+      .reduce((total, file) => total + statSync(`${directory}/${file}`).size, 0),
+  ).toBeLessThan(800 * 1024);
   expect(readdirSync('public/demo')).toEqual(['code']);
+  const ruleFiles = readdirSync(`${directory}/rules`);
+  expect(ruleFiles.sort()).toEqual(['BELIMO.json', 'CGeneral.json', 'GRUNDFOS.json']);
+  // Budget the actual wire representation, independent of source indentation.
+  const ruleBytes = ruleFiles.map((file) => readFileSync(`${directory}/rules/${file}`));
+  expect(ruleBytes.reduce((total, bytes) => total + gzipSync(bytes).length, 0)).toBeLessThan(100 * 1024);
 });

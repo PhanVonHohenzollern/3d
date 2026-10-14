@@ -489,8 +489,9 @@ describe('prepared example library', () => {
       model.reset();
       expect([...opened.at(-1)!.values]).toEqual(initial);
       model.selectValue('DN', '9999');
-      expect(model.canOpen).toBe(false);
-      expect(model.resolution.errors).toEqual(['No preset for this size/variant.']);
+      expect(model.canOpen).toBe(true);
+      expect(model.resolution.values.get('DN')).toBe('9999');
+      expect(model.resolution.errors).toEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(parser).not.toHaveBeenCalled();
     } finally {

@@ -8,6 +8,7 @@ interface EditableComboBoxProps {
   value: string;
   label?: string;
   compact?: boolean;
+  searchable?: boolean;
   items: readonly string[];
   disabled?: boolean;
   placeholder?: string;
@@ -24,6 +25,7 @@ export function EditableComboBox({
   value,
   label,
   compact = false,
+  searchable = false,
   items,
   disabled,
   placeholder,
@@ -36,12 +38,13 @@ export function EditableComboBox({
   onKeyDown: onInputKeyDown,
 }: EditableComboBoxProps) {
   const listId = useId();
-  const { rootRef, open, popupRect, onKeyDown, onChange, toggle, choose, close } = useEditableComboBox(
+  const { rootRef, open, popupRect, onKeyDown, onChange, toggle, choose, close, visibleItems } = useEditableComboBox(
     value,
     items,
     onTextChanged,
     onItemSelected,
     selectedIndex,
+    searchable,
   );
 
   return (
@@ -96,7 +99,7 @@ export function EditableComboBox({
           className="fixed z-60 mt-1 max-h-[220px] list-none overflow-auto rounded-md border border-line bg-base p-1 shadow-lg empty:hidden"
           style={popupRect}
         >
-          {items.map((item, index) => (
+          {visibleItems.map(({ item, index }) => (
             <li
               key={index}
               role="option"

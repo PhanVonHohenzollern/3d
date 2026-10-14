@@ -5,6 +5,7 @@ import { QPoint, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 import { boxMesh, click, createEngine, mouse, project, resultWithP0, scene } from '@tests/renderer/helpers';
 import { GeometryRuntime } from '@engine/runtime/GeometryRuntime';
 import { buildConnectorPreview, defaultConnectorDefinition } from '@engine/geometry/ConnectorPreview';
+import { PreviewGeometryEngine } from '@engine/geometry';
 
 function meshModeEngine() {
   const engine = createEngine();
@@ -304,7 +305,10 @@ describe('debug points and clicks', () => {
 
   it('orbits an off-origin model around its center after Pan/Zoom, ignoring distant debug items and connectors', () => {
     const engine = createEngine();
-    engine.setGeometryScene(scene(boxMesh([10, 20, 30], [20, 30, 40])));
+    const mesh = boxMesh([10, 20, 30], [20, 30, 40]);
+    // Unreferenced vertices are not part of the displayed shape.
+    mesh.vertices.push({ x: -1000, y: -1000, z: -1000, nx: 0, ny: 0, nz: 0 });
+    engine.setGeometryScene(scene(mesh));
     engine.setRuntimeResult(resultWithP0(1000, 0, 0));
     engine.setConnectorPreviews(
       [buildConnectorPreview({ ...defaultConnectorDefinition(), diameter: '4', position: ['2000', '0', '0'] }, Number)],
@@ -340,12 +344,14 @@ describe('debug points and clicks', () => {
     engine.mouseReleaseEvent(mouse(100, 100, LeftButton, 0));
   });
 
-  it('updates the orbit center to visible geometry when isolation changes between drags', () => {
+  it('keeps the whole geometry center when code selection and isolation change between drags', () => {
     const engine = createEngine();
     engine.setGeometryScene(scene(boxMesh([-30, -1, -1], [-20, 1, 1], 0), boxMesh([20, -1, -1], [30, 1, 1], 1)));
     engine.fitScene();
-    engine.setSelectedApiCall(1);
-    for (const center of [new QVector3D(), new QVector3D(25, 0, 0)]) {
+    const center = new QVector3D();
+    for (const apiIndex of [0, 1, 0]) {
+      engine.setSelectedApiCall(apiIndex);
+      engine.setApiFocusIndices(new Set([apiIndex]));
       const before = project(engine, center);
       engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
       engine.mouseMoveEvent(mouse(450, 340, 0, LeftButton));
@@ -357,16 +363,56 @@ describe('debug points and clicks', () => {
     }
   });
 
-  it('orbits visible debug items when geometry is hidden', () => {
+  it('keeps the geometry center when the model is hidden instead of orbiting code points', () => {
     const engine = createEngine();
     engine.setGeometryScene(scene(boxMesh([100, 100, 100], [110, 110, 110])));
     engine.setRuntimeResult(resultWithP0(1, 2, 3));
+    const center = new QVector3D(105, 105, 105);
+    const before = project(engine, center);
     engine.setShowGeometry(false);
-    engine.fitScene();
     engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
     engine.mouseMoveEvent(mouse(450, 350, 0, LeftButton));
     engine.mouseReleaseEvent(mouse(450, 350, LeftButton, 0));
-    expect(engine.camera().target).toEqual(new QVector3D(1, 2, 3));
+    const after = project(engine, center);
+    expect(after.x).toBeCloseTo(before.x, 3);
+    expect(after.y).toBeCloseTo(before.y, 3);
+  });
+
+  it('updates the pivot from transformed geometry during a drag when parameters rebuild the model', () => {
+    const engine = createEngine();
+    const runtime = new GeometryRuntime();
+    const source = `
+double offset = 15;
+get_val("offset", offset);
+preTransformMesh(ARX_PI / 2, vz);
+preTransformMesh(FdVector3d(offset, 25, 35));
+makeFlatDisc(FdPoint3d(2, 0, 0), vz, 8, 16);
+addCenterLine(FdPoint3d(), FdPoint3d(1000, 0, 0));`;
+    const camera = engine.camera();
+    camera.target = new QVector3D(15, 27, 35);
+    camera.distance = 100;
+    engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
+    for (const offset of [15, 55]) {
+      runtime.setParameters(new Map([['offset', String(offset)]]));
+      const geometry = new PreviewGeometryEngine().build(runtime.executeUpToLine(source, 999));
+      expect(geometry.warnings).toEqual([]);
+      expect(geometry.meshes.some((mesh) => mesh.primitive === 'lines')).toBe(true);
+      engine.setGeometryScene(geometry);
+      const center = new QVector3D(offset, 27, 35);
+      const before = project(engine, center);
+      const radius = camera.cameraPosition().sub(center).length();
+      engine.mouseMoveEvent(mouse(450 + offset, 350 + offset, 0, LeftButton));
+      const after = project(engine, center);
+      expect(after.x).toBeCloseTo(before.x, 3);
+      expect(after.y).toBeCloseTo(before.y, 3);
+      expect(camera.cameraPosition().sub(center).length()).toBeCloseTo(radius, 8);
+    }
+    // Clearing geometry also clears its cached pivot, even during the same drag.
+    engine.setGeometryScene(scene());
+    const target = camera.target;
+    engine.mouseMoveEvent(mouse(550, 450, 0, LeftButton));
+    expect(camera.target).toEqual(target);
+    engine.mouseReleaseEvent(mouse(550, 450, LeftButton, 0));
   });
 
   it('right-click and right-drag leave camera and selection unchanged', () => {

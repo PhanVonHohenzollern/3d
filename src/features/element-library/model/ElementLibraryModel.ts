@@ -123,6 +123,13 @@ export class ElementLibraryModel extends Observable {
   #resolve(selection = new Map<string, string>(), changed?: string): void {
     const element = this.element;
     if (!element) return;
+    if (element.resolve) {
+      const resolved = element.resolve(selection.size ? selection : undefined, changed ? [changed] : []);
+      this.#variant = { selection: {}, defaults: Object.fromEntries(resolved.values), connectors: resolved.connectors };
+      this.resolution = { values: resolved.values, choices: this.#choices(resolved.values), errors: [] };
+
+      return;
+    }
 
     const matches = (variant: LibraryVariant) =>
       [...selection].filter(([name, value]) => variant.selection[name] === value).length;
@@ -143,6 +150,11 @@ export class ElementLibraryModel extends Observable {
   #choices(values: ReadonlyMap<string, string>): LibraryResolution['choices'] {
     const element = this.element;
     if (!element) return [];
+    if (element.resolve) {
+      const options = element.resolve(values).options;
+
+      return element.selectors.map((selector) => ({ ...selector, values: options.get(selector.name) ?? [] }));
+    }
     // Discrete choices determine the available sizes. A size must not hide the
     // other technologies: switching technology preserves compatible selections.
     const controls = element.selectors.filter((selector) =>
@@ -184,20 +196,16 @@ export class ElementLibraryModel extends Observable {
       choices: this.#choices(state.values),
       errors: [],
     };
-    this.#variant = this.element?.variants.find((variant) =>
-      Object.entries(variant.selection).every(([name, value]) => state.values.get(name) === value),
-    );
+    this.#variant = this.element?.resolve
+      ? { selection: {}, defaults: Object.fromEntries(state.values), connectors: state.connectors }
+      : this.element?.variants.find((variant) =>
+          Object.entries(variant.selection).every(([name, value]) => state.values.get(name) === value),
+        );
     this.changed();
   }
 
   readonly selectValue = (name: string, value: string): void => {
-    const selection = new Map(
-      this.element?.selectors.flatMap((selector) => {
-        const selected = this.resolution.values.get(selector.name);
-
-        return selected === undefined ? [] : [[selector.name, selected] as const];
-      }),
-    );
+    const selection = new Map(this.resolution.values);
     selection.set(name, value);
     this.#resolve(selection, name);
     this.changed();
@@ -228,7 +236,12 @@ export class ElementLibraryModel extends Observable {
         defaults: new LibraryDefaults(
           this.elements.filter((element) => element.entry === this.element!.entry && !element.error),
           this.#parameters,
-          { elementId: this.element.id, values: this.resolution.values, connectors },
+          {
+            elementId: this.element.id,
+            values: this.resolution.values,
+            connectors,
+            options: this.element.resolve?.(this.resolution.values).options,
+          },
         ),
       },
       replaceSource,

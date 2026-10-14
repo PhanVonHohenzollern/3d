@@ -141,6 +141,7 @@ export class WorkspaceModel extends Observable {
     this.parameters.loadValues(definitions, sample.values);
     this.#libraryValues = sample.values;
     this.#libraryDefaults = sample.defaults ?? null;
+    this.parameters.setValueOptions(this.#libraryDefaults?.options ?? new Map());
     this.#libraryDefaults?.remember(this.parameters.overrides());
     this.links.loadDefinitions(sample.connectors);
     this.buildPreview();
@@ -273,6 +274,7 @@ export class WorkspaceModel extends Observable {
     const definitions = this.session.discoverParameters(program, () => false);
     const tab = this.parameters.activeTab;
     this.parameters.loadValues(definitions, defaults.values, defaults.parameters);
+    this.parameters.setValueOptions(defaults.options ?? new Map());
     this.parameters.selectTab(tab);
     this.#libraryValues = defaults.values;
     this.library.syncDefaults(defaults);
