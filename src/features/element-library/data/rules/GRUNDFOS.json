@@ -1192,7 +1192,8 @@
             "aSize": "0",
             "bSize": "0",
             "position": ["0", "0", "0.5*a3"],
-            "angles": ["0", "0", "0"]
+            "angles": ["0", "0", "0"],
+            "physical": { "length": "0" }
           },
           "gender": ""
         },
@@ -1210,7 +1211,8 @@
             "aSize": "0",
             "bSize": "0",
             "position": ["0", "0", "-0.5*a3"],
-            "angles": ["0", "0", "0"]
+            "angles": ["0", "0", "0"],
+            "physical": { "length": "0" }
           },
           "gender": ""
         }

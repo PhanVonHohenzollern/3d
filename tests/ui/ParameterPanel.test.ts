@@ -43,6 +43,31 @@ function editValue(model: ParameterPanelModel, row: number, text: string): void 
 }
 
 describe('ParameterPanel', () => {
+  it('edits XML-only selectors without duplicating runtime rows or disabling unreached selectors', () => {
+    const model = new ParameterPanelModel();
+    const definitions = [request({ name: 'D', functionName: 'makePart' })];
+    const values = new Map([
+      ['D', '20'],
+      ['tech', 'copper'],
+    ]);
+    model.setAvailability(() => new Set());
+    model.loadValues(definitions, values, values, ['D', 'tech']);
+    model.setValueOptions(new Map([['tech', ['copper', 'welded steel']]]));
+    expect(model.rows.filter((row) => row.texts[0] === 'D')).toHaveLength(1);
+    const row = model.rows.findIndex((row) => row.key === 'tech');
+    expect(model.rows[row]).toMatchObject({ functionName: 'makePart', texts: ['tech', 'XML', '', 'copper', ''] });
+    expect(model.edit(row, 3)).toBe(true);
+    model.editorTextEdited('custom technology');
+    model.commitEditor();
+    model.setDefinitions(definitions);
+    expect(model.contextValues().get('tech')).toBe('custom technology');
+    expect(model.overrides().get('tech')).toBe('custom technology');
+    model.resetToSource();
+    expect(model.overrides().get('tech')).toBe('copper');
+    model.loadValues(definitions, values);
+    expect(model.rows.some((row) => row.key === 'tech')).toBe(false);
+  });
+
   it('discovers case selectors through casts and distinguishes them from dimension comparisons', () => {
     const requests = new GeometryRuntime().discoverParameters(`
       short main() {

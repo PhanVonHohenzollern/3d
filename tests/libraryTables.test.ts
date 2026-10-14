@@ -106,7 +106,10 @@ it('retains the XML FANUTAC dimension pairs and UNION length constraints', async
 it('keeps the prepared tables small and removes the expanded JSON catalogue', () => {
   const directory = 'src/features/element-library/data';
   const files = readdirSync(directory);
-  expect(files.sort()).toEqual(['BELIMO.ts', 'CGeneral.ts', 'GRUNDFOS.ts', 'rules']);
+  expect(files.sort()).toEqual(['BELIMO.ts', 'CGeneral.ts', 'GRUNDFOS.ts', 'rules', 'technologies.json']);
+  const technologies = readFileSync(`${directory}/technologies.json`);
+  expect(technologies.length).toBeLessThan(20000);
+  expect(gzipSync(technologies).length).toBeLessThan(4000);
   expect(
     files
       .filter((file) => file.endsWith('.ts'))

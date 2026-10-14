@@ -48,6 +48,22 @@ export class ElementLibraryModel extends Observable {
     return !!this.element && !!this.#files.length && !this.busy && !this.error && !this.resolution.errors.length;
   }
 
+  filteredElements(categoryId: string, search: string): LibraryElement[] {
+    const catalog = this.assets.find((asset) => asset.name === this.libraryName)?.catalog;
+    const category = catalog?.categories.find((category) => category.id === categoryId);
+    const query = search.trim().toLowerCase();
+    const elements =
+      !query && category
+        ? category.elements.flatMap((id) => this.elements.find((element) => element.id === id) ?? [])
+        : this.elements;
+
+    return elements.filter((element) =>
+      `${catalog?.items[element.id]?.symbol ?? ''} ${element.symbol} ${element.name} ${element.entry}`
+        .toLowerCase()
+        .includes(query),
+    );
+  }
+
   readonly selectLibrary = async (name: string): Promise<void> => {
     const sequence = ++this.#sequence;
     this.libraryName = name;

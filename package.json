@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "update-expected": "vitest run tests/update-expected.test.ts",
+    "update-library-icons": "vitest run tests/libraryThumbnails.test.ts",
     "lint": "eslint . --max-warnings 0",
     "lint:boundaries": "eslint -c eslint.boundaries.config.js src engine",
     "lint:fix": "eslint . --fix",

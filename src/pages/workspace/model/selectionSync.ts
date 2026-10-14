@@ -30,6 +30,7 @@ export class SelectionSync {
   // While true, the preview stays at the line it ran to instead of following the cursor.
   browsingTrace = false;
   #navigating = false;
+  #selectingViewportMesh = false;
 
   constructor(readonly host: SelectionHost) {}
 
@@ -78,9 +79,17 @@ export class SelectionSync {
   };
 
   readonly onViewportMeshSelection = (apiIndex: number, sourceLine: number): void => {
-    if (this.host.importedObj || apiIndex < 0) return;
-    this.host.apiTrace.selectMeshApiCall(apiIndex);
-    this.navigateToSource(sourceLine, new Set([sourceLine]));
+    if (this.host.importedObj) return;
+    // XML/technology meshes have no API call. Clearing the trace must retain the mesh
+    // that was just picked while the synchronous selectionChanged signal resets focus.
+    this.#selectingViewportMesh = true;
+    try {
+      if (apiIndex < 0) this.host.apiTrace.clearApiFocus();
+      else this.host.apiTrace.selectMeshApiCall(apiIndex);
+    } finally {
+      this.#selectingViewportMesh = false;
+    }
+    if (apiIndex >= 0) this.navigateToSource(sourceLine, new Set([sourceLine]));
   };
 
   selectEditorLine(localLine: number): void {
@@ -170,7 +179,10 @@ export class SelectionSync {
   applyApiFocus(apiIndex: number): void {
     const { viewport, apiTrace, session, functions } = this.host;
     if (this.host.importedObj) return;
-    viewport.setSelectedApiCall(apiIndex, apiIndex >= 0 && apiTrace.meshApiCall() === apiIndex);
+    viewport.setSelectedApiCall(
+      apiIndex,
+      this.#selectingViewportMesh || (apiIndex >= 0 && apiTrace.meshApiCall() === apiIndex),
+    );
     if (apiIndex < 0 || apiIndex >= session.lastResult.apiCalls.length) {
       viewport.clearApiFocus();
       this.host.statusBar().showMessage('API focus cleared - full preview restored', 1800);

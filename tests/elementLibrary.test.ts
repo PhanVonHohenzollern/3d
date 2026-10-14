@@ -208,27 +208,29 @@ describe('prepared example library', () => {
     },
   );
 
-  it('keeps flange size editable in the function tab and resets to the opened defaults', () => {
+  it('keeps connector queries internal and preserves get_val parameter names and values', () => {
     const elements = catalog('CGeneral').elements;
     const element = elements.find((item) => item.entry === 'make2WayValve' && item.defaults.elType === '7')!;
     const source = `void main() { double size = GetFlgSize("L1"); short type; double d;
-      get_val("elType",type); get_val("d",d); makeSimpleTube(FdPoint3d(),FdPoint3d(size,0,0),d,d,cpx); }`;
+      get_val("elType",type); get_val("diam",d); get_ext_diam("L1",d);
+      makeSimpleTube(FdPoint3d(),FdPoint3d(size,0,0),d,d,cpx); }`;
     const runtime = new GeometryRuntime();
     const panel = new ParameterPanelModel();
-    panel.loadValues(runtime.discoverParameters(source), preset(element).values);
+    const resolved = element.resolve!();
+    panel.loadValues(runtime.discoverParameters(source), resolved.values);
     expect(panel.tabs.map((tab) => tab.id)).toEqual(['main']);
-    const sizeRow = panel.rows.findIndex((row) => row.key === 'L1:get_fln_size');
-    expect(sizeRow).toBeGreaterThanOrEqual(0);
-    panel.edit(sizeRow, 3);
-    panel.editorTextEdited('12');
-    panel.commitEditor();
-    expect(panel.overrides().get('L1:get_fln_size')).toBe('12');
+    expect(panel.rows.map((row) => row.texts[0])).toEqual(['elType', 'diam']);
+    expect(panel.contextValues().get('diam')).toBe('25');
+    expect(panel.overrides().get('L1:get_fln_size')).toBe('16');
     runtime.setParameters(panel.overrides());
     const result = runtime.executeUpToLine(source, 1000, true);
     expect(result.diagnostics).toEqual([]);
-    expect(result.parameterRequests.find((request) => request.name === 'L1:get_fln_size')?.currentValue).toBe('12');
+    expect(result.parameterRequests.find((request) => request.name === 'L1:get_fln_size')?.currentValue).toBe('16');
+    expect(result.apiCalls[0].arguments[2]).toBe(33.7);
+    panel.updateRuntimeResult(result);
+    expect(panel.rows.map((row) => row.texts[0])).toEqual(['elType', 'diam']);
     panel.resetToSource();
-    expect(panel.contextValues().get('L1:get_fln_size')).toBe('0');
+    expect(panel.contextValues().get('L1:get_fln_size')).toBe('16');
     expect(panel.contextValues().get('elType')).toBe('7');
   });
 

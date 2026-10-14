@@ -1,4 +1,4 @@
-import { isFunctionParameterKey } from '@/entities/parameter';
+import { isConnectorQuery, isFunctionParameterKey } from '@/entities/parameter';
 import { parameterKey, type RuntimeParameterRequest, type RuntimeResult } from '@engine/runtime';
 import { isInsulationQuery, kInsulationQueries, type InsulationQuery } from '@engine/runtime';
 import {
@@ -68,7 +68,10 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   readonly #enabledInsulation = new Set<InsulationQuery>();
 
   get tabs() {
-    return [...new Set(this.#definitions.map((definition) => this.#functionTab(definition)))].map((id) => ({
+    const names = this.#definitions.map((definition) => this.#functionTab(definition));
+    if (this.#extraSelectors.length) names.push(this.#defaultFunction);
+
+    return [...new Set(names)].map((id) => ({
       id,
       label: id || 'Element',
       enabled: this.rows.some((row) => (row.functionName ?? '') === id && !row.disabled),
@@ -119,6 +122,12 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   #defaults: ReadonlyMap<string, string> | null = null;
   #defaultFunction = '';
   #valueOptions: ReadonlyMap<string, string[]> = new Map();
+  #librarySelectors: readonly string[] = [];
+
+  // XML selectors can drive dimensions/connectors without a corresponding C++ get_val.
+  get #extraSelectors(): string[] {
+    return this.#librarySelectors.filter((name) => !this.#definitions.some((definition) => definition.name === name));
+  }
 
   setValueOptions(options: ReadonlyMap<string, string[]>): void {
     this.#valueOptions = options;
@@ -141,12 +150,17 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       const value = this.#values.get(key);
       if (value !== undefined) values.set(definition.name, value);
     }
+    for (const name of this.#extraSelectors) {
+      const value = this.#values.get(name);
+      if (value !== undefined) values.set(name, value);
+    }
 
     return values;
   }
 
   setPlaceholderData(): void {
     this.#valueOptions = new Map();
+    this.#librarySelectors = [];
     this.#definitions = [];
     this.#activeKeys = null;
     this.#defaults = null;
@@ -160,7 +174,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   setDefinitions(definitions: readonly RuntimeParameterRequest[]): void {
-    this.#definitions = definitions.map((definition) => ({ ...definition }));
+    this.#definitions = definitions
+      .filter((definition) => !isConnectorQuery(definition))
+      .map((definition) => ({ ...definition }));
     this.#defaultFunction = this.#defaults
       ? (definitions.find((definition) => definition.functionName)?.functionName ?? '')
       : '';
@@ -191,8 +207,10 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     definitions: readonly RuntimeParameterRequest[],
     values: ReadonlyMap<string, string>,
     parameters: ReadonlyMap<string, string> = values,
+    selectors: readonly string[] = [],
   ): void {
     this.#defaults = new Map(values);
+    this.#librarySelectors = [...new Set(selectors)];
     this.#values.clear();
     this.#userEditedKeys.clear();
     this.#enabledInsulation.clear();
@@ -201,6 +219,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.dataSetIndex = -1;
     this.pasteMessage = '';
     this.activeTab = '';
+    for (const name of this.#librarySelectors)
+      if (!definitions.some((definition) => definition.name === name))
+        this.#values.set(name, parameters.get(name) ?? values.get(name) ?? '');
     for (const definition of definitions) {
       const key = parameterKey(definition);
       const value = parameters.get(key) ?? parameters.get(definition.name) ?? values.get(definition.name);
@@ -285,6 +306,15 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       });
       if (selectedKey !== '' && selectedKey === key) selectedRow = row;
     }
+    for (const name of this.#extraSelectors) {
+      if (selectedKey === name) selectedRow = this.rows.length;
+      this.rows.push({
+        key: name,
+        functionName: this.#defaultFunction,
+        line: 0,
+        texts: [name, 'XML', '', this.#values.get(name) ?? this.#defaults?.get(name) ?? '', ''],
+      });
+    }
 
     if (selectedRow >= 0) {
       this.selectedRow = selectedRow;
@@ -342,6 +372,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
         .map((definition) => parameterKey(definition))
         .map((key) => [key, this.#values.get(key)!] as const),
     ]);
+    for (const name of this.#extraSelectors)
+      values.set(name, this.#values.get(name) ?? this.#defaults?.get(name) ?? '');
     for (const query of kInsulationQueries) {
       const definition = this.#definitions.find((item) => item.sourceFunction === query);
       // A removed query must not leave an enabled thickness in the runtime configuration.
@@ -437,6 +469,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.dataSetIndex = -1;
     this.#userEditedKeys.clear();
     this.#values.clear();
+    for (const name of this.#extraSelectors) this.#values.set(name, this.#defaults?.get(name) ?? '');
     for (const definition of this.#definitions) {
       const key = parameterKey(definition);
       const value = this.#defaults?.get(definition.name);

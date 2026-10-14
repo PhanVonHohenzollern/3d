@@ -17,10 +17,10 @@ function expectMeshInsideFrame(engine: ViewportEngine, mesh: PreviewMesh): void 
   for (const vertex of mesh.vertices) {
     const point = camera.projectToScreen(new QVector3D(vertex.x, vertex.y, vertex.z));
     expect(point).not.toBeNull();
-    expect(point!.x).toBeGreaterThan(engine.width() * 0.04);
-    expect(point!.x).toBeLessThan(engine.width() * 0.96);
-    expect(point!.y).toBeGreaterThan(engine.height() * 0.04);
-    expect(point!.y).toBeLessThan(engine.height() * 0.96);
+    expect(point!.x).toBeGreaterThan(engine.width() * 0.18);
+    expect(point!.x).toBeLessThan(engine.width() * 0.82);
+    expect(point!.y).toBeGreaterThan(engine.height() * 0.18);
+    expect(point!.y).toBeLessThan(engine.height() * 0.82);
   }
 }
 
@@ -122,7 +122,9 @@ describe('ViewCube camera directions', () => {
     const viewHeights = new Map<string, number>();
     for (const view of navigationViews) {
       engine.camera().target = new QVector3D(10000, 20000, -5000);
+      engine.camera().setProjectionMode('perspective');
       engine.camera().distance = 1;
+      engine.camera().orthographicHeight = 1;
       engine.setViewDirection(view.direction);
       expect(engine.camera().target).toEqual(new QVector3D(0, 0, 0));
       expectMeshInsideFrame(engine, mesh);
@@ -224,7 +226,7 @@ describe('ViewCube camera directions', () => {
       expect(engine.cameraOrientation()).toBe(initial);
       const callback = frames.get(1)!;
       frames.delete(1);
-      callback(started + 90);
+      callback(started + 260);
       expect(engine.cameraOrientation()).not.toEqual(initial);
       expect(Math.hypot(...Object.values(engine.cameraOrientation()))).toBeCloseTo(1, 8);
       expectMeshInsideFrame(engine, mesh);
@@ -248,6 +250,49 @@ describe('ViewCube camera directions', () => {
       expectMeshInsideFrame(engine, mesh);
       expect(frame).not.toHaveBeenCalled();
     } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    [1200, 400],
+    [400, 1200],
+  ])('only zooms outward throughout all presets in a %s × %s viewport', (width, height) => {
+    const frames = new Map<number, FrameRequestCallback>();
+    let serial = 0,
+      now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++serial, callback);
+
+      return serial;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+    const engine = createEngine(width, height);
+    try {
+      const mesh = boxMesh([-2000, -400, -100], [400, 100, 300]);
+      engine.setGeometryScene(scene(mesh));
+      for (const view of navigationViews) {
+        const camera = engine.camera();
+        let height = camera.viewHeight();
+        engine.setViewDirection(view.direction);
+        // Switching back from orthographic must not reuse its shorter eye distance.
+        expect(camera.viewHeight()).toBeCloseTo(height, 8);
+        for (const elapsed of [0, 40, 100, 150, 200, 300, 400, 500]) {
+          const [id, callback] = [...frames][0];
+          frames.delete(id);
+          callback(now + elapsed);
+          expect(camera.viewHeight()).toBeGreaterThanOrEqual(height - 1e-8);
+          height = camera.viewHeight();
+          if (elapsed >= 150) expectMeshInsideFrame(engine, mesh);
+        }
+        expect(frames.size).toBe(0);
+        expect(activeNavigationView(camera.orientation)).toBe(view.name);
+        now += 1000;
+      }
+    } finally {
+      engine.detach();
+      vi.restoreAllMocks();
       vi.unstubAllGlobals();
     }
   });

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildConnectionGeometry, defaultConnectorDefinition, type ConnectorDefinition } from '@engine/geometry';
+import { resolvePipeConnections } from '@/features/element-library';
 import { createViewport3DHandle } from '@/widgets/viewport/model/viewportHandle';
-import { click, createEngine } from '@tests/renderer/helpers';
+import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
+import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { click, createEngine, project } from '@tests/renderer/helpers';
 import { createWorkspace, keyEvent, kSource } from '@tests/pages/workspace/harness';
 
 describe('Workspace: selection sync between the editor, viewport, Variables and API Trace', () => {
@@ -44,6 +48,107 @@ describe('Workspace: selection sync between the editor, viewport, Variables and 
     expect(mw.session.scene).toBe(built);
     mw.dispose();
   });
+
+  it.each(['Escape', 'empty click'])(
+    'switches between code meshes and XML technology flanges, then clears with %s',
+    (clearAction) => {
+      const { mw, editor, apiTrace, links } = createWorkspace();
+      const engine = createEngine();
+      mw.bindViewport(createViewport3DHandle(engine));
+      engine.setMeshSelectionCallback(mw.selection.onViewportMeshSelection);
+      engine.setConnectorSelectionCallback(mw.onViewportConnectorSelection);
+      engine.setSelectionClearedCallback(mw.exitPreviewFocus);
+      try {
+        mw.start();
+        editor.type('FdPoint3d center(-180,0,0);\nmakeFlatDisc(center,vz,60,16);', 1);
+        mw.buildPreview();
+        const definitions: ConnectorDefinition[] = [0, 180].map((x, index) => ({
+          ...defaultConnectorDefinition(),
+          id: index + 1,
+          name: `Flange${index + 1}`,
+          technology: 'FLN_STEEL',
+          connectionType: 'N',
+          diameter: '25',
+          physical: { length: '0' },
+          position: [String(x), '0', '0'],
+          orientation: 'ZNegative',
+        }));
+        const connections = buildConnectionGeometry(resolvePipeConnections(definitions, new Map()), Number);
+        expect(connections.warnings).toEqual([]);
+        expect(connections.meshes).toHaveLength(2);
+        const built = mw.session.scene;
+        engine.setGeometryScene({ ...built, meshes: [...built.meshes, ...connections.meshes] });
+        links.loadDefinitions(definitions);
+        links.togglePreview(2);
+        engine.camera().orientation = new Quaternion();
+        engine.fitScene();
+        const before = [engine.camera().target, engine.cameraOrientation(), engine.camera().distance];
+        const visibility = links.tableRows.map((row) => row.buttonText);
+
+        const pick = (x: number, y: number) => {
+          const screen = project(engine, new QVector3D(x, y, 0));
+          click(engine, screen.x, screen.y);
+        };
+
+        const selected = () => [0, 1, 2].filter((index) => engine.isMeshSelected(index));
+
+        pick(-180, 0);
+        expect(selected()).toEqual([0]);
+        expect(engine.hasApiFocus()).toBe(true);
+        expect(apiTrace.meshApiCall()).toBe(0);
+        expect(editor.traceLines.lines).toEqual([2]);
+        expect(
+          engine
+            .pointLabelPanel()
+            .entries()
+            .some((entry) => entry.id.startsWith('@api')),
+        ).toBe(true);
+        const sourceLine = editor.currentLine();
+
+        for (const [index, x] of [
+          [1, 0],
+          [2, 180],
+        ]) {
+          pick(x, 35);
+          expect(engine.selectedMeshIndex()).toBe(index);
+          expect(selected()).toEqual([index]);
+          expect(engine.hasApiFocus()).toBe(false);
+          expect(apiTrace.selectedApiCall()).toBe(-1);
+          expect(apiTrace.meshApiCall()).toBe(-1);
+          expect(editor.traceLines.lines).toEqual([]);
+          expect(editor.currentLine()).toBe(sourceLine);
+          expect(engine.selectedDebugItems().size).toBe(0);
+          expect(
+            engine
+              .pointLabelPanel()
+              .entries()
+              .some((entry) => entry.id.startsWith('@api')),
+          ).toBe(false);
+          expect(engine.vectorLabelPanel().entries()).toEqual([]);
+        }
+
+        apiTrace.clearApiFocus();
+        expect(selected()).toEqual([]);
+        expect(engine.selectedMeshIndex()).toBe(-1);
+        pick(-180, 0);
+        expect(selected()).toEqual([0]);
+        expect(apiTrace.selectedApiCall()).toBe(0);
+        expect(editor.traceLines.lines).toEqual([2]);
+        pick(0, 35);
+        if (clearAction === 'Escape') mw.handleKeyDown(keyEvent('Escape'));
+        else click(engine, 790, 590);
+        expect(selected()).toEqual([]);
+        expect(engine.selectedMeshIndex()).toBe(-1);
+        expect(engine.hasApiFocus()).toBe(false);
+        expect(editor.traceLines.lines).toEqual([]);
+        expect(links.tableRows.map((row) => row.buttonText)).toEqual(visibility);
+        expect([engine.camera().target, engine.cameraOrientation(), engine.camera().distance]).toEqual(before);
+        expect(mw.session.scene).toBe(built);
+      } finally {
+        mw.dispose();
+      }
+    },
+  );
 
   it.each(['Isolate', 'Context'] as const)(
     '%s shows only input points for sub-function calls in Main and opens their editor on double-click',

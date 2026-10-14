@@ -7,6 +7,9 @@ import type { SelectionMode } from '@/widgets/viewport/lib/render/types';
 export const kClickDragThreshold = 5;
 // Each drag movement within this angle of horizontal/vertical uses only that axis.
 export const kOrbitAxisSnapDegrees = 20;
+export const kCameraTransitionMs = 500;
+// Leave about 19% of the frame free on each side when choosing a view.
+export const kViewCubeFitPadding = 1.6;
 // A second click within this many pixels of the last one cycles to the next pick under the cursor.
 export const kRepeatPickDistance = 5;
 

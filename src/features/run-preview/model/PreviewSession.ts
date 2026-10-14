@@ -248,6 +248,7 @@ export class PreviewSession {
     source: string,
     line: number,
     parameters: ReadonlyMap<string, string>,
+    connections?: (result: RuntimeResult) => PreviewGeometryScene,
   ): ExecutionOutcome {
     const fullProgram = this.#mode === 'build';
     const lines = lineCount(program.source);
@@ -304,6 +305,11 @@ export class PreviewSession {
     this.#scene = this.#engine.build(result);
     const visible = debugApiIndices(result);
     if (visible) this.#scene.meshes = this.#scene.meshes.filter((mesh) => visible.has(mesh.apiIndex));
+    if (connections && fullProgram && !options.debugCall && !result.diagnostics.length) {
+      const geometry = connections(result);
+      this.#scene.meshes.push(...geometry.meshes);
+      this.#scene.warnings.push(...geometry.warnings);
+    }
 
     return { result };
   }

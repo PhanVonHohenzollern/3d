@@ -53,7 +53,7 @@ it('loads FLM elements with visible connectors and no automatic mesh or Link sel
   }
 });
 
-it('keeps TFMN/TFMT source geometry separate from connector previews across parameter and case changes', async () => {
+it('adds XML connection geometry without changing TFMN/TFMT source or the connector overlay', async () => {
   vi.useFakeTimers();
   const fetchMock = mockLibraryFetch();
   const { mw, editor, parameters, links } = createWorkspace();
@@ -75,10 +75,19 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     const checkConnection = (bodyEnd: number, point: number, bodyCount: number) => {
       expect(mw.session.lastResult.diagnostics).toEqual([]);
       expect(mw.session.scene.warnings).toEqual([]);
-      const body = mw.session.scene.meshes.filter((mesh) => mesh.primitive !== 'lines');
+      const body = mw.session.scene.meshes.filter(
+        (mesh) => mesh.primitive !== 'lines' && !mesh.apiName.startsWith('connection:'),
+      );
       expect(body).toHaveLength(bodyCount);
       expect(body.every((mesh) => mesh.apiName === 'makeScrew2')).toBe(true);
       expect(Math.max(...body.flatMap((mesh) => mesh.vertices.map((p) => p.x)))).toBeCloseTo(bodyEnd);
+      const connection = mw.session.scene.meshes.filter((mesh) => mesh.apiName.startsWith('connection:TS2:'));
+      if (bodyEnd < point) {
+        expect(connection).toHaveLength(2);
+        const xs = connection.flatMap((mesh) => mesh.vertices.map((vertex) => vertex.x));
+        expect(Math.min(...xs)).toBeCloseTo(bodyEnd);
+        expect(Math.max(...xs)).toBeCloseTo(point);
+      } else expect(connection).toEqual([]);
       const right = previews.find((preview) => preview.id === 2)!;
       expect(right.point).toMatchObject({ x: point, y: 0, z: 0 });
       expect(right.direction).toMatchObject({ x: 1, y: 0, z: 0 });
@@ -100,7 +109,8 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
       .filter((mesh) => mesh.primitive !== 'lines')
       .flatMap((mesh) => mesh.vertices)
       .filter((vertex) => vertex.x > 12.5 + 1e-6);
-    expect(exportedPart).toEqual([]);
+    expect(exportedPart.length).toBeGreaterThan(0);
+    expect(Math.max(...exportedPart.map((vertex) => vertex.x))).toBeCloseTo(32.5);
     links.togglePreview(2);
     edit('L', '85');
     edit('C', '30');
@@ -133,10 +143,51 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     mw.library.openElement(mw.library.elements.find((element) => element.entry === 'makeTFMT')!.id);
     expect(links.definitions()[1]).toMatchObject({ connectionType: '13' });
     checkConnection(0, 20, 1);
+    links.selectConnector(2);
+    links.positionEdited(0, '70');
+    const xs = mw.session.scene.meshes
+      .filter((mesh) => mesh.apiName.startsWith('connection:TS2:'))
+      .flatMap((mesh) => mesh.vertices.map((vertex) => vertex.x));
+    expect(Math.min(...xs)).toBeCloseTo(50);
+    expect(Math.max(...xs)).toBeCloseTo(70);
+    links.removeConnector();
+    expect(mw.session.scene.meshes.some((mesh) => mesh.apiName.startsWith('connection:TS2:'))).toBe(false);
   } finally {
     mw.dispose();
     fetchMock.mockRestore();
     vi.useRealTimers();
+  }
+});
+
+it('builds the missing CSV inlet flange and hides internal connector queries in Parameters', async () => {
+  const fetchMock = mockLibraryFetch();
+  const { mw, parameters, links } = createWorkspace();
+  try {
+    mw.start();
+    await mw.library.selectLibrary('CGeneral');
+    mw.library.openElement(mw.library.elements.find((element) => element.name === 'Collar safety-valve')!.id);
+    expect(
+      parameters.rows.some((row) => row.texts[0].includes('get_ext_diam') || row.texts[0].includes('get_fln')),
+    ).toBe(false);
+    expect(parameters.rows.filter((row) => row.texts[0].startsWith('diam')).map((row) => row.texts[0])).toEqual([
+      'diam1',
+      'diam2',
+    ]);
+    expect(mw.inspectorCounts.ParametersDock).toBe(18);
+    expect(parameters.contextValues().get('diam1')).toBe('25');
+    expect(parameters.contextValues().get('diam2')).toBe('30');
+    const flange = mw.session.scene.meshes.filter((mesh) => mesh.apiName.startsWith('connection:L1:'));
+    expect(mw.session.scene.warnings).toEqual([]);
+    expect(flange).toHaveLength(1);
+    const vertices = flange[0].vertices;
+    expect(Math.min(...vertices.map((p) => p.y))).toBeCloseTo(-60);
+    expect(Math.max(...vertices.map((p) => p.y))).toBeCloseTo(-35);
+    expect(Math.max(...vertices.map((p) => Math.hypot(p.x, p.z)))).toBeCloseTo(57.5);
+    links.togglePreview(1);
+    expect(mw.session.scene.meshes).toContain(flange[0]);
+  } finally {
+    mw.dispose();
+    fetchMock.mockRestore();
   }
 });
 
@@ -178,6 +229,8 @@ it('updates dependent XML sizes and keeps source edits until Reset', async () =>
     expect(links.definitions().every((link) => link.technology === 'THR_STEEL' && link.connectionType === 'F')).toBe(
       true,
     );
+    expect(parameters.contextValues().get('L1:get_fln_thick')).toBe('0');
+    expect(parameters.contextValues().get('L1:get_fln_diam')).toBe('0');
     expect(links.statusIsError).toBe(false);
     expect(mw.session.lastResult.diagnostics).toEqual([]);
     expect(mw.session.scene.warnings).toEqual([]);
@@ -254,10 +307,11 @@ it('updates CHIL helper selectors and keeps the selected element across shared c
       expect(links.definitions().map((link) => link.name)).toEqual(names);
     }
     expect(mw.library.resolution.choices.find((choice) => choice.name === 'system_label')?.values).toContain('4-pipe');
-    mw.library.selectValue('system_label', '4-pipe');
+    expect(parameters.valueOptions('system_label')).toContain('4-pipe');
+    edit('system_label', '4-pipe');
     expect(links.definitions().map((link) => link.name)).toEqual(['C4', 'H4', 'C5', 'H5']);
     expect(parameters.contextValues().get('ftype')).toBe('2');
-    mw.library.selectValue('system_label', '2-pipe');
+    edit('system_label', '2-pipe');
     expect(links.definitions().map((link) => link.name)).toEqual(['C3', 'H3']);
     expect(links.statusIsError).toBe(false);
   } finally {
@@ -276,21 +330,37 @@ it('matches CHIL diameter and connection technology together without changing th
     await mw.library.selectLibrary('CGeneral');
     mw.library.openElement(mw.library.elements.find((element) => element.name === 'Air cooled chiller')!.id);
     const source = editor.text;
-    mw.library.selectValue('diam', '25');
-    mw.library.selectValue('__conn', 'int. thread');
+
+    const edit = (name: string, value: string) => {
+      const row = parameters.rows.findIndex((row) => row.texts[0] === name);
+      expect(parameters.edit(row, 3), name).toBe(true);
+      parameters.editorTextEdited(value);
+      parameters.commitEditor();
+    };
+
+    for (const selector of mw.library.element!.selectors)
+      expect(
+        parameters.rows.some((row) => row.texts[0] === selector.name),
+        selector.name,
+      ).toBe(true);
+    edit('diam', '25');
+    edit('__conn', 'int. thread');
     expect(links.definitions()[0]).toMatchObject({ connectionType: 'F', technology: 'THR_STEEL', diameter: 'diam' });
-    mw.library.selectValue('tech', 'welded steel');
+    edit('tech', 'welded steel');
     expect(parameters.contextValues().get('diam')).toBe('25');
     expect(parameters.contextValues().get('__conn')).toBe('');
     expect(links.definitions()[0]).toMatchObject({ connectionType: 'N', technology: 'WLD_STEEL' });
     expect(mw.library.resolution.choices.find((choice) => choice.name === 'diam')?.values).toContain('500');
-    mw.library.selectValue('tech', 'copper');
+    edit('tech', 'copper');
     expect(mw.library.resolution.choices.find((choice) => choice.name === 'diam')?.values).not.toContain('500');
-    mw.library.selectValue('diam', '15');
-    mw.library.selectValue('__conn', 'female');
+    edit('diam', '15');
+    edit('__conn', 'female');
     expect(parameters.contextValues().get('diam')).toBe('15');
     expect(links.definitions()[0]).toMatchObject({ connectionType: 'F', technology: 'COPPER' });
     expect(links.tableRows[0].texts[3]).toBe('(327.5, -165, -137.5)');
+    edit('diam', '16.5');
+    expect(parameters.contextValues().get('diam')).toBe('16.5');
+    expect(parameters.rows.find((row) => row.texts[0] === 'diam')?.texts[3]).toBe('16.5');
     expect(links.statusIsError).toBe(false);
     expect(editor.text).toBe(source);
   } finally {

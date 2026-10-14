@@ -36,6 +36,8 @@ export class LibraryDefaults {
     this.#elements = elements;
     for (const definition of definitions)
       if (!this.#keys.has(definition.name)) this.#keys.set(definition.name, parameterKey(definition));
+    for (const element of elements)
+      for (const { name } of element.selectors) if (!this.#keys.has(name)) this.#keys.set(name, name);
     const controls = new Set(
       definitions.filter((definition) => definition.branchSelector).map((definition) => definition.name),
     );
@@ -75,6 +77,12 @@ export class LibraryDefaults {
     }
 
     return options;
+  }
+
+  get selectors(): string[] {
+    return (
+      this.#elements.find((element) => element.id === this.#current.elementId)?.selectors.map(({ name }) => name) ?? []
+    );
   }
 
   reset(): LibraryDefaultState {

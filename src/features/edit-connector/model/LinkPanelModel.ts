@@ -75,6 +75,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   #loading = false;
   #evaluate: ConnectorExpressionEvaluator | null = null;
   readonly previewChanged = new Signal<[previews: readonly ConnectorPreview[], selectedId: number, tested: boolean]>();
+  readonly definitionsChanged = new Signal<[]>();
 
   constructor() {
     super();
@@ -159,6 +160,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
   removeConnector(): void {
     const row = this.currentRow;
     if (row < 0) return;
+    const physical = this.#entries[row].definition.physical;
     {
       const blocked = this.#tableSignalsBlocked;
       this.#tableSignalsBlocked = true;
@@ -173,6 +175,7 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     }
     this.changed();
     this.loadSelection();
+    if (physical) this.definitionsChanged.emit();
   }
 
   loadSelection(): void {
@@ -225,6 +228,8 @@ export class LinkPanelModel extends Observable implements LinkPanelHandle {
     this.refreshRow(row);
     this.showStatus();
     this.publish();
+    if (d.physical && (connectorGeometryChanged(d, previous) || d.name !== previous.name))
+      this.definitionsChanged.emit();
   }
 
   testSelection(): void {

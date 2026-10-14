@@ -73,11 +73,13 @@ export function resolveXml(
   changed: readonly string[] = [],
   initialize = false,
   derivedChanges: readonly string[] = [],
+  selectedRows?: Map<XmlRule, number>,
 ): Map<string, string> {
   const values = new Map(seed);
   const anchors = new Set(changed.length || initialize ? changed : seed.keys());
   const dirty = new Set(initialize ? seed.keys() : [...changed, ...derivedChanges]);
   const seen = new Map<XmlRule, string>();
+  selectedRows?.clear();
 
   const assign = (name: string, value: string | undefined) => {
     if (value === undefined || anchors.has(name) || sameValue(values.get(name), value)) return;
@@ -88,7 +90,10 @@ export function resolveXml(
   for (let pass = 0; pass < element.rules.length + 1; ++pass) {
     const before = JSON.stringify([...values]);
     for (const rule of element.rules) {
-      if (!active(rule.when, values)) continue;
+      if (!active(rule.when, values)) {
+        selectedRows?.delete(rule);
+        continue;
+      }
       const conditionChanged = rule.when?.some(([name]) => identifiers(name).some((key) => dirty.has(key)));
       if (rule.table && rule.columns) {
         const table = catalog.tables[rule.table];
@@ -100,6 +105,7 @@ export function resolveXml(
         const reverse = columns.some(([, name, type]) => changed.includes(name) && [2, 5, 10].includes(type));
         const signature = JSON.stringify(columns.map(([, name]) => values.get(name)));
         if (seen.get(rule) === signature) continue;
+        selectedRows?.delete(rule);
         const rows = table[0]
           .map((_, index) => index)
           .filter((row) =>
@@ -146,6 +152,7 @@ export function resolveXml(
           if (!values.has(name) || conditionChanged || relevant.length) assign(name, table[column]?.[row]);
         }
         seen.set(rule, JSON.stringify(columns.map(([, name]) => values.get(name))));
+        selectedRows?.set(rule, row);
       }
       for (const [name, relation, expression, formula] of rule.limits ?? []) {
         const result = formula ? number(expression, values) : expression;
