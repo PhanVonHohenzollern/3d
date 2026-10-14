@@ -57,6 +57,7 @@ export class WorkspaceModel extends Observable {
   #editor: CodeEditorHandle | null = null;
   #viewport: Viewport3DHandle | null = null;
   #switchingEditor = false;
+  #buildingPreview = false;
   readonly #statusBar = new StatusBarModel();
   #raisedDock: DockName = 'ParametersDock';
   #connectorPreviews: readonly ConnectorPreview[] = [];
@@ -202,24 +203,30 @@ export class WorkspaceModel extends Observable {
   }
 
   readonly buildPreview = (): void => {
-    this.#activatePreviewMode('build');
-    this.parameters.commitEditor();
-    const source = this.editor.toPlainText();
-    this.functions.edit(source);
-    if (this.functions.active) this.#refreshFunctionCalls(this.parameters.overrides());
-    let program: ReturnType<FunctionWorkspace['program']>;
+    if (this.#buildingPreview) return;
+    this.#buildingPreview = true;
     try {
-      program = this.functions.program(source);
-    } catch (error) {
-      this.functions.reportError(what(error));
-      this.changed();
+      this.#activatePreviewMode('build');
+      this.parameters.commitEditor();
+      const source = this.editor.toPlainText();
+      this.functions.edit(source);
+      if (this.functions.active) this.#refreshFunctionCalls(this.parameters.overrides());
+      let program: ReturnType<FunctionWorkspace['program']>;
+      try {
+        program = this.functions.program(source);
+      } catch (error) {
+        this.functions.reportError(what(error));
+        this.changed();
 
-      return;
+        return;
+      }
+      this.session.beginBuild();
+      this.#updatePreview(source.split('\n').length, source, program);
+      this.session.recordBuild(this.functions.cacheKey, source, program, this.parameters.overrides());
+      this.changed();
+    } finally {
+      this.#buildingPreview = false;
     }
-    this.session.beginBuild();
-    this.#updatePreview(source.split('\n').length, source, program);
-    this.session.recordBuild(this.functions.cacheKey, source, program, this.parameters.overrides());
-    this.changed();
   };
 
   readonly debugPreview = (): void => {
@@ -266,7 +273,8 @@ export class WorkspaceModel extends Observable {
     if (defaults) this.#applyLibraryDefaults(defaults);
     this.session.markParametersChanged();
     this.changed();
-    this.runPreview();
+    if (this.session.mode === 'build') this.buildPreview();
+    else this.runPreview();
   };
 
   #applyLibraryDefaults(defaults: LibraryDefaultState): void {
@@ -281,8 +289,6 @@ export class WorkspaceModel extends Observable {
     this.#libraryDefaults?.remember(this.parameters.overrides());
     this.links.loadDefinitions(defaults.connectors);
   }
-
-  readonly applyParameters = this.buildPreview;
 
   readonly addSourceFiles = (name: string, header: boolean): boolean => this.functionTabs.add(name, header);
   readonly clearFunctionError = (): void => this.functionTabs.clearError();

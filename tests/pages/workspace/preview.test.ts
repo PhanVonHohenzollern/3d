@@ -36,8 +36,7 @@ return 0;
         expect(parameters.importTable(table)).toBe(true);
         expect(parameters.overrides().get('element::l')).toBe('80');
         expect(parameters.overrides().get('element::d')).toBe('60');
-        expect(mw.session.scene).toBe(previousScene);
-        mw.buildPreview();
+        expect(mw.session.scene).not.toBe(previousScene);
         expect(mw.session.lastResult.diagnostics).toEqual([]);
         expect(mw.session.scene.warnings).toEqual([]);
         expect(mw.session.scene.meshes).toHaveLength(1);
@@ -89,20 +88,18 @@ return 0;
     expect(parameters.rows.find((row) => row.key === 'makeBG::D')?.disabled).toBe(true);
     expect(mw.session.lastResult.parameterRequests.map((p) => p.functionName)).toEqual(['makeDV', 'makeDV']);
     parameters.setCheckbox('makeDV::BG', true);
-    mw.applyParameters();
     expect(mw.session.scene.meshes).toHaveLength(2);
     expect(mw.session.lastResult.parameterRequests.map((p) => p.functionName)).toEqual(['makeDV', 'makeDV', 'makeBG']);
     const built = mw.session.scene;
     parameters.setCheckbox('makeDV::BG', false);
     expect(parameters.rows.find((row) => row.key === 'makeBG::D')?.disabled).toBe(true);
-    expect(mw.session.scene).toBe(built);
-    mw.buildPreview();
+    expect(mw.session.scene).not.toBe(built);
     expect(mw.session.scene.meshes).toHaveLength(1);
     expect(mw.session.lastResult.apiCalls.some((call) => call.name === 'makeBG')).toBe(false);
     mw.dispose();
   });
 
-  it('builds the outer insulation mesh only when enabled and applies thickness on the next Build', () => {
+  it('updates insulation geometry as soon as its checkbox or thickness is committed', () => {
     const { mw, editor, parameters } = createWorkspace();
     const source = [
       'double diameter = 100;',
@@ -127,8 +124,7 @@ return 0;
     parameters.edit(sizeRow, 3);
     parameters.editorTextEdited('25');
     parameters.commitEditor();
-    expect(mw.session.scene).toBe(scene);
-    mw.buildPreview();
+    expect(mw.session.scene).not.toBe(scene);
     expect(mw.session.lastResult.diagnostics).toEqual([]);
     expect(mw.session.scene.meshes).toHaveLength(2);
     expect(mw.session.scene.meshes[1].color).toEqual({ r: Math.fround(139 / 255), g: 0, b: 0 });
@@ -136,8 +132,6 @@ return 0;
     const outerCall = mw.session.lastResult.apiCalls.findLast((call) => call.name === 'makeVerySimpleTube');
     expect(outerCall?.arguments[2]).toBe(150);
     parameters.setInsulationEnabled('getExtInsSize', false);
-    expect(mw.session.scene.meshes).toHaveLength(2);
-    mw.buildPreview();
     expect(mw.session.scene.meshes).toHaveLength(1);
     expect(parameters.rows[sizeRow].disabled).toBe(true);
     mw.dispose();
@@ -210,7 +204,33 @@ return 0;
     mw.dispose();
   });
 
-  it('OK applies a pending string get_val and clears character arithmetic errors without another Build', () => {
+  it('applies committed edits once while keeping unfinished, canceled and unchanged input out of the preview', () => {
+    const { mw, editor, parameters } = createWorkspace();
+    mw.start();
+    editor.type(kSource, 1);
+    mw.buildPreview();
+    const original = mw.session.scene;
+    parameters.edit(0, 3);
+    parameters.editorTextEdited('-');
+    expect(mw.session.scene).toBe(original);
+    parameters.revertEditor();
+    expect(mw.session.scene).toBe(original);
+    parameters.edit(0, 3);
+    parameters.editorTextEdited('8');
+    parameters.commitEditor();
+    expect(mw.session.runtime.evaluateNumericExpression('w')).toBe(8);
+    expect(mw.session.buildNumber).toBe(2);
+    const applied = mw.session.scene;
+    // Enter followed by blur, and focusing an unchanged cell, must not rebuild twice.
+    parameters.commitEditor();
+    parameters.edit(0, 3);
+    parameters.commitEditor();
+    expect(mw.session.scene).toBe(applied);
+    expect(mw.session.buildNumber).toBe(2);
+    mw.dispose();
+  });
+
+  it('committing a string parameter clears character arithmetic errors without another Build click', () => {
     const { mw, editor, parameters } = createWorkspace();
     const source = [
       'double Da, Di, H, Lk;',
@@ -231,7 +251,7 @@ return 0;
     const row = parameters.rows.findIndex((item) => item.key === 'zxd_ASS');
     parameters.edit(row, 3);
     parameters.editorTextEdited('6x8');
-    mw.applyParameters();
+    parameters.commitEditor();
     expect(parameters.editor).toBeNull();
     expect(mw.session.feedback.diagnostics).toEqual([]);
     expect(mw.session.runtime.evaluateNumericExpression('n')).toBe(6);
@@ -243,39 +263,39 @@ return 0;
     mw.dispose();
   });
 
-  it('OK builds the current code with the selected parameter row and unlocks Debug', () => {
+  it('automatically builds each selected data row and Reset without an Apply action', () => {
     const { mw, editor, parameters } = createWorkspace();
     mw.start();
     editor.type(kSource, 1);
     mw.buildPreview();
     const previousObj = mw.exportObj();
     parameters.importTable('Width\n8\n12');
+    expect(mw.session.runtime.evaluateNumericExpression('w')).toBe(8);
     parameters.selectDataSet(1);
-    expect(mw.session.previewStatus).toContain('press OK in Parameters');
-    expect(mw.exportObj()).toBe(previousObj);
-    editor.type(kSource.replace('double after = 1', 'double after = 9'), 2);
-    mw.applyParameters();
     expect(mw.session.runtime.evaluateNumericExpression('w')).toBe(12);
-    expect(mw.session.runtime.evaluateNumericExpression('after')).toBe(9);
+    expect(mw.session.runtime.evaluateNumericExpression('after')).toBe(1);
     expect(mw.exportObj()).not.toBe(previousObj);
     expect(mw.session.feedback.source).toBe(editor.text);
-    expect(mw.session.buildNumber).toBe(2);
+    expect(mw.session.buildNumber).toBe(3);
     expect(mw.session.debugBlocked).toBe(false);
     expect(mw.session.previewDirty).toBe(false);
     expect(mw.session.mode).toBe('build');
+    parameters.resetToSource();
+    expect(mw.session.runtime.evaluateNumericExpression('w')).toBe(2);
+    expect(mw.exportObj()).toBe(previousObj);
     mw.debugPreview();
     expect(mw.session.mode).toBe('debug');
     mw.dispose();
   });
 
-  it('OK builds the full code from Debug and commits a pending parameter edit', () => {
+  it('Build commits a pending parameter edit once when switching from Debug', () => {
     const { mw, editor, parameters } = createWorkspace();
     mw.start();
     editor.type(kSource, 5);
     vi.advanceTimersByTime(220);
     parameters.edit(0, 3);
     parameters.editorTextEdited('10');
-    mw.applyParameters();
+    mw.buildPreview();
     expect(parameters.editor).toBeNull();
     expect(mw.session.runtime.evaluateNumericExpression('w')).toBe(10);
     expect(mw.session.currentLine).toBe(6);
@@ -329,7 +349,7 @@ return 0;
     mw.dispose();
   });
 
-  it('builds the whole source and freezes geometry and runtime state until the next build', () => {
+  it('keeps code edits pending until Build or a committed parameter triggers a rebuild', () => {
     const { mw, editor, log, parameters } = createWorkspace();
     mw.start();
     editor.type(kSource, 1);
@@ -346,9 +366,6 @@ return 0;
     log.length = 0;
     editor.type(kSource.replace('double after = 1', 'double after = 9'), 3);
     editor.moveTo(4);
-    parameters.edit(0, 3);
-    parameters.editorTextEdited('7');
-    parameters.commitEditor();
     vi.advanceTimersByTime(1000);
     expect(mw.session.scene).toBe(builtScene);
     expect(mw.session.lastResult).toBe(builtResult);
@@ -357,7 +374,9 @@ return 0;
     expect(mw.exportObj()).toBe(exported);
     expect(log).toEqual([]);
 
-    mw.buildPreview();
+    parameters.edit(0, 3);
+    parameters.editorTextEdited('7');
+    parameters.commitEditor();
     expect(mw.session.scene).not.toBe(builtScene);
     expect(mw.session.currentLine).toBe(6);
     expect(mw.session.runtime.evaluateNumericExpression('w')).toBe(7);

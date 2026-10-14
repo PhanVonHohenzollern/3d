@@ -82,7 +82,7 @@ describe('PreviewSession', () => {
     session.markEdited(kSource, () => program.source);
     session.markParametersChanged();
     expect(session.debugBlocked).toBe(false);
-    expect(session.previewStatus).toBe('Build #1 · parameter changes pending — press OK in Parameters');
+    expect(session.previewStatus).toBe('Build #1 · parameter changes pending — press Build');
   });
 
   it('restores a tab build and drops a deleted function from the other builds', () => {

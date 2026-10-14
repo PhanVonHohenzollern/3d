@@ -93,7 +93,7 @@ export function useWorkspace() {
       onSelectionCleared: model.exitPreviewFocus,
     },
     variables: { model: model.variables },
-    parameters: { model: model.parameters, onApply: model.applyParameters },
+    parameters: { model: model.parameters },
     apiTrace: { model: model.mainApiTrace },
     subTrace: {
       model: model.subApiTrace,

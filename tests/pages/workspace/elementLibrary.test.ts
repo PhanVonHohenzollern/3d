@@ -105,7 +105,6 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     edit('L', '85');
     edit('C', '30');
     edit('C1', '10');
-    mw.applyParameters();
     {
       const values = parameters.contextValues();
       const halfLength = Number(values.get('L')) / 2;
@@ -113,7 +112,6 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     }
 
     edit('elType3d', '1');
-    mw.applyParameters();
     expect(mw.library.element?.name).toBe('Threaded male-male nipple');
     expect(links.definitions().map((link) => link.connectionType)).toEqual(['14', '14']);
     checkConnection(32.5, 32.5, 3);
@@ -123,7 +121,6 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     expect(links.statusIsError).toBe(false);
 
     edit('elType3d', '0');
-    mw.applyParameters();
     {
       const values = parameters.contextValues();
       const halfLength = Number(values.get('L')) / 2;
@@ -131,7 +128,6 @@ it('keeps TFMN/TFMT source geometry separate from connector previews across para
     }
     expect(editor.text).toBe(source);
     parameters.resetToSource();
-    mw.applyParameters();
     checkConnection(12.5, 32.5, 2);
 
     mw.library.openElement(mw.library.elements.find((element) => element.entry === 'makeTFMT')!.id);
@@ -174,7 +170,7 @@ it('updates dependent XML sizes and keeps source edits until Reset', async () =>
     expect(parameters.contextValues().get('l')).toBe('180');
     expect(parameters.contextValues().get('L1:get_fln_thick')).toBe('20');
     expect(mw.library.resolution.values.get('diam')).toBe('65');
-    expect(mw.session.scene).toBe(originalScene);
+    expect(mw.session.scene).not.toBe(originalScene);
     expect(editor.text).toBe(code);
     edit('elType', '0');
     expect(mw.library.element?.defaults.elType).toBe('0');
@@ -183,7 +179,6 @@ it('updates dependent XML sizes and keeps source edits until Reset', async () =>
       true,
     );
     expect(links.statusIsError).toBe(false);
-    mw.applyParameters();
     expect(mw.session.lastResult.diagnostics).toEqual([]);
     expect(mw.session.scene.warnings).toEqual([]);
     expect(mw.session.scene.meshes.length).toBeGreaterThan(0);
@@ -348,7 +343,6 @@ it.each(['make2WayValve', 'makeSV', 'makeMF', 'makeTANK'])(
         );
         expect(Object.fromEntries(parameters.contextValues())).toMatchObject(Object.fromEntries(expected.values));
         expect(links.definitions()).toEqual(expected.connectors);
-        mw.applyParameters();
         expect(mw.session.lastResult.diagnostics, element.name).toEqual([]);
         expect(mw.session.scene.warnings, element.name).toEqual([]);
         expect(mw.session.scene.meshes.length).toBeGreaterThan(0);
@@ -404,7 +398,6 @@ it('loads connector defaults when changing MIXIT connection type and port orient
       expect(variant).toBeDefined();
       expect(Object.fromEntries(current)).toMatchObject(variant.defaults);
       expect(links.definitions()).toEqual(variant.connectors);
-      mw.applyParameters();
       expect(mw.session.lastResult.diagnostics).toEqual([]);
       expect(mw.session.scene.warnings).toEqual([]);
       expect(links.statusIsError).toBe(false);
@@ -437,7 +430,7 @@ it('preserves values and connectors while a manually entered selector has no mat
     expect(parameters.contextValues().get('elType')).toBe('999');
     expect(parameters.contextValues()).toEqual(new Map([...values, ['elType', '999']]));
     expect(links.definitions()).toEqual(connectors);
-    expect(showMessage).not.toHaveBeenCalled();
+    expect(showMessage.mock.calls.some(([, , kind]) => kind === 'warning' || kind === 'error')).toBe(false);
     parameters.resetToSource();
     expect(parameters.contextValues()).toEqual(values);
     expect(links.definitions()).toEqual(element.resolve!().connectors);
@@ -467,7 +460,6 @@ it('loads all nested TANK shapes with their own connector count and dimensions',
       expect(parameters.contextValues().get('elType')).toBe('1');
       expect(Object.fromEntries(parameters.contextValues())).toMatchObject(element.defaults);
       expect(links.definitions()).toEqual(element.resolve!().connectors);
-      mw.applyParameters();
       expect(mw.session.lastResult.diagnostics).toEqual([]);
       expect(mw.session.scene.warnings).toEqual([]);
       expect(mw.session.scene.meshes.filter((mesh) => mesh.apiName === 'makeSpheroidSection')).toHaveLength(2);

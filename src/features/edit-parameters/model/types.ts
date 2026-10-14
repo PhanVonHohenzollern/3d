@@ -2,7 +2,6 @@ import type { ParameterPanelModel } from '@/features/edit-parameters/model/Param
 
 export interface ParameterPanelProps {
   model: ParameterPanelModel;
-  onApply?: () => void;
 }
 
 export type ParameterTableDialogState = {
