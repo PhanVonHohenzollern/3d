@@ -1,15 +1,30 @@
 import { useRef, useSyncExternalStore, type ReactNode } from 'react';
 import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngine';
-import { kViewCubeSize, navigationArc, navigationViews, projectViewCube } from '@/widgets/viewport/lib/render/viewCube';
-import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import {
+  activeNavigationView,
+  kViewCubeSize,
+  navigationViews,
+  projectViewCube,
+} from '@/widgets/viewport/lib/render/viewCube';
 import { kClickDragThreshold } from '@/widgets/viewport/config/viewport';
 
-function ViewButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+function ViewButton({
+  label,
+  selected,
+  onClick,
+  children,
+}: {
+  label: string;
+  selected?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
     <g
       role="button"
       tabIndex={0}
       aria-label={label}
+      aria-pressed={selected}
       className="group cursor-pointer outline-none"
       onClick={onClick}
       onKeyDown={(event) => {
@@ -27,6 +42,7 @@ function ViewButton({ label, onClick, children }: { label: string; onClick: () =
 export function ViewCube({ engine }: { engine: ViewportEngine }) {
   const orientation = useSyncExternalStore(engine.subscribeWidgets, engine.cameraOrientation);
   const faces = projectViewCube(orientation);
+  const activeView = activeNavigationView(orientation);
   const press = useRef<{ x: number; y: number } | null>(null);
   const dragged = useRef(false);
 
@@ -64,26 +80,19 @@ export function ViewCube({ engine }: { engine: ViewportEngine }) {
           <ViewButton
             key={view.name}
             label={`${view.name} view`}
+            selected={activeView === view.name}
             onClick={() => engine.setViewDirection(view.direction)}
           >
             <path
               d={view.path}
-              className="fill-[#6d6e70] group-hover:fill-[#929496] group-focus-visible:fill-[#0084a5]"
+              className={
+                activeView === view.name
+                  ? 'fill-[#00566f] group-hover:fill-[#0084a5] group-focus-visible:stroke-[#c9f1ff]'
+                  : 'fill-[#6d6e70] group-hover:fill-[#929496] group-focus-visible:stroke-[#c9f1ff]'
+              }
             />
           </ViewButton>
         ))}
-        <ViewButton label="Top view" onClick={() => engine.setViewDirection(new QVector3D(0, 0, 1))}>
-          <path
-            d={navigationArc(28, 43, -88, 88)}
-            className="fill-[#00566f] group-hover:fill-[#0084a5] group-focus-visible:fill-[#0084a5]"
-          />
-        </ViewButton>
-        <ViewButton label="Bottom view" onClick={() => engine.setViewDirection(new QVector3D(0, 0, -1))}>
-          <path
-            d={navigationArc(28, 43, 92, 268)}
-            className="fill-[#6d6e70] group-hover:fill-[#929496] group-focus-visible:fill-[#0084a5]"
-          />
-        </ViewButton>
         <ViewButton label="Home view and fit" onClick={() => engine.homeView()}>
           <circle
             cx="80"

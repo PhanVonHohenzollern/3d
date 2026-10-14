@@ -1,4 +1,4 @@
-import type { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
+import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
 
 export const kViewCubeSize = 112;
@@ -18,16 +18,35 @@ export function navigationArc(inner: number, outer: number, start: number, end: 
   return `M${circlePoint(outer, start)} A${outer},${outer} 0 ${largeArc} 1 ${circlePoint(outer, end)} L${circlePoint(inner, end)} A${inner},${inner} 0 ${largeArc} 0 ${circlePoint(inner, start)} Z`;
 }
 
-export const navigationViews = [
+const ringViews = [
   { name: 'Back', direction: new QVector3D(0, 1, 0) },
-  { name: 'Back Right', direction: new QVector3D(1, 1, 0) },
+  { name: 'NE Isometric', direction: new QVector3D(1, 1, 1) },
   { name: 'Right', direction: new QVector3D(1, 0, 0) },
-  { name: 'Front Right', direction: new QVector3D(1, -1, 0) },
+  { name: 'SE Isometric', direction: new QVector3D(1, -1, 1) },
   { name: 'Front', direction: new QVector3D(0, -1, 0) },
-  { name: 'Front Left', direction: new QVector3D(-1, -1, 0) },
+  { name: 'SW Isometric', direction: new QVector3D(-1, -1, 1) },
   { name: 'Left', direction: new QVector3D(-1, 0, 0) },
-  { name: 'Back Left', direction: new QVector3D(-1, 1, 0) },
+  { name: 'NW Isometric', direction: new QVector3D(-1, 1, 1) },
 ].map((view, index) => ({ ...view, path: navigationArc(46, 76, index * 45 - 21, index * 45 + 21) }));
+
+export const navigationViews = [
+  ...ringViews,
+  { name: 'Top', direction: new QVector3D(0, 0, 1), path: navigationArc(28, 43, -88, 88) },
+  { name: 'Bottom', direction: new QVector3D(0, 0, -1), path: navigationArc(28, 43, 92, 268) },
+].map((view) => ({ ...view, orientation: Quaternion.lookingFrom(view.direction) }));
+
+export function activeNavigationView(orientation: Quaternion): string | null {
+  // Compare full orientations, including roll; opposite quaternion signs describe
+  // the same view. Orbit clears the selection, while Pan and Zoom preserve it.
+  return (
+    navigationViews.find(({ orientation: preset }) => {
+      const dot =
+        orientation.x * preset.x + orientation.y * preset.y + orientation.z * preset.z + orientation.w * preset.w;
+
+      return Math.abs(dot) > 1 - 1e-8;
+    })?.name ?? null
+  );
+}
 
 const faces = [
   { name: 'Right', normal: new QVector3D(1, 0, 0), u: new QVector3D(0, 1, 0), v: new QVector3D(0, 0, 1) },
