@@ -291,7 +291,7 @@ export class ViewportEngine {
     const started = performance.now();
 
     const step = (now: number): void => {
-      const t = Math.min(1, (now - started) / 126);
+      const t = Math.min(1, (now - started) / 250);
       applyOrientation(from.slerp(target, t * t * (3 - 2 * t)));
       this.#cameraAnimation = t < 1 ? requestAnimationFrame(step) : null;
     };
