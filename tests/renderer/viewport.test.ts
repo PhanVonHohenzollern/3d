@@ -249,7 +249,7 @@ describe('debug points and clicks', () => {
       }
   });
 
-  it('uses accumulated initial motion to choose an axis and keeps it until release', () => {
+  it('accumulates startup motion, then changes axes without releasing the mouse', () => {
     const engine = createEngine();
     const expected = new ViewportCamera();
     expected.setViewportSize(800, 600);
@@ -262,15 +262,44 @@ describe('debug points and clicks', () => {
     expected.orbit(new QPoint(6, 0));
     expect(engine.camera().orientation).toEqual(expected.orientation);
     engine.mouseMoveEvent(mouse(406, 402, 0, LeftButton));
+    expected.orbit(new QPoint(0, 100));
     expect(engine.camera().orientation).toEqual(expected.orientation);
     engine.mouseMoveEvent(mouse(426, 452, 0, LeftButton));
-    expected.orbit(new QPoint(20, 0));
+    expected.orbit(new QPoint(20, 50));
     expect(engine.camera().orientation).toEqual(expected.orientation);
     engine.mouseReleaseEvent(mouse(426, 452, LeftButton, 0));
     engine.mousePressEvent(mouse(400, 300, LeftButton, LeftButton));
     engine.mouseMoveEvent(mouse(402, 330, 0, LeftButton));
     expected.orbit(new QPoint(0, 30));
     expect(engine.camera().orientation).toEqual(expected.orientation);
+  });
+
+  it('re-evaluates the 20 degree bands on each movement, including small turns and direction reversals', () => {
+    const engine = createEngine();
+    const expected = new ViewportCamera();
+    expected.setViewportSize(800, 600);
+    let x = 400,
+      y = 300;
+    engine.mousePressEvent(mouse(x, y, LeftButton, LeftButton));
+    for (const [dx, dy, orbitX, orbitY] of [
+      [30, 2, 30, 0],
+      [1, 3, 0, 3],
+      [3, 1, 3, 0],
+      [30, 11, 30, 11],
+      [30, 10, 30, 0],
+      [10, 30, 0, 30],
+      [11, 30, 11, 30],
+      [-30, -30, -30, -30],
+      [-3, 1, -3, 0],
+      [1, -3, 0, -3],
+    ]) {
+      x += dx;
+      y += dy;
+      engine.mouseMoveEvent(mouse(x, y, 0, LeftButton));
+      expected.orbit(new QPoint(orbitX, orbitY));
+      expect(engine.camera().orientation).toEqual(expected.orientation);
+    }
+    engine.mouseReleaseEvent(mouse(x, y, LeftButton, 0));
   });
 
   it('orbits an off-origin model around its center after Pan/Zoom, ignoring distant debug items and connectors', () => {

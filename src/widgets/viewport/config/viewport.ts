@@ -5,7 +5,7 @@ import type { SelectionMode } from '@/widgets/viewport/lib/render/types';
 
 // A press that moves less than this many pixels is a click, not a drag.
 export const kClickDragThreshold = 5;
-// Initial drag directions within this angle of horizontal/vertical lock to that axis.
+// Each drag movement within this angle of horizontal/vertical uses only that axis.
 export const kOrbitAxisSnapDegrees = 20;
 // A second click within this many pixels of the last one cycles to the next pick under the cursor.
 export const kRepeatPickDistance = 5;

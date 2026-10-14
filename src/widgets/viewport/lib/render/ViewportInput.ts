@@ -39,7 +39,6 @@ export class ViewportInput {
   #dragDistance = 0;
   #pressModifiers: KeyboardModifiers = NoModifier;
   #orbitPivot: QVector3D | null = null;
-  #orbitAxis: 'horizontal' | 'vertical' | 'both' | null = null;
 
   constructor(
     private readonly state: ViewportState,
@@ -56,7 +55,6 @@ export class ViewportInput {
     this.#pressModifiers = event.modifiers;
     this.#dragDistance = 0;
     this.#orbitPivot = null;
-    this.#orbitAxis = null;
   }
 
   move(event: MouseEventData): void {
@@ -78,16 +76,15 @@ export class ViewportInput {
     const creatingPoint = this.state.selectionMode === 'Point' && this.#pressModifiers.control;
     if (event.buttons & LeftButton && !creatingPoint) {
       let orbitDelta = delta;
-      if (this.#orbitAxis === null) {
-        // Classify the whole initial drag, not a single jittery mouse event.
+      if (this.#orbitPivot === null) {
+        // Accumulate the startup motion until it is a drag rather than a click.
         orbitDelta = currentPosition.sub(this.#pressPosition);
         if (Math.hypot(orbitDelta.x, orbitDelta.y) < kClickDragThreshold) return;
-        const angle = (Math.atan2(Math.abs(orbitDelta.y), Math.abs(orbitDelta.x)) * 180) / Math.PI;
-        this.#orbitAxis =
-          angle <= kOrbitAxisSnapDegrees ? 'horizontal' : angle >= 90 - kOrbitAxisSnapDegrees ? 'vertical' : 'both';
       }
-      if (this.#orbitAxis === 'horizontal') orbitDelta = new QPoint(orbitDelta.x, 0);
-      else if (this.#orbitAxis === 'vertical') orbitDelta = new QPoint(0, orbitDelta.y);
+      // Re-evaluate direction on every movement, so the user can turn without releasing.
+      const angle = (Math.atan2(Math.abs(orbitDelta.y), Math.abs(orbitDelta.x)) * 180) / Math.PI;
+      if (angle <= kOrbitAxisSnapDegrees) orbitDelta = new QPoint(orbitDelta.x, 0);
+      else if (angle >= 90 - kOrbitAxisSnapDegrees) orbitDelta = new QPoint(0, orbitDelta.y);
       this.#orbitPivot ??= this.view.orbitPivot();
       this.view.camera.orbit(orbitDelta, this.#orbitPivot);
       this.host.rebuild(true);
@@ -102,7 +99,6 @@ export class ViewportInput {
 
   release(event: MouseEventData): void {
     this.#orbitPivot = null;
-    this.#orbitAxis = null;
     const position = new QPointF(event.x, event.y);
     if (event.button === LeftButton && this.#dragDistance < kClickDragThreshold) this.#click(position);
     if (this.host.bounds().contains(position.toPoint())) this.updateHover(position);
