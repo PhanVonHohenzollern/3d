@@ -84,6 +84,18 @@ export class QMatrix4x4 {
     this.multiplyInPlace(p);
   }
 
+  ortho(left: number, right: number, bottom: number, top: number, nearPlane: number, farPlane: number): void {
+    if (left === right || bottom === top || nearPlane === farPlane) return;
+    const p = new QMatrix4x4();
+    p.data[0] = 2 / (right - left);
+    p.data[5] = 2 / (top - bottom);
+    p.data[10] = -2 / (farPlane - nearPlane);
+    p.data[12] = -(right + left) / (right - left);
+    p.data[13] = -(top + bottom) / (top - bottom);
+    p.data[14] = -(farPlane + nearPlane) / (farPlane - nearPlane);
+    this.multiplyInPlace(p);
+  }
+
   lookAt(eye: QVector3D, center: QVector3D, up: QVector3D): void {
     let forward = center.sub(eye);
     if (qFuzzyIsNull(forward.x) && qFuzzyIsNull(forward.y) && qFuzzyIsNull(forward.z)) return;

@@ -5,6 +5,7 @@ import type { ViewportEngine } from '@/widgets/viewport/lib/render/ViewportEngin
 import type { PreviewMesh } from '@engine/geometry';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
 import { activeNavigationView, navigationViews, projectViewCube } from '@/widgets/viewport/lib/render/viewCube';
+import { pickMeshAlongRay } from '@/widgets/viewport/lib/render/picking';
 import { boxMesh, createEngine, mouse, scene, updateCamera } from '@tests/renderer/helpers';
 
 const directions: QVector3D[] = [];
@@ -118,17 +119,70 @@ describe('ViewCube camera directions', () => {
     const engine = createEngine(width, height);
     const mesh = boxMesh([-800, -30, -100], [800, 30, 100]);
     engine.setGeometryScene(scene(mesh));
-    const distances = new Map<string, number>();
+    const viewHeights = new Map<string, number>();
     for (const view of navigationViews) {
       engine.camera().target = new QVector3D(10000, 20000, -5000);
       engine.camera().distance = 1;
       engine.setViewDirection(view.direction);
       expect(engine.camera().target).toEqual(new QVector3D(0, 0, 0));
       expectMeshInsideFrame(engine, mesh);
-      distances.set(view.name, engine.camera().distance);
+      viewHeights.set(view.name, engine.camera().viewHeight());
     }
-    expect(distances.get('Front')).not.toBeCloseTo(distances.get('Right')!);
-    expect(distances.get('SE Isometric')).not.toBeCloseTo(distances.get('Front')!);
+    expect(viewHeights.get('Front')).not.toBeCloseTo(viewHeights.get('Right')!);
+    expect(viewHeights.get('SE Isometric')).not.toBeCloseTo(viewHeights.get('Front')!);
+  });
+
+  it.each(['Front', 'Back', 'Left', 'Right', 'Top', 'Bottom'])(
+    '%s projects onto one plane without perspective, including after Pan/Zoom',
+    (name) => {
+      const engine = createEngine();
+      const mesh = boxMesh([80, 180, 280], [120, 220, 320]);
+      engine.setGeometryScene(scene(mesh));
+      const view = navigationViews.find((view) => view.name === name)!;
+      engine.setViewDirection(view.direction);
+      const camera = engine.camera();
+      const center = camera.target;
+      const across = camera.orientation.rotate(new QVector3D(5, 7, 0));
+      const point = center.add(across);
+      for (let pass = 0; pass < 2; pass++) {
+        updateCamera(engine);
+        const front = camera.projectToScreen(point.add(view.direction.mul(10)))!;
+        const back = camera.projectToScreen(point.sub(view.direction.mul(10)))!;
+        expect(front).not.toBeNull();
+        expect(back).not.toBeNull();
+        // Opposite box faces and the depth axis must collapse to the same 2D plane.
+        expect(front.x).toBeCloseTo(back.x, 4);
+        expect(front.y).toBeCloseTo(back.y, 4);
+        const ray = camera.screenRay(front)!;
+        const centerRay = camera.screenRay(camera.projectToScreen(center)!)!;
+        expect(
+          ray.farPoint
+            .sub(ray.nearPoint)
+            .normalized()
+            .sub(centerRay.farPoint.sub(centerRay.nearPoint).normalized())
+            .length(),
+        ).toBeLessThan(1e-5);
+        expect(pickMeshAlongRay([mesh], ray, () => true)).toBe(0);
+        camera.pan(new QPoint(30, -15));
+        camera.zoom(120);
+      }
+    },
+  );
+
+  it('restores perspective for diagonal views and Home after a flat elevation', () => {
+    const engine = createEngine();
+    const mesh = boxMesh([-30, -20, -10], [30, 20, 10]);
+    engine.setGeometryScene(scene(mesh));
+    for (const view of navigationViews.filter((view) => view.name.includes('Isometric'))) {
+      engine.setViewDirection(new QVector3D(0, -1, 0));
+      expect(updateCamera(engine).projection.get(3, 2)).toBe(0);
+      engine.setViewDirection(view.direction);
+      expect(updateCamera(engine).projection.get(3, 2)).toBe(-1);
+      expectMeshInsideFrame(engine, mesh);
+    }
+    engine.setViewDirection(new QVector3D(0, 0, -1));
+    engine.homeView();
+    expect(updateCamera(engine).projection.get(3, 2)).toBe(-1);
   });
 
   it('rolls around the viewing axis and Home restores orientation and fits the model', () => {

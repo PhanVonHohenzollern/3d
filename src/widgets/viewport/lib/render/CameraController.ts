@@ -56,7 +56,11 @@ export class CameraController {
   }
 
   rebuildAxes(): void {
-    this.axes = axesVertices(this.#sceneScale, this.camera.target, this.camera.distance);
+    this.axes = axesVertices(
+      this.#sceneScale,
+      this.camera.target,
+      Math.max(this.camera.distance, this.camera.viewHeight()),
+    );
   }
 
   updateMatrices(): void {
