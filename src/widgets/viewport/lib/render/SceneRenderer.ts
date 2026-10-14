@@ -5,9 +5,7 @@ import {
   kHighlightLineWidth,
   kHoverOutlineColor,
   kHoverTint,
-  kSelectedApiOutlineColor,
   kSelectedMeshColor,
-  kSelectedMeshOutlineColor,
   kSelectedVectorLineWidth,
   kVectorLineWidth,
   kWireLineWidth,
@@ -158,7 +156,6 @@ export class SceneRenderer {
     if (state.showGeometry && this.#geometryRanges.length > 0) {
       if (state.geometryWireframe) this.#drawWireframe();
       else this.#drawSolid();
-      this.#drawHighlight();
       renderer.setDepthMask(true);
       renderer.setDepthTest(true);
     }
@@ -189,9 +186,11 @@ export class SceneRenderer {
     for (const range of this.#wireRanges) {
       if (!state.isMeshVisible(range.meshIndex)) continue;
       renderer.setOpacity(state.meshOpacity(range.meshIndex));
+      this.#setMeshHighlight(range.meshIndex);
       renderer.glDrawArrays('GL_LINES', range.start, range.count);
     }
     renderer.setOpacity(1);
+    renderer.setUniformValue('uUseOverrideColor', false);
   }
 
   #drawSolid(): void {
@@ -210,20 +209,10 @@ export class SceneRenderer {
       if (!state.isMeshVisible(range.meshIndex)) continue;
       const lines = state.geometryScene.meshes[range.meshIndex].primitive === 'lines';
       renderer.setUniformValue('uLightingEnabled', !lines);
-      const selected = state.isMeshSelected(range.meshIndex);
-      const hovered = state.isMeshInGroup(range.meshIndex, state.hoveredMeshIndex);
       const opacity = state.meshOpacity(range.meshIndex);
       renderer.setDepthMask(opacity === 1);
       renderer.setOpacity(opacity);
-      renderer.setUniformValue('uUseOverrideColor', selected || hovered);
-      if (selected) renderer.setUniformValue('uOverrideColor', kSelectedMeshColor);
-      else if (hovered) {
-        const color = state.geometryScene.meshes[range.meshIndex].color;
-        renderer.setUniformValue(
-          'uOverrideColor',
-          new QVector3D(color.r, color.g, color.b).mul(kHoverTint.amount).add(kHoverTint.lift),
-        );
-      }
+      this.#setMeshHighlight(range.meshIndex);
       renderer.glDrawArrays(lines ? 'GL_LINES' : 'GL_TRIANGLES', range.start, range.count);
     }
     renderer.setOpacity(1);
@@ -232,34 +221,19 @@ export class SceneRenderer {
     renderer.setUniformValue('uUseOverrideColor', false);
   }
 
-  #drawHighlight(): void {
+  #setMeshHighlight(meshIndex: number): void {
     const { renderer, state } = this;
-    if (state.selectedApiIndex < 0 && state.selectedMeshIndex < 0 && state.hoveredMeshIndex < 0) return;
-    renderer.setUniformValue('uUseOverrideColor', true);
-    renderer.setDepthTest(false);
-    renderer.setDepthMask(false);
-    renderer.glLineWidth(kHighlightLineWidth);
-    for (const range of this.#wireRanges) {
-      if (!state.isMeshVisible(range.meshIndex)) continue;
-      const selectedDirectly =
-        state.selectedMeshIndex >= 0
-          ? state.isMeshSelected(range.meshIndex)
-          : state.selectedApiIndex >= 0 && range.apiIndex === state.selectedApiIndex;
-      const selectedAsHelperChild =
-        state.selectedMeshIndex < 0 && state.apiFocusActive && state.apiFocusIndices.has(range.apiIndex);
-      const hovered = state.isMeshInGroup(range.meshIndex, state.hoveredMeshIndex);
-      if (!selectedDirectly && !selectedAsHelperChild && !hovered) continue;
+    const selected = state.isMeshSelected(meshIndex);
+    const hovered = state.isMeshInGroup(meshIndex, state.hoveredMeshIndex);
+    renderer.setUniformValue('uUseOverrideColor', selected || hovered);
+    if (selected) renderer.setUniformValue('uOverrideColor', kSelectedMeshColor);
+    else if (hovered) {
+      const color = state.geometryScene.meshes[meshIndex].color;
       renderer.setUniformValue(
         'uOverrideColor',
-        hovered
-          ? kHoverOutlineColor
-          : state.selectedMeshIndex >= 0
-            ? kSelectedMeshOutlineColor
-            : kSelectedApiOutlineColor,
+        new QVector3D(color.r, color.g, color.b).mul(kHoverTint.amount).add(kHoverTint.lift),
       );
-      renderer.glDrawArrays('GL_LINES', range.start, range.count);
     }
-    renderer.setUniformValue('uUseOverrideColor', false);
   }
 
   #drawConnectors(): void {

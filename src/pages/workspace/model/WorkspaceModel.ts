@@ -173,7 +173,7 @@ export class WorkspaceModel extends Observable {
   replacePreviewWithObj(scene: PreviewGeometryScene, name: string): void {
     this.importedObj = { scene, name };
     this.#showGeometryAction?.setChecked(true);
-    this.viewport.clearApiFocus();
+    this.viewport.clearSelection();
     this.viewport.setRuntimeResult(emptyRuntimeResult());
     this.viewport.setConnectorPreviews([], -1);
     this.viewport.setGeometryScene(scene);

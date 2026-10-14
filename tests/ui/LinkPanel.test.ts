@@ -43,6 +43,7 @@ describe('LinkPanel', () => {
         angles: ['0', '0', '0'],
       },
     ]);
+    model.selectConnector(1);
     expect(model.statusIsError).toBe(true);
     expect(published.at(-1)?.previews).toHaveLength(0);
     diameter = 80;
