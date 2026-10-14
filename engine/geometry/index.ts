@@ -13,3 +13,4 @@ export type {
 export { PreviewGeometryEngine } from '@engine/geometry/PreviewGeometryEngine';
 export type { PreviewGeometryScene, PreviewMesh } from '@engine/geometry/PreviewGeometryEngine';
 export { defaultPreviewColor } from '@engine/geometry/previewScene';
+export { buildConnectionGeometry, type PipeConnection } from '@engine/geometry/ConnectionGeometry';

@@ -32,6 +32,7 @@ export class ViewportCamera {
   setProjectionMode(mode: CameraProjection): void {
     if (this.projectionMode === mode) return;
     if (mode === 'orthographic') this.orthographicHeight = this.viewHeight();
+    else this.distance = this.orthographicHeight / (2 * Math.tan(radians(kVerticalFieldOfView * 0.5)));
     this.projectionMode = mode;
   }
 
@@ -163,7 +164,7 @@ export class ViewportCamera {
     else this.distance = clamp(this.distance * zoomFactor, 0.01, 1.0e8);
   }
 
-  fitBounds(minP: QVector3D, maxP: QVector3D): void {
+  fitBounds(minP: QVector3D, maxP: QVector3D, padding = kFitPadding): void {
     this.target = minP.add(maxP).mul(0.5);
     const tanVertical = Math.tan(radians(kVerticalFieldOfView * 0.5));
     const aspect = Math.max(1, this.m_width) / Math.max(1, this.m_height);
@@ -182,15 +183,11 @@ export class ViewportCamera {
           distance = Math.max(
             distance,
             p.z +
-              Math.max(
-                (kFitPadding * Math.abs(p.x)) / tanHorizontal,
-                (kFitPadding * Math.abs(p.y)) / tanVertical,
-                depthMargin,
-              ),
+              Math.max((padding * Math.abs(p.x)) / tanHorizontal, (padding * Math.abs(p.y)) / tanVertical, depthMargin),
           );
         }
     if (this.projectionMode === 'orthographic') {
-      this.orthographicHeight = clamp(2 * halfHeight * kFitPadding, 0.01, 1.0e8);
+      this.orthographicHeight = clamp(2 * halfHeight * padding, 0.01, 1.0e8);
       // Screen scale is independent of depth. Keep the eye outside the bounding
       // sphere so a subsequent Orbit cannot cut through the model.
       distance = Math.max(0.05, maxP.sub(minP).length() / 2 + depthMargin);

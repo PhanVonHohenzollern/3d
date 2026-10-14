@@ -5,6 +5,8 @@ import { ParameterPanelModel } from '@/features/edit-parameters';
 import {
   ElementLibraryModel,
   evaluateLibraryExpression,
+  resolvePipeConnections,
+  pipeConnectionParameters,
   type LibrarySample,
   type LibraryDefaults,
   type LibraryDefaultState,
@@ -24,7 +26,7 @@ import type { CodeEditorHandle } from '@/widgets/code-editor';
 import { VariablePanelModel } from '@/widgets/variable-panel';
 import { pointDeclaration, unusedPreviewPointName, type Vec3, type Viewport3DHandle } from '@/widgets/viewport';
 import { createWorkspaceActions, type ActionListItem } from '@/widgets/workspace-header';
-import type { ConnectorPreview, PreviewGeometryScene } from '@engine/geometry';
+import { buildConnectionGeometry, type ConnectorPreview, type PreviewGeometryScene } from '@engine/geometry';
 import { emptyRuntimeResult, GeometryRuntime, what } from '@engine/runtime';
 
 // The workspace page: owns the panel models and the preview session, and turns what happens in
@@ -122,6 +124,11 @@ export class WorkspaceModel extends Observable {
       return evaluateLibraryExpression(expression, values);
     });
     this.links.previewChanged.connect(this.onLinkPreviewChanged);
+    this.links.definitionsChanged.connect(() => {
+      this.session.markParametersChanged();
+      if (this.session.mode === 'build') this.buildPreview();
+      else this.runPreview();
+    });
     this.library.openRequested.connect((sample, replaceSource) => this.#loadLibrarySample(sample, replaceSource));
   }
 
@@ -139,9 +146,9 @@ export class WorkspaceModel extends Observable {
     }
     const program = this.functions.program();
     const definitions = this.session.discoverParameters(program, () => false);
-    this.parameters.loadValues(definitions, sample.values);
     this.#libraryValues = sample.values;
     this.#libraryDefaults = sample.defaults ?? null;
+    this.parameters.loadValues(definitions, sample.values, sample.values, this.#libraryDefaults?.selectors);
     this.parameters.setValueOptions(this.#libraryDefaults?.options ?? new Map());
     this.#libraryDefaults?.remember(this.parameters.overrides());
     this.links.loadDefinitions(sample.connectors);
@@ -281,7 +288,7 @@ export class WorkspaceModel extends Observable {
     const program = this.functions.program();
     const definitions = this.session.discoverParameters(program, () => false);
     const tab = this.parameters.activeTab;
-    this.parameters.loadValues(definitions, defaults.values, defaults.parameters);
+    this.parameters.loadValues(definitions, defaults.values, defaults.parameters, this.#libraryDefaults?.selectors);
     this.parameters.setValueOptions(defaults.options ?? new Map());
     this.parameters.selectTab(tab);
     this.#libraryValues = defaults.values;
@@ -553,7 +560,21 @@ export class WorkspaceModel extends Observable {
     const parameterDefinitions = this.session.discoverParameters(program, () => false);
     this.parameters.setDefinitions(parameterDefinitions);
 
-    const outcome = this.session.execute(program, source, line, parameters ?? this.parameters.overrides());
+    const inputs = new Map(parameters ?? this.parameters.overrides());
+    const context = this.parameters.contextValues();
+    for (const [key, value] of inputs) context.set(key.split('::').at(-1)!, value);
+    const definitions = this.links.definitions();
+    for (const [key, value] of pipeConnectionParameters(resolvePipeConnections(definitions, context), definitions))
+      inputs.set(key, value);
+    const outcome = this.session.execute(program, source, line, inputs, (result) => {
+      for (const request of result.parameterRequests) context.set(request.name, request.currentValue);
+
+      return buildConnectionGeometry(
+        resolvePipeConnections(definitions, context),
+        (expression) => evaluateLibraryExpression(expression, context),
+        inputs.has('getExtInsSize') ? Number(inputs.get('getExtInsSize')) : undefined,
+      );
+    });
     if ('error' in outcome) {
       this.changed();
       this.statusBar().showMessage(`Line ${line}: preview stopped: ${outcome.error}`, 4000, 'error');

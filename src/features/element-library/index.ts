@@ -5,3 +5,4 @@ export type { LibrarySample } from '@/features/element-library/model/ElementLibr
 export { ElementLibraryPanel } from '@/features/element-library/ui/ElementLibraryPanel';
 export { evaluateLibraryExpression } from '@/features/element-library/model/expressions';
 export { LibraryDefaults, type LibraryDefaultState } from '@/features/element-library/model/LibraryDefaults';
+export { resolvePipeConnections, pipeConnectionParameters } from '@/features/element-library/model/pipeTechnologies';

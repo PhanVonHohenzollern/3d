@@ -2,8 +2,15 @@ import type { ConnectorDefinition } from '@engine/geometry';
 
 export interface LibraryAsset {
   name: string;
+  catalog: LibraryCatalog;
   load: () => Promise<ElementLibrary>;
   sources: { name: string; path: string }[];
+}
+
+export interface LibraryCatalog {
+  label: string;
+  categories: { id: string; name: string; elements: string[] }[];
+  items: Record<string, { symbol: string; thumbnail: string }>;
 }
 
 export interface LibrarySelector {

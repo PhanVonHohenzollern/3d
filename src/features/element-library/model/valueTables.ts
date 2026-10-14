@@ -5,11 +5,17 @@ import type {
   LibraryValues,
 } from '@/features/element-library/model/types';
 import {
+  applyPipeSizeLookups,
+  resolvePipeConnections,
+  pipeConnectionParameters,
+} from '@/features/element-library/model/pipeTechnologies';
+import {
   resolveXml,
   sameValue,
   xmlConnectors,
   xmlOptions,
   type XmlCatalog,
+  type XmlRule,
 } from '@/features/element-library/model/xmlRules';
 
 export interface ValueTable {
@@ -124,12 +130,19 @@ export function defineLibrary(name: string, definitions: TableElement[], xml?: X
           ...(values.has('$technology') ? { technology: values.get('$technology') } : {}),
         }));
         for (const key of [...values.keys()]) if (key.startsWith('$')) values.delete(key);
-        const result = rules && xml ? resolveXml(xml, rules, values, changed, !previous, [...dirty]) : values;
+        const selectedRows = new Map<XmlRule, number>();
+        const result =
+          rules && xml ? resolveXml(xml, rules, values, changed, !previous, [...dirty], selectedRows) : values;
         if (rules && xml) {
           for (const [name, choices] of xmlOptions(xml, rules, result)) options.set(name, choices);
           connectors = xmlConnectors(rules, result);
+          applyPipeSizeLookups(connectors, result, xml, selectedRows);
         }
 
+        for (const key of result.keys())
+          if (/:(get_ext_diam|get_fln_size|get_fln_diam|get_fln_thick|get_ldist)$/.test(key)) result.delete(key);
+        for (const [key, value] of pipeConnectionParameters(resolvePipeConnections(connectors, result), connectors))
+          result.set(key, value);
         const resolved = { values: result, connectors, options };
         if (!previous)
           initial = { values: new Map(result), connectors: structuredClone(connectors), options: new Map(options) };

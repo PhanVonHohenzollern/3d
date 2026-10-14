@@ -1,7 +1,12 @@
 import type { MouseEventData, WheelEventData } from '@/shared/lib/qt';
 import { setsEqual } from '@/shared/lib/sets';
 import type { TextMeasurer } from '@/shared/lib/text';
-import { kNextSelectionMode, kSelectionModeNames } from '@/widgets/viewport/config/viewport';
+import {
+  kCameraTransitionMs,
+  kNextSelectionMode,
+  kSelectionModeNames,
+  kViewCubeFitPadding,
+} from '@/widgets/viewport/config/viewport';
 import type { QRect } from '@/widgets/viewport/lib/math/Rect';
 import { Quaternion } from '@/widgets/viewport/lib/math/Quaternion';
 import { QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
@@ -270,29 +275,60 @@ export class ViewportEngine {
     this.#stopCameraAnimation();
     this.#pickers.invalidate();
     const camera = this.#view.camera;
-    // Collect mesh bounds once; only eight corners need fitting during animation.
     const bounds = fitToScene ? this.#view.sceneBounds() : null;
+    const fit = bounds && !bounds.isEmpty();
+    const animate =
+      typeof requestAnimationFrame !== 'undefined' &&
+      !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const from = camera.orientation;
+    const fromTarget = camera.target;
+    const fromDistance = camera.distance;
+    const fromHeight = camera.orthographicHeight;
+    let toTarget = fromTarget,
+      toDistance = fromDistance,
+      toHeight = fromHeight;
+    if (fit) {
+      const framing = new ViewportCamera();
+      framing.setViewportSize(this.width(), this.height());
+      framing.projectionMode = camera.projectionMode;
+      // Reserve the space needed along the rotation once. Refitting each frame
+      // made the zoom reverse direction whenever the projected bounds narrowed.
+      const steps = animate ? 32 : 0;
+      for (let i = 0; i <= steps; i++) {
+        framing.orientation = steps ? from.slerp(target, i / steps) : target;
+        framing.fitBounds(bounds.minimum(), bounds.maximum(), kViewCubeFitPadding);
+        toTarget = framing.target;
+        toDistance = Math.max(toDistance, framing.distance);
+        toHeight = Math.max(toHeight, framing.orthographicHeight);
+      }
+    }
 
-    const applyOrientation = (orientation: Quaternion): void => {
-      camera.orientation = orientation;
-      if (bounds && !bounds.isEmpty()) camera.fitBounds(bounds.minimum(), bounds.maximum());
+    const smooth = (t: number) => t * t * (3 - 2 * t);
+
+    const apply = (t: number): void => {
+      // Zoom out/recenter first, then rotate in the reserved frame. Never zoom
+      // in at the end, including when the user has already zoomed farther out.
+      const zoom = smooth(Math.min(1, t / 0.3));
+      const rotation = fit && animate ? Math.max(0, (t - 0.3) / 0.7) : t;
+      camera.orientation = t === 1 ? target : from.slerp(target, smooth(rotation));
+      if (fit) {
+        camera.target = fromTarget.add(toTarget.sub(fromTarget).mul(zoom));
+        camera.distance = fromDistance + (toDistance - fromDistance) * zoom;
+        camera.orthographicHeight = fromHeight + (toHeight - fromHeight) * zoom;
+      }
       this.#afterCameraMove();
     };
 
-    if (
-      typeof requestAnimationFrame === 'undefined' ||
-      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    ) {
-      applyOrientation(target);
+    if (!animate) {
+      apply(1);
 
       return;
     }
-    const from = camera.orientation;
     const started = performance.now();
 
     const step = (now: number): void => {
-      const t = Math.min(1, (now - started) / 250);
-      applyOrientation(from.slerp(target, t * t * (3 - 2 * t)));
+      const t = Math.min(1, (now - started) / kCameraTransitionMs);
+      apply(Math.max(0, t));
       this.#cameraAnimation = t < 1 ? requestAnimationFrame(step) : null;
     };
 

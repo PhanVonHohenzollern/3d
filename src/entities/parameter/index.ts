@@ -1,4 +1,4 @@
-export { isFunctionParameterKey, parameterSlotCount } from '@/entities/parameter/lib/keys';
+export { isConnectorQuery, isFunctionParameterKey, parameterSlotCount } from '@/entities/parameter/lib/keys';
 export {
   definitionId,
   neutralValueForType,

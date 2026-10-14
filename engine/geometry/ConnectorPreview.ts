@@ -48,6 +48,13 @@ export interface ConnectorDefinition {
   // SDK connection identity is independent of the circular/rectangular profile.
   connectionType?: string;
   technology?: string;
+  // XML Draw3d settings, independent of the interactive Link overlay.
+  physical?: {
+    length: string;
+    // Runtime visibility only. XML CPFLAGS are not the transient SDK lkfDraw flag.
+    draw?: boolean;
+    sizeLookup?: { technology: string; diameter: number; nominal: number };
+  };
   orientation: ConnectorOrientation;
   diameter: string;
   aSize: string;
@@ -86,41 +93,51 @@ export interface ConnectorPreview {
 
 export type ConnectorExpressionEvaluator = (expression: string) => number;
 
-export function buildConnectorPreview(
-  definition: ConnectorDefinition,
-  evaluate: ConnectorExpressionEvaluator,
-): ConnectorPreview {
-  const field = (expression: string, name: string): number => {
-    try {
-      const value = evaluate(expression);
-      if (!Number.isFinite(value) || Math.abs(value) > 1e8)
-        throw new CppException('runtime_error', 'value must be finite and within +/-100000000');
+function connectorValue(evaluate: ConnectorExpressionEvaluator, expression: string, name: string): number {
+  try {
+    const value = evaluate(expression);
+    if (!Number.isFinite(value) || Math.abs(value) > 1e8)
+      throw new CppException('runtime_error', 'value must be finite and within +/-100000000');
 
-      return value;
-    } catch (e) {
-      throw new CppException('runtime_error', `${name}: ${what(e)}`);
-    }
-  };
+    return value;
+  } catch (error) {
+    throw new CppException('runtime_error', `${name}: ${what(error)}`);
+  }
+}
 
-  const width = definition.type === 'Circular' ? field(definition.diameter, 'Diameter') : field(definition.aSize, 'A');
-  const height = definition.type === 'Circular' ? width : field(definition.bSize, 'B');
-  if (width <= 1e-6 || height <= 1e-6)
-    throw new CppException('runtime_error', 'Diameter / A / B must be greater than 0.000001');
-
+export function connectorFrame(definition: ConnectorDefinition, evaluate: ConnectorExpressionEvaluator) {
   const point = new FdPoint3d(
-    field(definition.position[0], 'X'),
-    field(definition.position[1], 'Y'),
-    field(definition.position[2], 'Z'),
+    ...(definition.position.map((value, index) => connectorValue(evaluate, value, ['X', 'Y', 'Z'][index])) as [
+      number,
+      number,
+      number,
+    ]),
   );
   let direction = previewOrientationDirection(definition.orientation);
   let up = Math.abs(direction.z) > 0.5 ? new FdVector3d(0, 1, 0) : new FdVector3d(0, 0, 1);
   const axes = [new FdVector3d(1, 0, 0), new FdVector3d(0, 1, 0), new FdVector3d(0, 0, 1)];
   const angleNames = ['a (degrees)', 'b (degrees)', 'gamma (degrees)'];
   for (let i = 0; i < axes.length; ++i) {
-    const angle = deg(field(definition.angles[i], angleNames[i]));
+    const angle = deg(connectorValue(evaluate, definition.angles[i], angleNames[i]));
     direction = direction.rotateBy(angle, axes[i]);
     up = up.rotateBy(angle, axes[i]);
   }
+
+  return { point, direction: direction.normalize(), up: up.normalize() };
+}
+
+export function buildConnectorPreview(
+  definition: ConnectorDefinition,
+  evaluate: ConnectorExpressionEvaluator,
+): ConnectorPreview {
+  const field = (expression: string, name: string) => connectorValue(evaluate, expression, name);
+
+  const width = definition.type === 'Circular' ? field(definition.diameter, 'Diameter') : field(definition.aSize, 'A');
+  const height = definition.type === 'Circular' ? width : field(definition.bSize, 'B');
+  if (width <= 1e-6 || height <= 1e-6)
+    throw new CppException('runtime_error', 'Diameter / A / B must be greater than 0.000001');
+
+  const { point, direction, up } = connectorFrame(definition, evaluate);
 
   const result: ConnectorPreview = {
     id: definition.id,

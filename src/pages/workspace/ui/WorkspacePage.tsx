@@ -36,9 +36,7 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
-      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={onToggleTheme}>
-        <ElementLibraryPanel model={workspace.library} />
-      </WorkspaceHeader>
+      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={onToggleTheme} />
       {workspace.files.message && (
         <div
           role={workspace.files.error ? 'alert' : 'status'}
@@ -66,7 +64,11 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
               aria-label="Code Editor"
               className="workspace-panel @container/editor flex h-full min-w-0 flex-col overflow-hidden border border-line bg-base shadow-xs"
             >
-              <PanelHeader icon={CodeXml} title="Code Editor">
+              <PanelHeader
+                icon={CodeXml}
+                title="Code Editor"
+                titleAction={<ElementLibraryPanel model={workspace.library} />}
+              >
                 <span className="workspace-surface hidden bg-secondary px-2 py-1 font-code text-xs text-muted-foreground @min-[340px]/editor:inline">
                   C++
                 </span>
