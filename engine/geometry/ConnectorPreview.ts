@@ -54,6 +54,17 @@ export interface ConnectorDefinition {
     // Runtime visibility only. XML CPFLAGS are not the transient SDK lkfDraw flag.
     draw?: boolean;
     sizeLookup?: { technology: string; diameter: number; nominal: number };
+    // Dimensions supplied atomically by a JSON library's constraint snapshot.
+    resolvedSize?: {
+      technology: string;
+      diameter: number;
+      representation: number;
+      internalDiameter: number;
+      externalMale: number;
+      externalFemale: number;
+      flangeDiameter: number;
+      flangeThickness: number;
+    };
   };
   orientation: ConnectorOrientation;
   diameter: string;

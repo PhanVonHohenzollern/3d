@@ -11,18 +11,22 @@ import {
   resolvePipeConnections,
   pipeConnectionParameters,
 } from '@/features/element-library';
-import CGeneral from '@/features/element-library/data/CGeneral';
+import { CGeneral } from '@tests/libraryData';
+import { readFileSync } from 'node:fs';
+import { readParsedLibrary } from '@/features/element-library/model/parsedLibrary';
+import { createJsonLibrary } from '@/features/element-library/model/jsonLibrary';
+const technologyLibrary = readParsedLibrary(JSON.parse(readFileSync('libraries/CGeneral/CGeneral.json','utf8')));
 
 function link(technology = 'THR_STEEL', connectionType = 'M', length = '20') {
-  return {
-    ...defaultConnectorDefinition(),
-    id: 1,
-    name: 'Port',
-    diameter: '25',
-    technology,
-    connectionType,
-    physical: { draw: true, length },
-  };
+  const library = createJsonLibrary('Technology test', {
+    ...technologyLibrary,
+    entities: { port: { id: 'port', guid: 'port', variables: [], restrictions: [], connectors: [{
+      id: 'Port', attributes: {TYPE: 13}, conditionsRaw: {}, fields: {DIR: 1, FLENGTH: length},
+      diameterExpression: '25', technologyExpression: technology, connectionTypeExpression: connectionType,
+      positionExpressions: {X:'0',Y:'0',Z:'0'},
+    }] } },
+  }, {port:{entry:'makeTest'}});
+  return { ...library.elements[0].resolve().connectors[0], orientation: defaultConnectorDefinition().orientation };
 }
 
 it('uses XML Male/Female dimensions and enforces the technology representation', () => {
@@ -40,7 +44,7 @@ it('uses XML Male/Female dimensions and enforces the technology representation',
     flangeThickness: 0,
     externalDiameter: 33.7,
   });
-  expect(resolve('Plastik klejony', 'F')).toMatchObject({ type: 'female', externalDiameter: 30 });
+  expect(resolve('GLD_PLASTIC', 'F')).toMatchObject({ type: 'female', externalDiameter: 30 });
   const parameters = pipeConnectionParameters([resolve('FLN_STEEL', 'N')]);
   expect(parameters.get('Port:get_fln_diam')).toBe('115');
   expect(parameters.get('Port:get_fln_size')).toBe('16');
@@ -100,25 +104,20 @@ it('respects explicit runtime visibility and leaves zero-length non-flanged conn
   }
 });
 
-it('keeps the selected XML size row for formula-derived adapters without rounding manual input', () => {
+it('rejects formula adapters with incompatible pinned diameters instead of borrowing a size row', () => {
   const element = CGeneral.elements.find((element) => element.name === 'Copper-steel female-int.thr. adapter')!;
-  const initial = element.resolve!();
-  expect(initial.values.get('d2')).toBe('26.4');
-  const connection = resolvePipeConnections(initial.connectors, initial.values).find(
-    (c) => c.definition.name === 'TS1',
-  )!;
-  expect(connection.externalDiameter).toBe(39.7);
-  const manual = element.resolve!(new Map(initial.values).set('d2', '26.5'), ['d2']);
-  expect(manual.values.get('d2')).toBe('26.5');
-  expect(manual.values.get('TS1:get_ext_diam')).toBe('0');
-  expect(resolvePipeConnections(manual.connectors, manual.values).some((c) => c.definition.name === 'TS1')).toBe(false);
+  const initial = element.resolve();
+  const manual = element.resolve(new Map(initial.values).set('d2','26.5'),['d2']);
+  expect(manual.snapshot.status).not.toBe('valid');
+  expect(manual.errors?.length).toBeGreaterThan(0);
+  expect(resolvePipeConnections(manual.connectors,manual.values).some((c) => c.definition.name === 'TS1')).toBe(false);
 });
 
-it('resolves flange sizes independently of an undefined FLENGTH expression', () => {
+it('does not generate a physical connector with an unresolved FLENGTH expression', () => {
   const definition = link('FLN_STEEL', 'N', 'l');
   const connections = resolvePipeConnections([definition], new Map());
-  expect(connections[0]).toMatchObject({ length: 0, flangeSize: 115, flangeThickness: 16 });
-  expect(buildConnectionGeometry(connections, Number).meshes).toHaveLength(1);
+  expect(connections).toEqual([]);
+  expect(buildConnectionGeometry(connections, Number).meshes).toHaveLength(0);
 });
 
 it('rebuilds conditional CHIL connections across technology and size choices', () => {
@@ -126,8 +125,16 @@ it('rebuilds conditional CHIL connections across technology and size choices', (
   let state = element.resolve!();
   for (const tech of state.options.get('tech')!) {
     state = element.resolve!(new Map(state.values).set('tech', tech), ['tech']);
+    if (tech === 'polipropylen') {
+      expect(state.snapshot.status).toBe('unresolved');
+      expect(state.errors?.some((error) => error.includes('unsupported technology size schema'))).toBe(true);
+      continue;
+    }
+    expect(state.snapshot.status, tech).toBe('valid');
+    expect(resolvePipeConnections(state.connectors, state.values), tech).toHaveLength(state.connectors.length);
     for (const diameter of state.options.get('diam')!) {
       const resolved = element.resolve!(new Map(state.values).set('diam', diameter), ['diam']);
+      expect(resolved.snapshot.status, `${tech}/${diameter}`).toBe('valid');
       const connections = resolvePipeConnections(resolved.connectors, resolved.values);
       expect(connections, `${tech}/${diameter}`).toHaveLength(resolved.connectors.length);
       expect(

@@ -12,6 +12,8 @@ it.each(libraries)('covers every $name element with a category, display symbol a
   const icons = new Set<string>();
   for (const { symbol, thumbnail } of Object.values(asset.catalog.items)) {
     expect(symbol).not.toBe('');
+    // JSON libraries can be added before their optional SVG assets.
+    if (!thumbnail) continue;
     icons.add(thumbnail);
     const svg = readFileSync(`public/library-icons/${asset.name}/${thumbnail}`, 'utf8');
     expect(svg).toContain('viewBox="0 0 160 112"');

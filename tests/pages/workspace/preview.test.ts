@@ -90,12 +90,21 @@ return 0;
     parameters.setCheckbox('makeDV::BG', true);
     expect(mw.session.scene.meshes).toHaveLength(2);
     expect(mw.session.lastResult.parameterRequests.map((p) => p.functionName)).toEqual(['makeDV', 'makeDV', 'makeBG']);
+    parameters.edit(
+      parameters.rows.findIndex((row) => row.key === 'makeBG::D'),
+      3,
+    );
+    parameters.editorTextEdited('35');
     const built = mw.session.scene;
     parameters.setCheckbox('makeDV::BG', false);
     expect(parameters.rows.find((row) => row.key === 'makeBG::D')?.disabled).toBe(true);
     expect(mw.session.scene).not.toBe(built);
     expect(mw.session.scene.meshes).toHaveLength(1);
     expect(mw.session.lastResult.apiCalls.some((call) => call.name === 'makeBG')).toBe(false);
+    expect(parameters.values().get('makeBG::D')).toBe('35');
+    parameters.setCheckbox('makeDV::BG', true);
+    expect(mw.session.scene.meshes).toHaveLength(2);
+    expect(mw.session.lastResult.parameterRequests.find((p) => p.functionName === 'makeBG')?.currentValue).toBe('35');
     mw.dispose();
   });
 

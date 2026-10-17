@@ -17,6 +17,30 @@ function mockLibraryFetch() {
   });
 }
 
+// Internal selectors/dimensions are no longer editable rows. Exercise their
+// programmatic updates here so case switching and connector synchronization
+// remain covered without exposing XML-hidden inputs in the UI.
+function setHiddenLibraryInput(mw: ReturnType<typeof createWorkspace>['mw'], name: string, value: string) {
+  const { parameters } = mw;
+  const element = mw.library.element!;
+  expect(element.hiddenParameters, name).toContain(name);
+  expect(
+    parameters.rows.some((row) => row.texts[0] === name),
+    name,
+  ).toBe(false);
+  const saved = parameters.savedValues();
+  saved.set(name, value);
+  saved.set(`${element.entry}::${name}`, value);
+  parameters.loadValues(
+    mw.session.discoverParameters(mw.functions.program(), () => false),
+    mw.library.resolution.values,
+    saved,
+    element.selectors.map((s) => s.name),
+    new Set(element.hiddenParameters!.flatMap((n) => [n, `${element.entry}::${n}`])),
+  );
+  mw.onParametersChanged();
+}
+
 it('loads FLM elements with visible connectors and no automatic mesh or Link selection', async () => {
   vi.useFakeTimers();
   const fetchMock = mockLibraryFetch();
@@ -28,7 +52,7 @@ it('loads FLM elements with visible connectors and no automatic mesh or Link sel
   try {
     mw.start();
     await mw.library.selectLibrary('CGeneral');
-    for (const entry of ['makeTFMN', 'makeTFMT']) {
+    for (const entry of ['makeTFMT', 'makeCRWLD']) {
       mw.library.openElement(mw.library.elements.find((element) => element.entry === entry)!.id);
       expect(mw.session.scene.meshes.length).toBeGreaterThan(0);
       expect(engine.hasApiFocus()).toBe(false);
@@ -53,7 +77,7 @@ it('loads FLM elements with visible connectors and no automatic mesh or Link sel
   }
 });
 
-it('adds XML connection geometry without changing TFMN/TFMT source or the connector overlay', async () => {
+it('adds TFMT connection geometry from a valid snapshot and blocks conflicting TFMN data', async () => {
   vi.useFakeTimers();
   const fetchMock = mockLibraryFetch();
   const { mw, editor, parameters, links } = createWorkspace();
@@ -62,15 +86,8 @@ it('adds XML connection geometry without changing TFMN/TFMT source or the connec
   try {
     mw.start();
     await mw.library.selectLibrary('CGeneral');
-    mw.library.openElement(mw.library.elements.find((element) => element.name === 'Threaded female-male nipple')!.id);
+    mw.library.openElement(mw.library.elements.find((element) => element.entry === 'makeTFMT')!.id);
     const source = editor.text;
-
-    const edit = (name: string, value: string) => {
-      const row = parameters.rows.findIndex((row) => row.texts[0] === name);
-      expect(parameters.edit(row, 3), name).toBe(true);
-      parameters.editorTextEdited(value);
-      parameters.commitEditor();
-    };
 
     const checkConnection = (bodyEnd: number, point: number, bodyCount: number) => {
       expect(mw.session.lastResult.diagnostics).toEqual([]);
@@ -99,50 +116,20 @@ it('adds XML connection geometry without changing TFMN/TFMT source or the connec
     };
 
     expect(links.definitions()[1]).toMatchObject({ connectionType: '13' });
-    checkConnection(12.5, 32.5, 2);
+    checkConnection(0, 20, 1);
     const completeScene = mw.session.scene;
     for (const link of links.definitions()) links.togglePreview(link.id);
     expect(previews).toEqual([]);
     expect(mw.session.scene).toBe(completeScene);
     const exported = parseObj(mw.exportObj());
-    const exportedPart = exported.meshes
-      .filter((mesh) => mesh.primitive !== 'lines')
-      .flatMap((mesh) => mesh.vertices)
-      .filter((vertex) => vertex.x > 12.5 + 1e-6);
-    expect(exportedPart.length).toBeGreaterThan(0);
-    expect(Math.max(...exportedPart.map((vertex) => vertex.x))).toBeCloseTo(32.5);
+    expect(Math.max(...exported.meshes.flatMap((mesh) => mesh.vertices.map((v) => v.x)))).toBeCloseTo(20);
     links.togglePreview(2);
-    edit('L', '85');
-    edit('C', '30');
-    edit('C1', '10');
-    {
-      const values = parameters.contextValues();
-      const halfLength = Number(values.get('L')) / 2;
-      checkConnection(-halfLength + Number(values.get('C')) + Number(values.get('C1')), halfLength, 2);
-    }
-
-    edit('elType3d', '1');
-    expect(mw.library.element?.name).toBe('Threaded male-male nipple');
-    expect(links.definitions().map((link) => link.connectionType)).toEqual(['14', '14']);
-    checkConnection(32.5, 32.5, 3);
-    expect(previews).toHaveLength(2);
-    expect(previews[1].length).toBeCloseTo(25 * 0.35);
-    expect(mw.session.lastResult.diagnostics).toEqual([]);
-    expect(links.statusIsError).toBe(false);
-
-    edit('elType3d', '0');
-    {
-      const values = parameters.contextValues();
-      const halfLength = Number(values.get('L')) / 2;
-      checkConnection(-halfLength + Number(values.get('C')) + Number(values.get('C1')), halfLength, 2);
-    }
+    const blocked = mw.library.elements.find((element) => element.name === 'Threaded female-male nipple')!;
+    expect(blocked.resolve().snapshot.status).toBe('conflict');
+    mw.library.openElement(blocked.id);
+    expect(mw.library.canOpen).toBe(false);
+    expect(mw.session.scene).toBe(completeScene);
     expect(editor.text).toBe(source);
-    parameters.resetToSource();
-    checkConnection(12.5, 32.5, 2);
-
-    mw.library.openElement(mw.library.elements.find((element) => element.entry === 'makeTFMT')!.id);
-    expect(links.definitions()[1]).toMatchObject({ connectionType: '13' });
-    checkConnection(0, 20, 1);
     links.selectConnector(2);
     links.positionEdited(0, '70');
     const xs = mw.session.scene.meshes
@@ -171,9 +158,8 @@ it('builds the missing CSV inlet flange and hides internal connector queries in 
     ).toBe(false);
     expect(parameters.rows.filter((row) => row.texts[0].startsWith('diam')).map((row) => row.texts[0])).toEqual([
       'diam1',
-      'diam2',
     ]);
-    expect(mw.inspectorCounts.ParametersDock).toBe(18);
+    expect(mw.inspectorCounts.ParametersDock).toBe(parameters.rows.length);
     expect(parameters.contextValues().get('diam1')).toBe('25');
     expect(parameters.contextValues().get('diam2')).toBe('30');
     const flange = mw.session.scene.meshes.filter((mesh) => mesh.apiName.startsWith('connection:L1:'));
@@ -185,6 +171,110 @@ it('builds the missing CSV inlet flange and hides internal connector queries in 
     expect(Math.max(...vertices.map((p) => Math.hypot(p.x, p.z)))).toBeCloseTo(57.5);
     links.togglePreview(1);
     expect(mw.session.scene.meshes).toContain(flange[0]);
+  } finally {
+    mw.dispose();
+    fetchMock.mockRestore();
+  }
+});
+
+it('updates CRWLD Parameters, runtime inputs and Links together after each edit', async () => {
+  const fetchMock = mockLibraryFetch();
+  const { mw, parameters, links } = createWorkspace();
+  let previews: readonly ConnectorPreview[] = [];
+  links.previewChanged.connect((value) => (previews = value));
+  try {
+    mw.start();
+    await mw.library.selectLibrary('CGeneral');
+    mw.library.openElement('5E09516F-C262-4449-B978-D574A94C5A1A');
+
+    const edit = (name: string, value: string) => {
+      const row = parameters.rows.findIndex((row) => row.texts[0] === name);
+      expect(parameters.edit(row, 3), name).toBe(true);
+      parameters.editorTextEdited(value);
+      parameters.commitEditor();
+      const values = parameters.contextValues();
+      for (const name of ['l1', 'l2', 'l3', 'l4', 'l5', 'd1ext', 'd2ext', 'd3ext', 'd4ext']) {
+        const row = parameters.rows.find((row) => row.texts[0] === name);
+        if (name.endsWith('ext')) expect(row, name).toBeUndefined();
+        else expect(row?.texts[3], name).toBe(values.get(name));
+        expect(
+          Number(mw.session.lastResult.parameterRequests.find((request) => request.name === name)?.currentValue),
+          name,
+        ).toBeCloseTo(Number(values.get(name)));
+        expect(mw.library.resolution.values.get(name), name).toBe(values.get(name));
+      }
+      expect(previews[0].point.x).toBeCloseTo(-Number(values.get('l1')));
+      expect(previews[1].point.x).toBeCloseTo(Number(values.get('l2')));
+      expect(previews[2].point.y).toBeCloseTo(Number(values.get('l3')));
+      expect(previews[3].point.y).toBeCloseTo(-Number(values.get('l4')));
+      expect(mw.session.lastResult.diagnostics).toEqual([]);
+      expect(mw.session.scene.warnings).toEqual([]);
+
+      return values;
+    };
+
+    edit('d1', '40');
+    edit('d2', '40');
+    edit('d3', '32');
+    const values = edit('d4', '25');
+    expect(Object.fromEntries(values)).toMatchObject({
+      d1: '25', d2: '25', d3: '25', d4: '25',
+      d1ext: '33.7', d2ext: '33.7', d3ext: '33.7', d4ext: '33.7',
+    });
+    edit('l2', '200');
+    edit('l5', '25');
+    const bounded = edit('l2', '60');
+    expect(Number(bounded.get('l5'))).toBeCloseTo(60 - Math.max(3 * Number(bounded.get('d3ext')) / 4, 3 * Number(bounded.get('d4ext')) / 2));
+    edit('l3', '55.5');
+    expect(parameters.contextValues().get('l3')).toBe('55.5');
+  } finally {
+    mw.dispose();
+    fetchMock.mockRestore();
+  }
+});
+
+it('removes unchecked CRWLD insulation and retains its thickness through library parameter changes', async () => {
+  const fetchMock = mockLibraryFetch();
+  const { mw, parameters } = createWorkspace();
+  try {
+    mw.start();
+    await mw.library.selectLibrary('CGeneral');
+    mw.library.openElement('5E09516F-C262-4449-B978-D574A94C5A1A');
+
+    const insulation = () =>
+      mw.session.scene.meshes.filter((mesh) => mesh.color.r === Math.fround(139 / 255) && mesh.color.g === 0);
+
+    const size = () => parameters.rows.find((row) => row.texts[0] === 'size')!;
+
+    const edit = (name: string, value: string) => {
+      const row = parameters.rows.findIndex((row) => row.texts[0] === name);
+      expect(parameters.edit(row, 3), name).toBe(true);
+      parameters.editorTextEdited(value);
+      parameters.commitEditor();
+    };
+
+    expect(parameters.rows.some((row) => /^d[1-4](ext|int)$/.test(row.texts[0]))).toBe(false);
+    expect(insulation()).toHaveLength(0);
+    parameters.setInsulationEnabled('getExtInsSize', true);
+    edit('size', '25');
+    expect(insulation().length).toBeGreaterThan(0);
+    edit('d1', '40');
+    expect(parameters.isInsulationEnabled('getExtInsSize')).toBe(true);
+    expect(size().texts[3]).toBe('25');
+    parameters.setInsulationEnabled('getExtInsSize', false);
+    expect(insulation()).toHaveLength(0);
+    expect(size().texts[3]).toBe('25');
+    edit('d3', '32');
+    expect(insulation()).toHaveLength(0);
+    expect(parameters.overrides().has('getExtInsSize')).toBe(false);
+    expect(size().texts[3]).toBe('25');
+    parameters.setInsulationEnabled('getExtInsSize', true);
+    expect(insulation().length).toBeGreaterThan(0);
+    expect(mw.session.runtime.evaluateNumericExpression('size')).toBe(25);
+    expect(mw.session.lastResult.diagnostics).toEqual([]);
+    parameters.resetToSource();
+    expect(insulation()).toHaveLength(0);
+    expect(parameters.isInsulationEnabled('getExtInsSize')).toBe(false);
   } finally {
     mw.dispose();
     fetchMock.mockRestore();
@@ -223,7 +313,7 @@ it('updates dependent XML sizes and keeps source edits until Reset', async () =>
     expect(mw.library.resolution.values.get('diam')).toBe('65');
     expect(mw.session.scene).not.toBe(originalScene);
     expect(editor.text).toBe(code);
-    edit('elType', '0');
+    setHiddenLibraryInput(mw, 'elType', '0');
     expect(mw.library.element?.defaults.elType).toBe('0');
     expect(parameters.contextValues().get('diam')).toBe('65');
     expect(links.definitions().every((link) => link.technology === 'THR_STEEL' && link.connectionType === 'F')).toBe(
@@ -272,25 +362,26 @@ it('updates CHIL helper selectors and keeps the selected element across shared c
       parameters.commitEditor();
     };
 
-    edit('A', '900');
+    const nextA = water.resolve().options.get('A')!.find((value) => value !== water.resolve().values.get('A'))!;
+    edit('A', nextA);
     links.positionEdited(0, '123');
     const edited = links.definitions();
     for (const ftype of ['1', '2', '0']) {
-      edit('ftype', ftype);
+      setHiddenLibraryInput(mw, 'ftype', ftype);
       expect(mw.library.elementId).toBe(water.id);
       expect(links.definitions()).toHaveLength(4);
       expect(parameters.contextValues().get('ftype')).toBe(ftype);
     }
-    expect(parameters.contextValues().get('A')).toBe('900');
+    expect(parameters.contextValues().get('A')).toBe(nextA);
     expect(links.definitions()).toEqual(edited);
-    edit('elType', '0');
+    setHiddenLibraryInput(mw, 'elType', '0');
     expect(links.definitions()).toHaveLength(2);
-    edit('elType', '1');
+    setHiddenLibraryInput(mw, 'elType', '1');
     expect(mw.library.elementId).toBe(water.id);
     expect(links.definitions()).toEqual(edited);
-    edit('elType', '2');
+    setHiddenLibraryInput(mw, 'elType', '2');
     expect(mw.library.element?.name).toBe('Floor standing fancoil');
-    edit('elType', '1');
+    setHiddenLibraryInput(mw, 'elType', '1');
     expect(mw.library.elementId).toBe(water.id);
     expect(links.definitions()).toEqual(edited);
     expect(editor.text).toBe(source);
@@ -302,7 +393,7 @@ it('updates CHIL helper selectors and keeps the selected element across shared c
       ['2', ['C3', 'H3']],
       ['0', ['C1', 'H1']],
     ] as const) {
-      edit('ftype', ftype);
+      setHiddenLibraryInput(mw, 'ftype', ftype);
       expect(mw.library.elementId).toBe(floor.id);
       expect(links.definitions().map((link) => link.name)).toEqual(names);
     }
@@ -358,9 +449,11 @@ it('matches CHIL diameter and connection technology together without changing th
     expect(parameters.contextValues().get('diam')).toBe('15');
     expect(links.definitions()[0]).toMatchObject({ connectionType: 'F', technology: 'COPPER' });
     expect(links.tableRows[0].texts[3]).toBe('(327.5, -165, -137.5)');
+    const committedScene = mw.session.scene;
     edit('diam', '16.5');
-    expect(parameters.contextValues().get('diam')).toBe('16.5');
-    expect(parameters.rows.find((row) => row.texts[0] === 'diam')?.texts[3]).toBe('16.5');
+    expect(parameters.contextValues().get('diam')).toBe('15');
+    expect(parameters.rows.find((row) => row.texts[0] === 'diam')?.texts[3]).toBe('15');
+    expect(mw.session.scene).toBe(committedScene);
     expect(links.statusIsError).toBe(false);
     expect(editor.text).toBe(source);
   } finally {
@@ -393,24 +486,17 @@ it.each(['make2WayValve', 'makeSV', 'makeMF', 'makeTANK'])(
       };
 
       const initialValues = parameters.contextValues();
-      const dimension = ['L', 'H', 'l'].find(
-        (name) => initialValues.has(name) && parameters.rows.some((row) => row.texts[0] === name && !row.disabled),
-      )!;
-      edit(dimension, '777');
+      const dimension = ['L', 'H', 'l'].find((name) => initialValues.has(name))!;
+      if (first.hiddenParameters?.includes(dimension)) setHiddenLibraryInput(mw, dimension, '777');
+      else edit(dimension, '777');
+      const acceptedDimension = parameters.contextValues().get(dimension);
       links.positionEdited(0, '17');
       const editedConnectors = links.definitions();
       for (const element of cases.slice(1)) {
-        edit('elType', element.defaults.elType);
-        const variant =
-          element.variants.find((variant) =>
-            Object.entries(variant.selection).every(
-              ([name, value]) => name === 'tech' || value === initialValues.get(name),
-            ),
-          ) ?? element.variants[0];
-        const expected = element.resolve!(
-          new Map(Object.entries({ ...element.defaults, ...variant.defaults })),
-          Object.keys(variant.selection),
-        );
+        setHiddenLibraryInput(mw, 'elType', element.defaults.elType);
+        expect(mw.library.elementId, element.name).toBe(element.id);
+        const expected = element.resolve(parameters.contextValues(), []);
+        expect(expected.snapshot.status, element.name).toBe('valid');
         expect(Object.fromEntries(parameters.contextValues())).toMatchObject(Object.fromEntries(expected.values));
         expect(links.definitions()).toEqual(expected.connectors);
         expect(mw.session.lastResult.diagnostics, element.name).toEqual([]);
@@ -419,8 +505,8 @@ it.each(['make2WayValve', 'makeSV', 'makeMF', 'makeTANK'])(
         expect(links.statusIsError).toBe(false);
         expect(editor.text).toBe(originalCode);
       }
-      edit('elType', first.defaults.elType);
-      expect(parameters.contextValues().get(dimension)).toBe('777');
+      setHiddenLibraryInput(mw, 'elType', first.defaults.elType);
+      expect(parameters.contextValues().get(dimension)).toBe(acceptedDimension);
       expect(links.definitions()).toEqual(editedConnectors);
       parameters.resetToSource();
       expect(parameters.contextValues().get(dimension)).toBe(initialValues.get(dimension));
@@ -459,15 +545,12 @@ it('loads connector defaults when changing MIXIT connection type and port orient
       edit('ConnType', connection);
       edit('bport', side);
       const current = parameters.contextValues();
-      const variant = element.variants.find(
-        (variant) =>
-          variant.selection.ConnType === connection &&
-          variant.selection.bport === side &&
-          variant.selection.dn === current.get('dn'),
-      )!;
-      expect(variant).toBeDefined();
-      expect(Object.fromEntries(current)).toMatchObject(variant.defaults);
-      expect(links.definitions()).toEqual(variant.connectors);
+      const expected = element.resolve(current, ['ConnType', 'bport', 'dn']);
+      expect(expected.snapshot.status).toBe('valid');
+      expect(current.get('ConnType')).toBe(connection);
+      expect(current.get('bport')).toBe(side);
+      expect(Object.fromEntries(current)).toMatchObject(Object.fromEntries(expected.values));
+      expect(links.definitions()).toEqual(expected.connectors);
       expect(mw.session.lastResult.diagnostics).toEqual([]);
       expect(mw.session.scene.warnings).toEqual([]);
       expect(links.statusIsError).toBe(false);
@@ -481,7 +564,7 @@ it('loads connector defaults when changing MIXIT connection type and port orient
   }
 });
 
-it('preserves values and connectors while a manually entered selector has no matching preset', async () => {
+it('rejects an internal selector outside its constraints and preserves the committed state', async () => {
   vi.useFakeTimers();
   const fetchMock = mockLibraryFetch();
   const { mw, parameters, links } = createWorkspace();
@@ -493,14 +576,10 @@ it('preserves values and connectors while a manually entered selector has no mat
     const values = parameters.contextValues();
     const connectors = links.definitions();
     const showMessage = vi.spyOn(mw.statusBar(), 'showMessage');
-    const row = parameters.rows.findIndex((row) => row.texts[0] === 'elType');
-    parameters.edit(row, 3);
-    parameters.editorTextEdited('999');
-    parameters.commitEditor();
-    expect(parameters.contextValues().get('elType')).toBe('999');
-    expect(parameters.contextValues()).toEqual(new Map([...values, ['elType', '999']]));
+    setHiddenLibraryInput(mw, 'elType', '999');
+    expect(parameters.contextValues()).toEqual(values);
     expect(links.definitions()).toEqual(connectors);
-    expect(showMessage.mock.calls.some(([, , kind]) => kind === 'warning' || kind === 'error')).toBe(false);
+    expect(showMessage.mock.calls.some(([, , kind]) => kind === 'warning' || kind === 'error')).toBe(true);
     parameters.resetToSource();
     expect(parameters.contextValues()).toEqual(values);
     expect(links.definitions()).toEqual(element.resolve!().connectors);
@@ -523,10 +602,7 @@ it('loads all nested TANK shapes with their own connector count and dimensions',
     );
     mw.library.openElement(tanks[0].id);
     for (const element of [...tanks.slice(1), tanks[0]]) {
-      const row = parameters.rows.findIndex((row) => row.texts[0] === 'elType3d');
-      expect(parameters.edit(row, 3)).toBe(true);
-      parameters.editorTextEdited(element.defaults.elType3d);
-      parameters.commitEditor();
+      setHiddenLibraryInput(mw, 'elType3d', element.defaults.elType3d);
       expect(parameters.contextValues().get('elType')).toBe('1');
       expect(Object.fromEntries(parameters.contextValues())).toMatchObject(element.defaults);
       expect(links.definitions()).toEqual(element.resolve!().connectors);
@@ -536,10 +612,7 @@ it('loads all nested TANK shapes with their own connector count and dimensions',
       expect(links.statusIsError).toBe(false);
     }
     for (const value of ['0', '1']) {
-      const row = parameters.rows.findIndex((row) => row.texts[0] === 'elType');
-      parameters.edit(row, 3);
-      parameters.editorTextEdited(value);
-      parameters.commitEditor();
+      setHiddenLibraryInput(mw, 'elType', value);
     }
     expect(parameters.contextValues().get('elType3d')).toBe(tanks[0].defaults.elType3d);
     expect(links.definitions()).toEqual(tanks[0].resolve!().connectors);

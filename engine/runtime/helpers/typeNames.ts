@@ -2,6 +2,9 @@ import { sdkCanonicalType, sdkTypeDefinition } from '@engine/runtime/SdkDefiniti
 import { isIdentifier, isSymbol, TokKind, type Token } from '@engine/runtime/helpers/tokens';
 import { kValueTypeNames } from '@engine/runtime/values/registry';
 
+// Shared with diagnostic consumers while both interpreter layouts coexist.
+export const CPP_TYPE_PARSER_REVISION = 'FLM_CPP_TYPES_CORE_20261017';
+
 export interface ParsedType {
   type: string;
   end: number;
@@ -59,6 +62,12 @@ function parseTypeAt(tokens: readonly Token[], start: number): (ParsedType & { c
   let type = tokens[pos++].text;
   if (type === 'unsigned' || type === 'signed') {
     type = ['int', 'short', 'long', 'char'].includes(tokens[pos]?.text) ? tokens[pos++].text : 'int';
+  }
+  // JavaScript uses binary64 for floating values, including C++ long double.
+  // Consume both type tokens so `double` is not mistaken for the declarator.
+  if (type === 'long' && tokens[pos]?.text === 'double') {
+    type = 'double';
+    ++pos;
   }
   if (type === 'long' && tokens[pos]?.text === 'long') ++pos;
   if (['long', 'short'].includes(type) && tokens[pos]?.text === 'int') ++pos;

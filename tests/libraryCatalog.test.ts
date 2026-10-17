@@ -72,6 +72,11 @@ it.each([
     const programs = new Map<string, ReturnType<FunctionWorkspace['program']>>();
     for (const element of library.elements) {
       if (element.error) continue;
+      const resolved = element.resolve();
+      if (resolved.snapshot.status !== 'valid') {
+        expect(resolved.errors?.length, element.id).toBeGreaterThan(0);
+        continue;
+      }
       for (const variant of element.variants) {
         expect(
           Object.values({ ...element.defaults, ...variant.defaults }).some((value) =>
@@ -87,8 +92,7 @@ it.each([
         program = workspace.program();
         programs.set(element.entry, program);
       }
-      const variant = element.variants[0];
-      const values = new Map(Object.entries({ ...element.defaults, ...variant.selection, ...variant.defaults }));
+      const values = resolved.values;
       const runtime = new GeometryRuntime();
       const panel = new ParameterPanelModel();
       const definitions = runtime.discoverParameters(program.source, program.options);
@@ -108,7 +112,7 @@ it.each([
       } else expect(scene.meshes.length, element.id).toBeGreaterThan(0);
       panel.updateRuntimeResult(result);
       const context = new Map([...values, ...panel.contextValues()]);
-      for (const connector of variant.connectors ?? element.connectors) {
+      for (const connector of resolved.connectors) {
         expect(
           () => buildConnectorPreview(connector, (expression) => evaluateLibraryExpression(expression, context)),
           element.id,

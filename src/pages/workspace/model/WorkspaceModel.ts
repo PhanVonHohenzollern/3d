@@ -1,4 +1,3 @@
-import { parameterSlotCount } from '@/entities/parameter';
 import { FunctionWorkspace } from '@/entities/source-function';
 import { LinkPanelModel } from '@/features/edit-connector';
 import { ParameterPanelModel } from '@/features/edit-parameters';
@@ -27,14 +26,15 @@ import { VariablePanelModel } from '@/widgets/variable-panel';
 import { pointDeclaration, unusedPreviewPointName, type Vec3, type Viewport3DHandle } from '@/widgets/viewport';
 import { createWorkspaceActions, type ActionListItem } from '@/widgets/workspace-header';
 import { buildConnectionGeometry, type ConnectorPreview, type PreviewGeometryScene } from '@engine/geometry';
+import { connectorMeshConnections } from '@/features/element-library/model/pipeTechnologies';
 import { emptyRuntimeResult, GeometryRuntime, what } from '@engine/runtime';
+import { missingExecutedGetVals, resolvedRuntimeParameters } from '@/features/element-library/model/runtimeParameters';
 
 // The workspace page: owns the panel models and the preview session, and turns what happens in
 // one panel into updates of the others. The editor and viewport wrap DOM objects, so they are
 // bound when their components mount.
 export class WorkspaceModel extends Observable {
   readonly library = new ElementLibraryModel();
-  #libraryValues: ReadonlyMap<string, string> | null = null;
   #libraryDefaults: LibraryDefaults | null = null;
   readonly variables = new VariablePanelModel();
   readonly parameters = new ParameterPanelModel();
@@ -54,6 +54,8 @@ export class WorkspaceModel extends Observable {
     () => this.parameters,
   );
   readonly previewTimer = new SingleShotTimer(220, () => this.runPreview());
+  // Coalesce parameter edits before repeating the full C++ execution and mesh build.
+  readonly #parameterBuildTimer = new SingleShotTimer(220, () => this.buildPreview());
   readonly selection = new SelectionSync(this);
 
   #editor: CodeEditorHandle | null = null;
@@ -117,11 +119,10 @@ export class WorkspaceModel extends Observable {
       trace.historySourceActivated.connect(selection.onApiTraceHistorySourceActivated);
     }
     this.links.setExpressionEvaluator((expression) => {
-      if (!this.#libraryValues) return this.session.runtime.evaluateNumericExpression(expression);
-      const values = this.parameters.contextValues();
-      for (const [key, value] of this.parameters.overrides()) values.set(key.split('::').at(-1)!, value);
-
-      return evaluateLibraryExpression(expression, values);
+      const committed = this.#libraryDefaults?.currentState;
+      if (!committed) return this.session.runtime.evaluateNumericExpression(expression);
+      // Connector coordinates must be evaluated against the committed JSON snapshot.
+      return evaluateLibraryExpression(expression, committed.snapshot.resolvedValues);
     });
     this.links.previewChanged.connect(this.onLinkPreviewChanged);
     this.links.definitionsChanged.connect(() => {
@@ -133,6 +134,7 @@ export class WorkspaceModel extends Observable {
   }
 
   #loadLibrarySample(sample: LibrarySample, replaceSource: boolean): void {
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     this.session.setMode('build');
     this.importedObj = null;
@@ -146,11 +148,16 @@ export class WorkspaceModel extends Observable {
     }
     const program = this.functions.program();
     const definitions = this.session.discoverParameters(program, () => false);
-    this.#libraryValues = sample.values;
     this.#libraryDefaults = sample.defaults ?? null;
-    this.parameters.loadValues(definitions, sample.values, sample.values, this.#libraryDefaults?.selectors);
+    this.parameters.loadValues(
+      definitions,
+      sample.values,
+      sample.values,
+      this.#libraryDefaults?.selectors,
+      this.#libraryDefaults?.hiddenParameters,
+    );
     this.parameters.setValueOptions(this.#libraryDefaults?.options ?? new Map());
-    this.#libraryDefaults?.remember(this.parameters.overrides());
+    this.#libraryDefaults?.remember(this.parameters.savedValues());
     this.links.loadDefinitions(sample.connectors);
     this.buildPreview();
     this.viewport.fitScene();
@@ -171,6 +178,7 @@ export class WorkspaceModel extends Observable {
   }
 
   dispose(): void {
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     this.session.dispose();
   }
@@ -211,6 +219,7 @@ export class WorkspaceModel extends Observable {
 
   readonly buildPreview = (): void => {
     if (this.#buildingPreview) return;
+    this.#parameterBuildTimer.stop();
     this.#buildingPreview = true;
     try {
       this.#activatePreviewMode('build');
@@ -229,7 +238,14 @@ export class WorkspaceModel extends Observable {
       }
       this.session.beginBuild();
       this.#updatePreview(source.split('\n').length, source, program);
-      this.session.recordBuild(this.functions.cacheKey, source, program, this.parameters.overrides());
+      try {
+        const requests = this.session.discoverParameters(program, () => false);
+        const committed = this.#libraryDefaults?.currentState;
+        const inputs = resolvedRuntimeParameters(this.parameters.overrides(), requests, committed?.snapshot);
+        this.session.recordBuild(this.functions.cacheKey, source, program, inputs);
+      } catch (error) {
+        this.statusBar().showMessage(what(error), 6000, 'error');
+      }
       this.changed();
     } finally {
       this.#buildingPreview = false;
@@ -243,6 +259,7 @@ export class WorkspaceModel extends Observable {
   };
 
   #activatePreviewMode(mode: PreviewMode): void {
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     this.session.setMode(mode);
     this.importedObj = null;
@@ -276,24 +293,39 @@ export class WorkspaceModel extends Observable {
   };
 
   readonly onParametersChanged = (): void => {
-    const defaults = this.#libraryDefaults?.change(this.parameters.overrides(), this.links.definitions());
-    if (defaults) this.#applyLibraryDefaults(defaults);
+    try {
+      const defaults = this.#libraryDefaults?.change(this.parameters.savedValues(), this.links.definitions());
+      if (defaults) this.#applyLibraryDefaults(defaults);
+    } catch (error) {
+      // Keep the draft in the Parameters editor. Do not replace it with the
+      // previous snapshot; failed validation must never trigger a preview.
+      // A later valid edit will be solved against the last committed snapshot.
+      this.statusBar().showMessage(error instanceof Error ? error.message : String(error), 6000, 'error');
+      this.changed();
+
+      return;
+    }
     this.session.markParametersChanged();
     this.changed();
-    if (this.session.mode === 'build') this.buildPreview();
-    else this.runPreview();
+    if (this.session.mode === 'build') this.#parameterBuildTimer.start();
+    else this.schedulePreview();
   };
 
   #applyLibraryDefaults(defaults: LibraryDefaultState): void {
     const program = this.functions.program();
     const definitions = this.session.discoverParameters(program, () => false);
     const tab = this.parameters.activeTab;
-    this.parameters.loadValues(definitions, defaults.values, defaults.parameters, this.#libraryDefaults?.selectors);
+    this.parameters.loadValues(
+      definitions,
+      defaults.values,
+      defaults.parameters,
+      this.#libraryDefaults?.selectors,
+      this.#libraryDefaults?.hiddenParameters,
+    );
     this.parameters.setValueOptions(defaults.options ?? new Map());
     this.parameters.selectTab(tab);
-    this.#libraryValues = defaults.values;
     this.library.syncDefaults(defaults);
-    this.#libraryDefaults?.remember(this.parameters.overrides());
+    this.#libraryDefaults?.remember(this.parameters.savedValues());
     this.links.loadDefinitions(defaults.connectors);
   }
 
@@ -323,11 +355,27 @@ export class WorkspaceModel extends Observable {
     parameters: ReadonlyMap<string, string>,
     program = this.functions.program(undefined, false, true),
   ): void {
+    const committed = this.#libraryDefaults?.currentState;
+    if (committed?.snapshot.status !== 'valid') return;
+    const definitions = new GeometryRuntime().discoverParameters(program.source, program.options);
+    let resolved: Map<string, string>;
+    try {
+      resolved = resolvedRuntimeParameters(parameters, definitions, committed?.snapshot);
+    } catch (error) {
+      this.statusBar().showMessage(what(error), 6000, 'error');
+      return;
+    }
     const runtime = new GeometryRuntime();
-    runtime.setParameters(parameters);
-    this.functions.acceptCalls(
-      runtime.executeUpToLine(program.source, program.source.split('\n').length, true, program.options),
-    );
+    runtime.setParameters(resolved);
+    const result = runtime.executeUpToLine(program.source, program.source.split('\n').length, true, program.options);
+    if (committed) {
+      const missing = missingExecutedGetVals(result.parameterRequests, committed.snapshot);
+      if (missing.length) {
+        this.statusBar().showMessage(`Missing JSON get_val binding(s): ${missing.join(', ')}`, 6000, 'error');
+        return;
+      }
+    }
+    this.functions.acceptCalls(result);
   }
 
   readonly selectFunctionOccurrence = (index: number): void => {
@@ -383,6 +431,7 @@ export class WorkspaceModel extends Observable {
   }
 
   #showFunctionEditor(): void {
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     const fn = this.functions.functions.find((fn) => fn.name === this.functions.active);
     this.#setEditorSource(fn?.line ?? 1);
@@ -560,17 +609,39 @@ export class WorkspaceModel extends Observable {
     const parameterDefinitions = this.session.discoverParameters(program, () => false);
     this.parameters.setDefinitions(parameterDefinitions);
 
-    const inputs = new Map(parameters ?? this.parameters.overrides());
-    const context = this.parameters.contextValues();
-    for (const [key, value] of inputs) context.set(key.split('::').at(-1)!, value);
-    const definitions = this.links.definitions();
+    const committed = this.#libraryDefaults?.currentState;
+    if (committed && committed.snapshot.status !== 'valid') {
+      this.statusBar().showMessage('Preview stopped: library parameters are not resolved.', 4000, 'error');
+      return;
+    }
+    let inputs: Map<string, string>;
+    try {
+      inputs = resolvedRuntimeParameters(
+        parameters ?? this.parameters.overrides(), parameterDefinitions, committed?.snapshot,
+      );
+    } catch (error) {
+      this.statusBar().showMessage(what(error), 6000, 'error');
+      return;
+    }
+    const context = new Map(this.parameters.contextValues());
+    if (committed) {
+      // Library parameters must never be overwritten by runtime-only overrides.
+      for (const [name, value] of committed.snapshot.resolvedValues) context.set(name, value);
+    } else {
+      for (const [key, value] of inputs) context.set(key.split('::').at(-1)!, value);
+    }
+    const definitions = committed ? committed.connectors : this.links.definitions();
     for (const [key, value] of pipeConnectionParameters(resolvePipeConnections(definitions, context), definitions))
       inputs.set(key, value);
     const outcome = this.session.execute(program, source, line, inputs, (result) => {
-      for (const request of result.parameterRequests) context.set(request.name, request.currentValue);
+      for (const request of result.parameterRequests)
+        if (!committed || !committed.snapshot.resolvedValues.has(request.name))
+          context.set(request.name, request.currentValue);
 
+      // All connectors still feed the C++ runtime queries above. Only
+      // flanged/threaded technologies generate additional Connector Mesh.
       return buildConnectionGeometry(
-        resolvePipeConnections(definitions, context),
+        connectorMeshConnections(resolvePipeConnections(definitions, context)),
         (expression) => evaluateLibraryExpression(expression, context),
         inputs.has('getExtInsSize') ? Number(inputs.get('getExtInsSize')) : undefined,
       );
@@ -582,11 +653,23 @@ export class WorkspaceModel extends Observable {
       return;
     }
     const { result } = outcome;
+    if (committed) {
+      // Static discovery includes inactive branches of shared C++ wrappers.
+      // Reject a missing binding only when get_val was actually executed.
+      const missing = missingExecutedGetVals(result.parameterRequests, committed.snapshot);
+      if (missing.length) {
+        this.statusBar().showMessage(
+          `Preview stopped: missing JSON get_val binding(s): ${missing.join(', ')}`,
+          6000, 'error',
+        );
+        return;
+      }
+    }
     if (!this.functions.active && this.session.mode === 'build') this.functions.acceptCalls(result);
     const scene = this.session.scene;
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
-      ParametersDock: parameterDefinitions.reduce((count, definition) => count + parameterSlotCount(definition), 0),
+      ParametersDock: this.parameters.rows.length,
       ApiTraceDock: result.apiCalls.length,
     };
     this.changed();

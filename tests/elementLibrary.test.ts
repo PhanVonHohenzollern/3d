@@ -9,24 +9,19 @@ import { FunctionWorkspace } from '@/entities/source-function';
 import { sourceFunctions } from '@/entities/source-function';
 import { buildConnectorPreview, PreviewGeometryEngine } from '@engine/geometry';
 import { ParameterPanelModel } from '@/features/edit-parameters';
-import CGeneral from '@/features/element-library/data/CGeneral';
-import GRUNDFOS from '@/features/element-library/data/GRUNDFOS';
-import BELIMO from '@/features/element-library/data/BELIMO';
+import { CGeneral } from '@tests/libraryData';
+import { GRUNDFOS } from '@tests/libraryData';
+import { BELIMO } from '@tests/libraryData';
 
 function catalog(name: string): ElementLibrary {
   return { CGeneral, GRUNDFOS, BELIMO }[name as 'CGeneral' | 'GRUNDFOS' | 'BELIMO'];
 }
 
 function preset(element: LibraryElement, selection: Record<string, string> = {}) {
-  const variant = element.variants.find((item) =>
-    Object.entries(selection).every(([name, value]) => item.selection[name] === value),
-  );
-  if (!variant) throw new Error('No matching preset');
-
-  return {
-    values: new Map(Object.entries({ ...element.defaults, ...variant.selection, ...variant.defaults })),
-    connectors: variant.connectors ?? element.connectors,
-  };
+  const initial = element.resolve();
+  const values = new Map(initial.values);
+  for (const [name,value] of Object.entries(selection)) values.set(name,value);
+  return element.resolve(values,Object.keys(selection));
 }
 
 function load(library: string, stem: string, symbol: string, selection: Record<string, string> = {}) {
@@ -374,7 +369,7 @@ describe('prepared example library', () => {
 
   it.each(['BELIMO_EP_F', 'BELIMO_EV_F'])('connects the branch to the right actuator in %s', (symbol) => {
     const element = catalog('BELIMO').elements.find((item) => item.symbol === symbol)!;
-    const sizes = new Set(element.variants.map((variant) => variant.selection.DN));
+    const sizes = new Set(element.resolve().options.get('DN'));
     for (const DN of sizes) {
       const { scene, values } = load('BELIMO', 'CBELIMO', symbol, { DN });
       expect(scene.warnings, `${symbol}/${DN}`).toEqual([]);
@@ -433,7 +428,7 @@ describe('prepared example library', () => {
       for (const element of library.elements) {
         expect(element).not.toHaveProperty('rules');
         if (element.error) {
-          expect(element.variants).toHaveLength(0);
+          expect(element.error).toBeTruthy();
           continue;
         }
         expect(element.entry).not.toBe('');
@@ -491,9 +486,10 @@ describe('prepared example library', () => {
       model.reset();
       expect([...opened.at(-1)!.values]).toEqual(initial);
       model.selectValue('DN', '9999');
-      expect(model.canOpen).toBe(true);
+      expect(model.canOpen).toBe(false);
       expect(model.resolution.values.get('DN')).toBe('9999');
-      expect(model.resolution.errors).toEqual([]);
+      expect(model.resolution.errors.length).toBeGreaterThan(0);
+      expect([...opened.at(-1)!.values]).toEqual(initial);
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(parser).not.toHaveBeenCalled();
     } finally {

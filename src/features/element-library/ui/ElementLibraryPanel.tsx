@@ -135,7 +135,7 @@ export function ElementLibraryPanel({ model }: { model: ElementLibraryModel }) {
                         }}
                         className="flex h-full w-full flex-col items-center rounded-md border border-transparent p-2 text-center text-xs hover:border-line hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-pressed:border-ring aria-pressed:bg-secondary"
                       >
-                        {item && (
+                        {item?.thumbnail && (
                           <img
                             src={`${import.meta.env.BASE_URL}library-icons/${model.libraryName}/${item.thumbnail}`}
                             alt=""

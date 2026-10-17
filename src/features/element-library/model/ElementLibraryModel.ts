@@ -13,6 +13,7 @@ import type {
   LibraryElement,
   LibraryResolution,
   LibraryVariant,
+  LibraryValues,
 } from '@/features/element-library/model/types';
 
 export interface LibrarySample {
@@ -36,6 +37,7 @@ export class ElementLibraryModel extends Observable {
   #sources: LibrarySource[] = [];
   #files: LibrarySource[] = [];
   #variant: LibraryVariant | undefined;
+  #resolved: LibraryValues | undefined;
   #parameters: RuntimeParameterRequest[] = [];
   #opened = '';
   #sequence = 0;
@@ -70,6 +72,10 @@ export class ElementLibraryModel extends Observable {
     this.elementId = '';
     this.elements = [];
     this.#files = [];
+    this.#variant = undefined;
+    this.#resolved = undefined;
+    this.#opened = '';
+    this.#parameters = [];
     this.error = '';
     this.resolution = { values: new Map(), choices: [], errors: [] };
     this.busy = true;
@@ -113,6 +119,8 @@ export class ElementLibraryModel extends Observable {
   readonly selectElement = (id: string): void => {
     this.elementId = id;
     this.#files = [];
+    this.#variant = undefined;
+    this.#resolved = undefined;
     this.error = '';
     this.resolution = { values: new Map(), choices: [], errors: [] };
     try {
@@ -124,6 +132,12 @@ export class ElementLibraryModel extends Observable {
       workspace.replaceFiles(this.#files);
       const program = workspace.program();
       this.#parameters = new GeometryRuntime().discoverParameters(program.source, program.options);
+      for (const candidate of this.elements.filter((candidate) => candidate.entry === element.entry))
+        candidate.requireParameters?.(
+          this.#parameters
+            .filter((parameter) => parameter.sourceFunction === 'get_val')
+            .map((parameter) => parameter.name),
+        );
       this.#resolve();
     } catch (error) {
       this.error = error instanceof Error ? error.message : String(error);
@@ -139,84 +153,32 @@ export class ElementLibraryModel extends Observable {
   #resolve(selection = new Map<string, string>(), changed?: string): void {
     const element = this.element;
     if (!element) return;
-    if (element.resolve) {
-      const resolved = element.resolve(selection.size ? selection : undefined, changed ? [changed] : []);
-      this.#variant = { selection: {}, defaults: Object.fromEntries(resolved.values), connectors: resolved.connectors };
-      this.resolution = { values: resolved.values, choices: this.#choices(resolved.values), errors: [] };
-
-      return;
-    }
-
-    const matches = (variant: LibraryVariant) =>
-      [...selection].filter(([name, value]) => variant.selection[name] === value).length;
-
-    this.#variant = element.variants
-      .filter((variant) => !changed || variant.selection[changed] === selection.get(changed))
-      .sort((a, b) => matches(b) - matches(a))[0];
-    const values = new Map(
-      Object.entries({ ...element.defaults, ...this.#variant?.selection, ...this.#variant?.defaults }),
-    );
+    const resolved = element.resolve(selection.size ? selection : undefined, changed ? [changed] : []);
+    this.#resolved = resolved;
+    this.#variant = { selection: {}, defaults: Object.fromEntries(resolved.values), connectors: resolved.connectors };
     this.resolution = {
-      values,
-      choices: this.#choices(values),
-      errors: this.#variant ? [] : ['No preset for this size/variant.'],
+      values: resolved.values,
+      nonrestrictiveParameters: resolved.snapshot.nonrestrictiveParameters,
+      choices: element.selectors.map((s) => ({ ...s, values: resolved.options.get(s.name) ?? [] })),
+      errors: resolved.snapshot.status === 'valid' ? [] : resolved.errors?.length ? resolved.errors : [`Configuration is ${resolved.snapshot.status}`],
+      connectorDiagnostics: resolved.connectorDiagnostics,
+      parameterDiagnostics: resolved.parameterDiagnostics,
     };
   }
 
-  #choices(values: ReadonlyMap<string, string>): LibraryResolution['choices'] {
-    const element = this.element;
-    if (!element) return [];
-    if (element.resolve) {
-      const options = element.resolve(values).options;
-
-      return element.selectors.map((selector) => ({ ...selector, values: options.get(selector.name) ?? [] }));
-    }
-    // Discrete choices determine the available sizes. A size must not hide the
-    // other technologies: switching technology preserves compatible selections.
-    const controls = element.selectors.filter((selector) =>
-      element.variants.some((variant) => {
-        const value = variant.selection[selector.name];
-
-        return value !== undefined && !Number.isFinite(Number(value));
-      }),
-    );
-
-    return element.selectors.map((selector) => {
-      const index = controls.findIndex((control) => control.name === selector.name);
-      const dependencies = index < 0 ? controls : controls.slice(0, index);
-      const available = element.variants.filter((variant) =>
-        dependencies.every((control) => variant.selection[control.name] === values.get(control.name)),
-      );
-
-      return {
-        ...selector,
-        values: [
-          ...new Set(
-            available.flatMap((variant) => {
-              const value = variant.selection[selector.name];
-
-              return value === undefined ? [] : [value];
-            }),
-          ),
-        ],
-      };
-    });
-  }
-
   syncDefaults(state: LibraryDefaultState): void {
+    if (state.snapshot.status !== 'valid') throw new Error('Invalid library snapshot');
     if (!this.elements.some((element) => element.id === state.elementId)) return;
     this.elementId = state.elementId;
     this.#opened = state.elementId;
     this.resolution = {
       values: new Map(state.values),
-      choices: this.#choices(state.values),
+      nonrestrictiveParameters: state.snapshot.nonrestrictiveParameters,
+      choices: this.element!.selectors.map((selector) => ({ ...selector, values: state.options?.get(selector.name) ?? [] })),
       errors: [],
     };
-    this.#variant = this.element?.resolve
-      ? { selection: {}, defaults: Object.fromEntries(state.values), connectors: state.connectors }
-      : this.element?.variants.find((variant) =>
-          Object.entries(variant.selection).every(([name, value]) => state.values.get(name) === value),
-        );
+    this.#variant = { selection: {}, defaults: Object.fromEntries(state.values), connectors: state.connectors };
+    this.#resolved = { values: new Map(state.values), connectors: state.connectors, options: new Map(state.options), snapshot: state.snapshot };
     this.changed();
   }
 
@@ -241,8 +203,9 @@ export class ElementLibraryModel extends Observable {
   };
 
   #publish(replaceSource: boolean): void {
-    if (!this.element) return;
-    const connectors = this.#variant?.connectors ?? this.element.connectors;
+    const element = this.element;
+    if (!element || !this.canOpen || this.#resolved?.snapshot.status !== 'valid') return;
+    const connectors = this.#variant?.connectors ?? element.connectors;
     this.openRequested.emit(
       {
         id: this.elementId,
@@ -250,13 +213,14 @@ export class ElementLibraryModel extends Observable {
         values: this.resolution.values,
         connectors,
         defaults: new LibraryDefaults(
-          this.elements.filter((element) => element.entry === this.element!.entry && !element.error),
+          this.elements.filter((candidate) => candidate.entry === element.entry && !candidate.error),
           this.#parameters,
           {
-            elementId: this.element.id,
+            elementId: element.id,
             values: this.resolution.values,
             connectors,
-            options: this.element.resolve?.(this.resolution.values).options,
+            options: this.#resolved!.options,
+            snapshot: this.#resolved!.snapshot,
           },
         ),
       },

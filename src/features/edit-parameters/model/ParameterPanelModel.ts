@@ -68,8 +68,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   readonly #enabledInsulation = new Set<InsulationQuery>();
 
   get tabs() {
-    const names = this.#definitions.map((definition) => this.#functionTab(definition));
-    if (this.#extraSelectors.length) names.push(this.#defaultFunction);
+    const names = this.#visibleDefinitions.map((definition) => this.#functionTab(definition));
+    if (this.#extraSelectors.some((name) => !this.#hiddenParameters.has(name))) names.push(this.#defaultFunction);
 
     return [...new Set(names)].map((id) => ({
       id,
@@ -123,6 +123,11 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   #defaultFunction = '';
   #valueOptions: ReadonlyMap<string, string[]> = new Map();
   #librarySelectors: readonly string[] = [];
+  #hiddenParameters: ReadonlySet<string> = new Set();
+
+  get #visibleDefinitions(): RuntimeParameterRequest[] {
+    return this.#definitions.filter((definition) => !this.#hiddenParameters.has(parameterKey(definition)));
+  }
 
   // XML selectors can drive dimensions/connectors without a corresponding C++ get_val.
   get #extraSelectors(): string[] {
@@ -161,6 +166,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   setPlaceholderData(): void {
     this.#valueOptions = new Map();
     this.#librarySelectors = [];
+    this.#hiddenParameters = new Set();
     this.#definitions = [];
     this.#activeKeys = null;
     this.#defaults = null;
@@ -193,9 +199,11 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       }
     }
 
-    if (!this.#definitions.some((definition) => this.#functionTab(definition) === this.activeTab)) {
+    if (!this.#visibleDefinitions.some((definition) => this.#functionTab(definition) === this.activeTab)) {
       this.#tableTabs.set(this.activeTab, { dataSets: this.dataSets, index: this.dataSetIndex });
-      this.activeTab = this.#definitions[0] ? this.#functionTab(this.#definitions[0]) : '';
+      this.activeTab = this.#visibleDefinitions[0]
+        ? this.#functionTab(this.#visibleDefinitions[0])
+        : this.#defaultFunction;
       this.dataSets = this.#tableTabs.get(this.activeTab)?.dataSets ?? [];
       this.dataSetIndex = this.#tableTabs.get(this.activeTab)?.index ?? -1;
     }
@@ -208,9 +216,11 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     values: ReadonlyMap<string, string>,
     parameters: ReadonlyMap<string, string> = values,
     selectors: readonly string[] = [],
+    hiddenParameters: ReadonlySet<string> = new Set(),
   ): void {
     this.#defaults = new Map(values);
     this.#librarySelectors = [...new Set(selectors)];
+    this.#hiddenParameters = new Set(hiddenParameters);
     this.#values.clear();
     this.#userEditedKeys.clear();
     this.#enabledInsulation.clear();
@@ -231,7 +241,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       if (
         parameters !== values &&
         isInsulationQuery(definition.sourceFunction) &&
-        parameters.has(definition.sourceFunction)
+        (parameters.has(insulationEnabledKey(definition.sourceFunction))
+          ? parameters.get(insulationEnabledKey(definition.sourceFunction)) === 'true'
+          : parameters.has(definition.sourceFunction))
       )
         this.#enabledInsulation.add(definition.sourceFunction);
     }
@@ -279,7 +291,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#setRowCount0();
 
     let selectedRow = -1;
-    for (const definition of this.#definitions) {
+    for (const definition of this.#visibleDefinitions) {
       const key = parameterKey(definition);
       const insulation = isInsulationQuery(definition.sourceFunction) ? definition.sourceFunction : null;
       if (insulation)
@@ -307,6 +319,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       if (selectedKey !== '' && selectedKey === key) selectedRow = row;
     }
     for (const name of this.#extraSelectors) {
+      if (this.#hiddenParameters.has(name)) continue;
       if (selectedKey === name) selectedRow = this.rows.length;
       this.rows.push({
         key: name,
@@ -336,6 +349,20 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   values(): Map<string, string> {
     return new Map(this.#values);
+  }
+
+  // Persist the thickness separately from whether the SDK query is enabled.
+  // These saved values are for the editor; only overrides() is sent to the runtime.
+  savedValues(): Map<string, string> {
+    const values = this.overrides();
+    for (const definition of this.#definitions) {
+      const query = definition.sourceFunction;
+      if (!isInsulationQuery(query)) continue;
+      values.set(parameterKey(definition), this.#values.get(parameterKey(definition)) ?? parameterSeed(definition));
+      values.set(insulationEnabledKey(query), String(this.#enabledInsulation.has(query)));
+    }
+
+    return values;
   }
 
   forgetFunction(name: string): void {
@@ -376,8 +403,9 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       values.set(name, this.#values.get(name) ?? this.#defaults?.get(name) ?? '');
     for (const query of kInsulationQueries) {
       const definition = this.#definitions.find((item) => item.sourceFunction === query);
-      // A removed query must not leave an enabled thickness in the runtime configuration.
-      if (!definition && !this.#definitions.some((item) => item.name === query)) values.delete(query);
+      // An unchecked or removed query must not inherit an active thickness from defaults.
+      if (definition || !this.#definitions.some((item) => item.name === query)) values.delete(query);
+      if (definition) values.delete(parameterKey(definition));
       if (definition && this.#enabledInsulation.has(query))
         values.set(query, this.#values.get(parameterKey(definition)) ?? '0');
     }
@@ -395,6 +423,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   setInsulationEnabled(query: InsulationQuery, enabled: boolean): void {
     if (this.#enabledInsulation.has(query) === enabled || !this.#hasInsulationQuery(query)) return;
+    this.commitEditor();
     if (enabled) this.#enabledInsulation.add(query);
     else this.#enabledInsulation.delete(query);
     this.#refreshAvailability();
@@ -405,7 +434,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   previewTable(text: string) {
     return parseParameterTable(
       text,
-      this.#definitions.filter((definition) => this.#functionTab(definition) === this.activeTab),
+      this.#visibleDefinitions.filter((definition) => this.#functionTab(definition) === this.activeTab),
     );
   }
 
@@ -416,6 +445,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
       return;
     }
+    this.commitEditor();
     const row = this.rows.find((item) => item.key === key);
     if (!row || row.disabled || !row.checkbox) return;
     this.#values.set(key, row.texts[1] === 'bool' ? String(checked) : checked ? '1' : '0');

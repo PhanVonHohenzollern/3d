@@ -1,124 +1,68 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { gzipSync } from 'node:zlib';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { expect, it } from 'vitest';
-import { defineLibrary, type TableElement } from '@/features/element-library/model/valueTables';
 import { libraries } from '@/features/element-library/config/libraries';
-import CGeneral from '@/features/element-library/data/CGeneral';
+import { CGeneral } from '@tests/libraryData';
+import { readParsedLibrary, SpecificationIndex } from '@/features/element-library/model/parsedLibrary';
+import { CompiledConstraintGraph, UnifiedConstraintSolver } from '@/features/element-library/model/constraintGraph';
 
-it.each(CGeneral.elements.filter((element) => element.entry === 'makeCHIL'))(
-  'retains every conditional diameter/technology pair for $name',
-  (element) => {
-    const sizes = (tech: string) => element.resolve!(new Map([['tech', tech]]), ['tech']).options.get('diam') ?? [];
-
-    expect(sizes('threaded steel')).toHaveLength(15);
-    expect(sizes('welded steel')).toHaveLength(19);
-    expect(sizes('flanged steel')).toHaveLength(16);
-    expect(sizes('copper')).toHaveLength(15);
-    expect(sizes('glued plastic')).toHaveLength(19);
-    expect(sizes('socked-welded plastic')).toHaveLength(19);
-    expect(sizes('butt-welded plastic')).toHaveLength(19);
-    expect(sizes('welded steel')).toContain('25');
-    expect(sizes('flanged steel')).toContain('25');
-    expect(sizes('copper')).toContain('15');
-    expect(element.resolve!().connectors.every((link) => !!link.connectionType && !!link.technology)).toBe(true);
-  },
-);
-
-it('uses the XML fancoil dimension columns and four-pipe spacing for the selected technology', () => {
-  const element = CGeneral.elements.find((element) => element.name === 'Floor standing fancoil')!;
-
-  const defaults = (diam: string, tech: string, system: string) =>
-    element.variants.find(
-      (v) => v.selection.diam === diam && v.selection.tech === tech && v.selection.system_label === system,
-    )!;
-
-  expect(defaults('25', 'threaded steel', '2-pipe').defaults.d).toBe('39.7');
-  expect(defaults('25', 'welded steel', '2-pipe').defaults.d).toBe('33.7');
-  expect(defaults('25', 'flanged steel', '2-pipe').defaults.d).toBe('115');
-  const fourPipe = defaults('150', 'flanged steel', '4-pipe');
-  expect(fourPipe.defaults).toMatchObject({ B: '750', H: '750', d: '285', ftype: '2' });
-  expect(fourPipe.connectors).toHaveLength(4);
+it('has one JSON source per library and no legacy parameter catalog or resolver', () => {
+  for (const asset of libraries) {
+    expect(readdirSync(`libraries/${asset.name}`).filter((f) => f.endsWith('.json'))).toHaveLength(1);
+    expect(existsSync(`src/features/element-library/data/${asset.name}.ts`)).toBe(false);
+    expect(existsSync(`src/features/element-library/data/rules/${asset.name}.json`)).toBe(false);
+  }
+  for (const f of ['valueTables.ts', 'xmlRules.ts']) expect(existsSync('src/features/element-library/model/' + f)).toBe(false);
 });
 
-it('joins compatible size rows and keeps independent options without inventing combinations', () => {
-  const element: TableElement = {
-    id: 'example',
-    name: 'Example',
-    symbol: 'Example',
-    entry: 'makeExample',
-    defaults: { thickness: '5' },
-    connectors: [],
-    selectors: [
-      { name: 'diam', label: 'Diameter' },
-      { name: 'side', label: 'Side' },
-    ],
-    tables: [
-      {
-        columns: ['diam', 'L'],
-        rows: [
-          ['25', '100'],
-          ['32', '120'],
-        ],
-      },
-      {
-        columns: ['diam', 'H'],
-        rows: [
-          ['25', '40'],
-          ['40', '60'],
-        ],
-      },
-      { columns: ['side'], rows: [['Left'], ['Right']] },
-    ],
-  };
-  const result = defineLibrary('test', [element]);
-  expect(
-    result.elements[0].variants.map((variant) => ({ ...result.elements[0].defaults, ...variant.defaults })),
-  ).toEqual([
-    { thickness: '5', diam: '25', L: '100', H: '40', side: 'Left' },
-    { thickness: '5', diam: '25', L: '100', H: '40', side: 'Right' },
-  ]);
+it.each(libraries)('returns a graph snapshot for every $name entity, including blocked definitions', async (asset) => {
+  const library = await asset.load();
+  const parsed = readParsedLibrary(JSON.parse(readFileSync(`libraries/${asset.name}/${asset.name}.json`, 'utf8')));
+  expect(library.elements).toHaveLength(Object.keys(parsed.entities).length);
+  for (const element of library.elements) {
+    const result = element.resolve();
+    expect(result.snapshot, element.id).toBeDefined();
+    expect(result.values).toEqual(result.snapshot.resolvedValues);
+    expect(result.options).toEqual(result.snapshot.validOptions);
+    if (result.snapshot.status === 'valid') expect(result.errors).toEqual([]);
+    else expect(result.errors?.length, element.symbol).toBeGreaterThan(0);
+  }
+  for (const table of Object.values(parsed.specifications))
+    expect(() => new SpecificationIndex(table), table.guid).not.toThrow();
 });
 
-it('retains the XML FANUTAC dimension pairs and UNION length constraints', async () => {
-  const library = await libraries.find((library) => library.name === 'CGeneral')!.load();
-  const fan = library.elements.find((element) => element.id === 'D669A1F7-F5DE-4955-8C18-01EF78273DDB')!;
-  expect([...new Set(fan.variants.map((variant) => `${variant.selection.A}/${variant.selection.C}`))]).toEqual([
-    '520/180',
-    '600/180',
-    '870/200',
-    '1170/200',
-  ]);
-  const union = library.elements.find((element) => element.entry === 'makeUNION')!;
-
-  const values = (d2: string) =>
-    union.variants.find(
-      (variant) =>
-        variant.selection.d1 === '10' &&
-        variant.selection.d2 === d2 &&
-        variant.selection.tech1 === 'threaded steel' &&
-        variant.selection.tech2 === 'threaded steel',
-    )!.defaults;
-
-  expect(values('15')).toMatchObject({ l1: '12', l2: '15', L: '27' });
-  expect(values('65')).toMatchObject({ l1: '12', l2: '35', L: '65' });
+it('solves all four CRBWLD diameters together and synchronizes dependent dimensions after every edit', () => {
+  const element = CGeneral.elements.find((e) => e.id === '46E26C39-597F-4EEF-A202-A1E5F6A7E3B6')!;
+  let result = element.resolve();
+  for (const [name, value] of [['d2','32'],['d3','40'],['d4','25'],['d1','20']]) {
+    result = element.resolve(new Map(result.values).set(name, value), [name]);
+    expect(result.snapshot.status, result.errors?.join('; ')).toBe('valid');
+    for (const port of [1,2,3,4]) expect(result.values.get('d' + port)).toBe(value);
+    expect(new Set([1,2,3,4].map((p) => result.values.get('d' + p + 'ext'))).size).toBe(1);
+    expect(result.connectors.every((c) => c.physical?.resolvedSize?.diameter === Number(value))).toBe(true);
+    expect(result.snapshot.affectedGroups.length).toBeGreaterThan(0);
+  }
+  expect(result.values.get('l5')).toBe('0');
+  expect(Number(result.values.get('l1'))).toBeGreaterThanOrEqual(32);
 });
 
-it('keeps the prepared tables small and removes the expanded JSON catalogue', () => {
-  const directory = 'src/features/element-library/data';
-  const files = readdirSync(directory);
-  expect(files.sort()).toEqual(['BELIMO.ts', 'CGeneral.ts', 'GRUNDFOS.ts', 'rules', 'technologies.json']);
-  const technologies = readFileSync(`${directory}/technologies.json`);
-  expect(technologies.length).toBeLessThan(20000);
-  expect(gzipSync(technologies).length).toBeLessThan(4000);
-  expect(
-    files
-      .filter((file) => file.endsWith('.ts'))
-      .reduce((total, file) => total + statSync(`${directory}/${file}`).size, 0),
-  ).toBeLessThan(800 * 1024);
-  expect(readdirSync('public/demo')).toEqual(['code']);
-  const ruleFiles = readdirSync(`${directory}/rules`);
-  expect(ruleFiles.sort()).toEqual(['BELIMO.json', 'CGeneral.json', 'GRUNDFOS.json']);
-  // Budget the actual wire representation, independent of source indentation.
-  const ruleBytes = ruleFiles.map((file) => readFileSync(`${directory}/rules/${file}`));
-  expect(ruleBytes.reduce((total, bytes) => total + gzipSync(bytes).length, 0)).toBeLessThan(100 * 1024);
+it('rejects the mixed diameter configuration from the screenshot instead of generating a detached ring', () => {
+  const element = CGeneral.elements.find((e) => e.symbol === 'CRBWLD')!;
+  const before = element.resolve();
+  const values = new Map(before.values);
+  for (const [name, value] of [['d1','20'],['d2','32'],['d3','32'],['d4','32']]) values.set(name, value);
+  const invalid = element.resolve(values, ['d1','d2','d3','d4']);
+  expect(invalid.snapshot.status).toBe('conflict');
+  expect(invalid.snapshot.conflicts.some((c) => c.code === 'TABLE_CONFLICT')).toBe(true);
+  expect(element.resolve()).toEqual(before);
+});
+
+it('solves independent domains without expanding a billion combinations', () => {
+  const json = readParsedLibrary({ schemaVersion: '2.1-columnar-en', library: {}, entities: {
+    e: { id:'e', guid:'e', variables:[], restrictions:['A','B','H'].map((variable,index) => ({ index, typeCode:1, tableGuid:variable, conditionsRaw:{}, extraFields:[], bindings:[{variable,columnKey:0,levelCode:0,bindingTypeCode:1}] })) }
+  }, specifications: Object.fromEntries(['A','B','H'].map((name) => [name, {guid:name,id:name,columns:[name],arrayAttributes:{COLS:1000},dataColumns:[[['plain',Array.from({length:1000},(_,i)=>String(i+1))],{typeCode:2}]]}])) });
+  const solver = new UnifiedConstraintSolver(new CompiledConstraintGraph(json,json.entities.e));
+  const result = solver.solve(new Map([['A','10'],['B','20']]),['A','B']);
+  expect(result.status).toBe('valid');
+  expect(Object.fromEntries(result.resolvedValues)).toEqual({A:'10',B:'20',H:'1'});
+  expect(result.validOptions.get('H')).toHaveLength(1000);
 });

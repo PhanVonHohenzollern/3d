@@ -43,6 +43,51 @@ function editValue(model: ParameterPanelModel, row: number, text: string): void 
 }
 
 describe('ParameterPanel', () => {
+  it('hides library fields only in their own scope while keeping all resolved runtime inputs', () => {
+    const model = new ParameterPanelModel();
+    const definitions = [
+      request({ name: 'D', functionName: 'makePart' }),
+      request({ name: 'dext', functionName: 'makePart' }),
+      request({ name: 'dext', functionName: 'helper' }),
+    ];
+    const values = new Map([
+      ['D', '20'],
+      ['dext', '26.9'],
+      ['tech', 'welded steel'],
+    ]);
+    model.loadValues(definitions, values, values, ['D', 'dext', 'tech'], new Set(['dext', 'makePart::dext', 'tech']));
+    expect(model.rows.map((row) => row.key)).toEqual(['makePart::D', 'helper::dext']);
+    expect(model.overrides().get('makePart::dext')).toBe('26.9');
+    expect(model.contextValues().get('tech')).toBe('welded steel');
+    expect(model.previewTable('D\tdext\n25\t999').ignored).toContain('dext');
+    model.setDefinitions(definitions);
+    model.resetToSource();
+    expect(model.rows.map((row) => row.key)).toEqual(['makePart::D', 'helper::dext']);
+    model.loadValues(definitions, values);
+    expect(model.rows.map((row) => row.key)).toContain('makePart::dext');
+  });
+
+  it('saves unchecked thickness without sending it to geometry, including after a defaults reload', () => {
+    const model = new ParameterPanelModel();
+    const definitions = new GeometryRuntime().discoverParameters('double size = 10; if (getExtInsSize(size)) {}');
+    const defaults = new Map([['getExtInsSize', '10']]);
+    model.loadValues(definitions, defaults);
+    expect(model.overrides().has('getExtInsSize')).toBe(false);
+    model.setInsulationEnabled('getExtInsSize', true);
+    model.edit(1, 3);
+    model.editorTextEdited('25');
+    model.setInsulationEnabled('getExtInsSize', false);
+    expect(model.values().get('getExtInsSize')).toBe('25');
+    expect(model.overrides().has('getExtInsSize')).toBe(false);
+    model.loadValues(definitions, defaults, model.savedValues());
+    expect(model.rows[1].texts[3]).toBe('25');
+    expect(model.rows[1].disabled).toBe(true);
+    expect(model.overrides().has('getExtInsSize')).toBe(false);
+    expect(model.overrides().has('getExtInsSize.enabled')).toBe(false);
+    model.setInsulationEnabled('getExtInsSize', true);
+    expect(model.overrides().get('getExtInsSize')).toBe('25');
+  });
+
   it('edits XML-only selectors without duplicating runtime rows or disabling unreached selectors', () => {
     const model = new ParameterPanelModel();
     const definitions = [request({ name: 'D', functionName: 'makePart' })];
