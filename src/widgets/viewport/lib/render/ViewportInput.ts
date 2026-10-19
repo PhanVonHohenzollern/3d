@@ -2,7 +2,7 @@ import { LeftButton, MiddleButton, NoButton, NoModifier } from '@/shared/lib/qt'
 import type { KeyboardModifiers, MouseEventData, WheelEventData } from '@/shared/lib/qt';
 import { kClickDragThreshold } from '@/widgets/viewport/config/viewport';
 import type { QRect } from '@/widgets/viewport/lib/math/Rect';
-import { QPoint, QPointF, type QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { QPoint, QPointF } from '@/widgets/viewport/lib/math/Vector3D';
 import type { CameraController } from '@/widgets/viewport/lib/render/CameraController';
 import type { OverlayLayer } from '@/widgets/viewport/lib/render/OverlayLayer';
 import type { PickingService } from '@/widgets/viewport/lib/render/PickingService';
@@ -39,7 +39,6 @@ export class ViewportInput {
   #dragDistance = 0;
   #pressModifiers: KeyboardModifiers = NoModifier;
   #orbitStarted = false;
-  #orbitPivot: QVector3D | null = null;
 
   constructor(
     private readonly state: ViewportState,
@@ -56,8 +55,6 @@ export class ViewportInput {
     this.#pressModifiers = event.modifiers;
     this.#dragDistance = 0;
     this.#orbitStarted = false;
-    const creatingPoint = this.state.selectionMode === 'Point' && event.modifiers.control;
-    this.#orbitPivot = event.buttons & LeftButton && !creatingPoint ? this.view.orbitPivot() : null;
   }
 
   move(event: MouseEventData): void {
@@ -84,10 +81,8 @@ export class ViewportInput {
         orbitDelta = currentPosition.sub(this.#pressPosition);
         if (Math.hypot(orbitDelta.x, orbitDelta.y) < kClickDragThreshold) return;
       }
-      // Freeze the mesh-space pivot for this drag, even if preview data changes.
-      this.#orbitPivot ??= this.view.orbitPivot();
       this.#orbitStarted = true;
-      this.view.camera.orbit(orbitDelta, this.#orbitPivot);
+      this.view.camera.orbit(orbitDelta, this.view.orbitPivot());
       this.host.rebuild(true);
       this.host.update();
     }
@@ -100,7 +95,6 @@ export class ViewportInput {
 
   release(event: MouseEventData): void {
     this.#orbitStarted = false;
-    this.#orbitPivot = null;
     const position = new QPointF(event.x, event.y);
     if (event.button === LeftButton && this.#dragDistance < kClickDragThreshold) this.#click(position);
     if (this.host.bounds().contains(position.toPoint())) this.updateHover(position);
