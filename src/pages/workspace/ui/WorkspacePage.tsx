@@ -1,26 +1,26 @@
-import { Button } from "@/shared/ui/button";
-import { Box, CodeXml, Library } from "lucide-react";
-import { useCompactLayout } from "@/shared/lib/react";
-import { useDockHeight } from "@/shared/ui/dock";
-import { useWorkspace } from "@/pages/workspace/model/useWorkspace";
-import { ApiTracePanel } from "@/widgets/api-trace-panel";
-import { CodeEditor } from "@/widgets/code-editor";
-import { inspectorMinimumHeight } from "@/pages/workspace/config/docks";
-import { InspectorDock } from "@/pages/workspace/ui/InspectorDock";
-import { LinkPanel } from "@/widgets/link-panel";
-import { PanelHeader } from "@/shared/ui/panel-header";
-import { WorkspaceHeader, type Theme } from "@/widgets/workspace-header";
-import { ParameterPanel } from "@/widgets/parameter-panel";
-import { ResizeHandle } from "@/shared/ui/splitter";
-import { Splitter } from "@/shared/ui/splitter";
-import { ToolBar } from "@/widgets/workspace-header";
-import { VariablePanel } from "@/widgets/variable-panel";
-import { Viewport3D } from "@/widgets/viewport";
-import { FunctionEditor } from "@/features/manage-functions";
-import { PreviewModeToggle } from "@/features/run-preview";
-import { SubParameterPanel } from "@/features/manage-functions";
-import { SubFunctionTrace } from "@/pages/workspace/ui/SubFunctionTrace";
-import { ElementLibraryPanel } from "@/features/element-library";
+import { Button } from '@/shared/ui/button';
+import { Box, CodeXml, Library } from 'lucide-react';
+import { useCompactLayout } from '@/shared/lib/react';
+import { useDockHeight } from '@/shared/ui/dock';
+import { useWorkspace } from '@/pages/workspace/model/useWorkspace';
+import { ApiTracePanel } from '@/widgets/api-trace-panel';
+import { CodeEditor } from '@/widgets/code-editor';
+import { inspectorMinimumHeight } from '@/pages/workspace/config/docks';
+import { InspectorDock } from '@/pages/workspace/ui/InspectorDock';
+import { LinkPanel } from '@/widgets/link-panel';
+import { PanelHeader } from '@/shared/ui/panel-header';
+import { WorkspaceHeader, type Theme } from '@/widgets/workspace-header';
+import { ParameterPanel } from '@/widgets/parameter-panel';
+import { ResizeHandle } from '@/shared/ui/splitter';
+import { Splitter } from '@/shared/ui/splitter';
+import { ToolBar } from '@/widgets/workspace-header';
+import { VariablePanel } from '@/widgets/variable-panel';
+import { Viewport3D } from '@/widgets/viewport';
+import { FunctionEditor } from '@/features/manage-functions';
+import { PreviewModeToggle } from '@/features/run-preview';
+import { SubParameterPanel } from '@/features/manage-functions';
+import { SubFunctionTrace } from '@/pages/workspace/ui/SubFunctionTrace';
+import { ElementLibraryPanel } from '@/features/element-library';
 
 type WorkspacePageProps = {
   theme: Theme;
@@ -30,41 +30,24 @@ type WorkspacePageProps = {
 export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
   const workspace = useWorkspace();
   const compact = useCompactLayout();
-  const {
-    mainAreaRef,
-    dockHeight,
-    onSeparatorPointerDown,
-    onSeparatorKeyDown,
-    minimum,
-    maximum,
-  } = useDockHeight(inspectorMinimumHeight(workspace.raisedDock));
+  const { mainAreaRef, dockHeight, onSeparatorPointerDown, onSeparatorKeyDown, minimum, maximum } = useDockHeight(
+    inspectorMinimumHeight(workspace.raisedDock),
+  );
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-x-hidden overflow-y-auto bg-window select-none">
-      <WorkspaceHeader
-        files={workspace.files.controls}
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-      />
+      <WorkspaceHeader files={workspace.files.controls} theme={theme} onToggleTheme={onToggleTheme} />
       {workspace.files.message && (
         <div
-          role={workspace.files.error ? "alert" : "status"}
+          role={workspace.files.error ? 'alert' : 'status'}
           className="flex items-center gap-2 border-b border-line bg-base px-3 py-2 text-xs"
         >
           <span
-            className={
-              workspace.files.error
-                ? "min-w-0 flex-1 text-error"
-                : "min-w-0 flex-1 text-muted-foreground"
-            }
+            className={workspace.files.error ? 'min-w-0 flex-1 text-error' : 'min-w-0 flex-1 text-muted-foreground'}
           >
             {workspace.files.message}
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={workspace.files.dismissMessage}
-          >
+          <Button variant="ghost" size="sm" onClick={workspace.files.dismissMessage}>
             Dismiss
           </Button>
         </div>
@@ -73,7 +56,7 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
         <div className="min-h-0 flex-1">
           <Splitter
             label="Resize editor and viewport"
-            orientation={compact ? "vertical" : "horizontal"}
+            orientation={compact ? 'vertical' : 'horizontal'}
             initialSizes={compact ? [320, 680] : [330, 670]}
             stretchFactors={compact ? [0, 1] : [33, 67]}
           >
@@ -90,12 +73,10 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                   role="tab"
                   id="code-editor-tab"
                   aria-controls="code-editor-panel"
-                  aria-selected={workspace.editorTab === "code"}
+                  aria-selected={workspace.editorTab === 'code'}
                   size="sm"
-                  variant={
-                    workspace.editorTab === "code" ? "secondary" : "ghost"
-                  }
-                  onClick={() => workspace.selectEditorTab("code")}
+                  variant={workspace.editorTab === 'code' ? 'secondary' : 'ghost'}
+                  onClick={() => workspace.selectEditorTab('code')}
                 >
                   <CodeXml className="size-3.5" /> Code Editor
                 </Button>
@@ -103,16 +84,14 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                   role="tab"
                   id="flm-editor-tab"
                   aria-controls="flm-editor-panel"
-                  aria-selected={workspace.editorTab === "flm"}
+                  aria-selected={workspace.editorTab === 'flm'}
                   size="sm"
-                  variant={
-                    workspace.editorTab === "flm" ? "secondary" : "ghost"
-                  }
-                  onClick={() => workspace.selectEditorTab("flm")}
+                  variant={workspace.editorTab === 'flm' ? 'secondary' : 'ghost'}
+                  onClick={() => workspace.selectEditorTab('flm')}
                 >
                   <Library className="size-3.5" /> FLM
                 </Button>
-                {workspace.editorTab === "code" && (
+                {workspace.editorTab === 'code' && (
                   <div className="ml-auto flex min-w-0 items-center gap-2">
                     <span className="workspace-surface hidden bg-secondary px-2 py-1 font-code text-xs text-muted-foreground @min-[340px]/editor:inline">
                       C++
@@ -130,23 +109,13 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                 id="code-editor-panel"
                 role="tabpanel"
                 aria-labelledby="code-editor-tab"
-                className={
-                  workspace.editorTab === "code"
-                    ? "flex min-h-0 flex-1 flex-col"
-                    : "hidden"
-                }
+                className={workspace.editorTab === 'code' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}
               >
-                <FunctionEditor.Provider
-                  state={workspace.functions.state}
-                  actions={workspace.functions.actions}
-                >
+                <FunctionEditor.Provider state={workspace.functions.state} actions={workspace.functions.actions}>
                   <FunctionEditor.Tabs />
                   <FunctionEditor.Error />
                   <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
-                    <CodeEditor
-                      {...workspace.editor}
-                      footer={<FunctionEditor.Actions />}
-                    />
+                    <CodeEditor {...workspace.editor} footer={<FunctionEditor.Actions />} />
                   </div>
                 </FunctionEditor.Provider>
               </div>
@@ -154,16 +123,9 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                 id="flm-editor-panel"
                 role="tabpanel"
                 aria-labelledby="flm-editor-tab"
-                className={
-                  workspace.editorTab === "flm"
-                    ? "min-h-0 flex-1 overflow-hidden"
-                    : "hidden"
-                }
+                className={workspace.editorTab === 'flm' ? 'min-h-0 flex-1 overflow-hidden' : 'hidden'}
               >
-                <ElementLibraryPanel
-                  model={workspace.library}
-                  active={workspace.editorTab === "flm"}
-                />
+                <ElementLibraryPanel model={workspace.library} active={workspace.editorTab === 'flm'} />
               </div>
             </section>
             <div className="flex h-full min-w-0 flex-col">
@@ -177,26 +139,16 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                   </PanelHeader>
                   {workspace.importedObj && (
                     <div className="flex shrink-0 items-center gap-2 border-b border-line bg-base p-2 text-xs">
-                      <span
-                        className="min-w-0 flex-1 truncate"
-                        title={workspace.importedObj.name}
-                      >
+                      <span className="min-w-0 flex-1 truncate" title={workspace.importedObj.name}>
                         OBJ preview · {workspace.importedObj.name}
                       </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={workspace.returnToCodePreview}
-                      >
+                      <Button size="sm" variant="outline" onClick={workspace.returnToCodePreview}>
                         Return to code
                       </Button>
                     </div>
                   )}
                   <div className="workspace-surface relative min-h-0 flex-1 overflow-hidden bg-viewport">
-                    <Viewport3D
-                      {...workspace.viewport}
-                      lightTheme={theme === "light"}
-                    />
+                    <Viewport3D {...workspace.viewport} lightTheme={theme === 'light'} />
                   </div>
                 </section>
                 <ResizeHandle
@@ -215,19 +167,13 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                     className="workspace-panel flex shrink-0 flex-col items-center justify-center gap-2 border border-line bg-base p-3 text-center text-xs"
                   >
                     <p className="font-medium">Imported OBJ model</p>
-                    <p className="text-muted-foreground">
-                      OBJ contains mesh geometry, not editable C++ parameters.
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={workspace.returnToCodePreview}
-                    >
+                    <p className="text-muted-foreground">OBJ contains mesh geometry, not editable C++ parameters.</p>
+                    <Button size="sm" variant="outline" onClick={workspace.returnToCodePreview}>
                       Return to code preview
                     </Button>
                   </section>
                 ) : null}
-                <div className={workspace.importedObj ? "hidden" : "contents"}>
+                <div className={workspace.importedObj ? 'hidden' : 'contents'}>
                   <InspectorDock
                     height={dockHeight}
                     raised={workspace.raisedDock}
@@ -236,17 +182,11 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
                     counts={workspace.inspectorCounts}
                     panels={{
                       VariablesDock: <VariablePanel {...workspace.variables} />,
-                      ParametersDock: (
-                        <ParameterPanel {...workspace.parameters} />
-                      ),
+                      ParametersDock: <ParameterPanel {...workspace.parameters} />,
                       ApiTraceDock: <ApiTracePanel {...workspace.apiTrace} />,
-                      SubApiTraceDock: (
-                        <SubFunctionTrace {...workspace.subTrace} />
-                      ),
+                      SubApiTraceDock: <SubFunctionTrace {...workspace.subTrace} />,
                       LinkDock: <LinkPanel {...workspace.links} />,
-                      SubParametersDock: (
-                        <SubParameterPanel {...workspace.subParameters} />
-                      ),
+                      SubParametersDock: <SubParameterPanel {...workspace.subParameters} />,
                     }}
                   />
                 </div>

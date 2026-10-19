@@ -11,7 +11,7 @@ import {
   tokensToText,
   type Token,
 } from '@engine/runtime/helpers/tokens';
-import { parseRuntimeType } from '@engine/runtime/helpers/typeNames';
+import { CPP_TYPE_PARSER_REVISION, parseRuntimeType } from '@engine/runtime/helpers/typeNames';
 import type { Execution } from '@engine/runtime/interpreter/execution';
 import { evaluateExpression } from '@engine/runtime/interpreter/evaluator';
 import {
@@ -152,9 +152,15 @@ export class DeclarationEvaluator {
   declare(tokens: readonly Token[], line: number, userVariables = true): void {
     const parsed = parseRuntimeType(tokens, 0);
     if (!parsed) throw runtimeError('not a declaration');
-    const alias = sdkTypeDefinition(parsed.type);
-    const type = alias ? alias.baseType : parsed.type;
-    for (const decl of splitTopLevel(sliceTokens(tokens, parsed.end, tokens.length), ',')) {
+    // Recover from older type parsers that read `long double` as just `long`.
+    // The current type parser already consumes both tokens. This extra guard
+    // keeps declaration execution correct if the parser modules are out of sync.
+    const legacyLongDouble = parsed.type === 'long' && isIdentifier(tokens[parsed.end], 'double');
+    const declarationEnd = parsed.end + (legacyLongDouble ? 1 : 0);
+    const parsedType = legacyLongDouble ? 'double' : parsed.type;
+    const alias = sdkTypeDefinition(parsedType);
+    const type = alias ? alias.baseType : parsedType;
+    for (const decl of splitTopLevel(sliceTokens(tokens, declarationEnd, tokens.length), ',')) {
       if (decl.length === 0) continue;
       let p = 0;
       const parenthesizedPointer = decl[0]?.text === '(' && decl[1]?.text === '*';
@@ -191,7 +197,11 @@ export class DeclarationEvaluator {
             : runtimeCoerceToType(this.x.evaluateAssignment(initializer), type);
       } else if (tail.length !== 0) {
         if (!isSymbol(tail[0], '(') && !isBraceList(tail))
-          throw runtimeError('unsupported declaration tail near ' + tokensToText(tail));
+          throw runtimeError(
+            'unsupported declaration tail near ' +
+              tokensToText(tail) +
+              ` [${CPP_TYPE_PARSER_REVISION}; parsedType=${parsedType}]`,
+          );
         if (dims.length !== 0) throw runtimeError('array direct initialization is not supported');
         value = this.directInitializer(type, tail);
       }

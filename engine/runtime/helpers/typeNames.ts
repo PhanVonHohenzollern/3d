@@ -2,7 +2,7 @@ import { sdkCanonicalType, sdkTypeDefinition } from '@engine/runtime/SdkDefiniti
 import { isIdentifier, isSymbol, TokKind, type Token } from '@engine/runtime/helpers/tokens';
 import { kValueTypeNames } from '@engine/runtime/values/registry';
 
-// Shared with diagnostic consumers while both interpreter layouts coexist.
+// Exposed in interpreter diagnostics to distinguish a new bundle from stale JavaScript.
 export const CPP_TYPE_PARSER_REVISION = 'FLM_CPP_TYPES_CORE_20261017';
 
 export interface ParsedType {
@@ -12,14 +12,14 @@ export interface ParsedType {
 
 export function normalizedScalarType(type: string): string {
   const canonical = sdkCanonicalType(type);
-  if (canonical === 'float') return 'double';
+  if (canonical === 'float' || canonical === 'long double') return 'double';
   if (canonical === 'char') return 'string';
 
   return canonical;
 }
 
 function isScalarTypeName(name: string): boolean {
-  const t = sdkCanonicalType(name);
+  const t = name === 'long double' ? 'double' : sdkCanonicalType(name);
 
   return (
     t === 'double' || t === 'float' || t === 'int' || t === 'short' || t === 'long' || t === 'bool' || t === 'char'
@@ -31,7 +31,7 @@ export function isScalarTypeToken(token: Token): boolean {
 }
 
 export function isNumericType(name: string): boolean {
-  const type = sdkCanonicalType(name);
+  const type = normalizedScalarType(name);
 
   return (
     type === 'double' || type === 'float' || type === 'int' || type === 'short' || type === 'long' || type === 'bool'
@@ -63,14 +63,20 @@ function parseTypeAt(tokens: readonly Token[], start: number): (ParsedType & { c
   if (type === 'unsigned' || type === 'signed') {
     type = ['int', 'short', 'long', 'char'].includes(tokens[pos]?.text) ? tokens[pos++].text : 'int';
   }
-  // JavaScript uses binary64 for floating values, including C++ long double.
-  // Consume both type tokens so `double` is not mistaken for the declarator.
-  if (type === 'long' && tokens[pos]?.text === 'double') {
-    type = 'double';
+  // Parse fundamental C++ type *specifier sequences* as a unit. A bare
+  // token-based declaration scanner must never interpret `double` in
+  // `long double radAlfa` as the declared variable name.
+  if (type === 'long') {
+    if (tokens[pos]?.text === 'double') {
+      ++pos;
+      type = 'double'; // RuntimeValue represents long double as JS number.
+    } else {
+      if (tokens[pos]?.text === 'long') ++pos;
+      if (tokens[pos]?.text === 'int') ++pos;
+    }
+  } else if (type === 'short' && tokens[pos]?.text === 'int') {
     ++pos;
   }
-  if (type === 'long' && tokens[pos]?.text === 'long') ++pos;
-  if (['long', 'short'].includes(type) && tokens[pos]?.text === 'int') ++pos;
   while (pos + 1 < tokens.length && isSymbol(tokens[pos], '::') && tokens[pos + 1].kind === TokKind.Identifier) {
     type += '::' + tokens[pos + 1].text;
     pos += 2;

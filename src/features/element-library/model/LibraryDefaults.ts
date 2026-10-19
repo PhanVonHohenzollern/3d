@@ -142,10 +142,14 @@ export class LibraryDefaults {
     const modes = this.parameterModes;
     const selectors = new Set(this.selectors);
     const changed = [...this.#keys.keys()].filter(
-      (name) => !sameValue(this.#editedValue(parameters, name), this.#value(this.#parameters, name) ?? this.#current.snapshot.resolvedValues.get(name))
-        && !hidden.has(name)
-        && modes.get(name) !== 'secondary'
-        && (this.#current.snapshot.resolvedValues.has(name) || selectors.has(name) || this.#controls.includes(name)),
+      (name) =>
+        !sameValue(
+          this.#editedValue(parameters, name),
+          this.#value(this.#parameters, name) ?? this.#current.snapshot.resolvedValues.get(name),
+        ) &&
+        !hidden.has(name) &&
+        modes.get(name) !== 'secondary' &&
+        (this.#current.snapshot.resolvedValues.has(name) || selectors.has(name) || this.#controls.includes(name)),
     );
     if (!changed.length) {
       this.remember(parameters);
@@ -168,14 +172,14 @@ export class LibraryDefaults {
     };
 
     if (controls.length && !supports(element))
-      element = this.#elements.find((item) => item.id === this.#initial.elementId && supports(item))
-        ?? this.#elements.find(supports)
-        ?? element;
+      element =
+        this.#elements.find((item) => item.id === this.#initial.elementId && supports(item)) ??
+        this.#elements.find(supports) ??
+        element;
 
     const switching = element.id !== this.#current.elementId;
     const baseline = switching ? element.resolve() : undefined;
-    if (baseline && baseline.snapshot.status !== 'valid')
-      throw new Error('Cannot switch to an unresolved JSON entity');
+    if (baseline && baseline.snapshot.status !== 'valid') throw new Error('Cannot switch to an unresolved JSON entity');
     const values = new Map(switching ? baseline!.snapshot.resolvedValues : this.#current.snapshot.resolvedValues);
     const allowedNames = new Set([...values.keys(), ...element.selectors.map((selector) => selector.name)]);
     if (switching) {
@@ -190,8 +194,10 @@ export class LibraryDefaults {
     const edited = changed.filter((name) => allowedNames.has(name));
     for (const name of edited) {
       const value = this.#editedValue(parameters, name);
-      if (this.parameterModes.get(name) === 'restrictive' &&
-          !this.options.get(name)?.some((option) => sameValue(option, value)))
+      if (
+        this.parameterModes.get(name) === 'restrictive' &&
+        !this.options.get(name)?.some((option) => sameValue(option, value))
+      )
         throw new Error(`${name}: select a value from the list`);
       if (value !== undefined) values.set(name, value);
     }
@@ -201,7 +207,8 @@ export class LibraryDefaults {
       return null;
     }
     const selected = switching
-      ? element.selectors.map(({ name }) => name)
+      ? element.selectors
+          .map(({ name }) => name)
           .filter((name) => !sameValue(values.get(name), baseline!.values.get(name)))
       : [];
     const resolved = element.resolve(values, [...new Set([...edited, ...selected])]);
@@ -209,10 +216,7 @@ export class LibraryDefaults {
       throw new Error(resolved.errors?.join('; ') || `Configuration is ${resolved.snapshot.status}`);
 
     const nextParameters = new Map(parameters);
-    const declared = new Set([
-      ...element.selectors.map(({ name }) => name),
-      ...(element.hiddenParameters ?? []),
-    ]);
+    const declared = new Set([...element.selectors.map(({ name }) => name), ...(element.hiddenParameters ?? [])]);
     for (const [name, key] of this.#keys) {
       // C++-only inputs are independent of the JSON graph. Preserve their
       // defaults/edits while another field triggers constraint resolution.
@@ -230,5 +234,4 @@ export class LibraryDefaults {
 
     return this.currentState;
   }
-
 }

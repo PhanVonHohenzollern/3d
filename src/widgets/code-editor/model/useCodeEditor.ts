@@ -1,23 +1,11 @@
-import {
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-import { EditorState, type Extension } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
-import { forEachDiagnostic, openLintPanel } from "@codemirror/lint";
-import type { CodeEditorProps } from "@/widgets/code-editor/model/types";
-import {
-  createCodeEditorHandle,
-  type EditorSignals,
-} from "@/widgets/code-editor/model/codeEditorHandle";
-import { createEditorExtensions } from "@/widgets/code-editor/lib/editorExtensions";
-import {
-  executionDiagnostics,
-  setExecutionDiagnostics,
-} from "@/widgets/code-editor/lib/linting";
+import { useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { EditorState, type Extension } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { forEachDiagnostic, openLintPanel } from '@codemirror/lint';
+import type { CodeEditorProps } from '@/widgets/code-editor/model/types';
+import { createCodeEditorHandle, type EditorSignals } from '@/widgets/code-editor/model/codeEditorHandle';
+import { createEditorExtensions } from '@/widgets/code-editor/lib/editorExtensions';
+import { executionDiagnostics, setExecutionDiagnostics } from '@/widgets/code-editor/lib/linting';
 
 interface EditorProblem {
   from: number;
@@ -59,28 +47,22 @@ export function useCodeEditor({
             message: diagnostic.message,
           });
         });
-      setProblems((previous) =>
-        JSON.stringify(previous) === JSON.stringify(next) ? previous : next,
-      );
+      setProblems((previous) => (JSON.stringify(previous) === JSON.stringify(next) ? previous : next));
       if (update.docChanged || update.selectionSet) {
         const head = update.state.selection.main.head;
         const line = update.state.doc.lineAt(head);
         const column = head - line.from + 1;
         setCursorPosition((previous) =>
-          previous.line === line.number && previous.column === column
-            ? previous
-            : { line: line.number, column },
+          previous.line === line.number && previous.column === column ? previous : { line: line.number, column },
         );
       }
-      const moved =
-        update.startState.selection.main.head !==
-        update.state.selection.main.head;
+      const moved = update.startState.selection.main.head !== update.state.selection.main.head;
       if (update.docChanged) signalsRef.current.onTextChanged?.();
       if (moved) signalsRef.current.onCursorPositionChanged?.();
     });
     const view = new EditorView({
       parent: hostRef.current!,
-      state: EditorState.create({ doc: "", extensions }),
+      state: EditorState.create({ doc: '', extensions }),
     });
     viewRef.current = view;
     extensionsRef.current = extensions;
@@ -95,13 +77,9 @@ export function useCodeEditor({
     const view = viewRef.current;
     if (!view || !executionFeedback) return;
     const code = view.state.doc.toString();
-    const source = code
-      .replace(/\u00a0/g, " ")
-      .replace(/[\u2028\u2029]/g, "\n");
+    const source = code.replace(/\u00a0/g, ' ').replace(/[\u2028\u2029]/g, '\n');
     const diagnostics =
-      source === executionFeedback.source
-        ? executionDiagnostics(source, executionFeedback.diagnostics)
-        : [];
+      source === executionFeedback.source ? executionDiagnostics(source, executionFeedback.diagnostics) : [];
     view.dispatch({ effects: setExecutionDiagnostics.of(diagnostics) });
   }, [executionFeedback]);
 

@@ -12,7 +12,14 @@ export function resolvePipeConnections(
     try {
       const nominal = evaluateLibraryExpression(definition.diameter, values);
       if (snapshot.diameter !== nominal) return [];
-      const size = [snapshot.diameter, snapshot.internalDiameter, snapshot.externalMale, snapshot.externalFemale, snapshot.flangeDiameter, snapshot.flangeThickness];
+      const size = [
+        snapshot.diameter,
+        snapshot.internalDiameter,
+        snapshot.externalMale,
+        snapshot.externalFemale,
+        snapshot.flangeDiameter,
+        snapshot.flangeThickness,
+      ];
       const female = ['F', '14'].includes(definition.connectionType?.trim().toUpperCase() ?? '');
       const type =
         snapshot.representation === 1
@@ -50,37 +57,43 @@ export function resolvePipeConnections(
  * arbitrary catalog by an ID prefix: names, sizes and link types vary by XML.
  * Other technologies still supply their resolved physical data to C++ queries.
  */
-export function connectorMeshConnections(
-  connections: readonly PipeConnection[],
-): PipeConnection[] {
+export function connectorMeshConnections(connections: readonly PipeConnection[]): PipeConnection[] {
   return connections.flatMap((connection): PipeConnection[] => {
     const resolved = connection.definition.physical?.resolvedSize;
-    if (!resolved || !resolved.technologyGuid ||
-        resolved.technology !== connection.definition.technology)
-      return [];
+    if (!resolved || !resolved.technologyGuid || resolved.technology !== connection.definition.technology) return [];
     if (resolved.meshKind === 'flanged') {
-      if (resolved.representation !== 1 || connection.type !== 'flanged' ||
-          !(resolved.flangeDiameter > 0) || !(resolved.flangeThickness >= 0)) return [];
+      if (
+        resolved.representation !== 1 ||
+        connection.type !== 'flanged' ||
+        !(resolved.flangeDiameter > 0) ||
+        !(resolved.flangeThickness >= 0)
+      )
+        return [];
 
       return [connection];
     }
-    if (resolved.meshKind !== 'threaded' || resolved.representation !== 2)
-      return [];
+    if (resolved.meshKind !== 'threaded' || resolved.representation !== 2) return [];
     // Threaded male/female end types affect C++ physical queries but not the
     // neutral preview envelope. Dimensions come from this exact technology row.
     const outer = Math.max(resolved.externalMale, resolved.externalFemale);
-    if (!Number.isFinite(outer) || !Number.isFinite(resolved.internalDiameter) ||
-        resolved.internalDiameter < 0 || outer <= resolved.internalDiameter)
+    if (
+      !Number.isFinite(outer) ||
+      !Number.isFinite(resolved.internalDiameter) ||
+      resolved.internalDiameter < 0 ||
+      outer <= resolved.internalDiameter
+    )
       return [];
 
-    return [{
-      ...connection,
-      type: 'neutral',
-      externalDiameter: outer,
-      internalDiameter: resolved.internalDiameter,
-      flangeSize: 0,
-      flangeThickness: 0,
-    }];
+    return [
+      {
+        ...connection,
+        type: 'neutral',
+        externalDiameter: outer,
+        internalDiameter: resolved.internalDiameter,
+        flangeSize: 0,
+        flangeThickness: 0,
+      },
+    ];
   });
 }
 

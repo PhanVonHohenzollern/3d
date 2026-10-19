@@ -142,7 +142,10 @@ export function discoverLibraries(root: string) {
         items[entity.guid] = {
           symbol: entity.names?.ENT_SYMBOL?.EN || entity.id,
           thumbnail,
-          sourceGroup: entity.legacyIds?.map((legacy) => legacy.GRPID?.trim()).filter(Boolean).join(', '),
+          sourceGroup: entity.legacyIds
+            ?.map((legacy) => legacy.GRPID?.trim())
+            .filter(Boolean)
+            .join(', '),
         };
       }
       const folders = new Map(parsed.folders.map((f) => [f.guid, f]));

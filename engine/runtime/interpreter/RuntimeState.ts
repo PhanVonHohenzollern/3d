@@ -1,10 +1,7 @@
-import {
-  resolveApiSignature,
-  type ApiSignatureMetadata,
-} from "@engine/runtime/ApiMetadata";
-import { runtimeError } from "@engine/runtime/cpp/cpp";
-import type { RuntimeFunctionMacro } from "@engine/runtime/helpers/macros";
-import { parentPaths, rootName } from "@engine/runtime/helpers/variablePaths";
+import { resolveApiSignature, type ApiSignatureMetadata } from '@engine/runtime/ApiMetadata';
+import { runtimeError } from '@engine/runtime/cpp/cpp';
+import type { RuntimeFunctionMacro } from '@engine/runtime/helpers/macros';
+import { parentPaths, rootName } from '@engine/runtime/helpers/variablePaths';
 import type {
   RuntimeApiCall,
   RuntimeArgumentTrace,
@@ -13,26 +10,15 @@ import type {
   RuntimeResult,
   RuntimeValueSource,
   RuntimeVariableChange,
-} from "@engine/runtime/RuntimeTypes";
-import {
-  isArray,
-  runtimeDeepCopy,
-  type RuntimeValue,
-} from "@engine/runtime/RuntimeValue";
-import {
-  captureArgumentTrace,
-  captureValueSources,
-  type SourceView,
-} from "@engine/runtime/interpreter/sourceTracing";
-import type { EvalContext } from "@engine/runtime/interpreter/evalContext";
-import {
-  mapSlot,
-  type RuntimeValueSlot,
-} from "@engine/runtime/helpers/lvalues";
-import { collectVariables } from "@engine/runtime/helpers/runtimeResult";
+} from '@engine/runtime/RuntimeTypes';
+import { isArray, runtimeDeepCopy, type RuntimeValue } from '@engine/runtime/RuntimeValue';
+import { captureArgumentTrace, captureValueSources, type SourceView } from '@engine/runtime/interpreter/sourceTracing';
+import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
+import { mapSlot, type RuntimeValueSlot } from '@engine/runtime/helpers/lvalues';
+import { collectVariables } from '@engine/runtime/helpers/runtimeResult';
 
 const emptyTrace = (): RuntimeArgumentTrace => ({
-  expression: "",
+  expression: '',
   sources: [],
   elements: [],
 });
@@ -56,7 +42,7 @@ export interface SavedBinding {
 // parameter requests and diagnostics. Only this class touches the storage; callers use its methods.
 export class RuntimeState implements EvalContext {
   debugApiIndex: number | undefined;
-  #functionName = "";
+  #functionName = '';
   #globalValues = new Map<string, RuntimeValue>();
   #globalIds = new Map<string, number>();
   #scopes: Map<
@@ -78,10 +64,7 @@ export class RuntimeState implements EvalContext {
   #lastChangedLine = new Map<string, number>();
   #apiCalls: RuntimeApiCall[] = [];
   #parameterRequests: RuntimeParameterRequest[] = [];
-  #pendingParameterReads = new Map<
-    number,
-    Map<string, RuntimeParameterRequest>
-  >();
+  #pendingParameterReads = new Map<number, Map<string, RuntimeParameterRequest>>();
   #parameters = new Map<string, string>();
   #functionMacros = new Map<string, RuntimeFunctionMacro>();
 
@@ -101,33 +84,26 @@ export class RuntimeState implements EvalContext {
       if (saved.exists)
         this.#values.set(
           name,
-          saved.id !== undefined && this.#globalIds.get(name) === saved.id
-            ? this.#globalValues.get(name)
-            : saved.value,
+          saved.id !== undefined && this.#globalIds.get(name) === saved.id ? this.#globalValues.get(name) : saved.value,
         );
       else {
         this.#values.delete(name);
-        this.#userVariableOrder = this.#userVariableOrder.filter(
-          (item) => item !== name,
-        );
+        this.#userVariableOrder = this.#userVariableOrder.filter((item) => item !== name);
       }
       if (saved.id === undefined) this.#variableIds.delete(name);
       else this.#variableIds.set(name, saved.id);
-      for (const path of this.#lastChangedLine.keys())
-        if (rootName(path) === name) this.#lastChangedLine.delete(path);
-      for (const [path, line] of saved.lines)
-        this.#lastChangedLine.set(path, line);
+      for (const path of this.#lastChangedLine.keys()) if (rootName(path) === name) this.#lastChangedLine.delete(path);
+      for (const [path, line] of saved.lines) this.#lastChangedLine.set(path, line);
       if (saved.id !== undefined && this.#globalIds.get(name) === saved.id)
         for (const change of this.#variableChanges)
-          if (change.variableId === saved.id)
-            this.#lastChangedLine.set(change.name, change.line);
+          if (change.variableId === saved.id) this.#lastChangedLine.set(change.name, change.line);
     }
   }
 
   // Starts a new run; the configured parameters stay.
   reset(): void {
     this.debugApiIndex = undefined;
-    this.#functionName = "";
+    this.#functionName = '';
     this.#globalValues = new Map();
     this.#globalIds = new Map();
     this.#scopes = [];
@@ -162,10 +138,7 @@ export class RuntimeState implements EvalContext {
     this.#functionMacros.set(name, macro);
   }
 
-  withBindings<T>(
-    bindings: ReadonlyMap<string, RuntimeValue>,
-    evaluate: () => T,
-  ): T {
+  withBindings<T>(bindings: ReadonlyMap<string, RuntimeValue>, evaluate: () => T): T {
     const values = this.#values;
     const saved = [...bindings].map(([name, value]) => {
       const existed = values.has(name);
@@ -195,11 +168,7 @@ export class RuntimeState implements EvalContext {
     this.#values.set(name, value);
   }
 
-  bindPointer(
-    name: string,
-    value: RuntimeValue,
-    type = this.pointerType(name) ?? "",
-  ): void {
+  bindPointer(name: string, value: RuntimeValue, type = this.pointerType(name) ?? ''): void {
     const id = this.#variableIds.get(name);
     if (id !== undefined) this.#pointerIds.set(id, type);
     this.bindValue(name, value);
@@ -250,13 +219,10 @@ export class RuntimeState implements EvalContext {
       functionName: this.#functionName,
     };
     for (const [name, id] of this.#globalIds)
-      if (frame.variableIds.get(name) === id)
-        this.#globalValues.set(name, frame.values.get(name));
+      if (frame.variableIds.get(name) === id) this.#globalValues.set(name, frame.values.get(name));
     this.#values = new Map(this.#globalValues);
     this.#variableIds = new Map(this.#globalIds);
-    this.#userVariableOrder = frame.order.filter((name) =>
-      this.#globalIds.has(name),
-    );
+    this.#userVariableOrder = frame.order.filter((name) => this.#globalIds.has(name));
     this.#functionName = functionName;
     this.pushScope();
 
@@ -268,8 +234,7 @@ export class RuntimeState implements EvalContext {
     for (const [name, id] of this.#globalIds) {
       if (frame.variableIds.get(name) === id) {
         frame.values.set(name, this.#values.get(name));
-        for (const [path, line] of this.#lastChangedLine)
-          if (rootName(path) === name) frame.lines.set(path, line);
+        for (const [path, line] of this.#lastChangedLine) if (rootName(path) === name) frame.lines.set(path, line);
       }
     }
     this.#values = frame.values;
@@ -285,14 +250,8 @@ export class RuntimeState implements EvalContext {
 
   result(): RuntimeResult {
     return {
-      ...(this.debugApiIndex === undefined
-        ? {}
-        : { debugApiIndex: this.debugApiIndex }),
-      variables: collectVariables(
-        this.#userVariableOrder,
-        this.#values,
-        this.#lastChangedLine,
-      ),
+      ...(this.debugApiIndex === undefined ? {} : { debugApiIndex: this.debugApiIndex }),
+      variables: collectVariables(this.#userVariableOrder, this.#values, this.#lastChangedLine),
       variableChanges: this.#variableChanges.slice(),
       diagnostics: this.#diagnostics.slice(),
       apiCalls: this.#apiCalls.slice(),
@@ -304,31 +263,22 @@ export class RuntimeState implements EvalContext {
   // Parameter names also resolve, to the value their variable had.
   evaluationSnapshot(): RuntimeState {
     const snapshot = new RuntimeState();
-    for (const [name, value] of this.#values)
-      snapshot.#values.set(name, runtimeDeepCopy(value));
+    for (const [name, value] of this.#values) snapshot.#values.set(name, runtimeDeepCopy(value));
     snapshot.#functionMacros = new Map(this.#functionMacros);
     for (const request of this.#parameterRequests) {
-      if (
-        this.#values.has(request.variableName) &&
-        !snapshot.#values.has(request.name)
-      )
-        snapshot.#values.set(
-          request.name,
-          runtimeDeepCopy(this.#values.get(request.variableName)),
-        );
+      if (this.#values.has(request.variableName) && !snapshot.#values.has(request.name))
+        snapshot.#values.set(request.name, runtimeDeepCopy(this.#values.get(request.variableName)));
     }
 
     return snapshot;
   }
 
   lookupValue(name: string, copy = true): RuntimeValue {
-    if (!this.#values.has(name))
-      throw runtimeError("unknown variable: " + name);
+    if (!this.#values.has(name)) throw runtimeError('unknown variable: ' + name);
 
     const id = this.#variableIds.get(name);
     if (id !== undefined)
-      for (const request of this.#pendingParameterReads.get(id)?.values() ?? [])
-        request.consumed = true;
+      for (const request of this.#pendingParameterReads.get(id)?.values() ?? []) request.consumed = true;
 
     const value = this.#values.get(name);
 
@@ -343,10 +293,7 @@ export class RuntimeState implements EvalContext {
     return captureValueSources(expression, this.#sourceView());
   }
 
-  captureArgumentTrace(
-    expression: string,
-    value: RuntimeValue,
-  ): RuntimeArgumentTrace {
+  captureArgumentTrace(expression: string, value: RuntimeValue): RuntimeArgumentTrace {
     return captureArgumentTrace(expression, value, this.#sourceView());
   }
 
@@ -365,50 +312,34 @@ export class RuntimeState implements EvalContext {
     value: RuntimeValue,
     userVariable = true,
     line = 0,
-    operation = "",
-    expression = "",
+    operation = '',
+    expression = '',
     inputTrace: RuntimeArgumentTrace | null = null,
   ): void {
     const existed = this.#values.has(name);
     const scope = this.#scopes.at(-1);
-    if (
-      scope &&
-      (operation === "declare" || operation === "bind") &&
-      !scope.has(name)
-    )
+    if (scope && (operation === 'declare' || operation === 'bind') && !scope.has(name))
       scope.set(name, {
         exists: existed,
         value: this.#values.get(name),
         id: this.#variableIds.get(name),
-        lines: new Map(
-          [...this.#lastChangedLine].filter(
-            ([path]) => rootName(path) === name,
-          ),
-        ),
+        lines: new Map([...this.#lastChangedLine].filter(([path]) => rootName(path) === name)),
       });
-    const newLifetime =
-      !existed || operation === "declare" || operation === "bind";
-    const before: RuntimeValue =
-      existed && !newLifetime
-        ? runtimeDeepCopy(this.#values.get(name))
-        : undefined;
+    const newLifetime = !existed || operation === 'declare' || operation === 'bind';
+    const before: RuntimeValue = existed && !newLifetime ? runtimeDeepCopy(this.#values.get(name)) : undefined;
     let trace = inputTrace ?? emptyTrace();
-    if (!inputTrace && line > 0)
-      trace = this.captureArgumentTrace(expression, value);
+    if (!inputTrace && line > 0) trace = this.captureArgumentTrace(expression, value);
     if (newLifetime) this.#variableIds.set(name, this.#nextVariableId++);
     if (userVariable && !existed) this.#userVariableOrder.push(name);
     const stored = runtimeDeepCopy(value);
     this.#values.set(name, stored);
-    if (
-      this.#globalIds.has(name) &&
-      this.#globalIds.get(name) === this.#variableIds.get(name)
-    )
+    if (this.#globalIds.has(name) && this.#globalIds.get(name) === this.#variableIds.get(name))
       this.#globalValues.set(name, stored);
     if (line <= 0) return;
     this.recordVariableChange(
       line,
       name,
-      operation === "" ? "set" : operation,
+      operation === '' ? 'set' : operation,
       expression,
       before,
       stored,
@@ -426,12 +357,11 @@ export class RuntimeState implements EvalContext {
     if (!isArray(value)) return;
     value.elements.forEach((element, i) => {
       const child = `${base}[${i}]`;
-      const elementTrace =
-        i < input.elements.length ? input.elements[i] : emptyTrace();
+      const elementTrace = i < input.elements.length ? input.elements[i] : emptyTrace();
       this.recordVariableChange(
         line,
         child,
-        "declare",
+        'declare',
         elementTrace.expression,
         undefined,
         element,
@@ -442,24 +372,16 @@ export class RuntimeState implements EvalContext {
   }
 
   addDiagnostic(line: number, message: string): void {
-    const exists = this.#diagnostics.some(
-      (d) => d.line === line && d.message === message,
-    );
+    const exists = this.#diagnostics.some((d) => d.line === line && d.message === message);
     if (!exists) this.#diagnostics.push({ line, message });
   }
 
   // `signature` may be passed when the caller already resolved it for these arguments.
-  recordApiCall(
-    call: RuntimeApiCall,
-    signature?: ApiSignatureMetadata | null,
-  ): number {
+  recordApiCall(call: RuntimeApiCall, signature?: ApiSignatureMetadata | null): number {
     call.arguments = call.arguments.map(runtimeDeepCopy);
-    call.signature =
-      signature === undefined ? resolveApiSignature(call) : signature;
+    call.signature = signature === undefined ? resolveApiSignature(call) : signature;
     call.arguments.forEach((argument, i) =>
-      call.argumentTraces.push(
-        this.captureArgumentTrace(call.argumentExpressions[i] ?? "", argument),
-      ),
+      call.argumentTraces.push(this.captureArgumentTrace(call.argumentExpressions[i] ?? '', argument)),
     );
     this.#apiCalls.push(call);
 
@@ -476,38 +398,18 @@ export class RuntimeState implements EvalContext {
     sources: RuntimeValueSource[] = [],
     includeAliases = true,
   ): void {
-    if (line <= 0 || name === "") return;
+    if (line <= 0 || name === '') return;
     const root = rootName(name);
-    const pending = this.#pendingParameterReads.get(
-      this.#variableIds.get(root) ?? -1,
-    );
+    const pending = this.#pendingParameterReads.get(this.#variableIds.get(root) ?? -1);
     for (const [path, request] of pending ?? []) {
       if (name !== path && name !== root) continue;
       // A compound update consumes the old destination; plain replacement does
       // not. RHS reads are tracked separately by lookupValue, including branches.
-      if (
-        [
-          "+=",
-          "-=",
-          "*=",
-          "/=",
-          "%=",
-          "&=",
-          "|=",
-          "^=",
-          "<<=",
-          ">>=",
-          "++",
-          "--",
-        ].includes(operation)
-      )
+      if (['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>=', '++', '--'].includes(operation))
         request.consumed = true;
       pending!.delete(path);
     }
-    if (
-      this.#globalIds.has(root) &&
-      this.#globalIds.get(root) === this.#variableIds.get(root)
-    )
+    if (this.#globalIds.has(root) && this.#globalIds.get(root) === this.#variableIds.get(root))
       this.#globalValues.set(root, this.#values.get(root));
     this.#variableChanges.push({
       line,
@@ -520,15 +422,9 @@ export class RuntimeState implements EvalContext {
       sources,
     });
     this.#lastChangedLine.set(name, line);
-    for (const parent of parentPaths(name))
-      this.#lastChangedLine.set(parent, line);
+    for (const parent of parentPaths(name)) this.#lastChangedLine.set(parent, line);
     const value = this.#values.get(root);
-    if (
-      includeAliases &&
-      isArray(value) &&
-      operation !== "declare" &&
-      operation !== "rebind"
-    )
+    if (includeAliases && isArray(value) && operation !== 'declare' && operation !== 'rebind')
       for (const [alias, target] of this.#values)
         if (alias !== root && target === value)
           this.recordVariableChange(
@@ -550,9 +446,9 @@ export class RuntimeState implements EvalContext {
     let initialized = false;
     for (const change of this.#variableChanges) {
       if (change.variableId !== id || change.name !== root) continue;
-      if (change.operation === "declare") {
+      if (change.operation === 'declare') {
         initialized = Boolean(change.expression.trim());
-      } else if (!["get_val"].includes(change.operation)) {
+      } else if (!['get_val'].includes(change.operation)) {
         // An actual preceding assignment is a valid fallback value, too.
         initialized = true;
       }
@@ -569,14 +465,11 @@ export class RuntimeState implements EvalContext {
         r.sourceFunction === request.sourceFunction &&
         r.variableName === request.variableName,
     );
-    if (request.sourceFunction === "get_val") {
+    if (request.sourceFunction === 'get_val') {
       const id = this.#variableIds.get(rootName(request.variableName));
       if (id !== undefined) {
-        request.consumed =
-          index >= 0 && this.#parameterRequests[index].consumed === true;
-        const pending =
-          this.#pendingParameterReads.get(id) ??
-          new Map<string, RuntimeParameterRequest>();
+        request.consumed = index >= 0 && this.#parameterRequests[index].consumed === true;
+        const pending = this.#pendingParameterReads.get(id) ?? new Map<string, RuntimeParameterRequest>();
         pending.set(request.variableName, request);
         this.#pendingParameterReads.set(id, pending);
       }

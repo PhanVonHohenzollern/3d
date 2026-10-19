@@ -112,8 +112,14 @@ export function ParameterPanel(props: ParameterPanelProps) {
                             disabled={field.disabled || field.xmlOptions.length === 0}
                             onChange={(event) => field.selectValue(event.target.value)}
                           >
-                            {!field.xmlOptions.includes(field.value) && <option value={field.value}>{field.value}</option>}
-                            {field.xmlOptions.map((value) => <option key={value} value={value}>{value}</option>)}
+                            {!field.xmlOptions.includes(field.value) && (
+                              <option value={field.value}>{field.value}</option>
+                            )}
+                            {field.xmlOptions.map((value) => (
+                              <option key={value} value={value}>
+                                {value}
+                              </option>
+                            ))}
                           </select>
                         ) : field.checkbox ? (
                           <input

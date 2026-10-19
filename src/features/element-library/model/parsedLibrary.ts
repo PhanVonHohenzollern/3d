@@ -43,7 +43,15 @@ export interface FlmRestriction {
   /** Source-backed lexical condition values, mapped using this library's TYPE=6
    dictionary. conditionsRaw always retains the exact source XML token. */
   resolvedConditionsRaw?: Record<string, string>;
-  conditionCanonicalEvidence?: { conditionKey: string; variable: string; sourceLiteral: string; canonicalLiteral: string; sourceTableGuid: string; columnKey: number; sourceLanguage: string }[];
+  conditionCanonicalEvidence?: {
+    conditionKey: string;
+    variable: string;
+    sourceLiteral: string;
+    canonicalLiteral: string;
+    sourceTableGuid: string;
+    columnKey: number;
+    sourceLanguage: string;
+  }[];
   bindings: FlmBinding[];
   extraFields: FlmNode[];
 }
@@ -59,7 +67,15 @@ export interface FlmConnector {
   /** Source-backed lexical condition values, mapped using this library's TYPE=6
    dictionary. conditionsRaw always retains the exact source XML token. */
   resolvedConditionsRaw?: Record<string, string>;
-  conditionCanonicalEvidence?: { conditionKey: string; variable: string; sourceLiteral: string; canonicalLiteral: string; sourceTableGuid: string; columnKey: number; sourceLanguage: string }[];
+  conditionCanonicalEvidence?: {
+    conditionKey: string;
+    variable: string;
+    sourceLiteral: string;
+    canonicalLiteral: string;
+    sourceTableGuid: string;
+    columnKey: number;
+    sourceLanguage: string;
+  }[];
   fields: Record<string, unknown>;
   variables?: FlmVariable[];
   restrictions?: FlmRestriction[];
@@ -271,22 +287,39 @@ export function verifiedSourceConditions(
       const normalized = replacements[i];
       if (literal === normalized) return true;
 
-      return condition.conditionCanonicalEvidence?.some((proof) => {
-        if (proof.conditionKey !== key || proof.variable !== variable ||
-            proof.sourceLiteral !== literal.trim() || proof.canonicalLiteral !== normalized) return false;
-        const table = library.specifications[proof.sourceTableGuid];
-        if (!table || !Number.isInteger(proof.columnKey) || proof.columnKey < 0 ||
-            proof.columnKey >= table.dataColumns.length) return false;
-        // Explicit source binding is required, not a lexical coincidence.
-        if (!restrictions.some((restriction) =>
-          restriction.tableGuid === proof.sourceTableGuid &&
-          restriction.bindings.some((b) => b.variable === variable && b.columnKey === proof.columnKey))) return false;
-        try {
-          return new SpecificationIndex(table).matching(proof.columnKey, normalized).size > 0;
-        } catch {
-          return false;
-        }
-      }) ?? false;
+      return (
+        condition.conditionCanonicalEvidence?.some((proof) => {
+          if (
+            proof.conditionKey !== key ||
+            proof.variable !== variable ||
+            proof.sourceLiteral !== literal.trim() ||
+            proof.canonicalLiteral !== normalized
+          )
+            return false;
+          const table = library.specifications[proof.sourceTableGuid];
+          if (
+            !table ||
+            !Number.isInteger(proof.columnKey) ||
+            proof.columnKey < 0 ||
+            proof.columnKey >= table.dataColumns.length
+          )
+            return false;
+          // Explicit source binding is required, not a lexical coincidence.
+          if (
+            !restrictions.some(
+              (restriction) =>
+                restriction.tableGuid === proof.sourceTableGuid &&
+                restriction.bindings.some((b) => b.variable === variable && b.columnKey === proof.columnKey),
+            )
+          )
+            return false;
+          try {
+            return new SpecificationIndex(table).matching(proof.columnKey, normalized).size > 0;
+          } catch {
+            return false;
+          }
+        }) ?? false
+      );
     });
     if (verified) merged[key] = canonical;
     else invalidFields.push(key);
@@ -328,14 +361,20 @@ export class SpecificationIndex {
   numericRange(column: number): { min: number; max: number; ordered: boolean } | null {
     if (!this.#numericRanges.has(column)) {
       const cells = this.columns[column];
-      const numbers = cells?.map((cell) => cell?.trim() ? Number(cell) : Number.NaN);
+      const numbers = cells?.map((cell) => (cell?.trim() ? Number(cell) : Number.NaN));
       const valid = numbers?.length && numbers.every(Number.isFinite);
-      this.#numericRanges.set(column, valid ? {
-        min: Math.min(...numbers),
-        max: Math.max(...numbers),
-        ordered: numbers.every((n, i) => !i || n >= numbers[i - 1]) ||
-          numbers.every((n, i) => !i || n <= numbers[i - 1]),
-      } : null);
+      this.#numericRanges.set(
+        column,
+        valid
+          ? {
+              min: Math.min(...numbers),
+              max: Math.max(...numbers),
+              ordered:
+                numbers.every((n, i) => !i || n >= numbers[i - 1]) ||
+                numbers.every((n, i) => !i || n <= numbers[i - 1]),
+            }
+          : null,
+      );
     }
 
     return this.#numericRanges.get(column)!;

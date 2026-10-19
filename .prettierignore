@@ -3,3 +3,9 @@ node_modules
 package-lock.json
 tests/fixtures
 engine/runtime/*.generated.ts
+
+# XML catalog data; preserve the converter's serialized representation.
+libraries/BELIMO/BELIMO.json
+libraries/CGeneral/CGeneral.json
+libraries/General/General.json
+libraries/GRUNDFOS/GRUNDFOS.json

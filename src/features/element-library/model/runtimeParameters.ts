@@ -1,5 +1,5 @@
-import { parameterKey, type RuntimeParameterRequest } from "@engine/runtime";
-import type { ResolvedSnapshot } from "@/features/element-library/model/constraintGraph";
+import { parameterKey, type RuntimeParameterRequest } from '@engine/runtime';
+import type { ResolvedSnapshot } from '@/features/element-library/model/constraintGraph';
 
 // One committed JSON snapshot feeds both the main interpreter and sub-function trace.
 // Non-library runtime inputs (e.g. insulation) are deliberately preserved.
@@ -10,8 +10,7 @@ export function resolvedRuntimeParameters(
 ): Map<string, string> {
   const parameters = new Map(overrides);
   if (!snapshot) return parameters;
-  if (snapshot.status !== "valid")
-    throw new Error(`Cannot execute a ${snapshot.status} library snapshot`);
+  if (snapshot.status !== 'valid') throw new Error(`Cannot execute a ${snapshot.status} library snapshot`);
   if (snapshot.missingInputs?.length)
     throw new Error(`Enter dimensions in Parameters: ${snapshot.missingInputs.join(', ')}`);
 
@@ -21,10 +20,9 @@ export function resolvedRuntimeParameters(
   // Selecting an entity resets the panel; sharing an entry does not make its
   // other cases' JSON values defaults for this entity.
   for (const key of parameters.keys()) {
-    const scopeSeparator = key.lastIndexOf("::");
+    const scopeSeparator = key.lastIndexOf('::');
     const plain = scopeSeparator >= 0 ? key.slice(scopeSeparator + 2) : key;
-    if (values.has(key) || values.has(plain))
-      parameters.delete(key);
+    if (values.has(key) || values.has(plain)) parameters.delete(key);
   }
   for (const [name, value] of values) parameters.set(name, value);
 
@@ -33,7 +31,7 @@ export function resolvedRuntimeParameters(
   // missing names must instead be validated against executed requests before
   // a scene is published. Never synthesize C++ defaults for missing JSON names.
   for (const request of requests) {
-    if (request.sourceFunction !== "get_val") continue;
+    if (request.sourceFunction !== 'get_val') continue;
     const value = values.get(request.name);
     if (value !== undefined) parameters.set(parameterKey(request), value);
   }
@@ -60,8 +58,7 @@ export function inspectExecutedGetVals(
   const missing = new Set<string>();
   const invalid = new Set<string>();
   for (const request of executed) {
-    if (request.sourceFunction !== "get_val" || request.consumed === false)
-      continue;
+    if (request.sourceFunction !== 'get_val' || request.consumed === false) continue;
     const value = snapshot.resolvedValues.get(request.name);
     if (value === undefined) {
       // Native get_val keeps an explicit source initializer/assignment on a
@@ -71,9 +68,7 @@ export function inspectExecutedGetVals(
       continue;
     }
     if (
-      ["double", "float", "int", "long", "short"].includes(
-        request.type ?? "",
-      ) &&
+      ['double', 'float', 'int', 'long', 'short'].includes(request.type ?? '') &&
       (!value.trim() || !Number.isFinite(Number(value)))
     )
       invalid.add(request.name);

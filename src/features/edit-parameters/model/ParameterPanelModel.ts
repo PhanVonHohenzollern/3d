@@ -131,7 +131,10 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   }
 
   get #visibleDefinitions(): RuntimeParameterRequest[] {
-    return this.#definitions.filter((definition) => !this.#hiddenParameters.has(definition.name) && !this.#hiddenParameters.has(parameterKey(definition)));
+    return this.#definitions.filter(
+      (definition) =>
+        !this.#hiddenParameters.has(definition.name) && !this.#hiddenParameters.has(parameterKey(definition)),
+    );
   }
 
   // XML selectors can drive dimensions/connectors without a corresponding C++ get_val.
@@ -500,7 +503,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       if (
         !definition ||
         this.parameterMode(definition.name) === 'secondary' ||
-        (this.parameterMode(definition.name) === 'restrictive' && !this.valueOptions(definition.name).includes(value)) ||
+        (this.parameterMode(definition.name) === 'restrictive' &&
+          !this.valueOptions(definition.name).includes(value)) ||
         (isInsulationQuery(definition.sourceFunction) && !this.#enabledInsulation.has(definition.sourceFunction))
       )
         continue;
@@ -533,8 +537,10 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   #itemChanged(row: ParameterRow, column: number): void {
     if (this.#updating || column !== ValueColumn) return;
     if (this.parameterMode(row.texts[0]) === 'secondary') return;
-    if (this.parameterMode(row.texts[0]) === 'restrictive' &&
-        !this.valueOptions(row.texts[0]).includes(row.texts[ValueColumn])) {
+    if (
+      this.parameterMode(row.texts[0]) === 'restrictive' &&
+      !this.valueOptions(row.texts[0]).includes(row.texts[ValueColumn])
+    ) {
       row.texts[ValueColumn] = this.#values.get(row.key) ?? '';
       this.changed();
 
@@ -568,7 +574,12 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   edit(row: number, column: number): boolean {
     if (column !== ValueColumn || row < 0 || row >= this.rows.length) return false;
-    if (this.rows[row].disabled || this.rows[row].checkbox || this.parameterMode(this.rows[row].texts[0]) === 'secondary') return false;
+    if (
+      this.rows[row].disabled ||
+      this.rows[row].checkbox ||
+      this.parameterMode(this.rows[row].texts[0]) === 'secondary'
+    )
+      return false;
     this.editor = { row, text: this.rows[row].texts[ValueColumn], serial: ++this.#editorSerial };
     this.changed();
 

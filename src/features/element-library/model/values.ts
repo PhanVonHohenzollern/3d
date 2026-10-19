@@ -8,4 +8,3 @@ export function sameValue(a: string | undefined, b: string | undefined): boolean
 
   return normalize(a) === normalize(b);
 }
-

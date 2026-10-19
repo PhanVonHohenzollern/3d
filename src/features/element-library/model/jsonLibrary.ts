@@ -6,7 +6,12 @@ import {
   restrictionActive,
   type ResolvedSnapshot,
 } from '@/features/element-library/model/constraintGraph';
-import { isHiddenVariable, readParsedLibrary, verifiedSourceConditions, type FlmConnector } from '@/features/element-library/model/parsedLibrary';
+import {
+  isHiddenVariable,
+  readParsedLibrary,
+  verifiedSourceConditions,
+  type FlmConnector,
+} from '@/features/element-library/model/parsedLibrary';
 import { resolveLocalTechnology } from '@/features/element-library/model/localTechnology';
 import { pipeConnectionParameters, resolvePipeConnections } from '@/features/element-library/model/pipeTechnologies';
 import type { ElementLibrary, LibraryElement, LibraryValues } from '@/features/element-library/model/types';
@@ -51,15 +56,17 @@ function connectorDefinition(
   // A Link without its own DEF_TECHID inherits the element's solved technical
   // identifier. The display label `tech` is not a substitute for tech_idx.
   const expression = link.technologyExpression?.trim();
-  const dynamicTechnology = expression?.startsWith('%') ||
-    (!!expression && values.has(expression));
+  const dynamicTechnology = expression?.startsWith('%') || (!!expression && values.has(expression));
   const technologyToken = dynamicTechnology
     ? values.get(expression!.replace(/^%/, ''))
     : expression
       ? (link.technologyRef?.id ?? expression)
       : (link.technologyRef?.id ?? values.get('tech_idx'));
   const locallyResolved = resolveLocalTechnology(graph.library, technologyToken);
-  const guidMatches = dynamicTechnology || !link.technologyRef || !locallyResolved.technology ||
+  const guidMatches =
+    dynamicTechnology ||
+    !link.technologyRef ||
+    !locallyResolved.technology ||
     locallyResolved.technology.guid.toLowerCase() === link.technologyRef.guid.toLowerCase();
   const technology = guidMatches ? locallyResolved.technology : undefined;
   const technologyId = technology?.id ?? technologyToken;
@@ -103,7 +110,11 @@ function connectorDefinition(
     connectionType,
     // An omitted POSITION denotes the element origin, just as omitted axes
     // within a POSITION denote zero. It does not mean the port is absent.
-    position: ['X', 'Y', 'Z'].map((axis) => link.positionExpressions?.[axis]?.trim() || '0') as [string, string, string],
+    position: ['X', 'Y', 'Z'].map((axis) => link.positionExpressions?.[axis]?.trim() || '0') as [
+      string,
+      string,
+      string,
+    ],
     angles: [angles.Gamma?.trim() || '0', angles.Beta?.trim() || '0', angles.Alpha?.trim() || '0'],
     aSize: String(link.fields.FWIDTH ?? prepared?.aSize ?? '0'),
     bSize: String(link.fields.FHEIGHT ?? prepared?.bSize ?? '0'),
@@ -128,10 +139,7 @@ function connectorDefinition(
   };
 
   for (const expression of expressions)
-    if (
-      evaluate(expression) === undefined ||
-      !Number.isFinite(Number(evaluate(expression)))
-    ) {
+    if (evaluate(expression) === undefined || !Number.isFinite(Number(evaluate(expression)))) {
       issue(`cannot resolve ${expression}`);
 
       return;
@@ -184,8 +192,11 @@ function connectorDefinition(
   }
   if (!technology)
     return withoutPhysicalSize(
-      `${guidMatches ? (locallyResolved.issue ?? `missing local technology ${technologyToken}`) :
-        `technology GUID differs from this library's definition (${technologyToken})`}; Link profile retained`,
+      `${
+        guidMatches
+          ? (locallyResolved.issue ?? `missing local technology ${technologyToken}`)
+          : `technology GUID differs from this library's definition (${technologyToken})`
+      }; Link profile retained`,
     );
   // Only tables referenced by this technology are consulted. IDs from another
   // library never override the same technology ID in this resolved snapshot.
@@ -202,11 +213,12 @@ function connectorDefinition(
   // from global FLN_*/THR_* identifier prefixes. Representation=2 is shared
   // by soldered/glued/copper/threaded sources and cannot identify thread alone.
   const sourceName = technology.names?.TECH_NAME?.EN?.trim() ?? '';
-  const technologyMeshKind = representation === 1
-    ? 'flanged'
-    : representation === 2 && /\bthread(?:ed|ing)?\b/i.test(sourceName)
-      ? 'threaded'
-      : 'none';
+  const technologyMeshKind =
+    representation === 1
+      ? 'flanged'
+      : representation === 2 && /\bthread(?:ed|ing)?\b/i.test(sourceName)
+        ? 'threaded'
+        : 'none';
   // Read the size schema supplied by the referenced Technology, not a
   // hard-coded assumption that every Pipe table uses the same column names.
   const nominalColumn = ['d', 'Dn_nom', 'dn_out'].map((name) => columns.indexOf(name)).find((index) => index >= 0);
@@ -299,8 +311,7 @@ export function createJsonLibrary(
           const numericInputs = boundDiscovered.filter((name) => {
             const value = snapshot.resolvedValues.get(name);
 
-            return graph!.variables.get(name)?.valueTypeCode !== 3 &&
-              !!value?.trim() && Number.isFinite(Number(value));
+            return graph!.variables.get(name)?.valueTypeCode !== 3 && !!value?.trim() && Number.isFinite(Number(value));
           });
           for (const [name, choices] of snapshot.validOptions) {
             if (!/(?:^|_)tech\d*$/.test(name) || choices.length < 2) continue;
@@ -311,11 +322,14 @@ export function createJsonLibrary(
 
               const solved = solver!.solve(candidate, [name]);
 
-              return solved.status === 'valid' && numericInputs.every((input) => {
-                const value = solved.resolvedValues.get(input);
+              return (
+                solved.status === 'valid' &&
+                numericInputs.every((input) => {
+                  const value = solved.resolvedValues.get(input);
 
-                return !!value?.trim() && Number.isFinite(Number(value));
-              });
+                  return !!value?.trim() && Number.isFinite(Number(value));
+                })
+              );
             });
             snapshot.validOptions.set(name, accepted);
           }

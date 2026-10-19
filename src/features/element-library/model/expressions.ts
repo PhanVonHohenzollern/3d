@@ -15,13 +15,8 @@ const defaultCircRadii: readonly (readonly [number, number])[] = [
   [Infinity, 1.5],
 ];
 
-function radiusLookup(
-  name: string,
-  rows: readonly (readonly [number, number])[],
-  args: readonly number[],
-): number {
-  if (args.length !== 1 || !Number.isFinite(args[0]))
-    throw new Error(`${name} requires one finite dimension`);
+function radiusLookup(name: string, rows: readonly (readonly [number, number])[], args: readonly number[]): number {
+  if (args.length !== 1 || !Number.isFinite(args[0])) throw new Error(`${name} requires one finite dimension`);
 
   return rows.find(([upperBound]) => args[0] <= upperBound)![1];
 }
@@ -67,8 +62,7 @@ export function normalizeFinalParentheses(tokens: readonly string[]): string[] {
     } else if (token === ')' || token === ']') {
       const expected = opens.at(-1) === '(' ? ')' : opens.at(-1) === '[' ? ']' : undefined;
       if (expected === token) opens.pop();
-      else if (!opens.length && token === ')' && tokens.slice(i).every((t) => t === ')'))
-        trailingCloses++;
+      else if (!opens.length && token === ')' && tokens.slice(i).every((t) => t === ')')) trailingCloses++;
       else return [...tokens];
     }
   }
@@ -87,7 +81,9 @@ export function evaluateLibraryExpression(expression: string, values: ReadonlyMa
 
     return value;
   }
-  const tokens = normalizeFinalParentheses(expression.match(/(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?|[A-Za-z_][\w.]*|\S/gi) ?? []);
+  const tokens = normalizeFinalParentheses(
+    expression.match(/(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?|[A-Za-z_][\w.]*|\S/gi) ?? [],
+  );
   let position = 0;
 
   function atom(): number {
@@ -112,8 +108,7 @@ export function evaluateLibraryExpression(expression: string, values: ReadonlyMa
       return functions[token](...args);
     }
     if (token === 'pi') return Math.PI;
-    if (tokens[position] === '(')
-      throw new Error(`Unsupported FLM function: ${token} in ${expression}`);
+    if (tokens[position] === '(') throw new Error(`Unsupported FLM function: ${token} in ${expression}`);
     const source = values.get(token) ?? token;
     const value = Number(source);
     if (!source?.trim() || !Number.isFinite(value)) throw new Error(`Missing or invalid value: ${token ?? expression}`);

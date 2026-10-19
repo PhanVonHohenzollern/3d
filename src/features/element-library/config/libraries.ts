@@ -1,6 +1,6 @@
-import registry from "virtual:flm-libraries";
-import { createJsonLibrary } from "@/features/element-library/model/jsonLibrary";
-import type { LibraryAsset } from "@/features/element-library/model/types";
+import registry from 'virtual:flm-libraries';
+import { createJsonLibrary } from '@/features/element-library/model/jsonLibrary';
+import type { LibraryAsset } from '@/features/element-library/model/types';
 
 // The Vite virtual manifest must scan JSON, C++ (.h/.cpp) and SVG files.
 // Never mix these libraries with a legacy XML/runtime-default registry.

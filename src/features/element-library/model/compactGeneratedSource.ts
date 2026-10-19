@@ -6,7 +6,7 @@
  * Preserve raw-string contents verbatim, including intentional blank lines.
  */
 export function compactGeneratedSource(source: string): string {
-  const lines = source.replace(/\r\n?/g, "\n").split("\n");
+  const lines = source.replace(/\r\n?/g, '\n').split('\n');
   const output: string[] = [];
   let rawTerminator: string | null = null;
   let blankLines = 0;
@@ -31,14 +31,14 @@ export function compactGeneratedSource(source: string): string {
       insideRaw = true;
     }
     if (!line.trim() && rawTerminator === null && !insideRaw) {
-      if (output.length && blankLines === 0) output.push("");
+      if (output.length && blankLines === 0) output.push('');
       ++blankLines;
     } else {
       output.push(line);
       blankLines = 0;
     }
   }
-  while (output.at(-1) === "") output.pop();
+  while (output.at(-1) === '') output.pop();
 
-  return output.join("\n").trim() + "\n";
+  return output.join('\n').trim() + '\n';
 }

@@ -1,11 +1,8 @@
-import type {
-  FunctionEditorActions,
-  FunctionEditorState,
-} from "@/features/manage-functions";
-import { useModelFiles } from "@/features/model-files";
-import { useEffect, useMemo, useState } from "react";
-import { WorkspaceModel } from "@/pages/workspace/model/WorkspaceModel";
-import { useObservable } from "@/shared/lib/observable";
+import type { FunctionEditorActions, FunctionEditorState } from '@/features/manage-functions';
+import { useModelFiles } from '@/features/model-files';
+import { useEffect, useMemo, useState } from 'react';
+import { WorkspaceModel } from '@/pages/workspace/model/WorkspaceModel';
+import { useObservable } from '@/shared/lib/observable';
 
 export function useWorkspace() {
   const [model] = useState(() => new WorkspaceModel());
@@ -13,8 +10,7 @@ export function useWorkspace() {
   const files = useModelFiles({
     canExport: model.canExportObj,
     importedName: model.importedObj?.name ?? null,
-    showImported: (imported) =>
-      model.replacePreviewWithObj(imported.scene, imported.name),
+    showImported: (imported) => model.replacePreviewWithObj(imported.scene, imported.name),
     exportText: () => model.exportObj(),
   });
   const functions = model.functions;
@@ -36,11 +32,11 @@ export function useWorkspace() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => model.handleKeyDown(event);
 
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
     model.start();
 
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener('keydown', onKeyDown);
       model.dispose();
     };
   }, [model]);
@@ -68,7 +64,7 @@ export function useWorkspace() {
       })),
       active: parameterFunctions.some((fn) => fn.name === functions.inputTab)
         ? functions.inputTab
-        : (parameterFunctions[0]?.name ?? ""),
+        : (parameterFunctions[0]?.name ?? ''),
       select: model.selectFunctionInputs,
       change: model.setFunctionInput,
       apply: model.applyFunctionInputs,
@@ -87,7 +83,7 @@ export function useWorkspace() {
     raiseDock: model.raiseDock,
     editor: {
       ref: model.bindEditor,
-      active: model.editorTab === "code",
+      active: model.editorTab === 'code',
       executionFeedback: model.session.feedback,
       previewStatus: model.session.previewStatus,
       onTextChanged: model.onEditorTextChanged,
@@ -110,9 +106,7 @@ export function useWorkspace() {
       names: functions.names,
       active: functions.active,
       occurrence: functions.occurrence(),
-      calls: functions
-        .calls(functions.active)
-        .map((call, index) => ({ index, line: call.line })),
+      calls: functions.calls(functions.active).map((call, index) => ({ index, line: call.line })),
       select: model.selectFunction,
       selectOccurrence: model.selectFunctionOccurrence,
     },

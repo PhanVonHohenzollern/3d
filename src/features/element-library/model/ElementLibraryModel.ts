@@ -1,54 +1,46 @@
-import { FunctionWorkspace } from "@/entities/source-function";
-import { Observable, Signal } from "@/shared/lib/observable";
-import { GeometryRuntime, type RuntimeParameterRequest } from "@engine/runtime";
-import { libraries } from "@/features/element-library/config/libraries";
-import {
-  LibraryDefaults,
-  type LibraryDefaultState,
-} from "@/features/element-library/model/LibraryDefaults";
+import { FunctionWorkspace } from '@/entities/source-function';
+import { Observable, Signal } from '@/shared/lib/observable';
+import { GeometryRuntime, type RuntimeParameterRequest } from '@engine/runtime';
+import { libraries } from '@/features/element-library/config/libraries';
+import { LibraryDefaults, type LibraryDefaultState } from '@/features/element-library/model/LibraryDefaults';
 import {
   decodeLibraryAsset,
   prepareElementSource,
   type LibrarySource,
-} from "@/features/element-library/model/sourceLibrary";
+} from '@/features/element-library/model/sourceLibrary';
 import type {
   ElementLibrary,
   LibraryElement,
   LibraryResolution,
   LibraryVariant,
   LibraryValues,
-} from "@/features/element-library/model/types";
+} from '@/features/element-library/model/types';
 
 export interface LibrarySample {
   id: string;
   files: LibrarySource[];
   values: ReadonlyMap<string, string>;
-  connectors: LibraryElement["connectors"];
+  connectors: LibraryElement['connectors'];
   defaults?: LibraryDefaults;
 }
 
 export class ElementLibraryModel extends Observable {
   readonly assets = libraries;
-  readonly openRequested = new Signal<
-    [sample: LibrarySample, replaceSource: boolean]
-  >();
+  readonly openRequested = new Signal<[sample: LibrarySample, replaceSource: boolean]>();
   readonly previewRequested = new Signal<[sample: LibrarySample]>();
   readonly previewInvalidated = new Signal<[]>();
-  libraryName = "";
-  elementId = "";
+  libraryName = '';
+  elementId = '';
   elements: LibraryElement[] = [];
   #elementsById = new Map<string, LibraryElement>();
   busy = false;
-  error = "";
+  error = '';
   resolution: LibraryResolution = {
     values: new Map(),
     choices: [],
     errors: [],
   };
-  readonly #cache = new Map<
-    string,
-    { library: ElementLibrary; sources: LibrarySource[] }
-  >();
+  readonly #cache = new Map<string, { library: ElementLibrary; sources: LibrarySource[] }>();
   #sources: LibrarySource[] = [];
   #files: LibrarySource[] = [];
   #variant: LibraryVariant | undefined;
@@ -61,35 +53,22 @@ export class ElementLibraryModel extends Observable {
   }
 
   get canOpen(): boolean {
-    return (
-      !!this.element &&
-      !!this.#files.length &&
-      !this.busy &&
-      !this.error &&
-      !this.resolution.errors.length
-    );
+    return !!this.element && !!this.#files.length && !this.busy && !this.error && !this.resolution.errors.length;
   }
 
   filteredElements(categoryId: string, search: string): LibraryElement[] {
-    const catalog = this.assets.find(
-      (asset) => asset.name === this.libraryName,
-    )?.catalog;
-    const category = catalog?.categories.find(
-      (category) => category.id === categoryId,
-    );
+    const catalog = this.assets.find((asset) => asset.name === this.libraryName)?.catalog;
+    const category = catalog?.categories.find((category) => category.id === categoryId);
     const query = search.trim().toLowerCase();
     const elements =
-      category && !query
-        ? category.elements.flatMap(
-            (id) => this.#elementsById.get(id) ?? [],
-          )
-        : this.elements;
+      category && !query ? category.elements.flatMap((id) => this.#elementsById.get(id) ?? []) : this.elements;
 
-    return elements.filter((element) =>
-      catalog?.items[element.id]?.listed !== false &&
-      `${catalog?.items[element.id]?.symbol ?? ""} ${element.symbol} ${element.name} ${element.entry}`
-        .toLowerCase()
-        .includes(query),
+    return elements.filter(
+      (element) =>
+        catalog?.items[element.id]?.listed !== false &&
+        `${catalog?.items[element.id]?.symbol ?? ''} ${element.symbol} ${element.name} ${element.entry}`
+          .toLowerCase()
+          .includes(query),
     );
   }
 
@@ -97,33 +76,27 @@ export class ElementLibraryModel extends Observable {
     const sequence = ++this.#sequence;
     this.previewInvalidated.emit();
     this.libraryName = name;
-    this.elementId = "";
+    this.elementId = '';
     this.elements = [];
     this.#elementsById.clear();
     this.#files = [];
     this.#variant = undefined;
     this.#resolved = undefined;
     this.#parameters = [];
-    this.error = "";
+    this.error = '';
     this.resolution = { values: new Map(), choices: [], errors: [] };
     this.busy = true;
     this.changed();
     try {
       const asset = this.assets.find((item) => item.name === name);
-      if (!asset) throw new Error("Library not found");
+      if (!asset) throw new Error('Library not found');
       let cached = this.#cache.get(name);
       if (!cached) {
         const read = async (path: string): Promise<string> => {
-          const response = await fetch(
-            import.meta.env.BASE_URL +
-              path.split("/").map(encodeURIComponent).join("/"),
-          );
-          if (!response.ok)
-            throw new Error(`Unable to load ${name}: HTTP ${response.status}`);
+          const response = await fetch(import.meta.env.BASE_URL + path.split('/').map(encodeURIComponent).join('/'));
+          if (!response.ok) throw new Error(`Unable to load ${name}: HTTP ${response.status}`);
 
-          return decodeLibraryAsset(
-            new Uint8Array(await response.arrayBuffer()),
-          );
+          return decodeLibraryAsset(new Uint8Array(await response.arrayBuffer()));
         };
 
         const [library, ...codes] = await Promise.all([
@@ -143,11 +116,9 @@ export class ElementLibraryModel extends Observable {
       this.#sources = cached.sources;
       this.elements = cached.library.elements;
       this.#elementsById = new Map(this.elements.map((element) => [element.id, element]));
-      if (!this.elements.length)
-        this.error = "No geometry elements in this library.";
+      if (!this.elements.length) this.error = 'No geometry elements in this library.';
     } catch (error) {
-      if (sequence === this.#sequence)
-        this.error = error instanceof Error ? error.message : String(error);
+      if (sequence === this.#sequence) this.error = error instanceof Error ? error.message : String(error);
     } finally {
       if (sequence === this.#sequence) {
         this.busy = false;
@@ -162,7 +133,7 @@ export class ElementLibraryModel extends Observable {
     this.#files = [];
     this.#variant = undefined;
     this.#resolved = undefined;
-    this.error = "";
+    this.error = '';
     this.resolution = { values: new Map(), choices: [], errors: [] };
     try {
       const element = this.element;
@@ -172,13 +143,10 @@ export class ElementLibraryModel extends Observable {
       const workspace = new FunctionWorkspace();
       workspace.replaceFiles(this.#files);
       const program = workspace.program();
-      this.#parameters = new GeometryRuntime().discoverParameters(
-        program.source,
-        program.options,
-      );
+      this.#parameters = new GeometryRuntime().discoverParameters(program.source, program.options);
       element.requireParameters?.(
         this.#parameters
-          .filter((parameter) => parameter.sourceFunction === "get_val")
+          .filter((parameter) => parameter.sourceFunction === 'get_val')
           .map((parameter) => parameter.name),
       );
       this.#resolve();
@@ -198,10 +166,7 @@ export class ElementLibraryModel extends Observable {
   #resolve(selection = new Map<string, string>(), changed?: string): void {
     const element = this.element;
     if (!element) return;
-    const resolved = element.resolve(
-      selection.size ? selection : undefined,
-      changed ? [changed] : [],
-    );
+    const resolved = element.resolve(selection.size ? selection : undefined, changed ? [changed] : []);
     this.#resolved = resolved;
     this.#variant = {
       selection: {},
@@ -217,7 +182,7 @@ export class ElementLibraryModel extends Observable {
         values: resolved.options.get(s.name) ?? [],
       })),
       errors:
-        resolved.snapshot.status === "valid"
+        resolved.snapshot.status === 'valid'
           ? []
           : resolved.errors?.length
             ? resolved.errors
@@ -228,10 +193,8 @@ export class ElementLibraryModel extends Observable {
   }
 
   syncDefaults(state: LibraryDefaultState): void {
-    if (state.snapshot.status !== "valid")
-      throw new Error("Invalid library snapshot");
-    if (!this.elements.some((element) => element.id === state.elementId))
-      return;
+    if (state.snapshot.status !== 'valid') throw new Error('Invalid library snapshot');
+    if (!this.elements.some((element) => element.id === state.elementId)) return;
     this.elementId = state.elementId;
     this.resolution = {
       values: new Map(state.values),
@@ -286,12 +249,7 @@ export class ElementLibraryModel extends Observable {
 
   #sample(): LibrarySample | null {
     const element = this.element;
-    if (
-      !element ||
-      !this.canOpen ||
-      this.#resolved?.snapshot.status !== "valid"
-    )
-      return null;
+    if (!element || !this.canOpen || this.#resolved?.snapshot.status !== 'valid') return null;
     const connectors = this.#variant?.connectors ?? element.connectors;
 
     return {
@@ -299,17 +257,13 @@ export class ElementLibraryModel extends Observable {
       files: this.#files,
       values: this.resolution.values,
       connectors,
-      defaults: new LibraryDefaults(
-        [element],
-        this.#parameters,
-        {
-          elementId: element.id,
-          values: this.resolution.values,
-          connectors,
-          options: this.#resolved!.options,
-          snapshot: this.#resolved!.snapshot,
-        },
-      ),
+      defaults: new LibraryDefaults([element], this.#parameters, {
+        elementId: element.id,
+        values: this.resolution.values,
+        connectors,
+        options: this.#resolved!.options,
+        snapshot: this.#resolved!.snapshot,
+      }),
     };
   }
 }
