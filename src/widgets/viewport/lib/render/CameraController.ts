@@ -1,7 +1,7 @@
-import type { ConnectorPreview, PreviewGeometryScene } from '@engine/geometry';
+import type { ConnectorPreview, PreviewGeometryScene, PreviewMesh } from '@engine/geometry';
 import { kMinimumSceneScale } from '@/widgets/viewport/config/viewport';
 import { Bounds3D } from '@/widgets/viewport/lib/math/Bounds3D';
-import type { QPointF, QVector3D } from '@/widgets/viewport/lib/math/Vector3D';
+import { QVector3D, type QPointF } from '@/widgets/viewport/lib/math/Vector3D';
 import { connectorSceneScale, connectorTip } from '@/widgets/viewport/lib/render/connectorOverlay';
 import type { DebugItem } from '@/widgets/viewport/lib/render/DebugItem';
 import { appendVectorArrow } from '@/widgets/viewport/lib/render/debugItems';
@@ -9,6 +9,18 @@ import { VertexArray } from '@/widgets/viewport/lib/render/VertexArray';
 import { ViewportCamera } from '@/widgets/viewport/lib/render/ViewportCamera';
 import type { ViewportState } from '@/widgets/viewport/lib/render/ViewportState';
 import { axesVertices } from '@/widgets/viewport/lib/render/worldAxes';
+
+function meshBounds(meshes: readonly PreviewMesh[]): Bounds3D {
+  const bounds = new Bounds3D();
+  for (const mesh of meshes)
+    for (const index of mesh.indices) {
+      const vertex = mesh.vertices[index];
+      if (vertex && Number.isFinite(vertex.x) && Number.isFinite(vertex.y) && Number.isFinite(vertex.z))
+        bounds.addPoint(vertex);
+    }
+
+  return bounds;
+}
 
 // The camera, and what depends on it: the scene scale, the world axes, and fitting the view to
 // what is visible.
@@ -19,7 +31,9 @@ export class CameraController {
   #geometrySceneScale = kMinimumSceneScale;
   #connectorSceneScale = 0;
   #sceneScale = kMinimumSceneScale;
-  #geometryCenter: QVector3D | null = null;
+  #geometryOrbitBounds = new Bounds3D();
+  #connectorOrbitBounds = new Bounds3D();
+  #orbitCenter = new QVector3D();
 
   constructor(private readonly state: ViewportState) {
     this.rebuildAxes();
@@ -35,22 +49,31 @@ export class CameraController {
   }
 
   setGeometryScene(scene: PreviewGeometryScene): void {
-    const bounds = new Bounds3D();
     this.#geometrySceneScale = kMinimumSceneScale;
     for (const mesh of scene.meshes) {
       for (const v of mesh.vertices)
         this.#geometrySceneScale = Math.max(this.#geometrySceneScale, Math.hypot(v.x, v.y, v.z));
-      // Scene vertices already include the geometry transforms. Only vertices
-      // used by mesh surfaces contribute; symbol lines and unused points do not.
-      if (mesh.primitive !== 'lines') for (const index of mesh.indices) bounds.addPoint(mesh.vertices[index]);
     }
-    this.#geometryCenter = bounds.isEmpty() ? null : bounds.minimum().add(bounds.maximum()).mul(0.5);
+    this.#geometryOrbitBounds = meshBounds(scene.meshes);
+    this.#updateOrbitCenter();
     this.#updateSceneScale();
   }
 
   setConnectors(connectors: readonly ConnectorPreview[]): void {
     this.#connectorSceneScale = connectorSceneScale(connectors);
+    this.#connectorOrbitBounds = meshBounds(connectors.flatMap((connector) => connector.meshes));
+    this.#updateOrbitCenter();
     this.#updateSceneScale();
+  }
+
+  #updateOrbitCenter(): void {
+    const bounds = new Bounds3D();
+    for (const source of [this.#geometryOrbitBounds, this.#connectorOrbitBounds]) {
+      if (source.isEmpty()) continue;
+      bounds.addPoint(source.minimum());
+      bounds.addPoint(source.maximum());
+    }
+    this.#orbitCenter = bounds.isEmpty() ? new QVector3D() : bounds.minimum().add(bounds.maximum()).mul(0.5);
   }
 
   #updateSceneScale(): void {
@@ -100,9 +123,9 @@ export class CameraController {
   }
 
   orbitPivot(): QVector3D {
-    // Keep the whole model's center independent of code selection, isolation,
-    // visibility and connector/debug overlays. Recomputed only with geometry.
-    return this.#geometryCenter ?? this.camera.target;
+    // All rendered mesh primitives contribute; debug points and the camera's
+    // Pan target do not. Mesh bounds are cached when preview data changes.
+    return this.#orbitCenter;
   }
 
   #geometryBounds(): Bounds3D {
