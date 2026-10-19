@@ -176,6 +176,10 @@ export class DeclarationEvaluator {
       const tail = sliceTokens(decl, end, decl.length);
       const assigned = tail.length !== 0 && isSymbol(tail[0], '=');
       const initializer = assigned ? sliceTokens(tail, 1, tail.length) : tail;
+      // An extern declaration refers to storage defined in another translation
+      // unit. It must not allocate a new zero value over that definition.
+      if (!initializer.length && tokens.slice(0, declarationEnd).some((token) => isIdentifier(token, 'extern')))
+        continue;
       if (dims.length !== 0 && assigned) {
         const text = dims.length === 1 ? this.stringInitializer(initializer, type) : undefined;
         if (text !== undefined && dims[0] === 0) dims[0] = text.length + 1;

@@ -67,6 +67,10 @@ export function inspectExecutedGetVals(
       if (request.initializedFromSource !== true) missing.add(request.name);
       continue;
     }
+    // A source rule may explicitly clear an unused dimension (RRAF*: d1 for
+    // rectangular connections, a/b for circular). Preserve that absence; an
+    // unproven blank or malformed numeric value still blocks the preview.
+    if (value === '' && snapshot.clearedParameters?.has(request.name)) continue;
     if (
       ['double', 'float', 'int', 'long', 'short'].includes(request.type ?? '') &&
       (!value.trim() || !Number.isFinite(Number(value)))

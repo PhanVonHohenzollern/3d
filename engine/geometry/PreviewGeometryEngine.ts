@@ -24,13 +24,21 @@ export {
 
 // Calls from these headers get a warning when no adapter draws them.
 const adapterWarningHeaders = new Set([...kCompositeGeometryHeaders, 'PnGeometry3d.h']);
+// These SDK helpers emit geometry despite their calc prefix. Treating them as
+// numeric utilities hid the missing body of TR3 and the entire TR4 preview.
+const geometryCalculationNames = new Set(['calcTR3', 'calcTR4']);
 
 function missingAdapterWarning(call: RuntimeApiCall): string | null {
   if (call.userFunctionCall) return null;
   if (supportedPreviewApiNames().includes(call.name))
     return warningFor(call, 'invalid arguments or unsupported overload for this preview adapter');
   const sig = call.signature;
-  if (!sig || !adapterWarningHeaders.has(sig.sourceHeader) || !isGeometryCallName(call.name)) return null;
+  if (
+    !sig ||
+    !adapterWarningHeaders.has(sig.sourceHeader) ||
+    (!isGeometryCallName(call.name) && !geometryCalculationNames.has(call.name))
+  )
+    return null;
 
   return warningFor(call, 'preview adapter not implemented; no substitute mesh was generated');
 }

@@ -7,6 +7,7 @@ import {
   SpecificationIndex,
   type FlmBinding,
   type FlmEntity,
+  type FlmNode,
   type FlmCompiledGraph,
   type FlmRestriction,
   type FlmVariable,
@@ -19,6 +20,8 @@ export interface ConstraintConflict {
   restriction?: string;
 }
 export interface ResolvedSnapshot {
+  // Only active source LIMITs can explicitly clear an optional parameter.
+  clearedParameters?: Set<string>;
   parameterModes?: Map<string, ParameterBindingMode>;
   missingInputs?: string[];
   deferredExpressions?: ConstraintConflict[];
@@ -47,6 +50,16 @@ export interface DependencyGroup {
 // FLM variable identifiers may contain dots (e.g. BELIMO t.sensors, t.medium).
 // Distinguish a plain dotted name from an arithmetic expression.
 const identifier = /^[$A-Za-z_][\w$]*(?:\.[A-Za-z_][\w$]*)*$/;
+
+function isEmptyLiteralLimit(node: FlmNode): boolean {
+  return (
+    node.tag === 'LIMIT' &&
+    node.attributes.TYPE === '0' &&
+    ['0', '3'].includes(node.attributes.RELATION) &&
+    node.children.some((child) => child.tag === 'VALUE') &&
+    node.children.filter((child) => child.tag === 'VALUE').every((child) => !child.text)
+  );
+}
 
 // TYPE=1 is nonrestrictive, including LEVEL=0 in a coupled mapping.
 // Native Adjust also preserves explicitly edited TYPE=5 defaults (RVA
@@ -906,15 +919,7 @@ export class UnifiedConstraintSolver {
             restrictionActive(factor.rule.conditionsRaw, graph.context(values, scope)) === true,
         );
         const explicitlyCleared = relevant.some((factor) =>
-          factor.rule.extraFields.some(
-            (node) =>
-              node.tag === 'LIMIT' &&
-              node.attributes.NAME === localName &&
-              node.attributes.TYPE === '0' &&
-              ['0', '3'].includes(node.attributes.RELATION) &&
-              node.children.some((child) => child.tag === 'VALUE') &&
-              node.children.filter((child) => child.tag === 'VALUE').every((child) => !child.text),
-          ),
+          factor.rule.extraFields.some((node) => node.attributes.NAME === localName && isEmptyLiteralLimit(node)),
         );
         if (
           explicitlyCleared ||
@@ -993,13 +998,7 @@ export class UnifiedConstraintSolver {
         for (const node of factor.rule.extraFields.filter((node) => node.tag === 'LIMIT')) {
           const a = node.attributes,
             relation = Number(a.RELATION);
-          if (
-            [0, 3].includes(relation) &&
-            a.TYPE === '0' &&
-            node.children.some((child) => child.tag === 'VALUE') &&
-            node.children.filter((child) => child.tag === 'VALUE').every((child) => !child.text)
-          )
-            cleared.add(factor.scope + a.NAME);
+          if (isEmptyLiteralLimit(node)) cleared.add(factor.scope + a.NAME);
           if (![1, 2].includes(relation) || !['0', '1'].includes(a.TYPE)) continue;
           const expression = a.EXPRESSION ?? node.children.find((child) => child.tag === 'VALUE')?.text ?? '';
           const resolved = a.TYPE === '1' ? expressionValue(expression, context) : expression;
@@ -1375,6 +1374,7 @@ export class UnifiedConstraintSolver {
     // The dropdown is a set of suggestions, not the accepted domain, for
     // active Nonrestrictive columns. Expose that fact separately to the UI.
     const nonrestrictiveParameters = new Set<string>();
+    const clearedParameters = new Set<string>();
     const missingDimensions = [...graph.unassignedDimensions].filter((name) => !values.has(name));
     if (missingDimensions.length)
       deferredExpressions.push({
@@ -1384,9 +1384,12 @@ export class UnifiedConstraintSolver {
     for (const name of graph.unassignedDimensions) nonrestrictiveParameters.add(name);
     for (const factor of graph.factors) {
       if (restrictionActive(factor.rule.conditionsRaw, graph.context(values, factor.scope)) !== true) continue;
-      for (const node of factor.rule.extraFields)
+      for (const node of factor.rule.extraFields) {
         if (node.tag === 'LIMIT' && node.attributes.RELATION === '3')
           nonrestrictiveParameters.add(factor.scope + node.attributes.NAME);
+        const name = factor.scope + node.attributes.NAME;
+        if (isEmptyLiteralLimit(node) && values.get(name) === '') clearedParameters.add(name);
+      }
       for (const binding of factor.rule.bindings) {
         if (!isSuggestedBinding(factor.rule, binding) || !identifier.test(binding.variable)) continue;
         nonrestrictiveParameters.add(
@@ -1423,6 +1426,7 @@ export class UnifiedConstraintSolver {
 
     return {
       resolvedValues: values,
+      clearedParameters,
       parameterModes,
       missingInputs: missingDimensions,
       deferredExpressions,

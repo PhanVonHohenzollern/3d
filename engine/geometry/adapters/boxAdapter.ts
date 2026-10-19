@@ -1,8 +1,8 @@
 import { stdMax, isArray, type FdPoint3d, type FdVector3d, type RuntimeValue } from '@engine/runtime';
-import { DVec3, normalized } from '@engine/math';
+import { DVec3, length, normalized } from '@engine/math';
 import { buildBoxMesh, buildConnectorFlangeMesh } from '@engine/geometry/builders/rectangularMeshes';
 import { withAdapterErrors } from '@engine/geometry/helpers/adapterErrors';
-import { sdkPerpVector, toFdVector, toVec, validDirection } from '@engine/geometry/helpers/geometryMath';
+import { sdkOrthoVector, toFdVector, toVec, validDirection } from '@engine/geometry/helpers/geometryMath';
 import { NamedArguments } from '@engine/geometry/helpers/NamedArguments';
 import type { MeshBuildContext } from '@engine/geometry/MeshBuildContext';
 import type { PreviewGeometryScene } from '@engine/geometry/previewScene';
@@ -25,11 +25,19 @@ function sectionVectors(a: NamedArguments, name: string, count: number): FdVecto
 
 function sectionNormals(a: NamedArguments, count: number, centers: FdPoint3d[]): FdVector3d[] {
   if (a.has('vectors')) return sectionVectors(a, 'vectors', count);
+  const segments = Array.from({ length: count }, (_, i) => toVec(centers[i + 1]).sub(toVec(centers[i])));
   const normals: FdVector3d[] = [];
   for (let i = 0; i <= count; ++i) {
-    let dir = new DVec3();
-    if (i < count) dir = toVec(centers[i + 1]).sub(toVec(centers[i]));
-    else if (i > 0) dir = toVec(centers[i]).sub(toVec(centers[i - 1]));
+    let dir = segments[Math.min(i, count - 1)] ?? new DVec3();
+    // Collapsed sections occur at an apex (e.g. RRAF's zero-size inlet).
+    // Use the nearest actual path segment; an entirely collapsed path still
+    // fails the direction validation below.
+    for (let distance = 1; length(dir) < 1e-9 && distance <= count; ++distance) {
+      const next = segments[i + distance];
+      const previous = segments[i - distance];
+      if (next && length(next) >= 1e-9) dir = next;
+      else if (previous && length(previous) >= 1e-9) dir = previous;
+    }
     normals.push(toFdVector(normalized(dir)));
   }
 
@@ -39,7 +47,9 @@ function sectionNormals(a: NamedArguments, count: number, centers: FdPoint3d[]):
 function sectionUpVectors(a: NamedArguments, count: number, normals: FdVector3d[]): FdVector3d[] {
   if (a.has('upVectors')) return sectionVectors(a, 'upVectors', count);
 
-  return normals.map(sdkPerpVector);
+  // Match the SDK overload's section frame. Reversing this vector swaps the
+  // masked side to the opposite wall (TR1/TR2 branch openings).
+  return normals.map(sdkOrthoVector);
 }
 
 // One value per section, or a single value shared by every section.
@@ -100,14 +110,29 @@ function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args:
   const centers = a.pointArray('centralPoints');
   if (count < 0 || centers.length < count + 1) throw new Error('makeBox centralPoints must contain count+1 sections');
 
+  const widths = sectionDimensions(a, count, 'tabWidth', 'width');
+  const heights = sectionDimensions(a, count, 'tabHeight', 'height');
+  const { beginning, endCap } = endCaps(a);
+  const connectors = connectorSettings(a);
+  // TR6's optional bridge collapses when adjacent duct dimensions are equal.
+  // With unchanged sections and no caps/connectors it has no surface to draw.
+  if (
+    !a.has('vectors') &&
+    !a.has('upVectors') &&
+    centers.slice(1, count + 1).every((center) => length(toVec(center).sub(toVec(centers[0]))) < 1e-9) &&
+    widths.every((width) => width === widths[0]) &&
+    heights.every((height) => height === heights[0]) &&
+    !beginning &&
+    !endCap &&
+    connectors.side1 === noConnector &&
+    connectors.side2 === noConnector
+  )
+    return;
+
   const normals = sectionNormals(a, count, centers);
   if (!normals.every(validDirection)) throw new Error('makeBox section vector is zero');
   const upVectors = sectionUpVectors(a, count, normals);
-  const widths = sectionDimensions(a, count, 'tabWidth', 'width');
-  const heights = sectionDimensions(a, count, 'tabHeight', 'height');
   const sides = visibleSides(a, count);
-
-  const { beginning, endCap } = endCaps(a);
   scene.meshes.push(
     buildBoxMesh(context, {
       count,
@@ -121,8 +146,6 @@ function appendBox(scene: PreviewGeometryScene, context: MeshBuildContext, args:
       endCap,
     }),
   );
-
-  const connectors = connectorSettings(a);
 
   const appendConnector = (section: number, side: number, directionSign: number) => {
     if (side === noConnector) return;
