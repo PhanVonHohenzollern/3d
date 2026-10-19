@@ -133,13 +133,14 @@ export class ViewportCamera {
   orbit(delta: QPoint, pivot: QVector3D = this.target): void {
     const movement = Math.hypot(delta.x, delta.y);
     if (movement === 0) return;
-    // Screen-horizontal/vertical motion always uses the camera's up/right axes,
-    // even at the poles or upside down. Cursor position never introduces roll.
+    // Compose a combined yaw/pitch in the current camera frame. Preserve its
+    // roll and allow any number of turns through the poles, without a world-up reset.
     const angle = (movement * Math.PI) / Math.max(1, Math.min(this.m_width, this.m_height));
     const rotation = Quaternion.axisAngle(new QVector3D(-delta.y, -delta.x, 0), angle);
     const orientation = this.orientation.multiply(rotation).normalized();
     const worldRotation = orientation.multiply(this.orientation.conjugate());
-    // Rotate the eye and its target together around the geometry, preserving Pan.
+    // Pan's view target is distinct from the mesh pivot. Rotate both the eye
+    // and view target around that pivot to keep its panned screen position fixed.
     this.target = pivot.add(worldRotation.rotate(this.target.sub(pivot)));
     this.orientation = orientation;
   }
