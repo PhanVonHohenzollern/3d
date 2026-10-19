@@ -250,12 +250,13 @@ function circle(radius: number, count: number): Point2[] {
   });
 }
 
-function circularDimensions(g: GrillSketch) {
+function circularDimensions(g: GrillSketch, allowCylinder = false) {
   const inner = g.a.num('D1', 0) / 2,
     radius = g.a.positive('D2') / 2,
     outer = g.a.positive('D3') / 2,
     count = 4 * g.a.count('n');
-  if (inner < 0 || inner >= radius || outer < radius) throw new Error('require 0 <= D1 < D2 <= D3');
+  if (inner < 0 || (allowCylinder ? inner > radius : inner >= radius) || outer < radius)
+    throw new Error(allowCylinder ? 'require 0 <= D1 <= D2 <= D3' : 'require 0 <= D1 < D2 <= D3');
 
   return { inner, radius, outer, count };
 }
@@ -312,7 +313,9 @@ function fanGrill(sketch: GrillSketch): void {
 }
 
 function conicalGrill(g: GrillSketch): void {
-  const { inner, radius, outer, count } = circularDimensions(g);
+  // Equal diameters form a cylinder (used by makeGrVV1), with no division
+  // by their difference. Other grill types still require a positive annulus.
+  const { inner, radius, outer, count } = circularDimensions(g, true);
   const height = g.a.num('d'),
     flange = g.a.num('flangeHeight');
   if (height < 0 || flange < 0) throw new Error('d and flangeHeight must be non-negative');

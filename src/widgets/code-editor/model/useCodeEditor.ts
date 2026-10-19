@@ -15,7 +15,13 @@ interface EditorProblem {
   message: string;
 }
 
-export function useCodeEditor({ onTextChanged, onCursorPositionChanged, executionFeedback, ref }: CodeEditorProps) {
+export function useCodeEditor({
+  onTextChanged,
+  onCursorPositionChanged,
+  executionFeedback,
+  active = true,
+  ref,
+}: CodeEditorProps) {
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [problems, setProblems] = useState<EditorProblem[]>([]);
   const hostRef = useRef<HTMLDivElement>(null);
@@ -33,7 +39,13 @@ export function useCodeEditor({ onTextChanged, onCursorPositionChanged, executio
       if (!update.docChanged)
         forEachDiagnostic(update.state, (diagnostic, from, to) => {
           const line = update.state.doc.lineAt(from);
-          next.push({ from, to, line: line.number, column: from - line.from + 1, message: diagnostic.message });
+          next.push({
+            from,
+            to,
+            line: line.number,
+            column: from - line.from + 1,
+            message: diagnostic.message,
+          });
         });
       setProblems((previous) => (JSON.stringify(previous) === JSON.stringify(next) ? previous : next));
       if (update.docChanged || update.selectionSet) {
@@ -48,7 +60,10 @@ export function useCodeEditor({ onTextChanged, onCursorPositionChanged, executio
       if (update.docChanged) signalsRef.current.onTextChanged?.();
       if (moved) signalsRef.current.onCursorPositionChanged?.();
     });
-    const view = new EditorView({ parent: hostRef.current!, state: EditorState.create({ doc: '', extensions }) });
+    const view = new EditorView({
+      parent: hostRef.current!,
+      state: EditorState.create({ doc: '', extensions }),
+    });
     viewRef.current = view;
     extensionsRef.current = extensions;
 
@@ -68,6 +83,10 @@ export function useCodeEditor({ onTextChanged, onCursorPositionChanged, executio
     view.dispatch({ effects: setExecutionDiagnostics.of(diagnostics) });
   }, [executionFeedback]);
 
+  useEffect(() => {
+    if (active) viewRef.current?.requestMeasure();
+  }, [active]);
+
   useImperativeHandle(
     ref,
     () =>
@@ -86,7 +105,10 @@ export function useCodeEditor({ onTextChanged, onCursorPositionChanged, executio
     showProblem: (problem: EditorProblem) => {
       const view = viewRef.current;
       if (!view || problem.to > view.state.doc.length) return;
-      view.dispatch({ selection: { anchor: problem.from, head: problem.to }, scrollIntoView: true });
+      view.dispatch({
+        selection: { anchor: problem.from, head: problem.to },
+        scrollIntoView: true,
+      });
       view.focus();
     },
     showAllProblems: () => {

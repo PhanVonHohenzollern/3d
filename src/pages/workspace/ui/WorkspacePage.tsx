@@ -1,5 +1,5 @@
 import { Button } from '@/shared/ui/button';
-import { Box, CodeXml } from 'lucide-react';
+import { Box, CodeXml, Library } from 'lucide-react';
 import { useCompactLayout } from '@/shared/lib/react';
 import { useDockHeight } from '@/shared/ui/dock';
 import { useWorkspace } from '@/pages/workspace/model/useWorkspace';
@@ -64,28 +64,69 @@ export function WorkspacePage({ theme, onToggleTheme }: WorkspacePageProps) {
               aria-label="Code Editor"
               className="workspace-panel @container/editor flex h-full min-w-0 flex-col overflow-hidden border border-line bg-base shadow-xs"
             >
-              <PanelHeader
-                icon={CodeXml}
-                title="Code Editor"
-                titleAction={<ElementLibraryPanel model={workspace.library} />}
+              <div
+                role="tablist"
+                aria-label="Editor views"
+                className="flex h-9 shrink-0 items-center gap-1 border-b border-line bg-base px-1"
               >
-                <span className="workspace-surface hidden bg-secondary px-2 py-1 font-code text-xs text-muted-foreground @min-[340px]/editor:inline">
-                  C++
-                </span>
-                <PreviewModeToggle
-                  mode={workspace.previewMode}
-                  debugBlocked={workspace.debugBlocked}
-                  onBuild={workspace.buildPreview}
-                  onDebug={workspace.debugPreview}
-                />
-              </PanelHeader>
-              <FunctionEditor.Provider state={workspace.functions.state} actions={workspace.functions.actions}>
-                <FunctionEditor.Tabs />
-                <FunctionEditor.Error />
-                <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
-                  <CodeEditor {...workspace.editor} footer={<FunctionEditor.Actions />} />
-                </div>
-              </FunctionEditor.Provider>
+                <Button
+                  role="tab"
+                  id="code-editor-tab"
+                  aria-controls="code-editor-panel"
+                  aria-selected={workspace.editorTab === 'code'}
+                  size="sm"
+                  variant={workspace.editorTab === 'code' ? 'secondary' : 'ghost'}
+                  onClick={() => workspace.selectEditorTab('code')}
+                >
+                  <CodeXml className="size-3.5" /> Code Editor
+                </Button>
+                <Button
+                  role="tab"
+                  id="flm-editor-tab"
+                  aria-controls="flm-editor-panel"
+                  aria-selected={workspace.editorTab === 'flm'}
+                  size="sm"
+                  variant={workspace.editorTab === 'flm' ? 'secondary' : 'ghost'}
+                  onClick={() => workspace.selectEditorTab('flm')}
+                >
+                  <Library className="size-3.5" /> FLM
+                </Button>
+                {workspace.editorTab === 'code' && (
+                  <div className="ml-auto flex min-w-0 items-center gap-2">
+                    <span className="workspace-surface hidden bg-secondary px-2 py-1 font-code text-xs text-muted-foreground @min-[340px]/editor:inline">
+                      C++
+                    </span>
+                    <PreviewModeToggle
+                      mode={workspace.previewMode}
+                      debugBlocked={workspace.debugBlocked}
+                      onBuild={workspace.buildPreview}
+                      onDebug={workspace.debugPreview}
+                    />
+                  </div>
+                )}
+              </div>
+              <div
+                id="code-editor-panel"
+                role="tabpanel"
+                aria-labelledby="code-editor-tab"
+                className={workspace.editorTab === 'code' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}
+              >
+                <FunctionEditor.Provider state={workspace.functions.state} actions={workspace.functions.actions}>
+                  <FunctionEditor.Tabs />
+                  <FunctionEditor.Error />
+                  <div className="workspace-surface min-h-0 flex-1 overflow-hidden">
+                    <CodeEditor {...workspace.editor} footer={<FunctionEditor.Actions />} />
+                  </div>
+                </FunctionEditor.Provider>
+              </div>
+              <div
+                id="flm-editor-panel"
+                role="tabpanel"
+                aria-labelledby="flm-editor-tab"
+                className={workspace.editorTab === 'flm' ? 'min-h-0 flex-1 overflow-hidden' : 'hidden'}
+              >
+                <ElementLibraryPanel model={workspace.library} active={workspace.editorTab === 'flm'} />
+              </div>
             </section>
             <div className="flex h-full min-w-0 flex-col">
               <div ref={mainAreaRef} className="flex min-h-0 flex-1 flex-col">

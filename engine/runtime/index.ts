@@ -29,6 +29,7 @@ export { resolveDebugPointSnapshots, resolveDebugVectorAnchors } from '@engine/r
 export { FdBowlFace, FdBowlInfo } from '@engine/runtime/FdBowlData';
 export { FdPoint3d, FdVector3d } from '@engine/runtime/FdMath';
 export { GeometryRuntime, runtimeSourceHistory } from '@engine/runtime/GeometryRuntime';
+export { preprocess } from '@engine/runtime/interpreter/preprocessor';
 export { isInsulationQuery, kInsulationQueries } from '@engine/runtime/intrinsics';
 export type { InsulationQuery } from '@engine/runtime/intrinsics';
 export { emptyApiCall, emptyRuntimeResult, parameterKey, debugApiIndices } from '@engine/runtime/RuntimeTypes';

@@ -18,6 +18,7 @@ export interface CodeEditorHandle {
 }
 
 export interface CodeEditorProps {
+  active?: boolean;
   footer?: ReactNode;
   executionFeedback?: EditorExecutionFeedback;
   previewStatus?: string;

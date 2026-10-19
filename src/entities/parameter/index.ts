@@ -13,4 +13,4 @@ export {
   parseParameterTable,
   tableImportSummary,
 } from '@/entities/parameter/lib/table';
-export type { ParameterEditor, ParameterRow } from '@/entities/parameter/model/types';
+export type { ParameterBindingMode, ParameterEditor, ParameterRow } from '@/entities/parameter/model/types';

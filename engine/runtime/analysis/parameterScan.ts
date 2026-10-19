@@ -2,7 +2,7 @@ import { Lexer } from '@engine/runtime/interpreter/Lexer';
 import { parseProgram } from '@engine/runtime/interpreter/ProgramParser';
 import { StatementKind, type Statement, type StatementVisitor } from '@engine/runtime/interpreter/Statement';
 import type { RuntimeParameterRequest, RuntimeExecutionOptions } from '@engine/runtime/RuntimeTypes';
-import { isScalarTypeToken, normalizedScalarType } from '@engine/runtime/helpers/typeNames';
+import { isScalarTypeToken, normalizedScalarType, parseRuntimeType } from '@engine/runtime/helpers/typeNames';
 import { functionParameters, functionScope } from '@engine/runtime/helpers/functionSignatures';
 import { discoverParameters, isInsulationQuery, type StaticParameterDecl } from '@engine/runtime/intrinsics';
 import {
@@ -45,12 +45,14 @@ function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticPar
   for (let i = 0; i + 1 < tokens.length; ++i) {
     if (!isScalarTypeToken(tokens[i])) continue;
 
-    let type = normalizedScalarType(tokens[i].text);
-    let begin = i + 1;
-    if (tokens[i].text === 'char' && begin < tokens.length && isSymbol(tokens[begin], '*')) {
-      type = 'string';
-      ++begin;
-    }
+    // Use the interpreter's type grammar for static discovery too.
+    // `long double` must be consumed as two type tokens, not as two
+    // independent declarations (which produced misleading metadata).
+    const parsed = parseRuntimeType(tokens, i);
+    if (!parsed) continue;
+    let type = normalizedScalarType(parsed.type);
+    if (type === 'char*') type = 'string';
+    const begin = parsed.end;
 
     // The declaration ends at ';', a block, or the bracket that closes around it.
     const end = scanTopLevel(
@@ -104,6 +106,8 @@ function scanScalarDeclarations(tokens: readonly Token[]): Map<string, StaticPar
         defaultValue: simpleInitializerValue(initializer, fragmentType),
       });
     }
+    // The next token inside the same compound type is not a new type.
+    i = parsed.end - 1;
   }
 
   return declarations;

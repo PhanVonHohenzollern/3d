@@ -1,6 +1,7 @@
 import { cppLanguage } from '@codemirror/lang-cpp';
 import { sourceFunctions } from '@/entities/source-function';
-import { declaratorSignature, maskPreprocessorLines } from '@engine/runtime';
+import { declaratorSignature, maskPreprocessorLines, preprocess } from '@engine/runtime';
+import { compactGeneratedSource } from '@/features/element-library/model/compactGeneratedSource';
 
 export interface LibrarySource {
   name: string;
@@ -23,6 +24,33 @@ function withoutComments(code: string): string {
 }
 
 export function prepareElementSource(files: readonly LibrarySource[], entry: string): LibrarySource[] {
+  const originals = new Map(files.map((file) => [file.name.replace(/\\/g, '/'), file]));
+
+  function include(file: LibrarySource, stack = new Set<string>(), directivesOnly = false): string {
+    if (stack.has(file.name)) return '';
+    const next = new Set([...stack, file.name]);
+    const code = withoutComments(file.code);
+    const source = directivesOnly
+      ? code.replace(/^[\t ]*#(?:[^\r\n]*\\\r?\n)*[^\r\n]*|[^\r\n]+/gm, (line) => (/^\s*#/.test(line) ? line : ''))
+      : code;
+
+    return source.replace(/^[\t ]*#\s*include\s*"([^"\r\n]+)"[^\r\n]*/gm, (line, path: string) => {
+      const directory = file.name.replace(/[^/\\]+$/, '');
+      const included = originals.get((directory + path).replace(/\\/g, '/')) ?? originals.get(path.replace(/\\/g, '/'));
+
+      return included ? include(included, next, true) : line;
+    });
+  }
+
+  const macroContexts = new Map(
+    files.map((file) => [file.name, preprocess(include(file, new Set(), true)).definitions.join('\n')]),
+  );
+  // Each translation unit owns its macros. Concatenating raw .cpp preambles leaks
+  // definitions into unrelated files (e.g. a macro can replace a global's name).
+  files = files.map((file) => ({
+    name: file.name,
+    code: preprocess(include(file)).code,
+  }));
   const definitions = files.flatMap((file) => sourceFunctions(file.code).map((fn) => ({ ...fn, file: file.name })));
   const main = definitions.find((fn) => fn.name === entry && !fn.inputs.length);
   if (!main) throw new Error(`Missing element definition: ${entry}`);
@@ -47,6 +75,7 @@ export function prepareElementSource(files: readonly LibrarySource[], entry: str
   }
 
   for (const file of files) {
+    if (!/\.h$/i.test(file.name) && !definitions.some((fn) => fn.file === file.name && needed.has(fn.name))) continue;
     const declarations: string[] = [];
     const masked = maskPreprocessorLines(file.code);
     const tree = cppLanguage.parser.parse(masked);
@@ -101,12 +130,15 @@ export function prepareElementSource(files: readonly LibrarySource[], entry: str
           if (!nameNode) return false;
           const name = file.code.slice(nameNode.from, nameNode.to);
           if (name !== entry && needed.has(name)) {
-            declared.add(declaratorSignature(name, file.code.slice(declarator.from, declarator.to)));
-            append(headers, header, qualify(code));
+            const signature = declaratorSignature(name, file.code.slice(declarator.from, declarator.to));
+            if (!declared.has(signature)) {
+              declared.add(signature);
+              append(headers, header, qualify(code));
+            }
           }
         } else if (
           node.parent?.name === 'Program' &&
-          !/\b(?:__GEO_NAME|__GEO_FN|__COUNT_FN|geometry_fn)\b/.test(withoutComments(code)) &&
+          !/\b(?:__GEO_NAME|__GEO_FN|__COUNT_FN|geometry_fn|FN_NAME)\b/.test(withoutComments(code)) &&
           !predefined
         ) {
           declarations.push(code);
@@ -134,7 +166,18 @@ export function prepareElementSource(files: readonly LibrarySource[], entry: str
   }
   for (const prototype of prototypes)
     if (!declared.has(prototype.signature)) append(headers, prototype.file, prototype.code);
-  for (const [name, parts] of [...headers, ...sources]) prepared.push({ name, code: parts.join('\n\n') });
+  for (const [name, parts] of [...headers, ...sources]) {
+    const context = macroContexts.get(name.replace(/\.h$/i, '.cpp')) ?? macroContexts.get(name) ?? '';
+    prepared.push({
+      name,
+      code: preprocess(context + '\n' + parts.join('\n\n')).code,
+    });
+  }
 
-  return prepared;
+  // Generated files have independent line numbering; do not expose the huge
+  // empty gaps left by line-preserving preprocessing in CodeMirror.
+  return prepared.map((file) => ({
+    ...file,
+    code: compactGeneratedSource(file.code),
+  }));
 }

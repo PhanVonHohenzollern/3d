@@ -54,6 +54,8 @@ class CGeneralBlockCreator : public FLM3Geo::BlockCreator3d
 
 		// Male and Female
 		short makePTHR();
+		short makeECTHR();
+		short makeCTHR();
 		short makeFMRTHR();
 		short makeETHR();
 		short makeSTTHR();
@@ -70,6 +72,7 @@ class CGeneralBlockCreator : public FLM3Geo::BlockCreator3d
 		short makeCRFLN();
 		short makeEFLN();
 		short makePFLN();
+		short makeECFLN();
 		short makeRFLN();
 		short makeRTFLN();
 		short makeSTFLN();
@@ -79,6 +82,7 @@ class CGeneralBlockCreator : public FLM3Geo::BlockCreator3d
 		short makeCRWLD();
 		short makeEWLD();
 		short makePWLD();
+		short makeECWLD();
 		short makeRWLD();
 		short makeRTWLD();
 		short makeSTWLD();
@@ -344,6 +348,8 @@ const char *const __GEO_NAME[] =
 
 	// THR
 	"CpPTHR",
+	"CpECTHR",
+	"CpCTHR",
 	"CpFMRTHR",
 	"CpETHR",
 	"CpSTTHR",
@@ -360,6 +366,7 @@ const char *const __GEO_NAME[] =
 	"CpCRFLN",
 	"CpEFLN",
 	"CpPFLN",
+	"CpECFLN",
 	"CpRFLN",
 	"CpRTFLN",
 	"CpSTFLN",
@@ -369,6 +376,7 @@ const char *const __GEO_NAME[] =
 	"CpCRWLD",
 	"CpEWLD",
 	"CpPWLD",
+	"CpECWLD",
 	"CpRWLD",
 	"CpRTWLD",
 	"CpSTWLD",
@@ -617,6 +625,8 @@ const geometry_fn __GEO_FN [] =
 
 // THR
 	&CGeneralBlockCreator::makePTHR,
+	&CGeneralBlockCreator::makeECTHR,
+	&CGeneralBlockCreator::makeCTHR,
 	&CGeneralBlockCreator::makeFMRTHR,
 	&CGeneralBlockCreator::makeETHR,
 	&CGeneralBlockCreator::makeSTTHR,
@@ -633,6 +643,7 @@ const geometry_fn __GEO_FN [] =
 	&CGeneralBlockCreator::makeCRFLN,
 	&CGeneralBlockCreator::makeEFLN,
 	&CGeneralBlockCreator::makePFLN,
+	&CGeneralBlockCreator::makeECFLN,
 	&CGeneralBlockCreator::makeRFLN,
 	&CGeneralBlockCreator::makeRTFLN,
 	&CGeneralBlockCreator::makeSTFLN,
@@ -642,6 +653,7 @@ const geometry_fn __GEO_FN [] =
 	&CGeneralBlockCreator::makeCRWLD,
 	&CGeneralBlockCreator::makeEWLD,
 	&CGeneralBlockCreator::makePWLD,
+	&CGeneralBlockCreator::makeECWLD,
 	&CGeneralBlockCreator::makeRWLD,
 	&CGeneralBlockCreator::makeRTWLD,
 	&CGeneralBlockCreator::makeSTWLD,

@@ -17,7 +17,10 @@ export function useWorkspace() {
   const parameterFunctions = functions.parameterFunctions;
   const functionActions = useMemo<FunctionEditorActions>(
     () => ({
-      create: { add: model.addSourceFiles, clearError: model.clearFunctionError },
+      create: {
+        add: model.addSourceFiles,
+        clearError: model.clearFunctionError,
+      },
       current: {
         remove: model.deleteSourceFile,
       },
@@ -40,6 +43,8 @@ export function useWorkspace() {
 
   return {
     library: model.library,
+    editorTab: model.editorTab,
+    selectEditorTab: model.selectEditorTab,
     functions: {
       state: {
         active: functions.activeFile,
@@ -78,6 +83,7 @@ export function useWorkspace() {
     raiseDock: model.raiseDock,
     editor: {
       ref: model.bindEditor,
+      active: model.editorTab === 'code',
       executionFeedback: model.session.feedback,
       previewStatus: model.session.previewStatus,
       onTextChanged: model.onEditorTextChanged,

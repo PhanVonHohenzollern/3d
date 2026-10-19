@@ -17,7 +17,11 @@ import type { EvalContext } from '@engine/runtime/interpreter/evalContext';
 import { mapSlot, type RuntimeValueSlot } from '@engine/runtime/helpers/lvalues';
 import { collectVariables } from '@engine/runtime/helpers/runtimeResult';
 
-const emptyTrace = (): RuntimeArgumentTrace => ({ expression: '', sources: [], elements: [] });
+const emptyTrace = (): RuntimeArgumentTrace => ({
+  expression: '',
+  sources: [],
+  elements: [],
+});
 
 // What a function call saves of its caller's variables; see pushFrame.
 export interface CallFrame {
@@ -41,7 +45,15 @@ export class RuntimeState implements EvalContext {
   #functionName = '';
   #globalValues = new Map<string, RuntimeValue>();
   #globalIds = new Map<string, number>();
-  #scopes: Map<string, { exists: boolean; value: RuntimeValue; id?: number; lines: Map<string, number> }>[] = [];
+  #scopes: Map<
+    string,
+    {
+      exists: boolean;
+      value: RuntimeValue;
+      id?: number;
+      lines: Map<string, number>;
+    }
+  >[] = [];
   #values = new Map<string, RuntimeValue>();
   #variableIds = new Map<string, number>();
   #nextVariableId = 0;
@@ -52,6 +64,7 @@ export class RuntimeState implements EvalContext {
   #lastChangedLine = new Map<string, number>();
   #apiCalls: RuntimeApiCall[] = [];
   #parameterRequests: RuntimeParameterRequest[] = [];
+  #pendingParameterReads = new Map<number, Map<string, RuntimeParameterRequest>>();
   #parameters = new Map<string, string>();
   #functionMacros = new Map<string, RuntimeFunctionMacro>();
 
@@ -104,6 +117,7 @@ export class RuntimeState implements EvalContext {
     this.#lastChangedLine = new Map();
     this.#apiCalls = [];
     this.#parameterRequests = [];
+    this.#pendingParameterReads.clear();
     this.#functionMacros = new Map();
   }
 
@@ -262,6 +276,10 @@ export class RuntimeState implements EvalContext {
   lookupValue(name: string, copy = true): RuntimeValue {
     if (!this.#values.has(name)) throw runtimeError('unknown variable: ' + name);
 
+    const id = this.#variableIds.get(name);
+    if (id !== undefined)
+      for (const request of this.#pendingParameterReads.get(id)?.values() ?? []) request.consumed = true;
+
     const value = this.#values.get(name);
 
     return copy ? runtimeDeepCopy(value) : value;
@@ -382,6 +400,15 @@ export class RuntimeState implements EvalContext {
   ): void {
     if (line <= 0 || name === '') return;
     const root = rootName(name);
+    const pending = this.#pendingParameterReads.get(this.#variableIds.get(root) ?? -1);
+    for (const [path, request] of pending ?? []) {
+      if (name !== path && name !== root) continue;
+      // A compound update consumes the old destination; plain replacement does
+      // not. RHS reads are tracked separately by lookupValue, including branches.
+      if (['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>=', '++', '--'].includes(operation))
+        request.consumed = true;
+      pending!.delete(path);
+    }
     if (this.#globalIds.has(root) && this.#globalIds.get(root) === this.#variableIds.get(root))
       this.#globalValues.set(root, this.#values.get(root));
     this.#variableChanges.push({
@@ -412,6 +439,24 @@ export class RuntimeState implements EvalContext {
           );
   }
 
+  hasSourceInitialization(path: string): boolean {
+    const root = rootName(path);
+    const id = this.#variableIds.get(root);
+    if (id === undefined) return false;
+    let initialized = false;
+    for (const change of this.#variableChanges) {
+      if (change.variableId !== id || change.name !== root) continue;
+      if (change.operation === 'declare') {
+        initialized = Boolean(change.expression.trim());
+      } else if (!['get_val'].includes(change.operation)) {
+        // An actual preceding assignment is a valid fallback value, too.
+        initialized = true;
+      }
+    }
+
+    return initialized;
+  }
+
   recordParameterRequest(request: RuntimeParameterRequest): void {
     const index = this.#parameterRequests.findIndex(
       (r) =>
@@ -420,6 +465,15 @@ export class RuntimeState implements EvalContext {
         r.sourceFunction === request.sourceFunction &&
         r.variableName === request.variableName,
     );
+    if (request.sourceFunction === 'get_val') {
+      const id = this.#variableIds.get(rootName(request.variableName));
+      if (id !== undefined) {
+        request.consumed = index >= 0 && this.#parameterRequests[index].consumed === true;
+        const pending = this.#pendingParameterReads.get(id) ?? new Map<string, RuntimeParameterRequest>();
+        pending.set(request.variableName, request);
+        this.#pendingParameterReads.set(id, pending);
+      }
+    }
     if (index === -1) this.#parameterRequests.push(request);
     else this.#parameterRequests[index] = request;
   }

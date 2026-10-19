@@ -1,4 +1,3 @@
-import { parameterSlotCount } from '@/entities/parameter';
 import { FunctionWorkspace } from '@/entities/source-function';
 import { LinkPanelModel } from '@/features/edit-connector';
 import { ParameterPanelModel } from '@/features/edit-parameters';
@@ -7,6 +6,9 @@ import {
   evaluateLibraryExpression,
   resolvePipeConnections,
   pipeConnectionParameters,
+  connectorMeshConnections,
+  inspectExecutedGetVals,
+  resolvedRuntimeParameters,
   type LibrarySample,
   type LibraryDefaults,
   type LibraryDefaultState,
@@ -34,7 +36,6 @@ import { emptyRuntimeResult, GeometryRuntime, what } from '@engine/runtime';
 // bound when their components mount.
 export class WorkspaceModel extends Observable {
   readonly library = new ElementLibraryModel();
-  #libraryValues: ReadonlyMap<string, string> | null = null;
   #libraryDefaults: LibraryDefaults | null = null;
   readonly variables = new VariablePanelModel();
   readonly parameters = new ParameterPanelModel();
@@ -47,6 +48,9 @@ export class WorkspaceModel extends Observable {
 
   readonly links = new LinkPanelModel();
   readonly session = new PreviewSession();
+  readonly #libraryPreviewSession = new PreviewSession();
+  #libraryPreviewReady = false;
+  editorTab: 'code' | 'flm' = 'code';
   readonly functions = new FunctionWorkspace();
   readonly functionTabs = new FunctionTabsController(
     this.functions,
@@ -54,6 +58,8 @@ export class WorkspaceModel extends Observable {
     () => this.parameters,
   );
   readonly previewTimer = new SingleShotTimer(220, () => this.runPreview());
+  // Coalesce parameter edits before repeating the full C++ execution and mesh build.
+  readonly #parameterBuildTimer = new SingleShotTimer(220, () => this.buildPreview());
   readonly selection = new SelectionSync(this);
 
   #editor: CodeEditorHandle | null = null;
@@ -67,7 +73,11 @@ export class WorkspaceModel extends Observable {
   #showGeometryAction: Action | null = null;
 
   importedObj: ImportedModel | null = null;
-  inspectorCounts: InspectorCounts = { VariablesDock: 0, ParametersDock: 0, ApiTraceDock: 0 };
+  inspectorCounts: InspectorCounts = {
+    VariablesDock: 0,
+    ParametersDock: 0,
+    ApiTraceDock: 0,
+  };
   toolbarItems: ActionListItem[] = [];
   shortcutActions: Action[] = [];
 
@@ -117,11 +127,11 @@ export class WorkspaceModel extends Observable {
       trace.historySourceActivated.connect(selection.onApiTraceHistorySourceActivated);
     }
     this.links.setExpressionEvaluator((expression) => {
-      if (!this.#libraryValues) return this.session.runtime.evaluateNumericExpression(expression);
-      const values = this.parameters.contextValues();
-      for (const [key, value] of this.parameters.overrides()) values.set(key.split('::').at(-1)!, value);
+      const committed = this.#libraryDefaults?.currentState;
+      if (!committed) return this.session.runtime.evaluateNumericExpression(expression);
 
-      return evaluateLibraryExpression(expression, values);
+      // Connector coordinates must be evaluated against the committed JSON snapshot.
+      return evaluateLibraryExpression(expression, committed.snapshot.resolvedValues);
     });
     this.links.previewChanged.connect(this.onLinkPreviewChanged);
     this.links.definitionsChanged.connect(() => {
@@ -130,9 +140,115 @@ export class WorkspaceModel extends Observable {
       else this.runPreview();
     });
     this.library.openRequested.connect((sample, replaceSource) => this.#loadLibrarySample(sample, replaceSource));
+    this.library.previewRequested.connect((sample) => this.#previewLibrarySample(sample));
+    this.library.previewInvalidated.connect(() => {
+      this.#libraryPreviewReady = false;
+      if (this.editorTab === 'flm') {
+        this.viewport.setGeometryScene({ meshes: [], warnings: [] });
+        this.viewport.setRuntimeResult(emptyRuntimeResult());
+        this.viewport.setConnectorPreviews([], -1);
+      }
+    });
+  }
+
+  readonly selectEditorTab = (tab: 'code' | 'flm'): void => {
+    if (tab === this.editorTab) return;
+    this.editorTab = tab;
+    if (tab === 'code') {
+      this.viewport.clearSelection();
+      this.viewport.setGeometryScene(this.importedObj?.scene ?? this.session.scene);
+      this.viewport.setRuntimeResult(this.importedObj ? emptyRuntimeResult() : this.session.lastResult);
+      this.viewport.setConnectorPreviews(this.#connectorPreviews, this.#selectedConnectorId);
+      this.viewport.fitScene();
+    } else if (this.library.canOpen) {
+      // Recreate the draft when revisiting FLM, without changing editor files.
+      this.library.preview();
+    } else if (this.#libraryPreviewReady) {
+      this.#showLibraryPreview();
+    } else {
+      this.viewport.setGeometryScene({ meshes: [], warnings: [] });
+      this.viewport.setRuntimeResult(emptyRuntimeResult());
+      this.viewport.setConnectorPreviews([], -1);
+    }
+    this.changed();
+  };
+
+  #showLibraryPreview(): void {
+    this.viewport.clearSelection();
+    this.viewport.setConnectorPreviews([], -1);
+    this.viewport.setGeometryScene(this.#libraryPreviewSession.scene);
+    this.viewport.setRuntimeResult(this.#libraryPreviewSession.lastResult);
+    this.viewport.fitScene();
+  }
+
+  #previewLibrarySample(sample: LibrarySample): void {
+    if (this.editorTab !== 'flm') return;
+    this.previewTimer.stop();
+    this.#parameterBuildTimer.stop();
+    try {
+      // A separate workspace/runtime ensures that browsing never changes
+      // FunctionWorkspace, CodeMirror, Parameters or the last editor Build.
+      const draft = new FunctionWorkspace();
+      draft.replaceFiles(sample.files);
+      const program = draft.program();
+      const requests = this.#libraryPreviewSession.discoverParameters(program, () => false);
+      const snapshot = sample.defaults?.currentState.snapshot;
+      const inputs = resolvedRuntimeParameters(sample.values, requests, snapshot);
+      const context = new Map(sample.values);
+      const definitions = sample.connectors;
+      for (const [name, value] of pipeConnectionParameters(resolvePipeConnections(definitions, context), definitions))
+        inputs.set(name, value);
+      this.#libraryPreviewSession.setMode('build');
+      const outcome = this.#libraryPreviewSession.execute(
+        program,
+        draft.mainSource,
+        draft.mainSource.split('\n').length,
+        inputs,
+        (result) => {
+          for (const request of result.parameterRequests)
+            if (!snapshot || (request.sourceFunction !== 'get_val' && !snapshot.resolvedValues.has(request.name)))
+              context.set(request.name, request.currentValue);
+
+          return buildConnectionGeometry(
+            connectorMeshConnections(resolvePipeConnections(definitions, context)),
+            (expression) => evaluateLibraryExpression(expression, context),
+            inputs.has('getExtInsSize') ? Number(inputs.get('getExtInsSize')) : undefined,
+          );
+        },
+      );
+      if ('error' in outcome) throw new Error(outcome.error);
+      if (outcome.result.diagnostics.length)
+        throw new Error(outcome.result.diagnostics.map((item) => item.message).join('; '));
+      const bindingIssues = snapshot
+        ? inspectExecutedGetVals(outcome.result.parameterRequests, snapshot)
+        : { missing: [], invalid: [] };
+      if (bindingIssues.invalid.length)
+        throw new Error(`Invalid numeric JSON get_val value(s): ${bindingIssues.invalid.join(', ')}`);
+      // A shared C++ constructor may query values used by different cases.
+      // The interpreter and mesh adapter already executed the selected case;
+      // missing bindings alone must not erase a valid scene.
+      this.#libraryPreviewReady = true;
+      this.#showLibraryPreview();
+      const meshCount = this.#libraryPreviewSession.scene.meshes.length;
+      const warning = bindingIssues.missing.length
+        ? ` · unbound shared get_val: ${bindingIssues.missing.join(', ')} (verify preview)`
+        : '';
+      this.statusBar().showMessage(
+        `FLM preview · ${meshCount} mesh(es) · press OK to insert code${warning}`,
+        warning ? 6000 : 3000,
+        warning ? 'warning' : 'info',
+      );
+    } catch (error) {
+      this.#libraryPreviewReady = false;
+      this.viewport.setGeometryScene({ meshes: [], warnings: [] });
+      this.viewport.setRuntimeResult(emptyRuntimeResult());
+      this.statusBar().showMessage(`FLM preview: ${what(error)}`, 6000, 'error');
+    }
   }
 
   #loadLibrarySample(sample: LibrarySample, replaceSource: boolean): void {
+    this.editorTab = 'code';
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     this.session.setMode('build');
     this.importedObj = null;
@@ -146,11 +262,17 @@ export class WorkspaceModel extends Observable {
     }
     const program = this.functions.program();
     const definitions = this.session.discoverParameters(program, () => false);
-    this.#libraryValues = sample.values;
     this.#libraryDefaults = sample.defaults ?? null;
-    this.parameters.loadValues(definitions, sample.values, sample.values, this.#libraryDefaults?.selectors);
+    this.parameters.loadValues(
+      definitions,
+      sample.values,
+      sample.values,
+      this.#libraryDefaults?.selectors,
+      this.#libraryDefaults?.hiddenParameters,
+      this.#libraryDefaults?.parameterModes,
+    );
     this.parameters.setValueOptions(this.#libraryDefaults?.options ?? new Map());
-    this.#libraryDefaults?.remember(this.parameters.overrides());
+    this.#libraryDefaults?.remember(this.parameters.savedValues());
     this.links.loadDefinitions(sample.connectors);
     this.buildPreview();
     this.viewport.fitScene();
@@ -171,8 +293,10 @@ export class WorkspaceModel extends Observable {
   }
 
   dispose(): void {
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     this.session.dispose();
+    this.#libraryPreviewSession.dispose();
   }
 
   get canExportObj(): boolean {
@@ -211,6 +335,7 @@ export class WorkspaceModel extends Observable {
 
   readonly buildPreview = (): void => {
     if (this.#buildingPreview) return;
+    this.#parameterBuildTimer.stop();
     this.#buildingPreview = true;
     try {
       this.#activatePreviewMode('build');
@@ -229,7 +354,14 @@ export class WorkspaceModel extends Observable {
       }
       this.session.beginBuild();
       this.#updatePreview(source.split('\n').length, source, program);
-      this.session.recordBuild(this.functions.cacheKey, source, program, this.parameters.overrides());
+      try {
+        const requests = this.session.discoverParameters(program, () => false);
+        const committed = this.#libraryDefaults?.currentState;
+        const inputs = resolvedRuntimeParameters(this.parameters.overrides(), requests, committed?.snapshot);
+        this.session.recordBuild(this.functions.cacheKey, source, program, inputs);
+      } catch (error) {
+        this.statusBar().showMessage(what(error), 6000, 'error');
+      }
       this.changed();
     } finally {
       this.#buildingPreview = false;
@@ -243,6 +375,7 @@ export class WorkspaceModel extends Observable {
   };
 
   #activatePreviewMode(mode: PreviewMode): void {
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     this.session.setMode(mode);
     this.importedObj = null;
@@ -276,24 +409,41 @@ export class WorkspaceModel extends Observable {
   };
 
   readonly onParametersChanged = (): void => {
-    const defaults = this.#libraryDefaults?.change(this.parameters.overrides(), this.links.definitions());
-    if (defaults) this.#applyLibraryDefaults(defaults);
+    try {
+      const defaults = this.#libraryDefaults?.change(this.parameters.savedValues(), this.links.definitions());
+      if (defaults) this.#applyLibraryDefaults(defaults);
+    } catch (error) {
+      // Reject the entire edit together. Leaving an invalid tech/dimension in
+      // savedValues makes every later edit retry that rejected value and
+      // freezes geometry even when the next parameter is valid.
+      if (this.#libraryDefaults) this.#applyLibraryDefaults(this.#libraryDefaults.currentState);
+      this.statusBar().showMessage(error instanceof Error ? error.message : String(error), 6000, 'error');
+      this.changed();
+
+      return;
+    }
     this.session.markParametersChanged();
     this.changed();
-    if (this.session.mode === 'build') this.buildPreview();
-    else this.runPreview();
+    if (this.session.mode === 'build') this.#parameterBuildTimer.start();
+    else this.schedulePreview();
   };
 
   #applyLibraryDefaults(defaults: LibraryDefaultState): void {
     const program = this.functions.program();
     const definitions = this.session.discoverParameters(program, () => false);
     const tab = this.parameters.activeTab;
-    this.parameters.loadValues(definitions, defaults.values, defaults.parameters, this.#libraryDefaults?.selectors);
+    this.parameters.loadValues(
+      definitions,
+      defaults.values,
+      defaults.parameters,
+      this.#libraryDefaults?.selectors,
+      this.#libraryDefaults?.hiddenParameters,
+      this.#libraryDefaults?.parameterModes,
+    );
     this.parameters.setValueOptions(defaults.options ?? new Map());
     this.parameters.selectTab(tab);
-    this.#libraryValues = defaults.values;
     this.library.syncDefaults(defaults);
-    this.#libraryDefaults?.remember(this.parameters.overrides());
+    this.#libraryDefaults?.remember(this.parameters.savedValues());
     this.links.loadDefinitions(defaults.connectors);
   }
 
@@ -323,11 +473,39 @@ export class WorkspaceModel extends Observable {
     parameters: ReadonlyMap<string, string>,
     program = this.functions.program(undefined, false, true),
   ): void {
+    const committed = this.#libraryDefaults?.currentState;
+    if (committed?.snapshot.status !== 'valid') return;
+    const definitions = new GeometryRuntime().discoverParameters(program.source, program.options);
+    let resolved: Map<string, string>;
+    try {
+      resolved = resolvedRuntimeParameters(parameters, definitions, committed?.snapshot);
+    } catch (error) {
+      this.statusBar().showMessage(what(error), 6000, 'error');
+
+      return;
+    }
     const runtime = new GeometryRuntime();
-    runtime.setParameters(parameters);
-    this.functions.acceptCalls(
-      runtime.executeUpToLine(program.source, program.source.split('\n').length, true, program.options),
-    );
+    runtime.setParameters(resolved);
+    const result = runtime.executeUpToLine(program.source, program.source.split('\n').length, true, program.options);
+    if (committed) {
+      const issues = inspectExecutedGetVals(result.parameterRequests, committed.snapshot);
+      if (issues.invalid.length) {
+        this.statusBar().showMessage(
+          `Invalid numeric JSON get_val value(s): ${issues.invalid.join(', ')}`,
+          6000,
+          'error',
+        );
+
+        return;
+      }
+      if (issues.missing.length)
+        this.statusBar().showMessage(
+          `Unbound shared get_val (code trace preserved): ${issues.missing.join(', ')}`,
+          6000,
+          'warning',
+        );
+    }
+    this.functions.acceptCalls(result);
   }
 
   readonly selectFunctionOccurrence = (index: number): void => {
@@ -383,6 +561,7 @@ export class WorkspaceModel extends Observable {
   }
 
   #showFunctionEditor(): void {
+    this.#parameterBuildTimer.stop();
     this.previewTimer.stop();
     const fn = this.functions.functions.find((fn) => fn.name === this.functions.active);
     this.#setEditorSource(fn?.line ?? 1);
@@ -449,7 +628,7 @@ export class WorkspaceModel extends Observable {
     this.changed();
     if (this.importedObj) return;
     if (tested) this.apiTrace.clearApiFocus();
-    this.viewport.setConnectorPreviews(previews, selectedId);
+    if (this.editorTab === 'code') this.viewport.setConnectorPreviews(previews, selectedId);
     if (tested) this.viewport.fitScene();
   };
 
@@ -560,17 +739,46 @@ export class WorkspaceModel extends Observable {
     const parameterDefinitions = this.session.discoverParameters(program, () => false);
     this.parameters.setDefinitions(parameterDefinitions);
 
-    const inputs = new Map(parameters ?? this.parameters.overrides());
-    const context = this.parameters.contextValues();
-    for (const [key, value] of inputs) context.set(key.split('::').at(-1)!, value);
-    const definitions = this.links.definitions();
+    const committed = this.#libraryDefaults?.currentState;
+    if (committed && committed.snapshot.status !== 'valid') {
+      this.statusBar().showMessage('Preview stopped: library parameters are not resolved.', 4000, 'error');
+
+      return;
+    }
+    let inputs: Map<string, string>;
+    try {
+      inputs = resolvedRuntimeParameters(
+        parameters ?? this.parameters.overrides(),
+        parameterDefinitions,
+        committed?.snapshot,
+      );
+    } catch (error) {
+      this.statusBar().showMessage(what(error), 6000, 'error');
+
+      return;
+    }
+    const context = new Map(this.parameters.contextValues());
+    if (committed) {
+      // Library parameters must never be overwritten by runtime-only overrides.
+      for (const [name, value] of committed.snapshot.resolvedValues) context.set(name, value);
+    } else {
+      for (const [key, value] of inputs) context.set(key.split('::').at(-1)!, value);
+    }
+    const definitions = committed ? committed.connectors : this.links.definitions();
     for (const [key, value] of pipeConnectionParameters(resolvePipeConnections(definitions, context), definitions))
       inputs.set(key, value);
     const outcome = this.session.execute(program, source, line, inputs, (result) => {
-      for (const request of result.parameterRequests) context.set(request.name, request.currentValue);
+      for (const request of result.parameterRequests)
+        if (
+          !committed ||
+          (request.sourceFunction !== 'get_val' && !committed.snapshot.resolvedValues.has(request.name))
+        )
+          context.set(request.name, request.currentValue);
 
+      // All connectors still feed the C++ runtime queries above. Only
+      // flanged/threaded technologies generate additional Connector Mesh.
       return buildConnectionGeometry(
-        resolvePipeConnections(definitions, context),
+        connectorMeshConnections(resolvePipeConnections(definitions, context)),
         (expression) => evaluateLibraryExpression(expression, context),
         inputs.has('getExtInsSize') ? Number(inputs.get('getExtInsSize')) : undefined,
       );
@@ -582,11 +790,26 @@ export class WorkspaceModel extends Observable {
       return;
     }
     const { result } = outcome;
+    // Only the selected branch executed. A queried C++ variable that is not
+    // supplied by this entity's JSON may be irrelevant to emitted geometry.
+    // Report it, but never block scene publication for that reason alone.
+    const bindingIssues = committed
+      ? inspectExecutedGetVals(result.parameterRequests, committed.snapshot)
+      : { missing: [], invalid: [] };
+    if (bindingIssues.invalid.length) {
+      this.statusBar().showMessage(
+        `Invalid numeric JSON get_val value(s): ${bindingIssues.invalid.join(', ')}`,
+        6000,
+        'error',
+      );
+
+      return;
+    }
     if (!this.functions.active && this.session.mode === 'build') this.functions.acceptCalls(result);
     const scene = this.session.scene;
     this.inspectorCounts = {
       VariablesDock: result.variables.length,
-      ParametersDock: parameterDefinitions.reduce((count, definition) => count + parameterSlotCount(definition), 0),
+      ParametersDock: this.parameters.rows.length,
       ApiTraceDock: result.apiCalls.length,
     };
     this.changed();
@@ -596,8 +819,10 @@ export class WorkspaceModel extends Observable {
     this.parameters.updateRuntimeResult(result);
 
     if (!this.importedObj) {
-      this.viewport.setGeometryScene(scene);
-      this.viewport.setRuntimeResult(result);
+      if (this.editorTab === 'code') {
+        this.viewport.setGeometryScene(scene);
+        this.viewport.setRuntimeResult(result);
+      }
     }
     this.links.updateRuntimeResult(result);
     this.selection.restoreAfterRun();
@@ -606,7 +831,13 @@ export class WorkspaceModel extends Observable {
       const mode = this.session.mode === 'build' ? 'Build' : `Line ${line}`;
       let message = `${mode} | ${scene.meshes.length} live mesh(es) | ${result.apiCalls.length} API call(s)`;
       if (scene.warnings.length) message += ` | geometry warning: ${scene.warnings[scene.warnings.length - 1]}`;
-      this.statusBar().showMessage(message, 2600, scene.warnings.length ? 'warning' : 'info');
+      if (bindingIssues.missing.length)
+        message += ` | unbound shared get_val: ${bindingIssues.missing.join(', ')} (verify preview)`;
+      this.statusBar().showMessage(
+        message,
+        bindingIssues.missing.length ? 6000 : 2600,
+        scene.warnings.length || bindingIssues.missing.length ? 'warning' : 'info',
+      );
     } else {
       const d = result.diagnostics[result.diagnostics.length - 1];
       this.statusBar().showMessage(`Line ${d.line}: ${d.message}`, 4000, 'error');

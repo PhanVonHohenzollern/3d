@@ -285,7 +285,11 @@ function tubeIntersection(variant: 'tubeData' | 'tubeParams'): ApiMeshAdapter {
       main = cylinder(start, normal, up, tube[0], tube[0], tube[1]);
       // Positive tilt leans the branch towards the main tube's forward axis.
       const direction = main.up.rotateBy(-deg(angles[0] ?? 0), main.side).rotateBy(deg(angles[1] ?? 0), main.axis);
-      const origin = start.add(main.axis.mul(inter[2])).add(main.side.mul(inter[3]));
+      // The eccentric offset is perpendicular to the branch plane, in the
+      // branch's azimuth frame. Keeping it on main.side shifts opposite branches
+      // along the main tube's cross section instead of to the same elevation.
+      const offsetDirection = main.up.crossProduct(main.axis).rotateBy(deg(angles[1] ?? 0), main.axis);
+      const origin = start.add(main.axis.mul(inter[2])).add(offsetDirection.mul(inter[3]));
       branch = cylinder(origin, direction, main.axis, inter[0], inter[0], inter[1]);
     } else {
       const tube = leadingReals(a, 'tubeParams', 3),

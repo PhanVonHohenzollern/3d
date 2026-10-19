@@ -53,6 +53,13 @@ export interface RuntimeApiCall {
 }
 
 export interface RuntimeParameterRequest {
+  // A failed get_val leaves the C++ destination unchanged. This is safe only
+  // when the destination was explicitly initialized or assigned in the source;
+  // the interpreter's implicit zero for uninitialized locals is NOT a default.
+  initializedFromSource?: boolean;
+  // Execution-only: whether the queried destination was read before replacement.
+  // Absent for static discovery and older callers (which remain conservative).
+  consumed?: boolean;
   functionName?: string;
   checkbox?: boolean;
   branchSelector?: 'switch' | 'condition';
@@ -79,7 +86,13 @@ export interface RuntimeResult {
 }
 
 export function emptyRuntimeResult(): RuntimeResult {
-  return { variables: [], variableChanges: [], diagnostics: [], apiCalls: [], parameterRequests: [] };
+  return {
+    variables: [],
+    variableChanges: [],
+    diagnostics: [],
+    apiCalls: [],
+    parameterRequests: [],
+  };
 }
 
 export function emptyApiCall(): RuntimeApiCall {

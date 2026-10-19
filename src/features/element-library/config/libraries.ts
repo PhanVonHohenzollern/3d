@@ -1,30 +1,16 @@
+import registry from 'virtual:flm-libraries';
+import { createJsonLibrary } from '@/features/element-library/model/jsonLibrary';
 import type { LibraryAsset } from '@/features/element-library/model/types';
-import catalog from '@/features/element-library/config/catalog.json';
 
-function sources(name: string, source = name): LibraryAsset['sources'] {
-  return ['h', 'cpp'].map((extension) => ({
-    name: `${source}.${extension}`,
-    path: `demo/code/${name}/${source}.${extension}`,
-  }));
-}
+// The Vite virtual manifest must scan JSON, C++ (.h/.cpp) and SVG files.
+// Never mix these libraries with a legacy XML/runtime-default registry.
+export const libraries: LibraryAsset[] = registry.map((asset) => ({
+  name: asset.name,
+  catalog: asset.catalog,
+  sources: asset.sources,
+  load: async () => {
+    if (asset.error) throw new Error(asset.error);
 
-export const libraries: LibraryAsset[] = [
-  {
-    name: 'CGeneral',
-    catalog: catalog.CGeneral,
-    load: () => import('@/features/element-library/data/CGeneral').then((module) => module.default),
-    sources: sources('CGeneral'),
+    return createJsonLibrary(asset.name, await asset.load(), asset.entries);
   },
-  {
-    name: 'GRUNDFOS',
-    catalog: catalog.GRUNDFOS,
-    load: () => import('@/features/element-library/data/GRUNDFOS').then((module) => module.default),
-    sources: sources('GRUNDFOS'),
-  },
-  {
-    name: 'BELIMO',
-    catalog: catalog.BELIMO,
-    load: () => import('@/features/element-library/data/BELIMO').then((module) => module.default),
-    sources: sources('BELIMO', 'CBELIMO'),
-  },
-];
+}));

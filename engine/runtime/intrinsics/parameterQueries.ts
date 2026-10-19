@@ -1,6 +1,6 @@
 import { runtimeError, trim } from '@engine/runtime/cpp/cpp';
 import { parameterDisplayText, parameterTextToValue, parameterType } from '@engine/runtime/helpers/parameters';
-import { readLValue, writeLValue } from '@engine/runtime/helpers/lvalues';
+import { readLValue } from '@engine/runtime/helpers/lvalues';
 import {
   balancedEnd,
   isIdentifier,
@@ -41,6 +41,7 @@ export const getVal: LanguageIntrinsic = {
       defaultValue: parameterDisplayText(before),
       currentValue: parameterDisplayText(readLValue(dest) ?? before),
       sourceFunction: 'get_val',
+      initializedFromSource: state.hasSourceInitialization(dest.path),
       variableName: dest.path,
       line,
     });
@@ -131,20 +132,24 @@ export const connectorQueries: LanguageIntrinsic = {
     if (argGroups.length < 2) return 'done';
     const id = evaluate(argGroups[0]);
     const dest = resolveLValue(argGroups[1]);
-    const current = readLValue(dest);
+    const before = readLValue(dest);
     const key = (isString(id) ? id : '') + ':' + name;
+    const configured = state.parameter(key);
+    if (configured !== undefined)
+      recordChange(state, dest, { line, operation: name, expression: key, onlyIfChanged: true }, () =>
+        parameterTextToValue(configured, before),
+      );
+    const after = readLValue(dest);
     const request: RuntimeParameterRequest = {
       name: key,
-      type: runtimeTypeName(current),
-      defaultValue: runtimeValueToCompactString(current),
-      currentValue: runtimeValueToCompactString(current),
+      type: runtimeTypeName(before),
+      defaultValue: runtimeValueToCompactString(before),
+      currentValue: runtimeValueToCompactString(after),
       sourceFunction: name,
       variableName: dest.path,
       line,
     };
     state.recordParameterRequest(request);
-    const configured = state.parameter(key);
-    if (configured !== undefined) writeLValue(dest, parameterTextToValue(configured, current));
 
     return 'done';
   },

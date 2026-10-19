@@ -2,6 +2,8 @@ import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+// eslint-disable-next-line no-restricted-imports
+import { flmLibraries } from './scripts/flmLibraries.ts';
 
 export default defineConfig({
   resolve: {
@@ -11,7 +13,7 @@ export default defineConfig({
       '@engine': fileURLToPath(new URL('./engine', import.meta.url)),
     },
   },
-  plugins: [react(), tailwindcss()],
+  plugins: [flmLibraries(), react(), tailwindcss()],
   test: {
     include: ['tests/**/*.test.ts'],
     testTimeout: 60000,
