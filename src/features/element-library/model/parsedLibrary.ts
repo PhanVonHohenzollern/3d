@@ -40,6 +40,10 @@ export interface FlmRestriction {
   argumentCategory?: number;
   tableGuid?: string | null;
   conditionsRaw: Record<string, string | number>;
+  /** Source-backed lexical condition values, mapped using this library's TYPE=6
+   dictionary. conditionsRaw always retains the exact source XML token. */
+  resolvedConditionsRaw?: Record<string, string>;
+  conditionCanonicalEvidence?: { conditionKey: string; variable: string; sourceLiteral: string; canonicalLiteral: string; sourceTableGuid: string; columnKey: number; sourceLanguage: string }[];
   bindings: FlmBinding[];
   extraFields: FlmNode[];
 }
@@ -52,6 +56,10 @@ export interface FlmConnector {
   connectionTypeExpression?: string | null;
   technologyRef?: { id: string; guid: string; source: string };
   conditionsRaw: Record<string, string | number>;
+  /** Source-backed lexical condition values, mapped using this library's TYPE=6
+   dictionary. conditionsRaw always retains the exact source XML token. */
+  resolvedConditionsRaw?: Record<string, string>;
+  conditionCanonicalEvidence?: { conditionKey: string; variable: string; sourceLiteral: string; canonicalLiteral: string; sourceTableGuid: string; columnKey: number; sourceLanguage: string }[];
   fields: Record<string, unknown>;
   variables?: FlmVariable[];
   restrictions?: FlmRestriction[];
@@ -72,6 +80,7 @@ export interface FlmEntity {
   initialValuesRaw?: FlmNode;
   subElements?: (FlmEntity & { unknownXml?: FlmNode[]; definitionRaw?: FlmNode })[];
   aliases?: Record<string, string>;
+  legacyIds?: { ENTID?: string; GRPID?: string }[];
 }
 export interface FlmTable {
   guid: string;
@@ -89,9 +98,23 @@ export interface FlmTechnology {
   connectionCodes: string[];
   properties: Record<string, FlmValue>;
 }
+/** Conservative compact dependency plan emitted by the XML parser.
+ * The factor opcodes and unknown-direction joins are *not* table semantics.
+ */
+export interface FlmCompiledGraph {
+  v: string;
+  nodes: string[];
+  factors: [string, string, number[], number[], number[], number[], number[] | null][];
+  groups: number[][];
+  edges: number[][];
+  order: number[] | null;
+  issues: [string, string][];
+}
+
 export interface ParsedLibraryJSON {
   schemaVersion: string;
-  library: { producer?: { name?: string } };
+  library: { guid?: string; producer?: { name?: string } };
+  constraintGraphs?: Record<string, FlmCompiledGraph>;
   entities: Record<string, FlmEntity>;
   specifications: Record<string, FlmTable>;
   technologies: Record<string, FlmTechnology>;
@@ -208,11 +231,76 @@ export function flmText(value: FlmValue | undefined): string | undefined {
   return value === null || value === undefined || typeof value === 'object' ? undefined : String(value);
 }
 
+/**
+ * Use a canonicalized XML condition ONLY when its provenance is verifiable
+ * against this entity's DEF_ARGMAP and the referenced table in this library.
+ * Raw source condition tokens always remain available for audit/debugging.
+ * This prevents an alias from another library from activating a wrong branch.
+ */
+export function verifiedSourceConditions(
+  library: ParsedLibraryJSON,
+  entity: FlmEntity,
+  condition: FlmRestriction | FlmConnector,
+): { conditions: Record<string, string | number>; invalidFields: string[] } {
+  const merged = { ...condition.conditionsRaw };
+  const invalidFields: string[] = [];
+  const source = condition.resolvedConditionsRaw;
+  if (!source) return { conditions: merged, invalidFields };
+  const restrictions = [
+    ...(entity.restrictions ?? []),
+    ...(entity.connectors ?? []).flatMap((c) => c.restrictions ?? []),
+  ];
+  for (const [key, canonical] of Object.entries(source)) {
+    if (!/^CND_VAL\d*$/.test(key)) {
+      invalidFields.push(key);
+      continue;
+    }
+    const raw = condition.conditionsRaw[key];
+    const variable = condition.conditionsRaw[key.replace('CND_VAL', 'CND_VAR')];
+    if (typeof raw !== 'string' || typeof variable !== 'string' || typeof canonical !== 'string') {
+      invalidFields.push(key);
+      continue;
+    }
+    const rawParts = raw.split(';');
+    const replacements = canonical.split(';');
+    if (rawParts.length !== replacements.length) {
+      invalidFields.push(key);
+      continue;
+    }
+    const verified = rawParts.every((literal, i) => {
+      const normalized = replacements[i];
+      if (literal === normalized) return true;
+
+      return condition.conditionCanonicalEvidence?.some((proof) => {
+        if (proof.conditionKey !== key || proof.variable !== variable ||
+            proof.sourceLiteral !== literal.trim() || proof.canonicalLiteral !== normalized) return false;
+        const table = library.specifications[proof.sourceTableGuid];
+        if (!table || !Number.isInteger(proof.columnKey) || proof.columnKey < 0 ||
+            proof.columnKey >= table.dataColumns.length) return false;
+        // Explicit source binding is required, not a lexical coincidence.
+        if (!restrictions.some((restriction) =>
+          restriction.tableGuid === proof.sourceTableGuid &&
+          restriction.bindings.some((b) => b.variable === variable && b.columnKey === proof.columnKey))) return false;
+        try {
+          return new SpecificationIndex(table).matching(proof.columnKey, normalized).size > 0;
+        } catch {
+          return false;
+        }
+      }) ?? false;
+    });
+    if (verified) merged[key] = canonical;
+    else invalidFields.push(key);
+  }
+
+  return { conditions: merged, invalidFields };
+}
+
 export class SpecificationIndex {
   readonly table: FlmTable;
   readonly columns: (string | undefined)[][];
   readonly rows: number[];
   readonly #indexes = new Map<number, Map<string, Set<number>>>();
+  readonly #numericRanges = new Map<number, { min: number; max: number; ordered: boolean } | null>();
 
   constructor(table: FlmTable) {
     this.table = table;
@@ -235,6 +323,22 @@ export class SpecificationIndex {
 
       return values.map(flmText);
     });
+  }
+
+  numericRange(column: number): { min: number; max: number; ordered: boolean } | null {
+    if (!this.#numericRanges.has(column)) {
+      const cells = this.columns[column];
+      const numbers = cells?.map((cell) => cell?.trim() ? Number(cell) : Number.NaN);
+      const valid = numbers?.length && numbers.every(Number.isFinite);
+      this.#numericRanges.set(column, valid ? {
+        min: Math.min(...numbers),
+        max: Math.max(...numbers),
+        ordered: numbers.every((n, i) => !i || n >= numbers[i - 1]) ||
+          numbers.every((n, i) => !i || n <= numbers[i - 1]),
+      } : null);
+    }
+
+    return this.#numericRanges.get(column)!;
   }
 
   matching(column: number, value: string): ReadonlySet<number> {

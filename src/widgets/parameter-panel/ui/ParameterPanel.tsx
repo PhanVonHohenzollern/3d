@@ -104,7 +104,18 @@ export function ParameterPanel(props: ParameterPanelProps) {
                         {field.label}
                       </th>
                       <td className="px-1 py-0 [&_button]:h-6 [&_input]:h-6 [&_input]:py-0.5">
-                        {field.checkbox ? (
+                        {field.mode === 'restrictive' ? (
+                          <select
+                            aria-label={field.label}
+                            className="h-6 w-full rounded border border-line bg-base px-1 text-xs"
+                            value={field.value}
+                            disabled={field.disabled || field.xmlOptions.length === 0}
+                            onChange={(event) => field.selectValue(event.target.value)}
+                          >
+                            {!field.xmlOptions.includes(field.value) && <option value={field.value}>{field.value}</option>}
+                            {field.xmlOptions.map((value) => <option key={value} value={value}>{value}</option>)}
+                          </select>
+                        ) : field.checkbox ? (
                           <input
                             type="checkbox"
                             aria-label={field.label}

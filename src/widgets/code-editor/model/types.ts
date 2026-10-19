@@ -1,5 +1,5 @@
-import type { Ref, ReactNode } from 'react';
-import type { EditorExecutionFeedback } from '@/features/run-preview';
+import type { Ref, ReactNode } from "react";
+import type { EditorExecutionFeedback } from "@/features/run-preview";
 
 export type { EditorExecutionFeedback };
 
@@ -18,6 +18,7 @@ export interface CodeEditorHandle {
 }
 
 export interface CodeEditorProps {
+  active?: boolean;
   footer?: ReactNode;
   executionFeedback?: EditorExecutionFeedback;
   previewStatus?: string;

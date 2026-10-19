@@ -2,6 +2,7 @@ import { isInsulationQuery, parameterKey, type RuntimeParameterRequest } from '@
 import type { ResolvedSnapshot } from '@/features/element-library/model/constraintGraph';
 import type { LibraryElement } from '@/features/element-library/model/types';
 import { sameValue } from '@/features/element-library/model/values';
+import type { ParameterBindingMode } from '@/entities/parameter';
 
 export interface LibraryDefaultState {
   elementId: string;
@@ -55,6 +56,7 @@ export class LibraryDefaults {
 
   #value(values: ReadonlyMap<string, string>, name: string): string | undefined {
     const scoped = this.#keys.get(name) ?? name;
+
     return values.get(scoped) ?? values.get(name);
   }
 
@@ -68,6 +70,7 @@ export class LibraryDefaults {
       if (scopedValue !== undefined && !sameValue(scopedValue, this.#parameters.get(scoped))) return scopedValue;
       if (plainValue !== undefined && !sameValue(plainValue, this.#parameters.get(name))) return plainValue;
     }
+
     return this.#value(values, name);
   }
 
@@ -83,12 +86,17 @@ export class LibraryDefaults {
     // copied into parameter values or a geometry snapshot.
     for (const name of this.#controls) {
       const choices = this.#elements.flatMap((element) => {
+        // The current entity's domains depend on the selected technology.
+        // Re-resolving its defaults would restore the previous connection list.
+        if (element.id === this.#current.elementId) return [];
         const result = element.resolve();
         if (result.snapshot.status !== 'valid') return [];
+
         return result.options.get(name) ?? (result.values.has(name) ? [result.values.get(name)!] : []);
       });
-      if (choices.length) options.set(name, [...new Set(choices)]);
+      if (choices.length) options.set(name, [...new Set([...(options.get(name) ?? []), ...choices])]);
     }
+
     return options;
   }
 
@@ -101,6 +109,10 @@ export class LibraryDefaults {
   // UI must allow free text for these fields; options are suggestions only.
   get nonrestrictiveParameters(): ReadonlySet<string> {
     return this.#current.snapshot.nonrestrictiveParameters;
+  }
+
+  get parameterModes(): ReadonlyMap<string, ParameterBindingMode> {
+    return this.#current.snapshot.parameterModes ?? new Map();
   }
 
   get hiddenParameters(): ReadonlySet<string> {
@@ -126,26 +138,35 @@ export class LibraryDefaults {
     parameters: ReadonlyMap<string, string>,
     _connectors: LibraryElement['connectors'],
   ): LibraryDefaultState | null {
+    const hidden = this.hiddenParameters;
+    const modes = this.parameterModes;
+    const selectors = new Set(this.selectors);
     const changed = [...this.#keys.keys()].filter(
-      (name) => !sameValue(this.#editedValue(parameters, name), this.#current.snapshot.resolvedValues.get(name))
-        && (this.#current.snapshot.resolvedValues.has(name) || this.#controls.includes(name)),
+      (name) => !sameValue(this.#editedValue(parameters, name), this.#value(this.#parameters, name) ?? this.#current.snapshot.resolvedValues.get(name))
+        && !hidden.has(name)
+        && modes.get(name) !== 'secondary'
+        && (this.#current.snapshot.resolvedValues.has(name) || selectors.has(name) || this.#controls.includes(name)),
     );
     if (!changed.length) {
       this.remember(parameters);
+
       return null;
     }
 
     let element = this.#elements.find((item) => item.id === this.#current.elementId)!;
     const controls = changed.filter((name) => this.#controls.includes(name));
+
     const supports = (candidate: LibraryElement) => {
       const result = candidate.resolve();
       if (result.snapshot.status !== 'valid') return false;
+
       return controls.every((name) =>
         (result.options.get(name) ?? [result.values.get(name)]).some((value) =>
           sameValue(value, this.#editedValue(parameters, name)),
         ),
       );
     };
+
     if (controls.length && !supports(element))
       element = this.#elements.find((item) => item.id === this.#initial.elementId && supports(item))
         ?? this.#elements.find(supports)
@@ -156,7 +177,7 @@ export class LibraryDefaults {
     if (baseline && baseline.snapshot.status !== 'valid')
       throw new Error('Cannot switch to an unresolved JSON entity');
     const values = new Map(switching ? baseline!.snapshot.resolvedValues : this.#current.snapshot.resolvedValues);
-    const allowedNames = new Set(values.keys());
+    const allowedNames = new Set([...values.keys(), ...element.selectors.map((selector) => selector.name)]);
     if (switching) {
       // Carry only shared, explicitly supported selectors; do not restore
       // obsolete per-case dimensions or saved connectors.
@@ -169,10 +190,14 @@ export class LibraryDefaults {
     const edited = changed.filter((name) => allowedNames.has(name));
     for (const name of edited) {
       const value = this.#editedValue(parameters, name);
+      if (this.parameterModes.get(name) === 'restrictive' &&
+          !this.options.get(name)?.some((option) => sameValue(option, value)))
+        throw new Error(`${name}: select a value from the list`);
       if (value !== undefined) values.set(name, value);
     }
     if (!switching && !edited.length) {
       this.remember(parameters);
+
       return null;
     }
     const selected = switching
@@ -184,8 +209,14 @@ export class LibraryDefaults {
       throw new Error(resolved.errors?.join('; ') || `Configuration is ${resolved.snapshot.status}`);
 
     const nextParameters = new Map(parameters);
+    const declared = new Set([
+      ...element.selectors.map(({ name }) => name),
+      ...(element.hiddenParameters ?? []),
+    ]);
     for (const [name, key] of this.#keys) {
-      // A previous case's scoped get_val may not survive a case switch.
+      // C++-only inputs are independent of the JSON graph. Preserve their
+      // defaults/edits while another field triggers constraint resolution.
+      if (!switching && !declared.has(name) && !resolved.snapshot.resolvedValues.has(name)) continue;
       nextParameters.delete(name);
       nextParameters.delete(key);
       const value = resolved.snapshot.resolvedValues.get(name);
@@ -196,6 +227,7 @@ export class LibraryDefaults {
     }
     this.#current = { elementId: element.id, ...resolved, parameters: nextParameters };
     this.remember(nextParameters);
+
     return this.currentState;
   }
 

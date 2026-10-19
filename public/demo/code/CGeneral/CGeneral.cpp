@@ -2272,7 +2272,6 @@ short CGeneralBlockCreator :: makeCFSMA()
 	get_val("tl2", tl2);
 	get_val("elType3d", elType3d);
 
-	double extDiam = SW / cos(ARX_PI / 6);
 	FdPoint3d lp1(-l / 2, 0, 0),
 	          lp2( l / 2, 0, 0);
 	addCenterLine(lp1, lp2);
@@ -2281,6 +2280,7 @@ short CGeneralBlockCreator :: makeCFSMA()
 		{
 		case 0:  // CFSMA
 			{
+			double extDiam = SW / cos(ARX_PI / 6);
 			if( extDiam >= dm1 )
 				{
 				FdPoint3d p1(l / 2 - C, 0, 0);
@@ -2299,6 +2299,7 @@ short CGeneralBlockCreator :: makeCFSMA()
 
 		case 1:  // CFSFA
 			{
+			double extDiam = SW / cos(ARX_PI / 6);
 			FdPoint3d p(-l / 2, 0, 0);
 			makeScrew(p, vx, vy, SW, C, true, extDiam < dm1 ? false : true);
 
@@ -2394,7 +2395,7 @@ short CGeneralBlockCreator :: makeFITA()
 short CGeneralBlockCreator :: makeFPA()
 	{
 	ads_real l;
-	get_val("L", l);
+	get_val("ft", l); // The JSON connector planes are at +/-ft/2.
 
 	// make center line
 	FdPoint3d lp1(-l / 2, 0, 0),
@@ -9199,8 +9200,6 @@ short CGeneralBlockCreator::makeFANUTAC()
 	double Width_tunder[] = { B/2, B/2 };
 	double Height_tunder[] = { A/8, A/8 };
 
-	double tubeDiam[] = { K, K, J };
-	double tubeDiam_1[] = { K, K, - J };
 
 	cp2. set(leng_conn, 0, B/2 + 2.5), cp3.set( leng_conn + add_bracket, 0, B/2 + 2.5);
 	FdPoint3d cpBOX_br_1[] = { cp2, cp3 };
@@ -9242,7 +9241,7 @@ short CGeneralBlockCreator::makeFANUTAC()
 
 
 	short ftype;
-	short elType;
+	short elType = 0; // Standard symbols when no optional selector is supplied.
 
 	get_val("elType", elType);
 	get_val("ftype", ftype);
@@ -9320,6 +9319,7 @@ short CGeneralBlockCreator::makeFANUTAC()
 	makeBox(1, cpBOX_3_thick, Width_2_thick, Height, sides, conn, false, true);
 
 	}else if(type_idx == 2){
+	double tubeDiam[] = { K, K, J };
 
 	makeBox(1, cpBOX_1, Width_1, Height, sides, conn, false, false);
 	makeBox(1, cpBOX_2, Width_2, Height, sides_1, conn, false, false);
@@ -9356,6 +9356,8 @@ short CGeneralBlockCreator::makeFANUTAC()
 	makeRectToTubeTransition(cp3, vx, vz, TubeHeight_2, cp3, tubeDiam, 10);}
 
 	}else if(type_idx == 3){
+	double tubeDiam[] = { K, K, J };
+	double tubeDiam_1[] = { K, K, -J };
 	makeBox(1, cpBOX_2, Width_2, Height, sides_1, conn, false, false);
 
 	double TubeHeight_2[] = { B, A/2 };
@@ -10774,10 +10776,10 @@ else if( type == 4 ) //Trane  CGAM air-cooled scroll chiller
 	if( nextEquipment < 0 )
 		nextEquipment = 0;
 		*/
-	ads_real modelWithBT;	//!0 - option Buffer Tank included, 0 - isn't included
+	ads_real modelWithBT = 0;	//!0 - option Buffer Tank included, 0 - isn't included
 	get_val("H", modelWithBT);
 
-	short modelWithPHR;	//!0 - option Partial Heat Recovery included, 0 - isn't included
+	short modelWithPHR = 0;	//!0 - option Partial Heat Recovery included, 0 - isn't included
 	get_val("ftype", modelWithPHR);
 
 //debug drawing ----------------------------------

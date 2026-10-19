@@ -1,5 +1,5 @@
-import type { ApiSignatureMetadata } from '@engine/runtime/ApiMetadata.types';
-import type { RuntimeValue } from '@engine/runtime/RuntimeValue';
+import type { ApiSignatureMetadata } from "@engine/runtime/ApiMetadata.types";
+import type { RuntimeValue } from "@engine/runtime/RuntimeValue";
 
 export interface RuntimeVariable {
   name: string;
@@ -53,9 +53,16 @@ export interface RuntimeApiCall {
 }
 
 export interface RuntimeParameterRequest {
+  // A failed get_val leaves the C++ destination unchanged. This is safe only
+  // when the destination was explicitly initialized or assigned in the source;
+  // the interpreter's implicit zero for uninitialized locals is NOT a default.
+  initializedFromSource?: boolean;
+  // Execution-only: whether the queried destination was read before replacement.
+  // Absent for static discovery and older callers (which remain conservative).
+  consumed?: boolean;
   functionName?: string;
   checkbox?: boolean;
-  branchSelector?: 'switch' | 'condition';
+  branchSelector?: "switch" | "condition";
   name: string;
   type: string;
   defaultValue: string;
@@ -65,8 +72,12 @@ export interface RuntimeParameterRequest {
   line: number;
 }
 
-export function parameterKey(request: Pick<RuntimeParameterRequest, 'name' | 'functionName'>): string {
-  return request.functionName ? `${request.functionName}::${request.name}` : request.name;
+export function parameterKey(
+  request: Pick<RuntimeParameterRequest, "name" | "functionName">,
+): string {
+  return request.functionName
+    ? `${request.functionName}::${request.name}`
+    : request.name;
 }
 
 export interface RuntimeResult {
@@ -79,7 +90,13 @@ export interface RuntimeResult {
 }
 
 export function emptyRuntimeResult(): RuntimeResult {
-  return { variables: [], variableChanges: [], diagnostics: [], apiCalls: [], parameterRequests: [] };
+  return {
+    variables: [],
+    variableChanges: [],
+    diagnostics: [],
+    apiCalls: [],
+    parameterRequests: [],
+  };
 }
 
 export function emptyApiCall(): RuntimeApiCall {
@@ -87,12 +104,12 @@ export function emptyApiCall(): RuntimeApiCall {
     line: 0,
     parentApiIndex: -1,
     userFunctionCall: false,
-    name: '',
+    name: "",
     arguments: [],
     argumentExpressions: [],
     formalParameterNames: [],
     formalParameterTypes: [],
-    display: '',
+    display: "",
     argumentTraces: [],
     signature: null,
   };
@@ -107,7 +124,9 @@ export interface RuntimeExecutionOptions {
   debugCall?: { signature: string; occurrence: number; line?: number };
 }
 
-export function debugApiIndices(result: RuntimeResult): Set<number> | undefined {
+export function debugApiIndices(
+  result: RuntimeResult,
+): Set<number> | undefined {
   if (result.debugApiIndex === undefined) return;
   const indices = new Set([result.debugApiIndex]);
   result.apiCalls.forEach((call, index) => {

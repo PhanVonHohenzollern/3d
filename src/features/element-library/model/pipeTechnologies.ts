@@ -44,44 +44,34 @@ export function resolvePipeConnections(
 }
 
 /**
- * Only flanged and threaded technologies contribute an additional Connector
- * Geometry Mesh. The TECHNOLOGY ID comes from the resolved XML/JSON graph:
- *   FLN_* (flanged, representation=1)
- *   THR_* (threaded, representation=2)
- * Representation alone is NOT a discriminator: socket-welded, glued and copper
- * technologies also use representation=2 and must not generate extra meshes.
- *
- * This filter is preview-only. Do not apply it to resolvePipeConnections() or
- * pipeConnectionParameters(): C++ geometry queries still need every connector.
- * TYPE 13/14 (male/female) is deliberately ignored for preview geometry.
+ * Only a source-verified flanged/threaded technology contributes an EXTRA mesh.
+ * The decision is attached while resolving the link against the currently
+ * selected library's technology GUID and exact size table. Never classify an
+ * arbitrary catalog by an ID prefix: names, sizes and link types vary by XML.
+ * Other technologies still supply their resolved physical data to C++ queries.
  */
 export function connectorMeshConnections(
   connections: readonly PipeConnection[],
 ): PipeConnection[] {
   return connections.flatMap((connection): PipeConnection[] => {
     const resolved = connection.definition.physical?.resolvedSize;
-    const technologyId = resolved?.technology?.trim().toUpperCase();
-    if (!resolved || !technologyId || resolved.technology !== connection.definition.technology) return [];
+    if (!resolved || !resolved.technologyGuid ||
+        resolved.technology !== connection.definition.technology)
+      return [];
+    if (resolved.meshKind === 'flanged') {
+      if (resolved.representation !== 1 || connection.type !== 'flanged' ||
+          !(resolved.flangeDiameter > 0) || !(resolved.flangeThickness >= 0)) return [];
 
-    if (/^(?:FLN|FLANGED)(?:_|$)/.test(technologyId) && resolved.representation === 1) {
-      // Keep the flange geometry and its graph-resolved dimensions.
       return [connection];
     }
-
-    if (!/^(?:THR|THREAD|THREADED)(?:_|$)/.test(technologyId) || resolved.representation !== 2)
+    if (resolved.meshKind !== 'threaded' || resolved.representation !== 2)
       return [];
-
-    // Threaded's nominal d is a size designation, not the physical outer
-    // diameter; the declared inner diameter can legitimately exceed d.
-    // Use one common neutral outer envelope from the resolved Technology table
-    // (dm/df), independent of the port's TYPE=13/14 or Female/Male label.
+    // Threaded male/female end types affect C++ physical queries but not the
+    // neutral preview envelope. Dimensions come from this exact technology row.
     const outer = Math.max(resolved.externalMale, resolved.externalFemale);
-    if (
-      !Number.isFinite(outer) ||
-      !Number.isFinite(resolved.internalDiameter) ||
-      resolved.internalDiameter < 0 ||
-      outer <= resolved.internalDiameter
-    ) return [];
+    if (!Number.isFinite(outer) || !Number.isFinite(resolved.internalDiameter) ||
+        resolved.internalDiameter < 0 || outer <= resolved.internalDiameter)
+      return [];
 
     return [{
       ...connection,

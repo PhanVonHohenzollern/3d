@@ -54,7 +54,11 @@ export class PreviewGeometryEngine {
         const delta = meshTransformDelta(args);
         if (!delta || !delta.every((row) => row.every(Number.isFinite)))
           scene.warnings.push(warningFor(call, 'invalid mesh transform arguments'));
-        else if (call.name === 'preTransformMesh') currentTransform = multiply(delta, currentTransform);
+        // Our math module multiplies COLUMN vectors (worldPoint = matrix * localPoint).
+        // postTransformMesh applies each successive transform in world order:
+        // after Rx then Rz, the resulting matrix must be Rz * Rx. The old
+        // composition (Rx * Rz) displaced CR5 geometry away from its XML links.
+        else if (call.name === 'postTransformMesh') currentTransform = multiply(delta, currentTransform);
         else currentTransform = multiply(currentTransform, delta);
         continue;
       }

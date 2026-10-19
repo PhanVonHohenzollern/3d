@@ -64,6 +64,11 @@ export interface ConnectorDefinition {
       externalFemale: number;
       flangeDiameter: number;
       flangeThickness: number;
+      /** Source library and technology identity; never mix catalog size tables. */
+      libraryGuid?: string;
+      technologyGuid?: string;
+      /** Optional EXTRA geometry, resolved only from this library's technology. */
+      meshKind?: 'flanged' | 'threaded' | 'none';
     };
   };
   orientation: ConnectorOrientation;

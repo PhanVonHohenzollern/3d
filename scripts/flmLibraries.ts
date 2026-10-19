@@ -11,10 +11,11 @@ import { readParsedLibrary } from '../src/features/element-library/model/parsedL
 
 export interface LibraryDescriptor {
   name: string;
+  error?: string;
   catalog: {
     label: string;
     categories: { id: string; name: string; elements: string[] }[];
-    items: Record<string, { symbol: string; thumbnail: string }>;
+    items: Record<string, { symbol: string; thumbnail: string; listed?: boolean; sourceGroup?: string }>;
   };
   sources: { name: string; path: string }[];
   entries: Record<string, { entry: string; error?: string }>;
@@ -39,51 +40,95 @@ export function discoverLibraries(root: string) {
       const name = directory.name;
       const path = join(folder, name);
       const files = readdirSync(path).sort();
-      const svgFiles = readdirSync(path, { recursive: true, withFileTypes: true })
-        .filter((file) => file.isFile() && /\.svg$/i.test(file.name))
-        .map((file) => ({ file: join(file.parentPath, file.name), name: file.name }));
+      const localFiles = readdirSync(path, { recursive: true, withFileTypes: true })
+        .filter((file) => file.isFile())
+        .map((file) => ({
+          file: join(file.parentPath, file.name),
+          name: relative(path, join(file.parentPath, file.name)).split(sep).join('/'),
+        }));
+      const svgFiles = localFiles
+        .filter((file) => /\.svg$/i.test(file.name))
+        .map((file) => ({ ...file, basename: file.name.split('/').at(-1)! }));
       const icons = new Map<string, { file: string; path: string }>();
       const json = files.filter((file) => /\.json$/i.test(file));
-      if (!json.length) return [];
-      if (json.length !== 1) throw new Error(`${name}: expected exactly one library JSON`);
-      const jsonPath = join(path, json[0]);
-      const parsed = readParsedLibrary(JSON.parse(readFileSync(jsonPath, 'utf8')));
-      const codePath = files.some((file) => /\.(h|cpp)$/i.test(file)) ? path : join(root, 'public/demo/code', name);
-      const codes = existsSync(codePath)
-        ? readdirSync(codePath)
-            .filter((file) => /\.(h|cpp)$/i.test(file))
-            .sort()
-        : [];
-      if (!codes.some((file) => /\.cpp$/i.test(file)) || !codes.some((file) => /\.h$/i.test(file)))
-        throw new Error(`${name}: add .h and .cpp beside the JSON (or in public/demo/code/${name})`);
+      if (!json.length) return []; // An incomplete copy is not yet a library.
+      const preferred = json.filter((file) =>
+        [name.toLowerCase() + '.json', 'library.json'].includes(file.toLowerCase()),
+      );
+      const selected = json.length === 1 ? json[0] : preferred.length === 1 ? preferred[0] : undefined;
+      const jsonPath = join(path, selected ?? json[0]);
+
+      const unavailable = (message: string) => ({
+        descriptor: {
+          name,
+          error: `${name}: ${message}`,
+          catalog: { label: name, categories: [], items: {} },
+          sources: [],
+          entries: {},
+        } as LibraryDescriptor,
+        jsonPath,
+        sourceFiles: [] as { file: string; name: string }[],
+        icons: [] as { file: string; path: string }[],
+        emitted: false,
+      });
+
+      // A broken/incomplete new library must not prevent existing independent
+      // libraries from building or appearing in the catalog.
+      if (!selected) return [unavailable('ambiguous library JSON: use <FolderName>.json or library.json')];
+      let parsed: ReturnType<typeof readParsedLibrary>;
+      try {
+        parsed = readParsedLibrary(JSON.parse(readFileSync(jsonPath, 'utf8')));
+      } catch (error) {
+        return [unavailable(`cannot read ${selected}: ${error instanceof Error ? error.message : String(error)}`)];
+      }
+      const codePath = localFiles.some((file) => /\.(h|cpp)$/i.test(file.name))
+        ? path
+        : join(root, 'public/demo/code', name);
+      const sourceFiles = (
+        existsSync(codePath)
+          ? readdirSync(codePath, { recursive: true, withFileTypes: true })
+              .filter((file) => file.isFile() && /\.(h|cpp)$/i.test(file.name))
+              .map((file) => ({
+                file: join(file.parentPath, file.name),
+                name: relative(codePath, join(file.parentPath, file.name)).split(sep).join('/'),
+              }))
+          : []
+      ).sort((a, b) => a.name.localeCompare(b.name));
+      const missingSources =
+        !sourceFiles.some(({ name }) => /\.cpp$/i.test(name)) || !sourceFiles.some(({ name }) => /\.h$/i.test(name));
       const registry = new Map<string, string>();
-      const sourceFiles = codes.map((file) => ({ file: join(codePath, file), name: file }));
-      const text = sourceFiles.map(({ file }) => sourceText(readFileSync(file)));
-      for (const code of text)
-        for (const [block, entry] of geometryRegistry(code)) {
-          if (registry.has(block) && registry.get(block) !== entry)
-            throw new Error(`${name}: ambiguous geometry ${block}`);
-          registry.set(block, entry);
+      const registryProblems: string[] = [];
+      for (const source of sourceFiles) {
+        try {
+          for (const [block, entry] of geometryRegistry(sourceText(readFileSync(source.file)))) {
+            if (registry.has(block) && registry.get(block) !== entry) throw new Error(`ambiguous geometry ${block}`);
+            registry.set(block, entry);
+          }
+        } catch (error) {
+          registryProblems.push(`${source.name}: ${error instanceof Error ? error.message : String(error)}`);
         }
+      }
       const entries: LibraryDescriptor['entries'] = {};
       const items: LibraryDescriptor['catalog']['items'] = {};
       for (const entity of Object.values(parsed.entities)) {
         const block = entity.geometry?.children.find((node) => node.tag === 'FNBLKNAME')?.text ?? '';
         const entry = registry.get(block);
-        entries[entity.guid] = {
-          entry: entry ?? '',
-          ...(!entry
-            ? { error: `${entity.id}: no registered geometry for ${block || '(no geometry definition)'}` }
-            : {}),
-        };
+        const error = missingSources
+          ? `${entity.id}: missing geometry .h/.cpp in this library`
+          : !entry
+            ? `${entity.id}: no registered geometry for ${block || '(no geometry definition)'}${
+                registryProblems.length ? ` (${registryProblems.join('; ')})` : ''
+              }`
+            : undefined;
+        entries[entity.guid] = { entry: error ? '' : (entry ?? ''), ...(error ? { error } : {}) };
         const slide = entity.paths
           ?.find((p) => p.NAME === 'ENT_SMALLSLIDE')
           ?.value?.replace(/^.*[/\\]/, '')
           .replace(/\.(sld|slb|svg)$/i, '')
           .toLowerCase();
-        const matches = slide ? svgFiles.filter((file) => file.name.toLowerCase() === slide + '.svg') : [];
-        if (matches.length > 1) throw new Error(`${name}: ambiguous SVG for ${slide}`);
-        const localIcon = matches[0];
+        const matches = slide ? svgFiles.filter((file) => file.basename.toLowerCase() === slide + '.svg') : [];
+        // A duplicated optional thumbnail must not make geometry unavailable.
+        const localIcon = matches.length === 1 ? matches[0] : undefined;
         if (localIcon)
           icons.set(localIcon.name, { file: localIcon.file, path: `library-icons/${name}/${localIcon.name}` });
         const existingIcon = thumbnails[name]?.[entity.guid];
@@ -94,7 +139,11 @@ export function discoverLibraries(root: string) {
             : slide && existsSync(join(root, 'public/library-icons', name, slide + '.svg'))
               ? slide + '.svg'
               : '';
-        items[entity.guid] = { symbol: entity.names?.ENT_SYMBOL?.EN || entity.id, thumbnail };
+        items[entity.guid] = {
+          symbol: entity.names?.ENT_SYMBOL?.EN || entity.id,
+          thumbnail,
+          sourceGroup: entity.legacyIds?.map((legacy) => legacy.GRPID?.trim()).filter(Boolean).join(', '),
+        };
       }
       const folders = new Map(parsed.folders.map((f) => [f.guid, f]));
 
@@ -109,14 +158,25 @@ export function discoverLibraries(root: string) {
         ];
       };
 
-      const categories = parsed.folders.map((f) => ({
-        id: f.guid,
-        name: f.names.NAME?.EN || f.guid,
-        elements: collect(f.guid),
-      }));
-      const listed = new Set(categories.flatMap((c) => c.elements));
-      const unlisted = Object.keys(items).filter((id) => !listed.has(id));
-      if (unlisted.length) categories.push({ id: 'uncategorized', name: 'Uncategorized', elements: unlisted });
+      let categories: LibraryDescriptor['catalog']['categories'];
+      try {
+        categories = parsed.folders.map((f) => ({
+          id: f.guid,
+          name: f.names.NAME?.EN || f.guid,
+          elements: collect(f.guid),
+        }));
+      } catch (error) {
+        // A malformed folder graph belongs to this library only: isolate it
+        // instead of preventing other independent libraries from loading.
+        return [
+          unavailable(`cannot resolve library folders: ${error instanceof Error ? error.message : String(error)}`),
+        ];
+      }
+      // FOLDER_ENTRY GUIDs define the catalog. Legacy group names must not
+      // place unlisted duplicate symbols into current folders.
+      const listed = new Set(categories.flatMap((category) => category.elements));
+      for (const [id, item] of Object.entries(items)) item.listed = listed.has(id);
+      categories.sort((a, b) => a.name.localeCompare(b.name, 'en'));
       const sources = sourceFiles.map(({ file, name: fileName }) => ({
         name: fileName,
         path:

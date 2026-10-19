@@ -11,7 +11,7 @@ export interface LibraryAsset {
 export interface LibraryCatalog {
   label: string;
   categories: { id: string; name: string; elements: string[] }[];
-  items: Record<string, { symbol: string; thumbnail: string }>;
+  items: Record<string, { symbol: string; thumbnail: string; listed?: boolean; sourceGroup?: string }>;
 }
 
 export interface LibrarySelector {
@@ -62,6 +62,7 @@ export interface ElementLibrary {
 }
 
 export interface LibraryResolution {
+  missingInputs?: string[];
   values: Map<string, string>;
   // TYPE=1 LEVEL>0: suggestions in choices are not a closed input domain.
   nonrestrictiveParameters?: ReadonlySet<string>;

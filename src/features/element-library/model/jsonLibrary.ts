@@ -6,13 +6,10 @@ import {
   restrictionActive,
   type ResolvedSnapshot,
 } from '@/features/element-library/model/constraintGraph';
-import { isHiddenVariable, readParsedLibrary, type FlmConnector } from '@/features/element-library/model/parsedLibrary';
+import { isHiddenVariable, readParsedLibrary, verifiedSourceConditions, type FlmConnector } from '@/features/element-library/model/parsedLibrary';
+import { resolveLocalTechnology } from '@/features/element-library/model/localTechnology';
 import { pipeConnectionParameters, resolvePipeConnections } from '@/features/element-library/model/pipeTechnologies';
 import type { ElementLibrary, LibraryElement, LibraryValues } from '@/features/element-library/model/types';
-
-// Renderer-only convention: a short connector tube is half its outside diameter.
-// This does not originate from XML FLENGTH and is never exported as get_ldist.
-export const PREVIEW_CONNECTOR_TUBE_LENGTH_RATIO = 0.5;
 
 const directions: Record<number, ConnectorDefinition['orientation']> = {
   1: 'XNegative',
@@ -42,20 +39,37 @@ function connectorDefinition(
     connectorDiagnostics.push(`${link.id}: ${message}`);
   };
 
-  const active = restrictionActive(link.conditionsRaw, values);
+  const canonical = verifiedSourceConditions(graph.library, graph.entity, link);
+  if (canonical.invalidFields.length) issue(`unverified XML condition aliases: ${canonical.invalidFields.join(', ')}`);
+  const active = restrictionActive(canonical.conditions, values);
   if (active === undefined) issue('unresolved activation condition');
   if (active !== true) return;
 
   const reference = (expression: string | null | undefined) =>
     expression?.startsWith('%') ? values.get(expression.slice(1)) : (expression ?? undefined);
 
-  const technologyId = link.technologyExpression?.startsWith('%')
-    ? reference(link.technologyExpression)
-    : (link.technologyRef?.id ?? reference(link.technologyExpression));
-  const connectionType = reference(link.connectionTypeExpression) ?? String(link.attributes.TYPE);
+  // A Link without its own DEF_TECHID inherits the element's solved technical
+  // identifier. The display label `tech` is not a substitute for tech_idx.
+  const expression = link.technologyExpression?.trim();
+  const dynamicTechnology = expression?.startsWith('%') ||
+    (!!expression && values.has(expression));
+  const technologyToken = dynamicTechnology
+    ? values.get(expression!.replace(/^%/, ''))
+    : expression
+      ? (link.technologyRef?.id ?? expression)
+      : (link.technologyRef?.id ?? values.get('tech_idx'));
+  const locallyResolved = resolveLocalTechnology(graph.library, technologyToken);
+  const guidMatches = dynamicTechnology || !link.technologyRef || !locallyResolved.technology ||
+    locallyResolved.technology.guid.toLowerCase() === link.technologyRef.guid.toLowerCase();
+  const technology = guidMatches ? locallyResolved.technology : undefined;
+  const technologyId = technology?.id ?? technologyToken;
+  const connectionExpression = link.connectionTypeExpression?.trim();
+  const connectionType = connectionExpression
+    ? (values.get(connectionExpression) ?? reference(connectionExpression) ?? String(link.attributes.TYPE))
+    : (values.get('conn_idx') ?? String(link.attributes.TYPE));
   const sourceType = Number(link.attributes.TYPE);
   const rectangular = sourceType === 1 || sourceType === 2 || prepared?.type === 'Rectangular';
-  const orientation = prepared?.orientation ?? directions[Number(link.fields.DIR)];
+  const orientation = directions[Number(link.fields.DIR)] ?? prepared?.orientation;
   if (!orientation) {
     issue(`unsupported direction ${link.fields.DIR}`);
 
@@ -89,13 +103,11 @@ function connectorDefinition(
     connectionType,
     // An omitted POSITION denotes the element origin, just as omitted axes
     // within a POSITION denote zero. It does not mean the port is absent.
-    position: ['X', 'Y', 'Z'].map((axis) => link.positionExpressions?.[axis] ?? '0') as [string, string, string],
-    angles: [angles.Gamma ?? '0', angles.Beta ?? '0', angles.Alpha ?? '0'],
+    position: ['X', 'Y', 'Z'].map((axis) => link.positionExpressions?.[axis]?.trim() || '0') as [string, string, string],
+    angles: [angles.Gamma?.trim() || '0', angles.Beta?.trim() || '0', angles.Alpha?.trim() || '0'],
     aSize: String(link.fields.FWIDTH ?? prepared?.aSize ?? '0'),
     bSize: String(link.fields.FHEIGHT ?? prepared?.bSize ?? '0'),
-    // The engine's ConnectorDefinition requires physical.length.
-    // It is filled with a preview-only dimension after the size lookup.
-    physical: { length: '' },
+    physical: { length: String(link.fields.FLENGTH ?? '0') },
   };
   definition.technology = technologyId;
   definition.connectionType = connectionType;
@@ -107,29 +119,37 @@ function connectorDefinition(
     ...(definition.type === 'Circular' ? [definition.diameter] : [definition.aSize, definition.bSize]),
   ];
   const context = values;
+  const evaluated = new Map<string, string | undefined>();
+
+  const evaluate = (expression: string): string | undefined => {
+    if (!evaluated.has(expression)) evaluated.set(expression, expressionValue(expression, context));
+
+    return evaluated.get(expression);
+  };
+
   for (const expression of expressions)
     if (
-      expressionValue(expression, context) === undefined ||
-      !Number.isFinite(Number(expressionValue(expression, context)))
+      evaluate(expression) === undefined ||
+      !Number.isFinite(Number(evaluate(expression)))
     ) {
       issue(`cannot resolve ${expression}`);
 
       return;
     }
   // Materialize every profile in the connector's own graph scope.
-  definition.position = definition.position.map((expression) => expressionValue(expression, values) ?? expression) as [
+  definition.position = definition.position.map((expression) => evaluate(expression) ?? expression) as [
     string,
     string,
     string,
   ];
-  definition.angles = definition.angles.map((expression) => expressionValue(expression, values) ?? expression) as [
+  definition.angles = definition.angles.map((expression) => evaluate(expression) ?? expression) as [
     string,
     string,
     string,
   ];
   if (definition.type === 'Rectangular') {
-    definition.aSize = expressionValue(definition.aSize, values) ?? definition.aSize;
-    definition.bSize = expressionValue(definition.bSize, values) ?? definition.bSize;
+    definition.aSize = evaluate(definition.aSize) ?? definition.aSize;
+    definition.bSize = evaluate(definition.bSize) ?? definition.bSize;
     if (Number(definition.aSize) <= 0 || Number(definition.bSize) <= 0) {
       issue('invalid rectangular dimensions');
 
@@ -139,7 +159,7 @@ function connectorDefinition(
 
     return definition;
   }
-  const diameter = Number(expressionValue(definition.diameter, context));
+  const diameter = Number(evaluate(definition.diameter));
   if (diameter === 0) return;
   if (!Number.isFinite(diameter) || diameter < 0) {
     issue('invalid diameter');
@@ -157,17 +177,16 @@ function connectorDefinition(
     return definition;
   };
 
-  if (!link.technologyExpression && !link.technologyRef) {
+  if (!technologyToken) {
     delete definition.physical;
 
     return definition;
   }
-  const technology = technologyId ? graph.library.technologies[technologyId] : undefined;
-  if (!technology) {
+  if (!technology)
     return withoutPhysicalSize(
-      `missing technology ${technologyId ?? link.technologyExpression}; Link profile retained`,
+      `${guidMatches ? (locallyResolved.issue ?? `missing local technology ${technologyToken}`) :
+        `technology GUID differs from this library's definition (${technologyToken})`}; Link profile retained`,
     );
-  }
   // Only tables referenced by this technology are consulted. IDs from another
   // library never override the same technology ID in this resolved snapshot.
   const sizes = technology.tableRefs
@@ -179,6 +198,15 @@ function connectorDefinition(
   const table = graph.table(sizes[0].guid);
   const representation = Number(technology.properties.REPRESENTATION);
   const columns = table.table.columns;
+  // Extra technology mesh is selected from THIS technology definition, not
+  // from global FLN_*/THR_* identifier prefixes. Representation=2 is shared
+  // by soldered/glued/copper/threaded sources and cannot identify thread alone.
+  const sourceName = technology.names?.TECH_NAME?.EN?.trim() ?? '';
+  const technologyMeshKind = representation === 1
+    ? 'flanged'
+    : representation === 2 && /\bthread(?:ed|ing)?\b/i.test(sourceName)
+      ? 'threaded'
+      : 'none';
   // Read the size schema supplied by the referenced Technology, not a
   // hard-coded assumption that every Pipe table uses the same column names.
   const nominalColumn = ['d', 'Dn_nom', 'dn_out'].map((name) => columns.indexOf(name)).find((index) => index >= 0);
@@ -213,9 +241,13 @@ function connectorDefinition(
   if ([internal, male, female, flange, thick].some((n) => n === undefined)) {
     return withoutPhysicalSize(`missing connection dimensions (${columns.join(', ')}); Link profile retained`);
   }
-  // This length is used ONLY for the temporary cyan tube shown by the preview.
-  // It is not an XML restriction, an element parameter, or physical connection data.
-  definition.physical!.length = String(Math.max(diameter, male!, female!) * PREVIEW_CONNECTOR_TUBE_LENGTH_RATIO);
+  // Physical connector geometry terminates at the source-defined connection
+  // plane and extends inward by FLENGTH. The cyan overlay has its own display
+  // length; using a diameter ratio here changes the actual fitting geometry.
+  const length = evaluate(definition.physical!.length);
+  if (length === undefined || !length.trim() || !Number.isFinite(Number(length)) || Number(length) < 0)
+    return withoutPhysicalSize(`cannot resolve connector length ${definition.physical!.length}; Link profile retained`);
+  definition.physical!.length = length;
   definition.physical!.resolvedSize = {
     technology: technologyId!,
     diameter,
@@ -225,6 +257,9 @@ function connectorDefinition(
     externalFemale: female!,
     flangeDiameter: flange!,
     flangeThickness: thick!,
+    libraryGuid: graph.library.library.guid,
+    technologyGuid: technology.guid,
+    meshKind: technologyMeshKind,
   };
 
   return definition;
@@ -245,6 +280,7 @@ export function createJsonLibrary(
         solver: UnifiedConstraintSolver | undefined,
         initial: LibraryValues | undefined;
       let unboundDiscovered: string[] = [];
+      let boundDiscovered: string[] = [];
 
       const resolve: NonNullable<LibraryElement['resolve']> = (previous, changed = []) => {
         if (!previous && initial) return structuredClone(initial);
@@ -257,6 +293,33 @@ export function createJsonLibrary(
           if (graph.variables.has(key) || graph.edges.has(key)) graphInputs.set(key, value);
         const graphChanges = changed.filter((key) => graph!.variables.has(key) || graph!.edges.has(key));
         const snapshot = solver.solve(graphInputs, graphChanges);
+        // Check technology labels against the complete constraint graph,
+        // including dependent defaults and conditional size tables.
+        if (snapshot.status === 'valid') {
+          const numericInputs = boundDiscovered.filter((name) => {
+            const value = snapshot.resolvedValues.get(name);
+
+            return graph!.variables.get(name)?.valueTypeCode !== 3 &&
+              !!value?.trim() && Number.isFinite(Number(value));
+          });
+          for (const [name, choices] of snapshot.validOptions) {
+            if (!/(?:^|_)tech\d*$/.test(name) || choices.length < 2) continue;
+            const accepted = choices.filter((choice) => {
+              if (snapshot.resolvedValues.get(name) === choice) return true;
+              const candidate = new Map(snapshot.resolvedValues);
+              candidate.set(name, choice);
+
+              const solved = solver!.solve(candidate, [name]);
+
+              return solved.status === 'valid' && numericInputs.every((input) => {
+                const value = solved.resolvedValues.get(input);
+
+                return !!value?.trim() && Number.isFinite(Number(value));
+              });
+            });
+            snapshot.validOptions.set(name, accepted);
+          }
+        }
         const connectorDiagnostics: string[] = [];
         const parameterDiagnostics = unboundDiscovered.map(
           (name) => `get_val("${name}") has no JSON variable in ${entity.id}; validate if its C++ branch executes`,
@@ -316,6 +379,7 @@ export function createJsonLibrary(
           const declared = (name: string) => graph!.variables.has(name) || graph!.edges.has(name);
 
           unboundDiscovered = unique.filter((name) => !declared(name));
+          boundDiscovered = unique.filter(declared);
           initial = undefined;
         },
         selectors: entity.variables

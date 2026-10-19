@@ -1,3 +1,5 @@
+export type ParameterBindingMode = 'restrictive' | 'nonrestrictive' | 'secondary';
+
 export interface ParameterRow {
   functionName?: string;
   key: string;

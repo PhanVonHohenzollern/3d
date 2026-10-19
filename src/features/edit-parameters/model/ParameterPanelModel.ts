@@ -9,7 +9,7 @@ import {
   refinedParameterValue,
 } from '@/entities/parameter';
 import { adjacentCell, rowForKey } from '@/shared/ui/table-view';
-import type { ParameterEditor, ParameterRow } from '@/entities/parameter';
+import type { ParameterBindingMode, ParameterEditor, ParameterRow } from '@/entities/parameter';
 import { isMacPlatform } from '@/shared/lib/platform';
 import { Observable, Signal } from '@/shared/lib/observable';
 import { parseParameterTable, tableImportSummary } from '@/entities/parameter';
@@ -124,9 +124,14 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
   #valueOptions: ReadonlyMap<string, string[]> = new Map();
   #librarySelectors: readonly string[] = [];
   #hiddenParameters: ReadonlySet<string> = new Set();
+  #parameterModes: ReadonlyMap<string, ParameterBindingMode> = new Map();
+
+  parameterMode(name: string): ParameterBindingMode {
+    return this.#parameterModes.get(name) ?? 'nonrestrictive';
+  }
 
   get #visibleDefinitions(): RuntimeParameterRequest[] {
-    return this.#definitions.filter((definition) => !this.#hiddenParameters.has(parameterKey(definition)));
+    return this.#definitions.filter((definition) => !this.#hiddenParameters.has(definition.name) && !this.#hiddenParameters.has(parameterKey(definition)));
   }
 
   // XML selectors can drive dimensions/connectors without a corresponding C++ get_val.
@@ -167,6 +172,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     this.#valueOptions = new Map();
     this.#librarySelectors = [];
     this.#hiddenParameters = new Set();
+    this.#parameterModes = new Map();
     this.#definitions = [];
     this.#activeKeys = null;
     this.#defaults = null;
@@ -217,10 +223,12 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     parameters: ReadonlyMap<string, string> = values,
     selectors: readonly string[] = [],
     hiddenParameters: ReadonlySet<string> = new Set(),
+    parameterModes: ReadonlyMap<string, ParameterBindingMode> = new Map(),
   ): void {
     this.#defaults = new Map(values);
     this.#librarySelectors = [...new Set(selectors)];
     this.#hiddenParameters = new Set(hiddenParameters);
+    this.#parameterModes = new Map(parameterModes);
     this.#values.clear();
     this.#userEditedKeys.clear();
     this.#enabledInsulation.clear();
@@ -235,7 +243,15 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     for (const definition of definitions) {
       const key = parameterKey(definition);
       const value = parameters.get(key) ?? parameters.get(definition.name) ?? values.get(definition.name);
-      if (value === undefined) continue;
+      if (value === undefined) {
+        // A declared library input without a value is empty, not the C++
+        // interpreter's zero seed. Keep it editable until the user supplies it.
+        if (this.#librarySelectors.includes(definition.name)) {
+          this.#values.set(key, '');
+          this.#userEditedKeys.add(key);
+        }
+        continue;
+      }
       this.#values.set(key, value);
       this.#userEditedKeys.add(key);
       if (
@@ -447,7 +463,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
     }
     this.commitEditor();
     const row = this.rows.find((item) => item.key === key);
-    if (!row || row.disabled || !row.checkbox) return;
+    if (!row || row.disabled || !row.checkbox || this.parameterMode(row.texts[0]) === 'secondary') return;
     this.#values.set(key, row.texts[1] === 'bool' ? String(checked) : checked ? '1' : '0');
     this.#userEditedKeys.add(key);
     this.dataSetIndex = -1;
@@ -483,6 +499,8 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
       const definition = this.#definitions.find((item) => parameterKey(item) === key);
       if (
         !definition ||
+        this.parameterMode(definition.name) === 'secondary' ||
+        (this.parameterMode(definition.name) === 'restrictive' && !this.valueOptions(definition.name).includes(value)) ||
         (isInsulationQuery(definition.sourceFunction) && !this.#enabledInsulation.has(definition.sourceFunction))
       )
         continue;
@@ -514,6 +532,14 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   #itemChanged(row: ParameterRow, column: number): void {
     if (this.#updating || column !== ValueColumn) return;
+    if (this.parameterMode(row.texts[0]) === 'secondary') return;
+    if (this.parameterMode(row.texts[0]) === 'restrictive' &&
+        !this.valueOptions(row.texts[0]).includes(row.texts[ValueColumn])) {
+      row.texts[ValueColumn] = this.#values.get(row.key) ?? '';
+      this.changed();
+
+      return;
+    }
     const key = row.key;
     if (key === '') return;
 
@@ -542,7 +568,7 @@ export class ParameterPanelModel extends Observable implements ParameterPanelHan
 
   edit(row: number, column: number): boolean {
     if (column !== ValueColumn || row < 0 || row >= this.rows.length) return false;
-    if (this.rows[row].disabled || this.rows[row].checkbox) return false;
+    if (this.rows[row].disabled || this.rows[row].checkbox || this.parameterMode(this.rows[row].texts[0]) === 'secondary') return false;
     this.editor = { row, text: this.rows[row].texts[ValueColumn], serial: ++this.#editorSerial };
     this.changed();
 
