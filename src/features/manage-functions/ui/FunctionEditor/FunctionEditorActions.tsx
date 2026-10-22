@@ -13,7 +13,7 @@ const FunctionEditorActions = () => {
         variant="outline"
         className="mr-auto text-error"
         title="Delete this source file"
-        onClick={actions.current.remove}
+        onClick={() => actions.current.remove()}
       >
         Delete file
       </Button>

@@ -181,9 +181,8 @@ export class FunctionWorkspace {
     this.clearError();
   }
 
-  removeFile(): string | null {
-    const file = this.#activeFile;
-    if (!file) return null;
+  removeFile(file = this.#activeFile): string | null {
+    if (!file || !this.#files.has(file)) return null;
     for (const fn of this.functions.filter((fn) => fn.file === file)) {
       this.#calls.delete(fn.name);
       this.#occurrences.delete(fn.name);
@@ -191,7 +190,7 @@ export class FunctionWorkspace {
     }
     this.#files.delete(file);
     this.#definitions = undefined;
-    this.selectFile('');
+    if (this.#activeFile === file) this.selectFile('');
 
     return file;
   }

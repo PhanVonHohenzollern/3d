@@ -450,7 +450,7 @@ export class WorkspaceModel extends Observable {
   readonly addSourceFiles = (name: string, header: boolean): boolean => this.functionTabs.add(name, header);
   readonly clearFunctionError = (): void => this.functionTabs.clearError();
   readonly selectSourceFile = (name: string): void => this.functionTabs.selectFile(name);
-  readonly deleteSourceFile = (): void => this.functionTabs.remove();
+  readonly deleteSourceFile = (name?: string): void => this.functionTabs.remove(name);
   readonly selectFunction = (name: string, apiIndex?: number): void => {
     const result = this.session.lastResult;
     const occurrence =

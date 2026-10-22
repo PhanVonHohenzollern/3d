@@ -48,10 +48,11 @@ export class FunctionTabsController {
     this.editorSwitched.emit();
   }
 
-  remove(): void {
+  remove(file = this.workspace.activeFile): void {
+    if (!file || !this.workspace.fileNames.includes(file)) return;
     this.#saveEditor();
-    const names = this.workspace.functions.filter((fn) => fn.file === this.workspace.activeFile).map((fn) => fn.name);
-    if (!this.workspace.removeFile()) return;
+    const names = this.workspace.functions.filter((fn) => fn.file === file).map((fn) => fn.name);
+    if (!this.workspace.removeFile(file)) return;
     for (const name of names) this.parameters().forgetFunction(name);
     this.removed.emit(names);
     this.editorSwitched.emit();

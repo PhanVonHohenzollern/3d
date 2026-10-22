@@ -12,7 +12,7 @@ type FunctionEditorActions = {
     clearError: () => void;
   };
   current: {
-    remove: () => void;
+    remove: (name?: string) => void;
   };
   select: (name: string) => void;
 };
