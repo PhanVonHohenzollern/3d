@@ -50,25 +50,11 @@ export class ViewportCamera {
     return ViewportCamera.orientationFromSpherical(radians(-45), radians(28));
   }
 
-  // Keep world-Z strictly vertical on screen:
-  // upDirection is the projection of world-Z onto the view plane.
   upDirection(): QVector3D {
-    const dir = this.orientation.rotate(new QVector3D(0, 0, 1));
-    const worldUp = new QVector3D(0, 0, 1);
-    const right = QVector3D.crossProduct(worldUp, dir);
-    if (right.lengthSquared() > 1e-8) {
-      return QVector3D.crossProduct(dir, right.normalized()).normalized();
-    }
-    return new QVector3D(0, 1, 0);
+    return this.orientation.rotate(new QVector3D(0, 1, 0));
   }
 
   rightDirection(): QVector3D {
-    const dir = this.orientation.rotate(new QVector3D(0, 0, 1));
-    const worldUp = new QVector3D(0, 0, 1);
-    const right = QVector3D.crossProduct(worldUp, dir);
-    if (right.lengthSquared() > 1e-8) {
-      return right.normalized();
-    }
     return this.orientation.rotate(new QVector3D(1, 0, 0));
   }
 
@@ -150,17 +136,23 @@ export class ViewportCamera {
 
     const scale = Math.PI / Math.max(1, Math.min(this.m_width, this.m_height));
 
-    // Work in spherical coordinates (azimuth + elevation) so clamping is trivial
-    // and the camera never jumps — just smoothly stops at the pole boundary.
     const dir = this.orientation.rotate(new QVector3D(0, 0, 1));
-    const azimuth = Math.atan2(dir.y, dir.x) - delta.x * scale;
-    const maxElev = radians(89);
-    const elevation = clamp(Math.asin(clamp(dir.z, -1, 1)) - delta.y * scale, -maxElev, maxElev);
+    const up = this.orientation.rotate(new QVector3D(0, 1, 0));
 
-    // Build orientation directly from spherical angles — no threshold switching, no snap.
-    // Quaternion.lookingFrom() switches its up-hint at |z| > 0.999 (~87.4°), causing
-    // a sudden jump when elevation is high. We bypass it via Shepperd's matrix→quaternion.
-    const orientation = ViewportCamera.orientationFromSpherical(azimuth, elevation);
+    // Full 360-degree elevation: atan2(dir.z, up.z) smoothly tracks the vertical angle across poles
+    const currentElev = Math.atan2(dir.z, up.z);
+    const newElev = currentElev + delta.y * scale;
+
+    // Azimuth extracted via projection, fully stable at any angle
+    const cosE = Math.cos(currentElev);
+    const sinE = Math.sin(currentElev);
+    const curCosA = dir.x * cosE - up.x * sinE;
+    const curSinA = dir.y * cosE - up.y * sinE;
+    const currentAz = Math.atan2(curSinA, curCosA);
+    const newAz = currentAz - delta.x * scale;
+
+    // Build orientation directly from spherical angles with world-Z as vertical axis
+    const orientation = ViewportCamera.orientationFromSpherical(newAz, newElev);
     const worldRotation = orientation.multiply(this.orientation.conjugate());
     // Pan's view target is distinct from the mesh pivot. Rotate both the eye
     // and view target around that pivot to keep its panned screen position fixed.
