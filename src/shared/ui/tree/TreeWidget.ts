@@ -117,26 +117,20 @@ export class TreeWidget extends Observable {
     this.changed();
   }
 
+  // Every item, depth first. Children added to the item just visited are visited too, because the
+  // walk reads each child count as it goes. It keeps its place by index, not by searching siblings.
   *allItems(): Generator<TreeWidgetItem> {
-    let item = this.#root.childCount() ? this.#root.child(0) : null;
-    while (item) {
+    const path = [{ parent: this.#root, next: 0 }];
+    while (path.length) {
+      const level = path[path.length - 1];
+      if (level.next >= level.parent.childCount()) {
+        path.pop();
+        continue;
+      }
+      const item = level.parent.child(level.next++);
       yield item;
-      item = this.#nextItem(item);
+      path.push({ parent: item, next: 0 });
     }
-  }
-
-  #nextItem(item: TreeWidgetItem): TreeWidgetItem | null {
-    if (item.childCount()) return item.child(0);
-    for (let current: TreeWidgetItem | null = item; current;) {
-      const parent: TreeWidgetItem | null = current._rawParent();
-      if (!parent) return null;
-      const index = parent.indexOfChild(current);
-      if (index + 1 < parent.childCount()) return parent.child(index + 1);
-      if (parent === this.#root) return null;
-      current = parent;
-    }
-
-    return null;
   }
 
   _itemsChanged(): void {
@@ -228,8 +222,10 @@ export class TreeWidget extends Observable {
   }
 
   _setItemSelected(item: TreeWidgetItem, selected: boolean): void {
-    this.#trackSelection(() => this.#setFlag(item, selected));
+    if (item._selected === selected) return;
+    this.#setFlag(item, selected);
     this.changed();
+    this.emitSignal(this.itemSelectionChanged);
   }
 
   #setFlag(item: TreeWidgetItem, selected: boolean): void {
