@@ -166,27 +166,47 @@ export class ViewportCamera {
   //   up      = (−sinE·cosA, −sinE·sinA, cosE)
   //   forward = ( cosE·cosA,  cosE·sinA, sinE)  ← orientation.rotate(0,0,1)
   static orientationFromSpherical(azimuth: number, elevation: number): Quaternion {
-    const sinE = Math.sin(elevation), cosE = Math.cos(elevation);
-    const sinA = Math.sin(azimuth),   cosA = Math.cos(azimuth);
-    const r00 = -sinA,  r01 = -sinE * cosA,  r02 = cosE * cosA;
-    const r10 =  cosA,  r11 = -sinE * sinA,  r12 = cosE * sinA;
-    /*  r20 = 0  */    const r21 =  cosE,      r22 = sinE;
+    const sinE = Math.sin(elevation),
+      cosE = Math.cos(elevation);
+    const sinA = Math.sin(azimuth),
+      cosA = Math.cos(azimuth);
+    const r00 = -sinA,
+      r01 = -sinE * cosA,
+      r02 = cosE * cosA;
+    const r10 = cosA,
+      r11 = -sinE * sinA,
+      r12 = cosE * sinA;
+    /*  r20 = 0  */ const r21 = cosE,
+      r22 = sinE;
     // Shepperd's method: rotation matrix → quaternion (handles all quadrants).
     const trace = r00 + r11 + r22;
     let w: number, x: number, y: number, z: number;
     if (trace > 0) {
       const s = 0.5 / Math.sqrt(trace + 1);
-      w = 0.25 / s; x = (r21 - r12) * s; y = (r02 - 0) * s; z = (r10 - r01) * s;
+      w = 0.25 / s;
+      x = (r21 - r12) * s;
+      y = (r02 - 0) * s;
+      z = (r10 - r01) * s;
     } else if (r00 > r11 && r00 > r22) {
       const s = 2 * Math.sqrt(1 + r00 - r11 - r22);
-      w = (r21 - r12) / s; x = 0.25 * s; y = (r01 + r10) / s; z = (r02 + 0) / s;
+      w = (r21 - r12) / s;
+      x = 0.25 * s;
+      y = (r01 + r10) / s;
+      z = (r02 + 0) / s;
     } else if (r11 > r22) {
       const s = 2 * Math.sqrt(1 + r11 - r00 - r22);
-      w = (r02 - 0) / s; x = (r01 + r10) / s; y = 0.25 * s; z = (r12 + r21) / s;
+      w = (r02 - 0) / s;
+      x = (r01 + r10) / s;
+      y = 0.25 * s;
+      z = (r12 + r21) / s;
     } else {
       const s = 2 * Math.sqrt(1 + r22 - r00 - r11);
-      w = (r10 - r01) / s; x = (r02 + 0) / s; y = (r12 + r21) / s; z = 0.25 * s;
+      w = (r10 - r01) / s;
+      x = (r02 + 0) / s;
+      y = (r12 + r21) / s;
+      z = 0.25 * s;
     }
+
     return new Quaternion(x, y, z, w).normalized();
   }
 
