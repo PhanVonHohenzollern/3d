@@ -47,15 +47,15 @@ export class ViewportCamera {
   }
 
   static homeOrientation(): Quaternion {
-    const pitch = radians(28);
-
-    return Quaternion.lookingFrom(
-      new QVector3D(Math.cos(pitch) / Math.SQRT2, -Math.cos(pitch) / Math.SQRT2, Math.sin(pitch)),
-    );
+    return ViewportCamera.orientationFromSpherical(radians(-45), radians(28));
   }
 
   upDirection(): QVector3D {
     return this.orientation.rotate(new QVector3D(0, 1, 0));
+  }
+
+  rightDirection(): QVector3D {
+    return this.orientation.rotate(new QVector3D(1, 0, 0));
   }
 
   updateViewMatrix(): void {
@@ -133,11 +133,26 @@ export class ViewportCamera {
   orbit(delta: QPoint, pivot: QVector3D = this.target): void {
     const movement = Math.hypot(delta.x, delta.y);
     if (movement === 0) return;
-    // Compose a combined yaw/pitch in the current camera frame. Preserve its
-    // roll and allow any number of turns through the poles, without a world-up reset.
-    const angle = (movement * Math.PI) / Math.max(1, Math.min(this.m_width, this.m_height));
-    const rotation = Quaternion.axisAngle(new QVector3D(-delta.y, -delta.x, 0), angle);
-    const orientation = this.orientation.multiply(rotation).normalized();
+
+    const scale = Math.PI / Math.max(1, Math.min(this.m_width, this.m_height));
+
+    const dir = this.orientation.rotate(new QVector3D(0, 0, 1));
+    const up = this.orientation.rotate(new QVector3D(0, 1, 0));
+
+    // Full 360-degree elevation: atan2(dir.z, up.z) smoothly tracks the vertical angle across poles
+    const currentElev = Math.atan2(dir.z, up.z);
+    const newElev = currentElev + delta.y * scale;
+
+    // Azimuth extracted via projection, fully stable at any angle
+    const cosE = Math.cos(currentElev);
+    const sinE = Math.sin(currentElev);
+    const curCosA = dir.x * cosE - up.x * sinE;
+    const curSinA = dir.y * cosE - up.y * sinE;
+    const currentAz = Math.atan2(curSinA, curCosA);
+    const newAz = currentAz - delta.x * scale;
+
+    // Build orientation directly from spherical angles with world-Z as vertical axis
+    const orientation = ViewportCamera.orientationFromSpherical(newAz, newElev);
     const worldRotation = orientation.multiply(this.orientation.conjugate());
     // Pan's view target is distinct from the mesh pivot. Rotate both the eye
     // and view target around that pivot to keep its panned screen position fixed.
@@ -145,8 +160,38 @@ export class ViewportCamera {
     this.orientation = orientation;
   }
 
+  // Build a camera-to-world quaternion for a turntable with world-Z as up.
+  // Stable at all elevations in (−90°, +90°) — no threshold-based up-hint switching.
+  //   right   = (−sinA,       cosA,      0   )
+  //   up      = (−sinE·cosA, −sinE·sinA, cosE)
+  //   forward = ( cosE·cosA,  cosE·sinA, sinE)  ← orientation.rotate(0,0,1)
+  static orientationFromSpherical(azimuth: number, elevation: number): Quaternion {
+    const sinE = Math.sin(elevation), cosE = Math.cos(elevation);
+    const sinA = Math.sin(azimuth),   cosA = Math.cos(azimuth);
+    const r00 = -sinA,  r01 = -sinE * cosA,  r02 = cosE * cosA;
+    const r10 =  cosA,  r11 = -sinE * sinA,  r12 = cosE * sinA;
+    /*  r20 = 0  */    const r21 =  cosE,      r22 = sinE;
+    // Shepperd's method: rotation matrix → quaternion (handles all quadrants).
+    const trace = r00 + r11 + r22;
+    let w: number, x: number, y: number, z: number;
+    if (trace > 0) {
+      const s = 0.5 / Math.sqrt(trace + 1);
+      w = 0.25 / s; x = (r21 - r12) * s; y = (r02 - 0) * s; z = (r10 - r01) * s;
+    } else if (r00 > r11 && r00 > r22) {
+      const s = 2 * Math.sqrt(1 + r00 - r11 - r22);
+      w = (r21 - r12) / s; x = 0.25 * s; y = (r01 + r10) / s; z = (r02 + 0) / s;
+    } else if (r11 > r22) {
+      const s = 2 * Math.sqrt(1 + r11 - r00 - r22);
+      w = (r02 - 0) / s; x = (r01 + r10) / s; y = 0.25 * s; z = (r12 + r21) / s;
+    } else {
+      const s = 2 * Math.sqrt(1 + r22 - r00 - r11);
+      w = (r10 - r01) / s; x = (r02 + 0) / s; y = (r12 + r21) / s; z = 0.25 * s;
+    }
+    return new Quaternion(x, y, z, w).normalized();
+  }
+
   pan(delta: QPoint): void {
-    const right = this.orientation.rotate(new QVector3D(1, 0, 0));
+    const right = this.rightDirection();
     const up = this.upDirection();
 
     const scale =
